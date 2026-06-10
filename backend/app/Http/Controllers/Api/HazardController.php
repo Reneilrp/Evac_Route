@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Hazard;
+use Illuminate\Http\Request;
 
 class HazardController extends Controller
 {
@@ -26,7 +26,7 @@ class HazardController extends Controller
             'radius_meters' => $request->radius_meters ?? 50,
             'hazard_type' => $validated['hazard_type'],
             'severity_level' => $validated['severity_level'],
-            'reported_by' => auth()->id() // Assumes protected route
+            'reported_by' => auth()->id(), // Assumes protected route
         ]);
 
         return response()->json(['status' => 'success', 'data' => $hazard]);
@@ -40,7 +40,7 @@ class HazardController extends Controller
         return response()->json([
             'status' => 'success',
             'count' => $hazards->count(),
-            'data' => $hazards
+            'data' => $hazards,
         ], 200);
     }
 
@@ -56,7 +56,7 @@ class HazardController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Hazard zone resolved successfully.',
-            'data' => $hazard
+            'data' => $hazard,
         ], 200);
     }
 }

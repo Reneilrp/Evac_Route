@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { create } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 
@@ -6,7 +6,7 @@ import Constants from 'expo-constants';
 // Set extra.apiBaseUrl in app.json for your local dev IP, e.g. "http://192.168.1.X:8000/api"
 const BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl || 'http://localhost:8000/api';
 
-const api = axios.create({
+const api = create({
   baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',

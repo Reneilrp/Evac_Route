@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React from "react";
+import { useState, useMemo } from 'react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/mapbox';
 import { MapPin, AlertTriangle, X, Info } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -561,9 +562,10 @@ const MapViewer = React.memo(({
           </div>
         </Marker>
       )}
-    </Map>
-  );
-});
+      </Map>
+      </div>
+      );
+      });
 
 // --- Main MapDashboard ---
 export default function MapDashboard() {

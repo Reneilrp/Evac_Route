@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { X, CheckCircle, AlertCircle } from 'lucide-react';
 import api from '../../services/api';
@@ -9,24 +9,7 @@ export default function QRScannerModal({ isOpen, onClose, selectedShelterId }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (isOpen && !scanResult) {
-      const scanner = new Html5QrcodeScanner(
-        "qr-reader",
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        /* verbose= */ false
-      );
-
-      scanner.render(onScanSuccess, onScanFailure);
-      scannerRef.current = scanner;
-
-      return () => {
-        scanner.clear().catch(error => console.error("Failed to clear html5QrcodeScanner. ", error));
-      };
-    }
-  }, [isOpen, scanResult, selectedShelterId]);
-
-  const onScanSuccess = async (decodedText, decodedResult) => {
+  const onScanSuccess = useCallback(async (decodedText) => {
     if (scannerRef.current) {
       scannerRef.current.clear();
     }
@@ -46,11 +29,28 @@ export default function QRScannerModal({ isOpen, onClose, selectedShelterId }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedShelterId]);
 
-  const onScanFailure = (error) => {
+  const onScanFailure = () => {
     // handle scan failure, usually better to ignore and keep scanning
   };
+
+  useEffect(() => {
+    if (isOpen && !scanResult) {
+      const scanner = new Html5QrcodeScanner(
+        "qr-reader",
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        /* verbose= */ false
+      );
+
+      scanner.render(onScanSuccess, onScanFailure);
+      scannerRef.current = scanner;
+
+      return () => {
+        scanner.clear().catch(error => console.error("Failed to clear html5QrcodeScanner. ", error));
+      };
+    }
+  }, [isOpen, scanResult, selectedShelterId, onScanSuccess]);
 
   const resetScanner = () => {
     setScanResult(null);
@@ -70,20 +70,18 @@ export default function QRScannerModal({ isOpen, onClose, selectedShelterId }) {
         </div>
 
         <div className="p-6 flex flex-col items-center min-h-[300px] justify-center">
-          {!scanResult && !error && !loading && (
-            <div className="w-full">
-              <div id="qr-reader" className="w-full"></div>
-              <p className="text-center text-sm text-gray-500 mt-4">Point camera at Resident's QR Code.</p>
-              
-              {/* Dev Helper: Replace hash below with one from your seeded family_profiles table */}
-              <button 
-                onClick={() => onScanSuccess('REPLACE_WITH_REAL_DB_HASH', null)}
-                className="mt-4 w-full bg-gray-100 text-gray-600 py-2 rounded text-sm font-medium hover:bg-gray-200 transition border border-dashed border-gray-300"
-              >
-                [Dev] Simulate Scan — update hash in QRScannerModal.jsx L82
-              </button>
-            </div>
-          )}
+          <div className={`w-full ${(!scanResult && !error && !loading) ? '' : 'hidden'}`}>
+            <div id="qr-reader" className="w-full"></div>
+            <p className="text-center text-sm text-gray-500 mt-4">Point camera at Resident's QR Code.</p>
+            
+            {/* Dev Helper: Replace hash below with one from your seeded family_profiles table */}
+            <button 
+              onClick={() => onScanSuccess('REPLACE_WITH_REAL_DB_HASH', null)}
+              className="mt-4 w-full bg-gray-100 text-gray-600 py-2 rounded text-sm font-medium hover:bg-gray-200 transition border border-dashed border-gray-300"
+            >
+              [Dev] Simulate Scan — update hash in QRScannerModal.jsx L82
+            </button>
+          </div>
 
           {loading && (
             <div className="flex flex-col items-center">

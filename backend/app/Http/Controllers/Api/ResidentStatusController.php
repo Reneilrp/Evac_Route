@@ -3,22 +3,23 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\EvacuationLog;
 use App\Models\FamilyProfile;
+use App\Models\RationTemplate;
+use Illuminate\Http\Request;
 
 class ResidentStatusController extends Controller
 {
     public function myStatus(Request $request)
     {
         $user = $request->user();
-        
+
         if ($user->role !== 'resident') {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         $family = FamilyProfile::where('user_id', $user->id)->first();
-        if (!$family) {
+        if (! $family) {
             return response()->json(['status' => 'danger', 'message' => 'No profile found']);
         }
 
@@ -31,8 +32,8 @@ class ResidentStatusController extends Controller
 
         if ($log) {
             // Simulate the receipt generation based on active template
-            $activeRation = \App\Models\RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
-            
+            $activeRation = RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
+
             $allocation = [];
             if ($activeRation) {
                 foreach ($activeRation->items as $item) {
@@ -41,30 +42,30 @@ class ResidentStatusController extends Controller
                         $allocation[] = [
                             'name' => $inventory->item_name,
                             'quantity' => $item->quantity_per_head * $family->headcount,
-                            'unit' => $inventory->unit_type
+                            'unit' => $inventory->unit_type,
                         ];
                     }
                 }
             } else {
-                 // Mock fallback if no active template
-                 $allocation[] = [
-                     'name' => 'Relief Goods',
-                     'quantity' => 1 * $family->headcount,
-                     'unit' => 'packs'
-                 ];
+                // Mock fallback if no active template
+                $allocation[] = [
+                    'name' => 'Relief Goods',
+                    'quantity' => 1 * $family->headcount,
+                    'unit' => 'packs',
+                ];
             }
 
             return response()->json([
                 'status' => 'safe',
                 'shelter_name' => $log->shelter?->name ?? 'Assigned Shelter', // null-safe: shelter may be deleted
                 'allocation' => $allocation,
-                'template_name' => $activeRation ? $activeRation->name : 'Emergency Kit'
+                'template_name' => $activeRation ? $activeRation->name : 'Emergency Kit',
             ]);
         }
 
         return response()->json([
             'status' => 'danger',
-            'message' => 'Awaiting Evacuation'
+            'message' => 'Awaiting Evacuation',
         ]);
     }
 }

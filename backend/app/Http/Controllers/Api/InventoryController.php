@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\InventoryItem;
 use App\Models\RationTemplate;
 use App\Models\RationTemplateItem;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class InventoryController extends Controller
@@ -21,7 +21,7 @@ class InventoryController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $items
+            'data' => $items,
         ], 200);
     }
 
@@ -42,7 +42,7 @@ class InventoryController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Inventory item added.',
-            'data' => $item
+            'data' => $item,
         ], 201);
     }
 
@@ -86,14 +86,15 @@ class InventoryController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Ration template created successfully.',
-                'data' => $template
+                'data' => $template,
             ], 201);
 
         } catch (\Exception $e) {
-            \Log::error('Template creation failed: ' . $e->getMessage());
+            \Log::error('Template creation failed: '.$e->getMessage());
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to create template. Please try again.'
+                'message' => 'Failed to create template. Please try again.',
             ], 400);
         }
     }
@@ -114,7 +115,7 @@ class InventoryController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Stock adjusted successfully.',
-            'data' => $item
+            'data' => $item,
         ], 200);
     }
 
@@ -131,7 +132,7 @@ class InventoryController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $templates
+            'data' => $templates,
         ], 200);
     }
 
@@ -152,14 +153,15 @@ class InventoryController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Ration template activated.',
-                'data' => $template->load('items.inventoryItem')
+                'data' => $template->load('items.inventoryItem'),
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Template activation failed: ' . $e->getMessage());
+            \Log::error('Template activation failed: '.$e->getMessage());
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to activate template. Please try again.'
+                'message' => 'Failed to activate template. Please try again.',
             ], 400);
         }
     }

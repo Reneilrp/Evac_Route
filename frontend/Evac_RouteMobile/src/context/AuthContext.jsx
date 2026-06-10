@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import api from '../services/api';
 import { useResidentStore } from './useResidentStore';
@@ -11,14 +11,10 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    checkToken();
-  }, []);
-
   /**
    * On app start, check if a real Sanctum token exists and fetch the user.
    */
-  const checkToken = async () => {
+  const checkToken = useCallback(async () => {
     try {
       const token = await SecureStore.getItemAsync('auth_token');
       if (token) {
@@ -34,7 +30,8 @@ export const AuthProvider = ({ children }) => {
               name: user.name,
               barangay: user.family_profile.barangay,
               headcount: user.family_profile.headcount,
-              contact_number: user.family_profile.contact_number
+              contact_number: user.family_profile.contact_number,
+              transportation_mode: user.family_profile.transportation_mode
             },
             user.family_profile.qr_code_hash
           );
@@ -48,7 +45,12 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    checkToken();
+  }, [checkToken]);
 
   /**
    * Called after a successful /register/family or /login API call.
@@ -69,7 +71,8 @@ export const AuthProvider = ({ children }) => {
             name: user.name,
             barangay: user.family_profile.barangay,
             headcount: user.family_profile.headcount,
-            contact_number: user.family_profile.contact_number
+            contact_number: user.family_profile.contact_number,
+            transportation_mode: user.family_profile.transportation_mode
           },
           user.family_profile.qr_code_hash
         );

@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\User;
 use App\Models\FamilyProfile;
-use Illuminate\Support\Facades\Hash;
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class AuthController extends Controller
@@ -16,12 +16,12 @@ class AuthController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'password' => 'required'
+            'password' => 'required',
         ]);
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
@@ -33,7 +33,7 @@ class AuthController extends Controller
 
         return response()->json([
             'access_token' => $token,
-            'user' => $user
+            'user' => $user,
         ]);
     }
 
@@ -49,8 +49,8 @@ class AuthController extends Controller
 
         DB::beginTransaction();
         try {
-            $qrHash = 'hash_' . bin2hex(random_bytes(8));
-            $dummyEmail = 'resident_' . time() . '_' . Str::random(5) . '@evacroute.local';
+            $qrHash = 'hash_'.bin2hex(random_bytes(8));
+            $dummyEmail = 'resident_'.time().'_'.Str::random(5).'@evacroute.local';
 
             $user = User::create([
                 'name' => $validated['name'],
@@ -76,11 +76,12 @@ class AuthController extends Controller
                 'access_token' => $token,
                 'qr_code_hash' => $qrHash,
                 'user' => $user,
-                'family' => $family
+                'family' => $family,
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Family registration failed: ' . $e->getMessage());
+            \Log::error('Family registration failed: '.$e->getMessage());
+
             return response()->json(['message' => 'Registration failed. Please try again.'], 500);
         }
     }
@@ -88,6 +89,7 @@ class AuthController extends Controller
     public function getStaff()
     {
         $staff = User::whereIn('role', ['admin', 'lgu_staff'])->orderBy('name')->get();
+
         return response()->json(['status' => 'success', 'data' => $staff]);
     }
 
@@ -118,7 +120,7 @@ class AuthController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
+            'email' => 'required|email|unique:users,email,'.$user->id,
             'password' => 'nullable|string|min:6',
             'role' => 'required|in:admin,lgu_staff',
             'status' => 'required|in:active,inactive',
@@ -131,7 +133,7 @@ class AuthController extends Controller
             'status' => $validated['status'],
         ];
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $updateData['password'] = Hash::make($validated['password']);
         }
 
@@ -143,7 +145,7 @@ class AuthController extends Controller
     public function deleteStaff($id)
     {
         $user = User::findOrFail($id);
-        
+
         // Prevent deleting yourself
         if (auth()->id() == $user->id) {
             return response()->json(['status' => 'error', 'message' => 'Cannot revoke your own account.'], 400);

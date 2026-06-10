@@ -1,14 +1,14 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\ShelterController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BundledApiController;
 use App\Http\Controllers\Api\CheckInController;
 use App\Http\Controllers\Api\HazardController;
 use App\Http\Controllers\Api\InventoryController;
-use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ResidentStatusController;
-use App\Http\Controllers\Api\BundledApiController;
+use App\Http\Controllers\Api\ShelterController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 // --- PUBLIC ROUTES (No Auth Required) ---
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
@@ -28,11 +28,13 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // Logout — Revoke current Sanctum token
     Route::post('/logout', function (Request $request) {
         $request->user()->currentAccessToken()->delete();
+
         return response()->json(['message' => 'Logged out successfully.']);
     });
 
     // Resident Specific Route
     Route::get('/my-status', [ResidentStatusController::class, 'myStatus']);
+    Route::get('/resident/map-data', [BundledApiController::class, 'getResidentMapData']);
 
     // --- LGU & ADMIN ROUTES (Role Required) ---
     Route::middleware(['role:admin,lgu_staff'])->group(function () {
@@ -45,7 +47,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/shelters', [ShelterController::class, 'store']);
         Route::put('/shelters/{id}', [ShelterController::class, 'update']);
         Route::delete('/shelters/{id}', [ShelterController::class, 'destroy']);
-        
+
         // 2. The Check-in & Relief Deduction Logic
         Route::post('/shelters/{shelter_id}/check-in', [CheckInController::class, 'processCheckIn']);
         Route::post('/shelters/{shelter_id}/check-out', [CheckInController::class, 'processCheckOut']);

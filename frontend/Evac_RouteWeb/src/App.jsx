@@ -1,16 +1,17 @@
-import React from 'react';
+import { lazy, Suspense } from "react";
+
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 
 // Lazy loaded Pages
-const AdminLogin = React.lazy(() => import('./pages/AdminLogin'));
-const MapDashboard = React.lazy(() => import('./pages/MapDashboard'));
-const InventoryManager = React.lazy(() => import('./pages/InventoryManager'));
-const ShelterManagement = React.lazy(() => import('./pages/ShelterManagement'));
-const StaffManagement = React.lazy(() => import('./pages/StaffManagement'));
-const EvacuationLogs = React.lazy(() => import('./pages/EvacuationLogs'));
-const DashboardOverview = React.lazy(() => import('./pages/DashboardOverview'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+const MapDashboard = lazy(() => import('./pages/MapDashboard'));
+const InventoryManager = lazy(() => import('./pages/InventoryManager'));
+const ShelterManagement = lazy(() => import('./pages/ShelterManagement'));
+const StaffManagement = lazy(() => import('./pages/StaffManagement'));
+const EvacuationLogs = lazy(() => import('./pages/EvacuationLogs'));
+const DashboardOverview = lazy(() => import('./pages/DashboardOverview'));
 
 function NavLink({ to, children }) {
   const location = useLocation();
@@ -94,7 +95,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <React.Suspense fallback={<PageLoader />}>
+        <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Base URL now points directly to Admin Login */}
             <Route path="/" element={<AdminLogin />} />
@@ -111,7 +112,7 @@ function App() {
             </Route>
 
           </Routes>
-        </React.Suspense>
+        </Suspense>
       </Router>
     </AuthProvider>
   );

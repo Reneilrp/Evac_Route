@@ -16,11 +16,11 @@ return new class extends Migration
             $table->string('name'); // e.g., "Flooded Tetuan Bridge"
             $table->decimal('latitude', 11, 8);
             $table->decimal('longitude', 11, 8);
-            
+
             // Add a true spatial column and index for R-tree geographic bounding box lookups
             // Note: POINT type is required for SPATIAL INDEX in MySQL/PostgreSQL
             $table->point('location')->nullable()->spatialIndex();
-            
+
             $table->decimal('radius_meters', 8, 2)->default(50); // How big the flood is
             $table->boolean('is_active')->default(true);
             $table->foreignId('reported_by')->constrained('users');

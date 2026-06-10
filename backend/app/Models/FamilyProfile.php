@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable(['user_id', 'headcount', 'contact_number', 'barangay', 'qr_code_hash', 'transportation_mode'])]
 class FamilyProfile extends Model

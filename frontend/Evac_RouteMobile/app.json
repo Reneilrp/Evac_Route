@@ -26,8 +26,9 @@
       "@rnmapbox/maps"
     ],
     "extra": {
-      "mapboxToken": "pk.YOUR_REAL_MAPBOX_TOKEN_HERE",
-      "apiBaseUrl": "http://192.168.1.100:8000/api"
+      "eas": {
+        "projectId": "..."
+      }
     }
   }
 }

@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
-use App\Models\User;
-use App\Models\Shelter;
 use App\Models\FamilyProfile;
 use App\Models\InventoryItem;
+use App\Models\Shelter;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class InventoryApiTest extends TestCase
 {
@@ -20,13 +20,13 @@ class InventoryApiTest extends TestCase
         $response = $this->actingAs($user, 'sanctum')->postJson('/api/inventory', [
             'item_name' => 'Sacks of Rice',
             'total_stock' => 100,
-            'unit_type' => 'sacks'
+            'unit_type' => 'sacks',
         ]);
 
         $response->assertStatus(201);
         $this->assertDatabaseHas('inventory_items', [
             'item_name' => 'Sacks of Rice',
-            'total_stock' => 100
+            'total_stock' => 100,
         ]);
     }
 
@@ -41,15 +41,15 @@ class InventoryApiTest extends TestCase
             'is_active' => true,
             'items' => [
                 ['inventory_item_id' => $item1->id, 'quantity_per_head' => 3],
-                ['inventory_item_id' => $item2->id, 'quantity_per_head' => 2]
-            ]
+                ['inventory_item_id' => $item2->id, 'quantity_per_head' => 2],
+            ],
         ]);
 
         $response->assertStatus(201);
         $this->assertDatabaseHas('ration_templates', ['name' => 'Level 1 Flood Kit', 'is_active' => true]);
         $this->assertDatabaseHas('ration_template_items', [
             'inventory_item_id' => $item1->id,
-            'quantity_per_head' => 3
+            'quantity_per_head' => 3,
         ]);
     }
 
@@ -61,7 +61,7 @@ class InventoryApiTest extends TestCase
             'headcount' => 4,
             'contact_number' => '1234567890',
             'barangay' => 'Tetuan',
-            'qr_code_hash' => 'hash123'
+            'qr_code_hash' => 'hash123',
         ]);
 
         $shelter = Shelter::create([
@@ -71,21 +71,21 @@ class InventoryApiTest extends TestCase
             'max_capacity' => 100,
             'current_occupancy' => 0,
             'status' => 'open',
-            'pinned_by' => $user->id
+            'pinned_by' => $user->id,
         ]);
 
         $item1 = InventoryItem::create(['item_name' => 'Rice', 'total_stock' => 100, 'unit_type' => 'pcs']);
-        
+
         $this->actingAs($user, 'sanctum')->postJson('/api/rations/template', [
             'name' => 'Level 1 Flood Kit',
             'is_active' => true,
             'items' => [
                 ['inventory_item_id' => $item1->id, 'quantity_per_head' => 3],
-            ]
+            ],
         ]);
 
         $response = $this->postJson("/api/shelters/{$shelter->id}/check-in", [
-            'qr_code_hash' => 'hash123'
+            'qr_code_hash' => 'hash123',
         ]);
 
         $response->assertStatus(200);
@@ -93,7 +93,7 @@ class InventoryApiTest extends TestCase
         // Check shelter capacity
         $this->assertDatabaseHas('shelters', [
             'id' => $shelter->id,
-            'current_occupancy' => 4
+            'current_occupancy' => 4,
         ]);
 
         // Check log
@@ -101,14 +101,14 @@ class InventoryApiTest extends TestCase
             'family_profile_id' => $family->id,
             'shelter_id' => $shelter->id,
             'recorded_headcount' => 4,
-            'ration_claimed' => 1
+            'ration_claimed' => 1,
         ]);
 
         // Check inventory deduction
         // Headcount 4 * 3 Rice = 12 Rice deducted. 100 - 12 = 88
         $this->assertDatabaseHas('inventory_items', [
             'id' => $item1->id,
-            'total_stock' => 88
+            'total_stock' => 88,
         ]);
     }
 }

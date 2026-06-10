@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\EvacuationLog;
+use App\Models\FamilyProfile;
+use App\Models\InventoryItem;
+use App\Models\RationTemplate;
+use App\Models\Shelter;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\Shelter;
-use App\Models\FamilyProfile;
-use App\Models\EvacuationLog;
-use App\Models\RationTemplate;
-use App\Models\InventoryItem;
 
 class CheckInController extends Controller
 {
@@ -20,13 +21,13 @@ class CheckInController extends Controller
     public function processCheckIn(Request $request, $shelter_id)
     {
         $request->validate([
-            'qr_code_hash' => 'required|string|exists:family_profiles,qr_code_hash'
+            'qr_code_hash' => 'required|string|exists:family_profiles,qr_code_hash',
         ]);
 
         try {
             // Start the Database Transaction with 5 retry attempts for high concurrency
             $result = DB::transaction(function () use ($request, $shelter_id) {
-                
+
                 $family = FamilyProfile::where('qr_code_hash', $request->qr_code_hash)->firstOrFail();
 
                 // Check if they are already checked into a shelter
@@ -47,8 +48,8 @@ class CheckInController extends Controller
                     ->keyBy('id');
 
                 $shelter = $lockedShelters->get($shelter_id);
-                if (!$shelter) {
-                    throw new \Illuminate\Database\Eloquent\ModelNotFoundException("Shelter not found.");
+                if (! $shelter) {
+                    throw new ModelNotFoundException('Shelter not found.');
                 }
 
                 if ($activeLog) {
@@ -71,7 +72,7 @@ class CheckInController extends Controller
                             'action' => 'checkout',
                             'shelter' => $shelter,
                             'log' => $activeLog,
-                            'message' => 'Resident checked out successfully.'
+                            'message' => 'Resident checked out successfully.',
                         ];
                     } else {
                         // Transfer shelter! Check out from old shelter first.
@@ -92,7 +93,7 @@ class CheckInController extends Controller
 
                         // Now check in to the new shelter
                         if ($shelter->status !== 'open' || $shelter->current_occupancy >= $shelter->max_capacity) {
-                            throw new \Exception("Target shelter is at maximum capacity.");
+                            throw new \Exception('Target shelter is at maximum capacity.');
                         }
 
                         $shelter->current_occupancy += $family->headcount;
@@ -122,10 +123,10 @@ class CheckInController extends Controller
 
                         $newLog = EvacuationLog::create([
                             'family_profile_id' => $family->id,
-                            'shelter_id'        => $shelter->id,
-                            'recorded_headcount'=> $family->headcount,
-                            'ration_claimed'    => $activeRation !== null,
-                            'checked_in_at'     => now(),
+                            'shelter_id' => $shelter->id,
+                            'recorded_headcount' => $family->headcount,
+                            'ration_claimed' => $activeRation !== null,
+                            'checked_in_at' => now(),
                         ]);
 
                         return [
@@ -133,19 +134,19 @@ class CheckInController extends Controller
                             'shelter' => $shelter,
                             'log' => $newLog,
                             'ration_applied' => $activeRation ? $activeRation->name : 'No active ration template.',
-                            'message' => 'Resident transferred and checked in.'
+                            'message' => 'Resident transferred and checked in.',
                         ];
                     }
                 }
 
                 // Prevent checking into a full shelter
                 if ($shelter->status !== 'open' || $shelter->current_occupancy >= $shelter->max_capacity) {
-                    throw new \Exception("Shelter is already at maximum capacity.");
+                    throw new \Exception('Shelter is already at maximum capacity.');
                 }
 
                 // Update Shelter Occupancy
                 $shelter->current_occupancy += $family->headcount;
-                
+
                 // Capacity Matching Logic: Flip status if full
                 if ($shelter->current_occupancy >= $shelter->max_capacity) {
                     $shelter->status = 'full';
@@ -163,7 +164,7 @@ class CheckInController extends Controller
                     foreach ($activeRation->items as $rationItem) {
                         // Math: Quantity per person * Family Headcount
                         $totalDeduction = $rationItem->quantity_per_head * $family->headcount;
-                        
+
                         // Deduct from main CSWDO inventory
                         $inventory = $inventoryItems->get($rationItem->inventory_item_id);
                         if ($inventory && $inventory->total_stock >= $totalDeduction) {
@@ -178,10 +179,10 @@ class CheckInController extends Controller
                 // Create the Evacuation Log (Audit Trail)
                 $log = EvacuationLog::create([
                     'family_profile_id' => $family->id,
-                    'shelter_id'        => $shelter->id,
-                    'recorded_headcount'=> $family->headcount,
-                    'ration_claimed'    => $activeRation !== null, // Only true when a template was applied
-                    'checked_in_at'     => now(),
+                    'shelter_id' => $shelter->id,
+                    'recorded_headcount' => $family->headcount,
+                    'ration_claimed' => $activeRation !== null, // Only true when a template was applied
+                    'checked_in_at' => now(),
                 ]);
 
                 return [
@@ -189,7 +190,7 @@ class CheckInController extends Controller
                     'shelter' => $shelter,
                     'log' => $log,
                     'ration_applied' => $activeRation ? $activeRation->name : 'No active ration template.',
-                    'message' => 'Check-in successful.'
+                    'message' => 'Check-in successful.',
                 ];
             }, 5);
 
@@ -197,14 +198,14 @@ class CheckInController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => $result['message'],
-                'data' => $result
+                'data' => $result,
             ], 200);
 
         } catch (\Exception $e) {
             // If ANYTHING fails, the DB rolls back and returns this error
             return response()->json([
                 'status' => 'error',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 400);
         }
     }
@@ -212,11 +213,11 @@ class CheckInController extends Controller
     public function processCheckOut(Request $request, $shelter_id)
     {
         $request->validate([
-            'qr_code_hash' => 'required|string|exists:family_profiles,qr_code_hash'
+            'qr_code_hash' => 'required|string|exists:family_profiles,qr_code_hash',
         ]);
 
         try {
-            $result = DB::transaction(function () use ($request, $shelter_id) {
+            $result = DB::transaction(function () use ($request) {
                 $family = FamilyProfile::where('qr_code_hash', $request->qr_code_hash)->firstOrFail();
                 $activeLog = EvacuationLog::where('family_profile_id', $family->id)
                     ->whereNull('checked_out_at')
@@ -237,19 +238,19 @@ class CheckInController extends Controller
 
                 return [
                     'shelter' => $shelter,
-                    'log' => $activeLog
+                    'log' => $activeLog,
                 ];
             }, 5);
 
             return response()->json([
                 'status' => 'success',
                 'message' => 'Check-out successful.',
-                'data' => $result
+                'data' => $result,
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 400);
         }
     }
@@ -260,7 +261,7 @@ class CheckInController extends Controller
             $result = DB::transaction(function () use ($id) {
                 $log = EvacuationLog::whereNull('checked_out_at')->findOrFail($id);
                 $shelter = Shelter::lockForUpdate()->findOrFail($log->shelter_id);
-                
+
                 $shelter->current_occupancy -= $log->recorded_headcount;
                 if ($shelter->current_occupancy < 0) {
                     $shelter->current_occupancy = 0;
@@ -275,19 +276,19 @@ class CheckInController extends Controller
 
                 return [
                     'shelter' => $shelter,
-                    'log' => $log
+                    'log' => $log,
                 ];
             }, 5);
 
             return response()->json([
                 'status' => 'success',
                 'message' => 'Manual check-out successful.',
-                'data' => $result
+                'data' => $result,
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 400);
         }
     }
@@ -307,12 +308,12 @@ class CheckInController extends Controller
                 $q->whereHas('familyProfile.user', function ($uq) use ($search) {
                     $uq->where('name', 'like', "%{$search}%");
                 })
-                ->orWhereHas('shelter', function ($sq) use ($search) {
-                    $sq->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('familyProfile', function ($fq) use ($search) {
-                    $fq->where('qr_code_hash', 'like', "%{$search}%");
-                });
+                    ->orWhereHas('shelter', function ($sq) use ($search) {
+                        $sq->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('familyProfile', function ($fq) use ($search) {
+                        $fq->where('qr_code_hash', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -320,7 +321,7 @@ class CheckInController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $logs
+            'data' => $logs,
         ], 200);
     }
 }

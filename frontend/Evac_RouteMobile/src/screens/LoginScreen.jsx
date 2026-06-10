@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { ShieldAlert } from 'lucide-react-native';

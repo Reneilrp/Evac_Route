@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../services/api';
 
 const AuthContext = createContext();
@@ -9,17 +10,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if user is already logged in on mount
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      fetchUser();
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       const response = await api.get('/user');
       setUser(response.data);
@@ -30,7 +21,18 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // Check if user is already logged in on mount
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchUser();
+    } else {
+      setLoading(false);
+    }
+  }, [fetchUser]);
 
   const login = async (email, password) => {
     try {

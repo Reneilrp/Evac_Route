@@ -189,6 +189,33 @@ const styles = StyleSheet.create({
         fontSize: 16,
         marginLeft: 8,
     },
+    modeSelectorRow: {
+        flexDirection: 'row',
+        marginTop: 10,
+        borderTopWidth: 1,
+        borderTopColor: '#334155',
+        paddingTop: 10,
+        justifyContent: 'space-between',
+    },
+    modeButton: {
+        flex: 1,
+        paddingVertical: 8,
+        borderRadius: 6,
+        backgroundColor: '#334155',
+        alignItems: 'center',
+        marginHorizontal: 3,
+    },
+    modeButtonActive: {
+        backgroundColor: '#2563eb',
+    },
+    modeButtonText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#94a3b8',
+    },
+    modeButtonTextActive: {
+        color: '#fff',
+    },
 });
 
 export default styles;

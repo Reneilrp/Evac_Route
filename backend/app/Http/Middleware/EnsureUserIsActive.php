@@ -11,7 +11,7 @@ class EnsureUserIsActive
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -24,7 +24,7 @@ class EnsureUserIsActive
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Your account is deactivated. Session terminated.'
+                'message' => 'Your account is deactivated. Session terminated.',
             ], 403);
         }
 

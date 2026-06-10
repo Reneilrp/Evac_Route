@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { QrCode, Search, Plus, MapPin } from 'lucide-react';
+import { useState } from 'react';
+import { QrCode, Search, MapPin } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import QRScannerModal from '../components/common/QRScannerModal';
 import api from '../services/api';

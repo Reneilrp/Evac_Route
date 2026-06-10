@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { View, Text, TouchableOpacity, Vibration, FlatList } from 'react-native';
 import { CheckCircle, Package } from 'lucide-react-native';
 import { useResidentStore } from '../context/useResidentStore';

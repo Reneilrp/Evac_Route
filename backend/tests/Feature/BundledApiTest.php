@@ -2,21 +2,22 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
-use App\Models\User;
-use App\Models\Shelter;
-use App\Models\Hazard;
 use App\Models\EvacuationLog;
+use App\Models\FamilyProfile;
+use App\Models\Hazard;
 use App\Models\InventoryItem;
 use App\Models\RationTemplate;
-use App\Models\FamilyProfile;
+use App\Models\Shelter;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class BundledApiTest extends TestCase
 {
     use RefreshDatabase;
 
     private User $admin;
+
     private User $resident;
 
     protected function setUp(): void
@@ -25,12 +26,12 @@ class BundledApiTest extends TestCase
 
         $this->admin = User::factory()->create([
             'role' => 'admin',
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         $this->resident = User::factory()->create([
             'role' => 'resident',
-            'status' => 'active'
+            'status' => 'active',
         ]);
     }
 
@@ -44,7 +45,7 @@ class BundledApiTest extends TestCase
             'max_capacity' => 100,
             'current_occupancy' => 10,
             'status' => 'open',
-            'pinned_by' => $this->admin->id
+            'pinned_by' => $this->admin->id,
         ]);
 
         $hazard = Hazard::create([
@@ -52,13 +53,13 @@ class BundledApiTest extends TestCase
             'latitude' => 6.91,
             'longitude' => 122.01,
             'radius_meters' => 100,
-            'reported_by' => $this->admin->id
+            'reported_by' => $this->admin->id,
         ]);
 
         $inventory = InventoryItem::create([
             'item_name' => 'Canned Beans',
             'total_stock' => 200,
-            'unit_type' => 'pcs'
+            'unit_type' => 'pcs',
         ]);
 
         $family = FamilyProfile::create([
@@ -66,7 +67,7 @@ class BundledApiTest extends TestCase
             'headcount' => 4,
             'contact_number' => '1234567890',
             'barangay' => 'Tetuan',
-            'qr_code_hash' => 'hash123'
+            'qr_code_hash' => 'hash123',
         ]);
 
         $log = EvacuationLog::create([
@@ -74,7 +75,7 @@ class BundledApiTest extends TestCase
             'shelter_id' => $shelter->id,
             'recorded_headcount' => 4,
             'ration_claimed' => false,
-            'checked_in_at' => now()
+            'checked_in_at' => now(),
         ]);
 
         $response = $this->actingAs($this->admin, 'sanctum')
@@ -86,7 +87,7 @@ class BundledApiTest extends TestCase
             'shelters',
             'hazards',
             'recent_logs',
-            'inventory'
+            'inventory',
         ]);
 
         $this->assertCount(1, $response->json('shelters'));
@@ -105,7 +106,7 @@ class BundledApiTest extends TestCase
             'max_capacity' => 100,
             'current_occupancy' => 10,
             'status' => 'open',
-            'pinned_by' => $this->admin->id
+            'pinned_by' => $this->admin->id,
         ]);
 
         // 2. Full shelter (should not be returned in map / active endpoint)
@@ -116,7 +117,7 @@ class BundledApiTest extends TestCase
             'max_capacity' => 10,
             'current_occupancy' => 10,
             'status' => 'full',
-            'pinned_by' => $this->admin->id
+            'pinned_by' => $this->admin->id,
         ]);
 
         // 3. Active hazard
@@ -126,7 +127,7 @@ class BundledApiTest extends TestCase
             'longitude' => 122.02,
             'radius_meters' => 50,
             'reported_by' => $this->admin->id,
-            'is_active' => true
+            'is_active' => true,
         ]);
 
         // 4. Inactive hazard (should not be returned)
@@ -136,7 +137,7 @@ class BundledApiTest extends TestCase
             'longitude' => 122.03,
             'radius_meters' => 50,
             'reported_by' => $this->admin->id,
-            'is_active' => false
+            'is_active' => false,
         ]);
 
         $response = $this->actingAs($this->admin, 'sanctum')
@@ -146,7 +147,7 @@ class BundledApiTest extends TestCase
         $response->assertJsonStructure([
             'status',
             'shelters',
-            'hazards'
+            'hazards',
         ]);
 
         // Assert only active shelters/hazards are loaded
@@ -161,12 +162,12 @@ class BundledApiTest extends TestCase
         InventoryItem::create([
             'item_name' => 'Bottled Water',
             'total_stock' => 1000,
-            'unit_type' => 'bottles'
+            'unit_type' => 'bottles',
         ]);
 
         RationTemplate::create([
             'name' => 'Standard Ration Kit',
-            'is_active' => true
+            'is_active' => true,
         ]);
 
         $response = $this->actingAs($this->admin, 'sanctum')
@@ -176,7 +177,7 @@ class BundledApiTest extends TestCase
         $response->assertJsonStructure([
             'status',
             'inventory',
-            'templates'
+            'templates',
         ]);
 
         $this->assertCount(1, $response->json('inventory'));
@@ -191,9 +192,44 @@ class BundledApiTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_unauthenticated_cannot_access_bundled_apis()
+    public function test_resident_can_access_resident_map_data()
     {
-        $response = $this->getJson('/api/dashboard/overview');
+        Shelter::create([
+            'name' => 'Open Shelter',
+            'latitude' => 6.9,
+            'longitude' => 122.0,
+            'max_capacity' => 100,
+            'current_occupancy' => 10,
+            'status' => 'open',
+            'pinned_by' => $this->admin->id,
+        ]);
+
+        Hazard::create([
+            'name' => 'Fire area',
+            'latitude' => 6.92,
+            'longitude' => 122.02,
+            'radius_meters' => 50,
+            'reported_by' => $this->admin->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->resident, 'sanctum')
+            ->getJson('/api/resident/map-data');
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'status',
+            'shelters',
+            'hazards',
+        ]);
+
+        $this->assertCount(1, $response->json('shelters'));
+        $this->assertCount(1, $response->json('hazards'));
+    }
+
+    public function test_unauthenticated_cannot_access_resident_map_data()
+    {
+        $response = $this->getJson('/api/resident/map-data');
 
         $response->assertStatus(401);
     }

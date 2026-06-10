@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Tests\TestCase;
 
 class SecurityTest extends TestCase
 {
@@ -45,7 +45,7 @@ class SecurityTest extends TestCase
 
         $response->assertStatus(403);
         $response->assertJson([
-            'message' => 'Your account is deactivated. Please contact an administrator.'
+            'message' => 'Your account is deactivated. Please contact an administrator.',
         ]);
     }
 
@@ -61,7 +61,7 @@ class SecurityTest extends TestCase
         $token = $user->createToken('auth_token')->plainTextToken;
 
         // Verify user can access protected route
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/user');
         $response->assertStatus(200);
 
@@ -74,13 +74,13 @@ class SecurityTest extends TestCase
         auth('sanctum')->forgetUser();
 
         // Request again — should fail with 403 and delete the token
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/user');
-        
+
         $response->assertStatus(403);
         $response->assertJson([
             'status' => 'error',
-            'message' => 'Your account is deactivated. Session terminated.'
+            'message' => 'Your account is deactivated. Session terminated.',
         ]);
 
         // Verify token is deleted in the database

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Minus } from 'lucide-react-native';
+import { Plus, Minus, Footprints, Bike, Car } from 'lucide-react-native';
 import * as SecureStore from 'expo-secure-store';
 import api from '../services/api';
 import { useResidentStore } from '../context/useResidentStore';
@@ -95,6 +95,35 @@ export default function ProfileSetupScreen() {
           />
         </View>
 
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Transportation Mode</Text>
+          <View style={styles.selectorContainer}>
+            <TouchableOpacity
+              style={[styles.selectorButton, transportationMode === 'pedestrian' && styles.selectorButtonActive]}
+              onPress={() => setTransportationMode('pedestrian')}
+            >
+              <Footprints size={24} color={transportationMode === 'pedestrian' ? '#fff' : '#94a3b8'} />
+              <Text style={[styles.selectorText, transportationMode === 'pedestrian' && styles.selectorTextActive]}>Pedestrian</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.selectorButton, transportationMode === '2_wheel' && styles.selectorButtonActive]}
+              onPress={() => setTransportationMode('2_wheel')}
+            >
+              <Bike size={24} color={transportationMode === '2_wheel' ? '#fff' : '#94a3b8'} />
+              <Text style={[styles.selectorText, transportationMode === '2_wheel' && styles.selectorTextActive]}>2-Wheel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.selectorButton, transportationMode === '4_wheel' && styles.selectorButtonActive]}
+              onPress={() => setTransportationMode('4_wheel')}
+            >
+              <Car size={24} color={transportationMode === '4_wheel' ? '#fff' : '#94a3b8'} />
+              <Text style={[styles.selectorText, transportationMode === '4_wheel' && styles.selectorTextActive]}>4-Wheel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={styles.counterBox}>
           <Text style={styles.counterLabel}>Family Headcount</Text>
           <View style={styles.counterRow}>
@@ -132,47 +161,3 @@ export default function ProfileSetupScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-rginTop: 8 }}>
-            Determines the safest routes available for you to evacuate.
-          </Text>
-        </View>
-
-        <View style={styles.counterBox}>
-          <Text style={styles.counterLabel}>Family Headcount</Text>
-          <View style={styles.counterRow}>
-            <TouchableOpacity
-              style={styles.circleBtn}
-              onPress={() => setHeadcount(Math.max(1, headcount - 1))}
-            >
-              <Minus size={32} color="#fff" />
-            </TouchableOpacity>
-
-            <Text style={styles.counterNumber}>{headcount}</Text>
-
-            <TouchableOpacity
-              style={[styles.circleBtn, { backgroundColor: '#2563eb' }]}
-              onPress={() => setHeadcount(headcount + 1)}
-            >
-              <Plus size={32} color="#fff" />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.helperText}>
-            This ensures we reserve enough food and water for your exact family size.
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleRegister}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'GENERATING...' : 'REGISTER & GENERATE QR'}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
-

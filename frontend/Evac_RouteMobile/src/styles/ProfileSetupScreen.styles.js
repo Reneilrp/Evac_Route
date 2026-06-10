@@ -92,6 +92,34 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         letterSpacing: 1,
     },
+    selectorContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 4,
+    },
+    selectorButton: {
+        flex: 1,
+        backgroundColor: '#1e293b',
+        borderWidth: 2,
+        borderColor: '#334155',
+        borderRadius: 12,
+        paddingVertical: 14,
+        alignItems: 'center',
+        marginHorizontal: 4,
+    },
+    selectorButtonActive: {
+        borderColor: '#2563eb',
+        backgroundColor: '#2563eb33',
+    },
+    selectorText: {
+        color: '#94a3b8',
+        fontSize: 12,
+        fontWeight: 'bold',
+        marginTop: 6,
+    },
+    selectorTextActive: {
+        color: '#fff',
+    },
 });
 
 export default styles;

@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Shelter;
-use App\Models\Hazard;
 use App\Models\EvacuationLog;
+use App\Models\Hazard;
 use App\Models\InventoryItem;
 use App\Models\RationTemplate;
+use App\Models\Shelter;
+use Illuminate\Http\Request;
 
 class BundledApiController extends Controller
 {
@@ -18,7 +18,7 @@ class BundledApiController extends Controller
     public function getDashboardOverview(Request $request)
     {
         // 1. All shelters with eager loaded active evacuation logs (N+1 fix)
-        $shelters = Shelter::with(['evacuationLogs' => function($query) {
+        $shelters = Shelter::with(['evacuationLogs' => function ($query) {
             $query->whereNull('checked_out_at')->orderBy('checked_in_at', 'desc');
         }])->orderBy('status')->orderBy('name')->get();
 
@@ -51,12 +51,12 @@ class BundledApiController extends Controller
     public function getMapDashboard(Request $request)
     {
         // 1. Active shelters with eager loaded occupant logs (N+1 fix)
-        $activeShelters = Shelter::with(['evacuationLogs' => function($query) {
+        $activeShelters = Shelter::with(['evacuationLogs' => function ($query) {
             $query->whereNull('checked_out_at');
         }])
-        ->where('status', 'open')
-        ->whereColumn('current_occupancy', '<', 'max_capacity')
-        ->get();
+            ->where('status', 'open')
+            ->whereColumn('current_occupancy', '<', 'max_capacity')
+            ->get();
 
         // 2. Active hazards
         $hazards = Hazard::where('is_active', true)->get();
@@ -64,6 +64,26 @@ class BundledApiController extends Controller
         return response()->json([
             'status' => 'success',
             'shelters' => $activeShelters,
+            'hazards' => $hazards,
+        ], 200);
+    }
+
+    /**
+     * Consolidate coordinates and state for the resident mobile app.
+     */
+    public function getResidentMapData(Request $request)
+    {
+        // 1. Fetch active shelters (open and occupancy < capacity)
+        $shelters = Shelter::where('status', 'open')
+            ->whereColumn('current_occupancy', '<', 'max_capacity')
+            ->get();
+
+        // 2. Fetch active hazards
+        $hazards = Hazard::where('is_active', true)->get();
+
+        return response()->json([
+            'status' => 'success',
+            'shelters' => $shelters,
             'hazards' => $hazards,
         ], 200);
     }

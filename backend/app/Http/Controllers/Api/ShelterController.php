@@ -22,7 +22,7 @@ class ShelterController extends Controller
         return response()->json([
             'status' => 'success',
             'count' => $availableShelters->count(),
-            'data' => $availableShelters
+            'data' => $availableShelters,
         ], 200);
     }
 
@@ -37,7 +37,7 @@ class ShelterController extends Controller
         return response()->json([
             'status' => 'success',
             'count' => $shelters->count(),
-            'data' => $shelters
+            'data' => $shelters,
         ], 200);
     }
 
@@ -48,9 +48,9 @@ class ShelterController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'         => 'required|string|max:255|unique:shelters,name',
-            'latitude'     => 'required|numeric',
-            'longitude'    => 'required|numeric',
+            'name' => 'required|string|max:255|unique:shelters,name',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
             'max_capacity' => 'required|integer|min:1',
         ]);
 
@@ -67,7 +67,7 @@ class ShelterController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'New shelter pinned successfully.',
-            'data' => $shelter
+            'data' => $shelter,
         ], 201);
     }
 
@@ -80,9 +80,9 @@ class ShelterController extends Controller
         $shelter = Shelter::findOrFail($id);
 
         $validated = $request->validate([
-            'name'         => 'required|string|max:255|unique:shelters,name,' . $shelter->id,
+            'name' => 'required|string|max:255|unique:shelters,name,'.$shelter->id,
             'max_capacity' => 'required|integer|min:1',
-            'status'       => 'required|in:open,full,closed',
+            'status' => 'required|in:open,full,closed',
         ]);
 
         $shelter->update($validated);
@@ -90,7 +90,7 @@ class ShelterController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Shelter updated successfully.',
-            'data' => $shelter
+            'data' => $shelter,
         ], 200);
     }
 
@@ -101,13 +101,13 @@ class ShelterController extends Controller
     public function destroy($id)
     {
         $shelter = Shelter::findOrFail($id);
-        
+
         // cascade deletion of logs will be handled by DB constrained cascade
         $shelter->delete();
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Shelter deleted successfully.'
+            'message' => 'Shelter deleted successfully.',
         ], 200);
     }
 }

@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable(['family_profile_id', 'shelter_id', 'checked_in_at', 'checked_out_at', 'recorded_headcount', 'ration_claimed'])]
 class EvacuationLog extends Model

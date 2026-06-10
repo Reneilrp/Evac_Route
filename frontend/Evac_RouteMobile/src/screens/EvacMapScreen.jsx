@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Dimensions, Linking, Alert, Platform } from 'react-native';
 import { AlertTriangle, Navigation, Phone } from 'lucide-react-native';
 import Mapbox from '@rnmapbox/maps';
@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import api from '../services/api';
 import styles from '../styles/EvacMapScreen.styles';
+import { useResidentStore } from '../context/useResidentStore';
 
 import {
   initDb,
@@ -40,10 +41,13 @@ export default function EvacMapScreen() {
   const [cachedRoute, setCachedRoute] = useState(null);
   const [lastRoutingLocation, setLastRoutingLocation] = useState(null);
   const [isRouteBlocked, setIsRouteBlocked] = useState(false);
-  const [transportationMode, setTransportationMode] = useState('car'); // Default to car
 
-  const lastHazardsRef = React.useRef(null);
-  const lastShelterCoordsRef = React.useRef(null);
+  // Read/write routing mode globally from Zustand store
+  const transportationMode = useResidentStore(state => state.transportationMode || 'pedestrian');
+  const setTransportationMode = useResidentStore(state => state.setTransportationMode);
+
+  const lastHazardsRef = useRef(null);
+  const lastShelterCoordsRef = useRef(null);
 
   // Initialize DB and load cached data on mount
   useEffect(() => {
@@ -51,7 +55,9 @@ export default function EvacMapScreen() {
     try {
       const cachedS = getOfflineShelters();
       const cachedH = getOfflineHazards();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOfflineShelters(cachedS);
+       
       setOfflineHazards(cachedH);
 
       // Load road graph data from database
@@ -83,45 +89,44 @@ export default function EvacMapScreen() {
     }
   }, []);
 
-  // Poll Shelters API every 5 seconds
-  const { data: sheltersData, isLoading: isLoadingShelters, isError: isShelterError } = useQuery({
-    queryKey: ['shelters'],
-    queryFn: () => api.get('/shelters/active').then(res => res.data),
+  // Poll Consolidated Resident Map Data every 5 seconds (active shelters + active hazards)
+  const { data: mapData, isLoading: isLoadingMap, isError: isMapError } = useQuery({
+    queryKey: ['resident-map-data'],
+    queryFn: () => api.get('/resident/map-data').then(res => res.data),
     refetchInterval: 5000,
     retry: 1
   });
 
-  // Poll Hazards API every 5 seconds
-  const { data: hazardsData, isError: isHazardError } = useQuery({
-    queryKey: ['hazards'],
-    queryFn: () => api.get('/hazards').then(res => res.data),
-    refetchInterval: 5000,
-    retry: 1
-  });
+  const sheltersData = mapData?.shelters;
+  const hazardsData = mapData?.hazards;
+  const isLoadingShelters = isLoadingMap;
 
   // Sync cache and handle network status changes
   useEffect(() => {
-    if (sheltersData?.data) {
-      saveShelters(sheltersData.data);
-      setOfflineShelters(sheltersData.data);
+    if (sheltersData) {
+      saveShelters(sheltersData);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOfflineShelters(sheltersData);
       setIsOffline(false);
     }
   }, [sheltersData]);
 
   useEffect(() => {
-    if (hazardsData?.data) {
-      saveHazards(hazardsData.data);
-      setOfflineHazards(hazardsData.data);
+    if (hazardsData) {
+      saveHazards(hazardsData);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOfflineHazards(hazardsData);
       setIsOffline(false);
     }
   }, [hazardsData]);
 
   // Set offline indicator if network query fails
   useEffect(() => {
-    if (isShelterError || isHazardError) {
+    if (isMapError) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsOffline(true);
     }
-  }, [isShelterError, isHazardError]);
+  }, [isMapError]);
 
   // Request GPS Permissions
   useEffect(() => {
@@ -138,17 +143,8 @@ export default function EvacMapScreen() {
   }, []);
 
   // Combine live data with offline fallback
-  const shelters = sheltersData?.data && sheltersData.data.length > 0 ? sheltersData.data : offlineShelters;
-  const hazards = hazardsData?.data && hazardsData.data.length > 0 ? hazardsData.data : offlineHazards;
-
-  if (!location || (isLoadingShelters && offlineShelters.length === 0)) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Acquiring GPS Signal...</Text>
-      </View>
-    );
-  }
+  const shelters = sheltersData && sheltersData.length > 0 ? sheltersData : offlineShelters;
+  const hazards = hazardsData && hazardsData.length > 0 ? hazardsData : offlineHazards;
 
   // GEOGRAPHIC NEAREST OPEN SHELTER SELECTION (using Haversine)
   const openShelters = shelters.filter(s => s.status === 'open');
@@ -175,6 +171,7 @@ export default function EvacMapScreen() {
   // Recalculate route only when location moves > 10m, nearest shelter changes, or hazards update
   useEffect(() => {
     if (!location || !nearestShelterCoords || !preloadedGraph) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCachedRoute(null);
       setLastRoutingLocation(null);
       return;
@@ -211,11 +208,13 @@ export default function EvacMapScreen() {
       const result = calculateOfflineRoute(location, nearestShelterCoords, data, transportationMode);
       
       if (result && result.status === 'success') {
-        setCachedRoute(result.path);
+         
+      setCachedRoute(result.path);
         setIsRouteBlocked(false);
       } else {
         // Intercept failure: clear route lines and set blocked state
-        setCachedRoute(null);
+         
+      setCachedRoute(null);
         setIsRouteBlocked(true);
       }
       
@@ -226,6 +225,15 @@ export default function EvacMapScreen() {
       lastShelterCoordsRef.current = nearestShelterCoords;
     }
   }, [location, nearestShelterCoords, hazards, preloadedGraph, transportationMode]);
+
+  if (!location || (isLoadingShelters && offlineShelters.length === 0)) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={styles.loadingText}>Acquiring GPS Signal...</Text>
+      </View>
+    );
+  }
 
   const routeGeoJSON = cachedRoute ? {
     type: 'FeatureCollection',
@@ -269,7 +277,7 @@ export default function EvacMapScreen() {
 
     const url = Platform.select({
       ios: `maps:0,0?q=${label}@${destLat},${destLng}`,
-      android: `geo:0,0?q=${destLat},destLng?q=${destLat},${destLng}(${label})`
+      android: `geo:0,0?q=${destLat},${destLng}(${label})`
     }) || `https://www.google.com/maps/search/?api=1&query=${destLat},${destLng}`;
 
     Linking.canOpenURL(url)
@@ -396,6 +404,28 @@ export default function EvacMapScreen() {
             <View style={[styles.dot, { backgroundColor: '#ef4444' }]} />
             <Text style={styles.statusText}>{hazards.length} Active Hazards</Text>
           </View>
+
+          {/* Dynamic route recalculation toggles */}
+          <View style={styles.modeSelectorRow}>
+            <TouchableOpacity 
+              style={[styles.modeButton, transportationMode === 'pedestrian' && styles.modeButtonActive]}
+              onPress={() => setTransportationMode('pedestrian')}
+            >
+              <Text style={[styles.modeButtonText, transportationMode === 'pedestrian' && styles.modeButtonTextActive]}>Pedestrian</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.modeButton, transportationMode === '2_wheel' && styles.modeButtonActive]}
+              onPress={() => setTransportationMode('2_wheel')}
+            >
+              <Text style={[styles.modeButtonText, transportationMode === '2_wheel' && styles.modeButtonTextActive]}>2-Wheel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.modeButton, transportationMode === '4_wheel' && styles.modeButtonActive]}
+              onPress={() => setTransportationMode('4_wheel')}
+            >
+              <Text style={[styles.modeButtonText, transportationMode === '4_wheel' && styles.modeButtonTextActive]}>4-Wheel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -424,13 +454,3 @@ export default function EvacMapScreen() {
     </View>
   );
 }
-
-4} />
-            <Text style={styles.warningText}>No open shelters available at this time.</Text>
-          </View>
-        )}
-      </View>
-    </View>
-  );
-}
-
