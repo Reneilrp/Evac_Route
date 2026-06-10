@@ -57,6 +57,8 @@ export function findNearestNode(lat, lng, nodesList = null) {
 function getHazardCostMultiplier(geometryCoords, hazardsWithBounds, transportationMode) {
   if (!hazardsWithBounds || hazardsWithBounds.length === 0) return 1;
 
+  let maxMultiplier = 1;
+
   for (const coord of geometryCoords) {
     const edgeLng = coord[0];
     const edgeLat = coord[1];
@@ -79,15 +81,17 @@ function getHazardCostMultiplier(geometryCoords, hazardsWithBounds, transportati
           if (h.hazard_type === 'flood') {
             if (h.severity_level === 'medium') {
               if (transportationMode === 'pedestrian' || transportationMode === '2_wheel') return Infinity;
+              maxMultiplier = Math.max(maxMultiplier, 2.5);
             } else if (h.severity_level === 'low') {
               if (transportationMode === 'pedestrian') return Infinity;
+              maxMultiplier = Math.max(maxMultiplier, 1.5);
             }
           }
         }
       }
     }
   }
-  return 1;
+  return maxMultiplier;
 }
 
 /**
@@ -170,7 +174,8 @@ export function calculateOfflineRoute(userLocation, shelterLocation, preloadedDa
       // If we reached the destination node, reconstruct the path
       if (currentId === endNode.id) {
         const path = reconstructPath(cameFrom, currentId, userLocation, shelterLocation);
-        return { status: 'success', path };
+        const warnings = getPathWarnings(path, hazards, transportationMode);
+        return { status: 'success', path, warnings };
       }
 
       // Query adjacent edges connecting to other nodes
@@ -274,4 +279,56 @@ function reconstructPath(cameFrom, currentId, userLocation, shelterLocation) {
   }
 
   return cleanPath;
+}
+
+/**
+ * Calculates context-specific path warnings if the route crosses warning-level hazards.
+ */
+function getPathWarnings(pathCoords, hazards, transportationMode) {
+  if (!hazards || hazards.length === 0 || pathCoords.length === 0) return [];
+
+  const warnings = new Set();
+  
+  const hazardsWithBounds = hazards.map(h => {
+    const rad = parseFloat(h.radius_meters ?? 50);
+    const hLat = parseFloat(h.latitude ?? 0);
+    const hLng = parseFloat(h.longitude ?? 0);
+    const deltaLat = rad / 111320;
+    const cosLat = Math.cos(hLat * Math.PI / 180);
+    const deltaLng = rad / (111320 * (cosLat > 0 ? cosLat : 1));
+    return {
+      name: h.name || 'Hazard Zone',
+      hazard_type: h.hazard_type,
+      severity_level: h.severity_level,
+      lat: hLat,
+      lng: hLng,
+      radius: rad,
+      minLat: hLat - deltaLat,
+      maxLat: hLat + deltaLat,
+      minLng: hLng - deltaLng,
+      maxLng: hLng + deltaLng
+    };
+  });
+
+  for (const coord of pathCoords) {
+    const lng = coord[0];
+    const lat = coord[1];
+
+    for (const h of hazardsWithBounds) {
+      if (lat >= h.minLat && lat <= h.maxLat && lng >= h.minLng && lng <= h.maxLng) {
+        const dist = getDistanceMeters(lat, lng, h.lat, h.lng);
+        if (dist <= h.radius) {
+          if (h.hazard_type === 'flood') {
+            if (h.severity_level === 'medium') {
+              warnings.add(`Route passes through a medium flood zone at "${h.name}". Proceed with caution.`);
+            } else if (h.severity_level === 'low') {
+              warnings.add(`Route passes through a low flood zone at "${h.name}". Watch for minor flooding.`);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return Array.from(warnings);
 }

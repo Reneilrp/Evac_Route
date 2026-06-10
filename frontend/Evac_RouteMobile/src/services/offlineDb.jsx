@@ -297,6 +297,132 @@ export function getOfflineEdges() {
   }
 }
 
+/**
+ * Dynamically syncs the road network graph from the backend API.
+ * Replaces the static seed with live server data including edge statuses (open/blocked/danger).
+ * Called on app start when network is available.
+ *
+ * @param {object} networkData  Response from GET /api/road-network { nodes: [], edges: [] }
+ */
+export function syncRoadNetworkFromApi(networkData) {
+  if (!db || !networkData) return;
+
+  const { nodes, edges } = networkData;
+  if (!Array.isArray(nodes) || !Array.isArray(edges)) return;
+  if (nodes.length === 0) return; // Don't wipe existing graph for empty response
+
+  try {
+    // Wipe existing graph and replace with server data
+    db.execSync('DELETE FROM edges');
+    db.execSync('DELETE FROM nodes');
+
+    // Insert fresh nodes
+    const insertNode = db.prepareSync('INSERT INTO nodes (id, lat, lng) VALUES ($id, $lat, $lng)');
+    for (const node of nodes) {
+      insertNode.executeSync({
+        $id: node.id,
+        $lat: parseFloat(node.lat),
+        $lng: parseFloat(node.lng),
+      });
+    }
+    insertNode.finalizeSync();
+
+    // Insert fresh edges — skip blocked/danger edges so A* naturally avoids them
+    // Edges with status 'danger' are inserted with an extreme cost multiplier via a flag
+    const insertEdge = db.prepareSync(
+      'INSERT INTO edges (source_node, target_node, distance, geometry) VALUES ($source, $target, $distance, $geometry)'
+    );
+    for (const edge of edges) {
+      const isBlocked = edge.status === 'blocked';
+      if (isBlocked) continue; // Hard-block: completely excluded from graph
+
+      // For 'danger' edges, triple the distance so A* strongly prefers safer routes
+      const cost = edge.status === 'danger'
+        ? parseFloat(edge.distance_meters) * 3
+        : parseFloat(edge.distance_meters);
+
+      const geometry = typeof edge.geometry === 'string'
+        ? edge.geometry
+        : JSON.stringify(edge.geometry);
+
+      // Forward direction
+      insertEdge.executeSync({
+        $source: edge.source_node_id,
+        $target: edge.target_node_id,
+        $distance: cost,
+        $geometry: geometry,
+      });
+      // Reverse direction (undirected graph)
+      const reversedGeometry = typeof edge.geometry === 'string'
+        ? JSON.stringify([...JSON.parse(edge.geometry)].reverse())
+        : JSON.stringify([...edge.geometry].reverse());
+
+      insertEdge.executeSync({
+        $source: edge.target_node_id,
+        $target: edge.source_node_id,
+        $distance: cost,
+        $geometry: reversedGeometry,
+      });
+    }
+    insertEdge.finalizeSync();
+
+    console.log(`Road network synced: ${nodes.length} nodes, ${edges.length} edges from server.`);
+  } catch (e) {
+    console.error('Failed to sync road network from API:', e);
+  }
+}
+
+/**
+ * Saves an extended hazard list that includes hazard_type and severity_level.
+ * Upgrades the hazards table if the columns don't exist yet.
+ */
+export function saveHazardsExtended(hazardsList) {
+  if (!db || !hazardsList) return;
+
+  try {
+    // Attempt to add columns if they don't exist (safe no-op if already present)
+    try {
+      db.execSync('ALTER TABLE hazards ADD COLUMN hazard_type TEXT DEFAULT "flood"');
+      db.execSync('ALTER TABLE hazards ADD COLUMN severity_level TEXT DEFAULT "medium"');
+    } catch (_) {
+      // Columns already exist — ignore error
+    }
+
+    db.execSync('DELETE FROM hazards');
+    const stmt = db.prepareSync(
+      'INSERT INTO hazards (id, lat, lng, radius, hazard_type, severity_level) VALUES ($id, $lat, $lng, $radius, $type, $severity)'
+    );
+    for (const h of hazardsList) {
+      stmt.executeSync({
+        $id: h.id,
+        $lat: parseFloat(h.latitude),
+        $lng: parseFloat(h.longitude),
+        $radius: parseFloat(h.radius_meters),
+        $type: h.hazard_type ?? 'flood',
+        $severity: h.severity_level ?? 'medium',
+      });
+    }
+    stmt.finalizeSync();
+  } catch (e) {
+    console.error('Error saving extended hazards to SQLite:', e);
+  }
+}
+
+/**
+ * Returns all offline cached hazards with type and severity (extended schema).
+ */
+export function getOfflineHazardsExtended() {
+  if (!db) return [];
+  try {
+    return db.getAllSync(
+      'SELECT id, lat AS latitude, lng AS longitude, radius AS radius_meters, hazard_type, severity_level FROM hazards'
+    );
+  } catch (e) {
+    // Fallback to basic schema
+    return getOfflineHazards();
+  }
+}
+
 
 /**
  * Performs a fast SQLite coordinate check to see if a specific lat/lng lies within

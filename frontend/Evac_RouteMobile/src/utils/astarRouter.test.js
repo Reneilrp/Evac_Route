@@ -1,3 +1,4 @@
+/* global jest, describe, beforeEach, test, expect */
 import { calculateOfflineRoute } from './astarRouter';
 import { getDistanceMeters } from '../services/offlineDb';
 
