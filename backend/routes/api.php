@@ -4,8 +4,11 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BundledApiController;
 use App\Http\Controllers\Api\CheckInController;
 use App\Http\Controllers\Api\HazardController;
+use App\Http\Controllers\Api\IncidentController;
 use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\ReliefClaimController;
 use App\Http\Controllers\Api\ResidentStatusController;
+use App\Http\Controllers\Api\RoadNetworkController;
 use App\Http\Controllers\Api\ShelterController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -14,50 +17,62 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/register/family', [AuthController::class, 'registerFamily'])->middleware('throttle:10,1');
 
-// The Capacity Matching Query
+// Capacity Matching
 Route::get('/shelters/active', [ShelterController::class, 'getActiveShelters']);
-// Hazard Reporting & Avoidance
+// Hazard Avoidance
 Route::get('/hazards', [HazardController::class, 'getActiveHazards']);
+// Road Network (public — mobile can sync without auth)
+Route::get('/road-network', [RoadNetworkController::class, 'index']);
 
-// --- PROTECTED ROUTES (Sanctum + Active Status Required) ---
+// --- PROTECTED ROUTES (Sanctum + Active Status) ---
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user()->load('familyProfile');
     });
-
-    // Logout — Revoke current Sanctum token
     Route::post('/logout', function (Request $request) {
         $request->user()->currentAccessToken()->delete();
-
         return response()->json(['message' => 'Logged out successfully.']);
     });
 
-    // Resident Specific Route
+    // Resident-Specific Routes
     Route::get('/my-status', [ResidentStatusController::class, 'myStatus']);
     Route::get('/resident/map-data', [BundledApiController::class, 'getResidentMapData']);
 
-    // --- LGU & ADMIN ROUTES (Role Required) ---
+    // Resident Incident Reporting (any authenticated user)
+    Route::post('/incidents', [IncidentController::class, 'submit']);
+
+    // --- LGU & ADMIN ROUTES ---
     Route::middleware(['role:admin,lgu_staff'])->group(function () {
         // Bundled Optimization Endpoints
         Route::get('/dashboard/overview', [BundledApiController::class, 'getDashboardOverview']);
         Route::get('/map/dashboard', [BundledApiController::class, 'getMapDashboard']);
         Route::get('/inventory/dashboard', [BundledApiController::class, 'getInventoryDashboard']);
+
         // 1. Shelter Management
-        Route::get('/shelters', [ShelterController::class, 'getAll']);         // All shelters (admin view)
+        Route::get('/shelters', [ShelterController::class, 'getAll']);
         Route::post('/shelters', [ShelterController::class, 'store']);
         Route::put('/shelters/{id}', [ShelterController::class, 'update']);
         Route::delete('/shelters/{id}', [ShelterController::class, 'destroy']);
 
-        // 2. The Check-in & Relief Deduction Logic
+        // 2. Check-in & Relief
         Route::post('/shelters/{shelter_id}/check-in', [CheckInController::class, 'processCheckIn']);
         Route::post('/shelters/{shelter_id}/check-out', [CheckInController::class, 'processCheckOut']);
         Route::post('/evacuation-logs/{id}/check-out', [CheckInController::class, 'manualCheckOut']);
 
-        // 3. Hazard Pinning & Resolution
+        // 3. Hazard Management
         Route::post('/hazards', [HazardController::class, 'reportHazard']);
         Route::put('/hazards/{id}/resolve', [HazardController::class, 'resolveHazard']);
 
-        // 4. Inventory & Rations
+        // 4. Incident Review Queue (residents' field reports)
+        Route::get('/incidents', [IncidentController::class, 'index']);
+        Route::post('/incidents/{id}/approve', [IncidentController::class, 'approve']);
+        Route::post('/incidents/{id}/reject', [IncidentController::class, 'reject']);
+        Route::get('/incidents/{id}/photo', [IncidentController::class, 'photo']);
+
+        // 5. Road Network Management (LGU can block/unblock segments)
+        Route::put('/road-network/edges/{id}/status', [RoadNetworkController::class, 'updateEdgeStatus']);
+
+        // 6. Inventory & Rations
         Route::get('/inventory', [InventoryController::class, 'getItems']);
         Route::post('/inventory', [InventoryController::class, 'storeItem']);
         Route::put('/inventory/{id}/adjust', [InventoryController::class, 'adjustStock']);
@@ -65,7 +80,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/rations/template', [InventoryController::class, 'storeTemplate']);
         Route::put('/rations/templates/{id}/active', [InventoryController::class, 'activateTemplate']);
 
-        // 5. Evacuation Logs (Audit Trail)
+        // 7. Phase 2 Relief Claim (QR scan at distribution point)
+        Route::post('/relief/claim', [ReliefClaimController::class, 'claim']);
+        Route::get('/relief/status', [ReliefClaimController::class, 'status']);
+
+        // 8. Evacuation Logs
         Route::get('/evacuation-logs', [CheckInController::class, 'getLogs']);
     });
 
