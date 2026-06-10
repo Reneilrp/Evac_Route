@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Package, ClipboardList, Plus, AlertCircle, X, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 // --- Add Stock Modal ---
 function AddStockModal({ onCancel, onAdd }) {
@@ -211,6 +212,7 @@ function AdjustStockModal({ item, onCancel, onAdjust }) {
 
 // --- Main InventoryManager ---
 export default function InventoryManager() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('stock');
   const [showTemplateForm, setShowTemplateForm] = useState(false);
@@ -330,12 +332,18 @@ export default function InventoryManager() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
             <h3 className="font-semibold text-gray-700">Current Stock Levels</h3>
-            <button 
-              onClick={() => setShowAddStockModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm"
-            >
-              <Plus size={16} /> Receive Delivery
-            </button>
+            {user?.role === 'admin' ? (
+              <button 
+                onClick={() => setShowAddStockModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm"
+              >
+                <Plus size={16} /> Receive Delivery
+              </button>
+            ) : (
+              <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 font-semibold select-none">
+                Read-Only (Admin Managed)
+              </span>
+            )}
           </div>
           <div className="overflow-x-auto">
             {isLoadingInventory ? (
@@ -374,12 +382,16 @@ export default function InventoryManager() {
                         </td>
                         <td className="py-4 px-6 text-gray-600 text-sm">{item.unit_type}</td>
                         <td className="py-4 px-6 text-right">
-                          <button 
-                            onClick={() => setAdjustingItem(item)}
-                            className="text-blue-600 hover:text-blue-800 font-medium text-sm transition"
-                          >
-                            Adjust
-                          </button>
+                          {user?.role === 'admin' ? (
+                            <button 
+                              onClick={() => setAdjustingItem(item)}
+                              className="text-blue-600 hover:text-blue-800 font-medium text-sm transition"
+                            >
+                              Adjust
+                            </button>
+                          ) : (
+                            <span className="text-gray-400 text-xs italic">Admin Locked</span>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -447,13 +459,19 @@ export default function InventoryManager() {
                         }).join(', ')}
                       </p>
                     </div>
-                    <button 
-                      onClick={() => activateTemplateMutation.mutate(t.id)}
-                      disabled={activateTemplateMutation.isPending}
-                      className="bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-600 text-xs font-bold px-3 py-1.5 rounded transition disabled:opacity-50"
-                    >
-                      Activate
-                    </button>
+                    {user?.role === 'admin' ? (
+                      <button 
+                        onClick={() => activateTemplateMutation.mutate(t.id)}
+                        disabled={activateTemplateMutation.isPending}
+                        className="bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-600 text-xs font-bold px-3 py-1.5 rounded transition disabled:opacity-50"
+                      >
+                        Activate
+                      </button>
+                    ) : (
+                      <span className="text-xs text-gray-400 font-bold bg-gray-50 border border-gray-200 px-3 py-1.5 rounded select-none cursor-not-allowed">
+                        Admin Only
+                      </span>
+                    )}
                   </div>
                 ))}
                 {templates.filter(t => !t.is_active).length === 0 && (
@@ -471,13 +489,22 @@ export default function InventoryManager() {
             <p className="text-sm text-gray-500 mb-6 max-w-sm">
               Create a new relief allocation strategy. Define exactly what each person receives upon shelter check-in.
             </p>
-            <button 
-              onClick={() => setShowTemplateForm(true)}
-              disabled={items.length === 0}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition w-full max-w-xs disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {items.length === 0 ? 'Add Stock Items First' : 'Create New Template'}
-            </button>
+            {user?.role === 'admin' ? (
+              <button 
+                onClick={() => setShowTemplateForm(true)}
+                disabled={items.length === 0}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition w-full max-w-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {items.length === 0 ? 'Add Stock Items First' : 'Create New Template'}
+              </button>
+            ) : (
+              <button 
+                disabled
+                className="bg-gray-200 text-gray-400 cursor-not-allowed font-bold py-2 px-6 rounded-lg w-full max-w-xs"
+              >
+                Ration Builder Locked (Admin)
+              </button>
+            )}
           </div>
         </div>
       )}
