@@ -39,8 +39,8 @@ test('hazard creation requires hazard_type and severity_level', function () {
     $response = $this->actingAs($admin)
         ->postJson('/api/hazards', $validData);
 
-    // Assert: Success with 201 (Note: HazardController returns 200 by default, but I'll assert success)
-    $response->assertStatus(200)
+    // Assert: Success with 201
+    $response->assertStatus(201)
         ->assertJsonPath('status', 'success');
     
     $this->assertDatabaseHas('hazards', [
@@ -121,10 +121,16 @@ test('check-in processes ration template and decrements inventory stock accurate
     // Expected deduction: 5 people * 2kg = 10kg
     $expectedStock = 1000 - (5 * 2);
 
-    // Act: Execute Check-in
-    $response = $this->postJson("/api/shelters/{$shelter->id}/check-in", [
-        'qr_code_hash' => 'test_qr_123'
+    $admin = User::factory()->create([
+        'role' => 'admin',
+        'status' => 'active',
     ]);
+
+    // Act: Execute Check-in
+    $response = $this->actingAs($admin, 'sanctum')
+        ->postJson("/api/shelters/{$shelter->id}/check-in", [
+            'qr_code_hash' => 'test_qr_123'
+        ]);
 
     // Assert
     $response->assertStatus(200)

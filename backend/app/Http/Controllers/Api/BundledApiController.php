@@ -61,10 +61,18 @@ class BundledApiController extends Controller
         // 2. Active hazards
         $hazards = Hazard::where('is_active', true)->get();
 
+        // 3. Active evacuee demographics by barangay (for GIS Heatmap)
+        $demographics = \App\Models\EvacuationLog::whereNull('checked_out_at')
+            ->join('family_profiles', 'evacuation_logs.family_profile_id', '=', 'family_profiles.id')
+            ->select('family_profiles.barangay', \DB::raw('SUM(evacuation_logs.recorded_headcount) as total_evacuees'))
+            ->groupBy('family_profiles.barangay')
+            ->get();
+
         return response()->json([
             'status' => 'success',
             'shelters' => $activeShelters,
             'hazards' => $hazards,
+            'demographics' => $demographics,
         ], 200);
     }
 

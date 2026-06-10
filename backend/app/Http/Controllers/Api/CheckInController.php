@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\ShelterStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\EvacuationLog;
 use App\Models\FamilyProfile;
@@ -64,8 +65,8 @@ class CheckInController extends Controller
                             $shelter->status = 'open';
                         }
                         $shelter->save();
+                        broadcast(new ShelterStatusUpdated($shelter));
 
-                        $activeLog->checked_out_at = now();
                         $activeLog->save();
 
                         return [
@@ -86,14 +87,19 @@ class CheckInController extends Controller
                                 $oldShelter->status = 'open';
                             }
                             $oldShelter->save();
+                            broadcast(new ShelterStatusUpdated($oldShelter));
                         }
 
                         $activeLog->checked_out_at = now();
                         $activeLog->save();
 
                         // Now check in to the new shelter
-                        if ($shelter->status !== 'open' || $shelter->current_occupancy >= $shelter->max_capacity) {
+                        if ($shelter->status !== 'open') {
                             throw new \Exception('Target shelter is at maximum capacity.');
+                        }
+
+                        if ($shelter->current_occupancy + $family->headcount > $shelter->max_capacity) {
+                            throw new \Exception('Target shelter has insufficient capacity.');
                         }
 
                         $shelter->current_occupancy += $family->headcount;
@@ -101,6 +107,7 @@ class CheckInController extends Controller
                             $shelter->status = 'full';
                         }
                         $shelter->save();
+                        broadcast(new ShelterStatusUpdated($shelter));
 
                         // Allocate rations (Eager loaded & locked in sorted order to prevent deadlocks)
                         $activeRation = RationTemplate::with('items')->where('is_active', true)->first();
@@ -140,8 +147,12 @@ class CheckInController extends Controller
                 }
 
                 // Prevent checking into a full shelter
-                if ($shelter->status !== 'open' || $shelter->current_occupancy >= $shelter->max_capacity) {
+                if ($shelter->status !== 'open') {
                     throw new \Exception('Shelter is already at maximum capacity.');
+                }
+
+                if ($shelter->current_occupancy + $family->headcount > $shelter->max_capacity) {
+                    throw new \Exception('Shelter has insufficient capacity.');
                 }
 
                 // Update Shelter Occupancy
@@ -152,8 +163,8 @@ class CheckInController extends Controller
                     $shelter->status = 'full';
                 }
                 $shelter->save();
+                broadcast(new ShelterStatusUpdated($shelter));
 
-                // Equitable Relief Allocation Logic
                 // Find the currently active LGU ration template
                 $activeRation = RationTemplate::with('items')->where('is_active', true)->first();
 
@@ -202,6 +213,10 @@ class CheckInController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
+            if ($e->getMessage() === 'Shelter has insufficient capacity.' || $e->getMessage() === 'Target shelter has insufficient capacity.') {
+                Shelter::where('id', $shelter_id)->update(['status' => 'full']);
+            }
+
             // If ANYTHING fails, the DB rolls back and returns this error
             return response()->json([
                 'status' => 'error',

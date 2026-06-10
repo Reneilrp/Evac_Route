@@ -1,7 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
-import { Users, Home, AlertTriangle, Activity } from 'lucide-react';
+import { Users, Home, AlertTriangle, Activity, FileSpreadsheet } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 
 export default function DashboardOverview() {
@@ -35,9 +35,86 @@ export default function DashboardOverview() {
     Stock: item.total_stock
   }));
 
+  const handleExportSitRep = () => {
+    if (!dashboardData) return;
+
+    let csv = '';
+
+    // Header
+    csv += `==================================================\n`;
+    csv += `EVAC-ROUTE AUTOMATED SITUATIONAL REPORT (SitRep)\n`;
+    csv += `Generated At: ,${new Date().toLocaleString()}\n`;
+    csv += `==================================================\n\n`;
+
+    // Summary Metrics
+    csv += `SUMMARY METRICS\n`;
+    csv += `Active Evacuees (Pax),${totalOccupancy}\n`;
+    csv += `Open Shelters,${openShelters}\n`;
+    csv += `Nearing/Full Shelters,${fullShelters}\n`;
+    csv += `Active Hazard Zones,${hazards.length}\n\n`;
+
+    // Shelter Table
+    csv += `SHELTER CAPACITY & OPERATIONAL STATUS\n`;
+    csv += `Shelter Name,Barangay,Status,Current Occupancy,Max Capacity,Occupancy Rate (%)\n`;
+    shelters.forEach(s => {
+      const percentage = Math.round((s.current_occupancy / s.max_capacity) * 100);
+      csv += `"${s.name}","${s.barangay || 'N/A'}","${s.status}",${s.current_occupancy},${s.max_capacity},${percentage}%\n`;
+    });
+    csv += `\n`;
+
+    // Hazards Table
+    csv += `ACTIVE HAZARDS & RISK AREAS\n`;
+    csv += `Hazard Name,Type,Severity,Latitude,Longitude,Radius (meters)\n`;
+    hazards.forEach(h => {
+      csv += `"${h.name}","${h.hazard_type}","${h.severity_level}",${h.latitude},${h.longitude},${h.radius_meters}\n`;
+    });
+    csv += `\n`;
+
+    // Inventory Table
+    csv += `CSWDO WAREHOUSE RELIEF GOODS INVENTORY\n`;
+    csv += `Item Name,Current Stock,Unit Type\n`;
+    inventory.forEach(i => {
+      csv += `"${i.item_name}",${i.total_stock},"${i.unit_type}"\n`;
+    });
+    csv += `\n`;
+
+    // Logs Table
+    csv += `RECENT ACTIVE CHECK-IN RECORDS\n`;
+    csv += `Check-in Time,Family Profile,Shelter Assigned,Recorded Headcount,Ration Claim Status\n`;
+    recentLogs.forEach(l => {
+      const time = l.checked_in_at ? new Date(l.checked_in_at).toLocaleString() : '—';
+      const name = l.family_profile?.user?.name || 'Unknown';
+      const shelterName = l.shelter?.name || '—';
+      const ration = l.ration_claimed ? 'Claimed' : 'Pending';
+      csv += `"${time}","${name}","${shelterName}",${l.recorded_headcount},"${ration}"\n`;
+    });
+
+    // Create Blob & Trigger Download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `EvacRoute_SitRep_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="p-6 h-full overflow-y-auto bg-gray-50">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Command Center Overview</h2>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Command Center Overview</h2>
+          <p className="text-sm text-gray-500 mt-1">Real-time metrics, warehouse levels, and shelter capacities.</p>
+        </div>
+        <button
+          onClick={handleExportSitRep}
+          disabled={!dashboardData}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition flex items-center gap-2 text-sm disabled:opacity-50"
+        >
+          <FileSpreadsheet size={16} /> Export SitRep (CSV)
+        </button>
+      </div>
       
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
