@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Dimensions, Linking, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Dimensions, Linking, Alert, Platform, Animated, PanResponder, Vibration } from 'react-native';
 import { AlertTriangle, Navigation, Phone } from 'lucide-react-native';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
@@ -8,11 +8,15 @@ import Constants from 'expo-constants';
 import api from '../services/api';
 import styles from '../styles/EvacMapScreen.styles';
 import { useResidentStore } from '../context/useResidentStore';
+import PrimaryButton from '../components/PrimaryButton';
+import { colors } from '../styles/theme';
 
 import {
   initDb,
   saveShelters,
   saveHazards,
+  saveHazardsExtended,
+  syncRoadNetworkFromApi,
   getOfflineShelters,
   getOfflineHazards,
   getOfflineNodes,
@@ -21,7 +25,11 @@ import {
 } from '../services/offlineDb';
 import { calculateOfflineRoute } from '../utils/astarRouter';
 
-const { width, height } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Bottom sheet snap points
+const SHEET_COLLAPSED = 160;
+const SHEET_EXPANDED = SCREEN_HEIGHT * 0.45;
 
 // Read Mapbox token from app.json extra config
 const MAPBOX_TOKEN = Constants.expoConfig?.extra?.mapboxToken || '';
@@ -29,7 +37,6 @@ Mapbox.setAccessToken(MAPBOX_TOKEN);
 
 export default function EvacMapScreen() {
   const [location, setLocation] = useState(null);
-  const [errorMsg, setErrorMsg] = useState(null);
 
   // Local cache fallback state
   const [offlineShelters, setOfflineShelters] = useState([]);
@@ -41,13 +48,65 @@ export default function EvacMapScreen() {
   const [cachedRoute, setCachedRoute] = useState(null);
   const [lastRoutingLocation, setLastRoutingLocation] = useState(null);
   const [isRouteBlocked, setIsRouteBlocked] = useState(false);
+  const [routeWarnings, setRouteWarnings] = useState([]);
+
+  // Panic flash state
+  const [showPanicFlash, setShowPanicFlash] = useState(false);
+  const panicOpacityRef = useRef(new Animated.Value(0));
+  const previousStatusRef = useRef(null);
+
+  // Bottom sheet animation
+  const sheetHeightRef = useRef(new Animated.Value(SHEET_COLLAPSED));
+  const [isSheetExpanded, setIsSheetExpanded] = useState(false);
 
   // Read/write routing mode globally from Zustand store
   const transportationMode = useResidentStore(state => state.transportationMode || 'pedestrian');
   const setTransportationMode = useResidentStore(state => state.setTransportationMode);
+  const status = useResidentStore(state => state.status);
 
   const lastHazardsRef = useRef(null);
   const lastShelterCoordsRef = useRef(null);
+
+  // ─── Panic Flash on first danger detection ───
+  useEffect(() => {
+    if (status === 'danger' && previousStatusRef.current !== 'danger') {
+      setShowPanicFlash(true);
+      Vibration.vibrate([0, 300, 100, 300, 100, 300]);
+      
+      Animated.sequence([
+        Animated.timing(panicOpacityRef.current, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.delay(1200),
+        Animated.timing(panicOpacityRef.current, { toValue: 0, duration: 500, useNativeDriver: true }),
+      ]).start(() => setShowPanicFlash(false));
+    }
+    previousStatusRef.current = status;
+  }, [status]);
+
+  // ─── Bottom Sheet Pan Responder ───
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dy) > 5,
+      onPanResponderMove: (_, gestureState) => {
+        const currentHeight = isSheetExpanded ? SHEET_EXPANDED : SHEET_COLLAPSED;
+        const newHeight = currentHeight - gestureState.dy;
+        const clampedHeight = Math.max(SHEET_COLLAPSED, Math.min(SHEET_EXPANDED, newHeight));
+        sheetHeightRef.current.setValue(clampedHeight);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const shouldExpand = gestureState.dy < -50 || (isSheetExpanded && gestureState.dy < 50);
+        const target = shouldExpand ? SHEET_EXPANDED : SHEET_COLLAPSED;
+        
+        Animated.spring(sheetHeightRef.current, {
+          toValue: target,
+          useNativeDriver: false,
+          speed: 14,
+          bounciness: 4,
+        }).start();
+        setIsSheetExpanded(shouldExpand);
+      },
+    })
+  ).current;
 
   // Initialize DB and load cached data on mount
   useEffect(() => {
@@ -97,6 +156,44 @@ export default function EvacMapScreen() {
     retry: 1
   });
 
+  // One-time road network sync on startup (no polling needed — LGU pushes status changes)
+  const { data: roadNetworkData } = useQuery({
+    queryKey: ['road-network'],
+    queryFn: () => api.get('/road-network').then(res => res.data),
+    staleTime: 5 * 60 * 1000,  // 5 minutes
+    retry: 1,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  // Sync road network to SQLite whenever it updates
+  useEffect(() => {
+    if (roadNetworkData && roadNetworkData.nodes?.length > 0) {
+      syncRoadNetworkFromApi(roadNetworkData);
+      // Reload the preloaded graph after sync
+      try {
+        const dbNodes = getOfflineNodes();
+        const dbEdges = getOfflineEdges();
+        const nodesMap = {};
+        for (const n of dbNodes) {
+          nodesMap[n.id] = { id: n.id, lat: parseFloat(n.lat), lng: parseFloat(n.lng) };
+        }
+        const edgesBySource = {};
+        for (const e of dbEdges) {
+          if (!edgesBySource[e.source_node]) edgesBySource[e.source_node] = [];
+          edgesBySource[e.source_node].push({
+            target_node: e.target_node,
+            distance: parseFloat(e.distance),
+            geometry: JSON.parse(e.geometry),
+          });
+        }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPreloadedGraph({ nodesMap, edgesBySource });
+      } catch (e) {
+        console.warn('Graph reload after network sync failed:', e);
+      }
+    }
+  }, [roadNetworkData]);
+
   const sheltersData = mapData?.shelters;
   const hazardsData = mapData?.hazards;
   const isLoadingShelters = isLoadingMap;
@@ -113,7 +210,8 @@ export default function EvacMapScreen() {
 
   useEffect(() => {
     if (hazardsData) {
-      saveHazards(hazardsData);
+      saveHazardsExtended(hazardsData);  // Use extended save to preserve type/severity for A* routing
+      saveHazards(hazardsData);           // Also keep basic compat save
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOfflineHazards(hazardsData);
       setIsOffline(false);
@@ -133,7 +231,7 @@ export default function EvacMapScreen() {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setErrorMsg('Permission to access location was denied');
+        console.warn('Permission to access location was denied');
         return;
       }
 
@@ -208,13 +306,13 @@ export default function EvacMapScreen() {
       const result = calculateOfflineRoute(location, nearestShelterCoords, data, transportationMode);
       
       if (result && result.status === 'success') {
-         
-      setCachedRoute(result.path);
+        setCachedRoute(result.path);
+        setRouteWarnings(result.warnings || []);
         setIsRouteBlocked(false);
       } else {
         // Intercept failure: clear route lines and set blocked state
-         
-      setCachedRoute(null);
+        setCachedRoute(null);
+        setRouteWarnings([]);
         setIsRouteBlocked(true);
       }
       
@@ -229,7 +327,7 @@ export default function EvacMapScreen() {
   if (!location || (isLoadingShelters && offlineShelters.length === 0)) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Acquiring GPS Signal...</Text>
       </View>
     );
@@ -306,6 +404,14 @@ export default function EvacMapScreen() {
 
   return (
     <View style={styles.container}>
+      {/* ─── Panic Flash Overlay ─── */}
+      {showPanicFlash && (
+        <Animated.View style={[styles.panicFlash, { opacity: panicOpacityRef.current }]}>
+          <Text style={styles.panicText}>⚠️ EVACUATION ORDER</Text>
+          <Text style={styles.panicSubText}>Move to safety immediately</Text>
+        </Animated.View>
+      )}
+
       <Mapbox.MapView
         style={styles.map}
         styleURL={Mapbox.StyleURL.Dark}
@@ -332,7 +438,7 @@ export default function EvacMapScreen() {
               coordinate={[sLng, sLat]}
             >
               <View style={styles.shelterPin}>
-                <View style={[styles.innerPin, { backgroundColor: shelter.status === 'open' ? '#22c55e' : '#ef4444' }]} />
+                <View style={[styles.innerPin, { backgroundColor: shelter.status === 'open' ? colors.successLight : colors.danger }]} />
               </View>
             </Mapbox.PointAnnotation>
           );
@@ -352,8 +458,8 @@ export default function EvacMapScreen() {
                 15, ['/', ['get', 'radius'], 1.2],
                 22, ['/', ['get', 'radius'], 0.01]
               ],
-              circleColor: 'rgba(239, 68, 68, 0.4)',
-              circleStrokeColor: 'rgba(239, 68, 68, 0.8)',
+              circleColor: colors.hazardFill,
+              circleStrokeColor: colors.hazardStroke,
               circleStrokeWidth: 2,
             }}
           />
@@ -365,7 +471,7 @@ export default function EvacMapScreen() {
             <Mapbox.LineLayer
               id="routeLayer"
               style={{
-                lineColor: '#eab308',
+                lineColor: colors.routeLine,
                 lineWidth: 6,
                 lineCap: 'round',
                 lineJoin: 'round',
@@ -375,20 +481,20 @@ export default function EvacMapScreen() {
         )}
       </Mapbox.MapView>
 
-      {/* Critical Action Required Overlay */}
+      {/* ─── Critical Action Required Overlay ─── */}
       {isRouteBlocked && (
         <View style={styles.criticalOverlay}>
           <Text style={styles.criticalTitle}>
             CRITICAL ACTION REQUIRED: No safe overland evacuation routes available for your current transportation mode. Move to the highest accessible level immediately and broadcast an emergency rescue signal.
           </Text>
           <TouchableOpacity style={styles.emergencyButton} onPress={callEmergencyHotline}>
-            <Phone color="#fff" size={20} />
+            <Phone color={colors.white} size={20} />
             <Text style={styles.emergencyButtonText}>Call Emergency Hotline</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Live Data Overlay / Offline Status Warning */}
+      {/* ─── Live Data Overlay / Offline Status Warning ─── */}
       <View style={styles.overlay}>
         <View style={styles.statusBox}>
           {isOffline && (
@@ -397,11 +503,11 @@ export default function EvacMapScreen() {
             </View>
           )}
           <View style={styles.statusRow}>
-            <View style={[styles.dot, { backgroundColor: '#22c55e' }]} />
+            <View style={[styles.dot, { backgroundColor: colors.successLight }]} />
             <Text style={styles.statusText}>{openShelters.length} Shelters Open</Text>
           </View>
           <View style={styles.statusRow}>
-            <View style={[styles.dot, { backgroundColor: '#ef4444' }]} />
+            <View style={[styles.dot, { backgroundColor: colors.danger }]} />
             <Text style={styles.statusText}>{hazards.length} Active Hazards</Text>
           </View>
 
@@ -429,28 +535,52 @@ export default function EvacMapScreen() {
         </View>
       </View>
 
-      <View style={styles.actionContainer}>
-        {nearestShelter ? (
-          <>
-            <View style={styles.routingInfo}>
-              <Text style={styles.destinationLabel}>NEAREST OPEN SHELTER:</Text>
-              <Text style={styles.destinationName}>{nearestShelter.name}</Text>
-              <Text style={styles.etaText}>
-                Distance: {(minDistance / 1000).toFixed(2)} km (Avoiding Hazards)
-              </Text>
+      {/* ─── Draggable Bottom Sheet ─── */}
+      <Animated.View style={[styles.bottomSheet, { height: sheetHeightRef.current }]}>
+        {/* Drag Handle */}
+        <View {...panResponder.panHandlers} style={styles.bottomSheetHandle}>
+          <View style={styles.bottomSheetBar} />
+        </View>
+
+        <View style={styles.bottomSheetContent}>
+          {nearestShelter ? (
+            <>
+              <View style={styles.routingInfo}>
+                <Text style={styles.destinationLabel}>NEAREST OPEN SHELTER:</Text>
+                <Text style={styles.destinationName}>{nearestShelter.name}</Text>
+                <Text style={styles.etaText}>
+                  Distance: {(minDistance / 1000).toFixed(2)} km (Avoiding Hazards)
+                </Text>
+
+                {/* Route Warnings as Pill Badges */}
+                {routeWarnings.length > 0 && (
+                  <View style={styles.warningsContainer}>
+                    {routeWarnings.map((w, idx) => (
+                      <View key={idx} style={styles.warningPill}>
+                        <AlertTriangle size={12} color={colors.warningText} />
+                        <Text style={styles.warningPillText}>{w}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              <PrimaryButton
+                title="Start Navigation"
+                onPress={startNavigation}
+                variant="primary"
+                size="large"
+                icon={<Navigation color={colors.white} size={20} />}
+              />
+            </>
+          ) : (
+            <View style={styles.warningBox}>
+              <AlertTriangle color={colors.danger} size={24} />
+              <Text style={styles.warningText}>No open shelters available at this time.</Text>
             </View>
-            <TouchableOpacity style={styles.routeButton} onPress={startNavigation}>
-              <Navigation color="#fff" size={20} style={{ marginRight: 8 }} />
-              <Text style={styles.routeButtonText}>Start Navigation</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <View style={styles.warningBox}>
-            <AlertTriangle color="#ef4444" size={24} />
-            <Text style={styles.warningText}>No open shelters available at this time.</Text>
-          </View>
-        )}
-      </View>
+          )}
+        </View>
+      </Animated.View>
     </View>
   );
 }

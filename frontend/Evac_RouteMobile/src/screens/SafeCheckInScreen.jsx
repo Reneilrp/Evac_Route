@@ -1,20 +1,23 @@
 import { useEffect } from 'react';
-import { View, Text, TouchableOpacity, Vibration, FlatList } from 'react-native';
+import { View, Text, Vibration, FlatList } from 'react-native';
 import { CheckCircle, Package } from 'lucide-react-native';
 import { useResidentStore } from '../context/useResidentStore';
+import PrimaryButton from '../components/PrimaryButton';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { colors } from '../styles/theme';
 import styles from '../styles/SafeCheckInScreen.styles';
 
 export default function SafeCheckInScreen({ navigation }) {
   const allocation = useResidentStore(state => state.allocation);
 
   useEffect(() => {
-    // 1. Physical Haptic Feedback
+    // Physical Haptic Feedback — success pattern
     Vibration.vibrate([0, 500, 200, 500]);
   }, []);
 
   return (
     <View style={styles.container}>
-      <CheckCircle size={100} color="#fff" style={styles.icon} />
+      <CheckCircle size={100} color={colors.white} style={styles.icon} />
 
       <Text style={styles.title}>CHECK-IN SUCCESSFUL</Text>
       <Text style={styles.subtitle}>You are safe.</Text>
@@ -23,7 +26,7 @@ export default function SafeCheckInScreen({ navigation }) {
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.iconCircle}>
-            <Package size={28} color="#16a34a" />
+            <Package size={28} color={colors.success} />
           </View>
           <View>
             <Text style={styles.cardTitle}>Relief Allocation</Text>
@@ -47,7 +50,15 @@ export default function SafeCheckInScreen({ navigation }) {
               scrollEnabled={false}
             />
           ) : (
-            <Text style={{ textAlign: 'center', color: '#64748b' }}>Retrieving allocation data...</Text>
+            // Skeleton loading placeholders
+            <View>
+              {[1, 2, 3].map(i => (
+                <View key={i} style={styles.skeletonRow}>
+                  <SkeletonLoader width="55%" height={18} />
+                  <SkeletonLoader width="25%" height={18} />
+                </View>
+              ))}
+            </View>
           )}
         </View>
 
@@ -58,10 +69,16 @@ export default function SafeCheckInScreen({ navigation }) {
         </View>
       </View>
 
-      <TouchableOpacity onPress={() => navigation.navigate('Resident Home')} style={styles.backBtn}>
-        <Text style={styles.backBtnText}>Return to Home Screen</Text>
-      </TouchableOpacity>
+      <View style={styles.backBtnContainer}>
+        <PrimaryButton
+          title="Return to Home Screen"
+          onPress={() => navigation.navigate('Resident Home')}
+          variant="outline"
+          size="medium"
+          textStyle={{ color: colors.successText }}
+          style={{ borderColor: 'rgba(255,255,255,0.3)' }}
+        />
+      </View>
     </View>
   );
 }
-

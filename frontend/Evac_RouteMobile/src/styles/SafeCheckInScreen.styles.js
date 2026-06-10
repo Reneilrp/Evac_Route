@@ -1,109 +1,102 @@
 import { StyleSheet } from 'react-native';
+import { colors, spacing, radii, typography, shadows } from './theme';
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#16a34a',
-        padding: 24,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    icon: {
-        marginBottom: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 5,
-    },
-    title: {
-        fontSize: 32,
-        fontWeight: '900',
-        color: '#fff',
-        textAlign: 'center',
-        marginBottom: 8,
-        letterSpacing: 1,
-    },
-    subtitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#dcfce7',
-        marginBottom: 40,
-    },
-    card: {
-        backgroundColor: '#fff',
-        width: '100%',
-        borderRadius: 24,
-        padding: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2,
-        shadowRadius: 20,
-        elevation: 10,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0',
-        paddingBottom: 20,
-        marginBottom: 20,
-    },
-    iconCircle: {
-        backgroundColor: '#dcfce7',
-        padding: 12,
-        borderRadius: 30,
-        marginRight: 16,
-    },
-    cardTitle: {
-        fontSize: 20,
-        fontWeight: '900',
-        color: '#0f172a',
-    },
-    cardSubtitle: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#64748b',
-    },
-    list: {
-        marginBottom: 24,
-    },
-    listItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    itemLabel: {
-        fontSize: 18,
-        color: '#475569',
-        fontWeight: 'bold',
-    },
-    itemValue: {
-        fontSize: 18,
-        fontWeight: '900',
-        color: '#0f172a',
-    },
-    instructionBox: {
-        backgroundColor: '#f0fdf4',
-        padding: 16,
-        borderRadius: 12,
-    },
-    instructionText: {
-        color: '#16a34a',
-        fontWeight: 'bold',
-        textAlign: 'center',
-        fontSize: 14,
-    },
-    backBtn: {
-        marginTop: 40,
-    },
-    backBtnText: {
-        color: '#dcfce7',
-        fontSize: 16,
-        fontWeight: 'bold',
-        textDecorationLine: 'underline',
-    },
+  container: {
+    flex: 1,
+    backgroundColor: colors.success,
+    padding: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  icon: {
+    marginBottom: spacing.xl,
+    ...shadows.md,
+    shadowColor: colors.black,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: colors.white,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+    letterSpacing: 1,
+  },
+  subtitle: {
+    ...typography.title,
+    color: colors.successText,
+    marginBottom: spacing['3xl'],
+  },
+  card: {
+    backgroundColor: colors.white,
+    width: '100%',
+    borderRadius: radii['3xl'],
+    padding: spacing.xl,
+    ...shadows.lg,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    paddingBottom: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  iconCircle: {
+    backgroundColor: colors.successText,
+    padding: spacing.md,
+    borderRadius: 30,
+    marginRight: spacing.base,
+  },
+  cardTitle: {
+    ...typography.heading,
+    fontWeight: '900',
+    color: colors.textInverse,
+  },
+  cardSubtitle: {
+    ...typography.label,
+    fontWeight: 'bold',
+    color: colors.textMuted,
+  },
+  list: {
+    marginBottom: spacing.xl,
+  },
+  listItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.base,
+  },
+  itemLabel: {
+    ...typography.subheading,
+    color: '#475569',
+    fontWeight: 'bold',
+  },
+  itemValue: {
+    ...typography.subheading,
+    fontWeight: '900',
+    color: colors.textInverse,
+  },
+  instructionBox: {
+    backgroundColor: '#f0fdf4',
+    padding: spacing.base,
+    borderRadius: radii.lg,
+  },
+  instructionText: {
+    color: colors.success,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    ...typography.label,
+  },
+  // Skeleton placeholders for loading
+  skeletonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.base,
+  },
+  backBtnContainer: {
+    marginTop: spacing['3xl'],
+  },
 });
 
 export default styles;

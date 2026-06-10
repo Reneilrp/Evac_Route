@@ -1,125 +1,88 @@
 import { StyleSheet } from 'react-native';
+import { colors, spacing, radii, typography } from './theme';
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#0f172a',
-    },
-    scrollContent: {
-        padding: 24,
-        paddingTop: 40,
-    },
-    title: {
-        fontSize: 32,
-        fontWeight: '900',
-        color: '#fff',
-        textAlign: 'center',
-        marginBottom: 32,
-    },
-    inputGroup: {
-        marginBottom: 24,
-    },
-    label: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#94a3b8',
-        marginBottom: 8,
-    },
-    input: {
-        backgroundColor: '#1e293b',
-        borderWidth: 2,
-        borderColor: '#334155',
-        borderRadius: 12,
-        padding: 16,
-        fontSize: 18,
-        color: '#fff',
-    },
-    counterBox: {
-        backgroundColor: '#1e293b',
-        padding: 24,
-        borderRadius: 16,
-        borderWidth: 2,
-        borderColor: '#334155',
-        marginBottom: 32,
-        alignItems: 'center',
-    },
-    counterLabel: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#cbd5e1',
-        marginBottom: 20,
-    },
-    counterRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        width: '100%',
-        paddingHorizontal: 20,
-    },
-    circleBtn: {
-        backgroundColor: '#334155',
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    counterNumber: {
-        fontSize: 48,
-        fontWeight: '900',
-        color: '#fff',
-    },
-    helperText: {
-        color: '#64748b',
-        textAlign: 'center',
-        marginTop: 24,
-        fontSize: 14,
-        lineHeight: 20,
-    },
-    button: {
-        backgroundColor: '#2563eb',
-        paddingVertical: 20,
-        borderRadius: 16,
-        alignItems: 'center',
-    },
-    buttonDisabled: {
-        backgroundColor: '#1d4ed8',
-        opacity: 0.7,
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: '900',
-        letterSpacing: 1,
-    },
-    selectorContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 4,
-    },
-    selectorButton: {
-        flex: 1,
-        backgroundColor: '#1e293b',
-        borderWidth: 2,
-        borderColor: '#334155',
-        borderRadius: 12,
-        paddingVertical: 14,
-        alignItems: 'center',
-        marginHorizontal: 4,
-    },
-    selectorButtonActive: {
-        borderColor: '#2563eb',
-        backgroundColor: '#2563eb33',
-    },
-    selectorText: {
-        color: '#94a3b8',
-        fontSize: 12,
-        fontWeight: 'bold',
-        marginTop: 6,
-    },
-    selectorTextActive: {
-        color: '#fff',
-    },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    padding: spacing.xl,
+    paddingTop: spacing['3xl'],
+  },
+  title: {
+    ...typography.hero,
+    fontSize: 32,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing['2xl'],
+  },
+  inputGroup: {
+    marginBottom: spacing.xl,
+  },
+  label: {
+    ...typography.subheading,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  input: {
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    padding: spacing.base,
+    ...typography.subheading,
+    color: colors.textPrimary,
+  },
+  counterBox: {
+    backgroundColor: colors.surface,
+    padding: spacing.xl,
+    borderRadius: radii.xl,
+    borderWidth: 2,
+    borderColor: colors.border,
+    marginBottom: spacing['2xl'],
+    alignItems: 'center',
+  },
+  counterLabel: {
+    ...typography.subheading,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
+  },
+  counterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: spacing.lg,
+  },
+  circleBtn: {
+    backgroundColor: colors.surfaceElevated,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  counterNumber: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: colors.textPrimary,
+  },
+  helperText: {
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.xl,
+    ...typography.label,
+    lineHeight: 20,
+  },
+  chipLabel: {
+    ...typography.subheading,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  chipSection: {
+    marginBottom: spacing.xl,
+  },
 });
 
 export default styles;

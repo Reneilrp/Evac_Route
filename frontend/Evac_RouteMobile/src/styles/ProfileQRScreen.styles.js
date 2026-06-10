@@ -1,129 +1,174 @@
 import { StyleSheet } from 'react-native';
+import { colors, spacing, radii, typography, shadows } from './theme';
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#0f172a',
-    },
-    statusBanner: {
-        flexDirection: 'row',
-        padding: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 5,
-        paddingTop: 50,
-    },
-    bannerDanger: {
-        backgroundColor: '#dc2626',
-    },
-    bannerSafe: {
-        backgroundColor: '#16a34a',
-    },
-    bannerText: {
-        color: '#fff',
-        fontSize: 20,
-        fontWeight: '900',
-        letterSpacing: 1,
-    },
-    actionArea: {
-        padding: 20,
-        alignItems: 'center',
-    },
-    evacuateBtn: {
-        backgroundColor: '#dc2626',
-        width: '100%',
-        paddingVertical: 40,
-        borderRadius: 24,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#dc2626',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 20,
-        elevation: 10,
-        borderWidth: 2,
-        borderColor: '#f87171',
-    },
-    evacuateText: {
-        color: '#fff',
-        fontSize: 28,
-        fontWeight: '900',
-        letterSpacing: 2,
-    },
-    safeBtn: {
-        backgroundColor: '#16a34a',
-        width: '100%',
-        paddingVertical: 30,
-        borderRadius: 24,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    safeText: {
-        color: '#fff',
-        fontSize: 24,
-        fontWeight: '900',
-        letterSpacing: 1,
-    },
-    card: {
-        flex: 1,
-        backgroundColor: '#1e293b',
-        borderTopLeftRadius: 40,
-        borderTopRightRadius: 40,
-        padding: 30,
-        alignItems: 'center',
-        marginTop: 10,
-    },
-    cardTitle: {
-        color: '#94a3b8',
-        fontSize: 14,
-        fontWeight: 'bold',
-        letterSpacing: 2,
-        marginBottom: 20,
-    },
-    qrContainer: {
-        padding: 16,
-        backgroundColor: '#fff',
-        borderRadius: 16,
-    },
-    hashText: {
-        marginTop: 16,
-        color: '#64748b',
-        fontFamily: 'monospace',
-        fontSize: 12,
-    },
-    infoBox: {
-        alignItems: 'center',
-        marginTop: 20,
-    },
-    infoText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 4,
-    },
-    headcountBadge: {
-        backgroundColor: '#3b82f6',
-        paddingHorizontal: 16,
-        paddingVertical: 6,
-        borderRadius: 20,
-        marginTop: 8,
-    },
-    headcountText: {
-        color: '#fff',
-        fontWeight: '900',
-        fontSize: 16,
-    },
-    instruction: {
-        textAlign: 'center',
-        color: '#64748b',
-        fontSize: 14,
-        lineHeight: 22,
-        marginTop: 30,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+
+  // ─── Safe Mode Home Layout ───
+  safeHomeScroll: {
+    flex: 1,
+  },
+  safeHomeContent: {
+    padding: spacing.xl,
+    paddingBottom: spacing['4xl'],
+  },
+  profileHeader: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  profileAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+    ...shadows.md,
+    shadowColor: colors.primaryDark,
+  },
+  profileAvatarText: {
+    ...typography.title,
+    color: colors.white,
+  },
+  profileName: {
+    ...typography.heading,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  profileBarangay: {
+    ...typography.label,
+    color: colors.textSecondary,
+  },
+  profileTimestamp: {
+    ...typography.small,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+
+  // ─── Quick Links Grid ───
+  quickLinksGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  quickLinkCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: colors.surface,
+    borderRadius: radii.xl,
+    padding: spacing.base,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.sm,
+  },
+  quickLinkIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickLinkLabel: {
+    ...typography.small,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+
+  // ─── Small QR Card ───
+  qrCardSmall: {
+    backgroundColor: colors.surface,
+    borderRadius: radii['3xl'],
+    padding: spacing.xl,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.md,
+  },
+  qrCardTitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.base,
+  },
+  qrWrapper: {
+    padding: spacing.md,
+    backgroundColor: colors.white,
+    borderRadius: radii.xl,
+  },
+  qrHashText: {
+    marginTop: spacing.md,
+    ...typography.mono,
+    color: colors.textMuted,
+  },
+  qrInfoBox: {
+    alignItems: 'center',
+    marginTop: spacing.base,
+  },
+  qrInfoText: {
+    ...typography.bodyBold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  headcountBadge: {
+    backgroundColor: colors.primaryDark,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.full,
+    marginTop: spacing.sm,
+  },
+  headcountText: {
+    color: colors.white,
+    fontWeight: '900',
+    ...typography.label,
+  },
+  qrInstruction: {
+    textAlign: 'center',
+    color: colors.textMuted,
+    ...typography.label,
+    lineHeight: 22,
+    marginTop: spacing.xl,
+  },
+
+  // ─── Danger Mode Layout ───
+  dangerActionArea: {
+    padding: spacing.lg,
+    alignItems: 'center',
+  },
+  evacuateBtn: {
+    backgroundColor: colors.danger,
+    width: '100%',
+    paddingVertical: spacing['3xl'],
+    borderRadius: radii['3xl'],
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.dangerLight,
+    ...shadows.lg,
+    shadowColor: colors.danger,
+  },
+  evacuateText: {
+    color: colors.white,
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+
+  // ─── QR Card (Danger Mode — Full Size) ───
+  qrCardFull: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radii['4xl'],
+    borderTopRightRadius: radii['4xl'],
+    padding: spacing['2xl'],
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
 });
 
 export default styles;

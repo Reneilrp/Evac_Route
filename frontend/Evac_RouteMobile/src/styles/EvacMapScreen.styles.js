@@ -1,221 +1,257 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
+import { colors, spacing, radii, typography, shadows } from './theme';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#0f172a',
-    },
-    map: {
-        flex: 1,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#0f172a',
-    },
-    loadingText: {
-        marginTop: 10,
-        color: '#94a3b8',
-        fontWeight: 'bold',
-    },
-    shelterPin: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: 'white',
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-        elevation: 5,
-    },
-    innerPin: {
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-    },
-    overlay: {
-        position: 'absolute',
-        top: 50,
-        left: 20,
-        right: 20,
-    },
-    statusBox: {
-        backgroundColor: 'rgba(30, 41, 59, 0.95)',
-        padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#334155',
-        shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowRadius: 10,
-        elevation: 10,
-    },
-    offlineBadge: {
-        backgroundColor: '#7f1d1d',
-        paddingVertical: 4,
-        paddingHorizontal: 8,
-        borderRadius: 6,
-        marginBottom: 8,
-        alignItems: 'center',
-    },
-    offlineText: {
-        color: '#fecaca',
-        fontSize: 11,
-        fontWeight: 'bold',
-        letterSpacing: 1,
-    },
-    statusRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 4,
-    },
-    dot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        marginRight: 8,
-    },
-    statusText: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#f8fafc',
-    },
-    actionContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: '#1e293b',
-        padding: 24,
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -10 },
-        shadowOpacity: 0.3,
-        shadowRadius: 15,
-        elevation: 20,
-    },
-    routingInfo: {
-        marginBottom: 20,
-    },
-    destinationLabel: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#3b82f6',
-        letterSpacing: 1,
-    },
-    destinationName: {
-        fontSize: 24,
-        fontWeight: '900',
-        color: '#fff',
-        marginVertical: 4,
-    },
-    etaText: {
-        fontSize: 14,
-        color: '#22c55e',
-        fontWeight: 'bold',
-    },
-    warningBox: {
-        flexDirection: 'row',
-        backgroundColor: '#7f1d1d',
-        padding: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-    warningText: {
-        flex: 1,
-        marginLeft: 10,
-        color: '#fecaca',
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
-    routeButton: {
-        flexDirection: 'row',
-        backgroundColor: '#2563eb',
-        paddingVertical: 18,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#2563eb',
-        shadowOpacity: 0.4,
-        shadowRadius: 10,
-        elevation: 5,
-    },
-    routeButtonText: {
-        color: '#fff',
-        fontSize: 20,
-        fontWeight: '900',
-        letterSpacing: 1,
-    },
-    criticalOverlay: {
-        position: 'absolute',
-        top: 40,
-        left: 10,
-        right: 10,
-        backgroundColor: '#7f1d1d',
-        padding: 16,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: '#ef4444',
-        zIndex: 1000,
-        shadowColor: '#000',
-        shadowOpacity: 0.5,
-        shadowRadius: 15,
-        elevation: 20,
-    },
-    criticalTitle: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '900',
-        textAlign: 'center',
-        marginBottom: 12,
-        lineHeight: 20,
-    },
-    emergencyButton: {
-        backgroundColor: '#ef4444',
-        paddingVertical: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'row',
-    },
-    emergencyButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 16,
-        marginLeft: 8,
-    },
-    modeSelectorRow: {
-        flexDirection: 'row',
-        marginTop: 10,
-        borderTopWidth: 1,
-        borderTopColor: '#334155',
-        paddingTop: 10,
-        justifyContent: 'space-between',
-    },
-    modeButton: {
-        flex: 1,
-        paddingVertical: 8,
-        borderRadius: 6,
-        backgroundColor: '#334155',
-        alignItems: 'center',
-        marginHorizontal: 3,
-    },
-    modeButtonActive: {
-        backgroundColor: '#2563eb',
-    },
-    modeButtonText: {
-        fontSize: 10,
-        fontWeight: 'bold',
-        color: '#94a3b8',
-    },
-    modeButtonTextActive: {
-        color: '#fff',
-    },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  map: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    color: colors.textSecondary,
+    fontWeight: 'bold',
+  },
+  shelterPin: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  innerPin: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+  },
+
+  // ─── Top Overlay (Status Box) ───
+  overlay: {
+    position: 'absolute',
+    top: 50,
+    left: spacing.lg,
+    right: spacing.lg,
+  },
+  statusBox: {
+    backgroundColor: colors.overlayMedium,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.lg,
+  },
+  offlineBadge: {
+    backgroundColor: colors.dangerBg,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.sm,
+    marginBottom: spacing.sm,
+    alignItems: 'center',
+  },
+  offlineText: {
+    color: colors.dangerText,
+    ...typography.small,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.xs,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: spacing.sm,
+  },
+  statusText: {
+    ...typography.label,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+
+  // ─── Mode Selector ───
+  modeSelectorRow: {
+    flexDirection: 'row',
+    marginTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.md,
+    justifyContent: 'space-between',
+  },
+  modeButton: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surfaceElevated,
+    alignItems: 'center',
+    marginHorizontal: 3,
+  },
+  modeButtonActive: {
+    backgroundColor: colors.primaryDark,
+  },
+  modeButtonText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: colors.textSecondary,
+  },
+  modeButtonTextActive: {
+    color: colors.white,
+  },
+
+  // ─── Draggable Bottom Sheet ───
+  bottomSheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radii['4xl'],
+    borderTopRightRadius: radii['4xl'],
+    ...shadows.xl,
+    minHeight: 120,
+    maxHeight: SCREEN_HEIGHT * 0.55,
+  },
+  bottomSheetHandle: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  bottomSheetBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.surfaceElevated,
+  },
+  bottomSheetContent: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing['2xl'],
+  },
+  routingInfo: {
+    marginBottom: spacing.lg,
+  },
+  destinationLabel: {
+    ...typography.caption,
+    color: colors.primary,
+  },
+  destinationName: {
+    ...typography.title,
+    color: colors.white,
+    marginVertical: spacing.xs,
+  },
+  etaText: {
+    ...typography.label,
+    color: colors.successLight,
+    fontWeight: 'bold',
+  },
+
+  // ─── Route Warnings (Pill Badges) ───
+  warningsContainer: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  warningPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.warningBg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.full,
+    alignSelf: 'flex-start',
+    gap: spacing.xs,
+  },
+  warningPillText: {
+    ...typography.small,
+    color: colors.warningText,
+    fontWeight: 'bold',
+  },
+
+  // ─── No Shelter Warning ───
+  warningBox: {
+    flexDirection: 'row',
+    backgroundColor: colors.dangerBg,
+    padding: spacing.base,
+    borderRadius: radii.lg,
+    alignItems: 'center',
+  },
+  warningText: {
+    flex: 1,
+    marginLeft: spacing.md,
+    color: colors.dangerText,
+    ...typography.label,
+    fontWeight: 'bold',
+  },
+
+  // ─── Critical Overlay ───
+  criticalOverlay: {
+    position: 'absolute',
+    top: 40,
+    left: spacing.md,
+    right: spacing.md,
+    backgroundColor: colors.dangerBg,
+    padding: spacing.base,
+    borderRadius: radii.lg,
+    borderWidth: 2,
+    borderColor: colors.danger,
+    zIndex: 1000,
+    ...shadows.lg,
+  },
+  criticalTitle: {
+    color: colors.white,
+    ...typography.label,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    lineHeight: 20,
+  },
+  emergencyButton: {
+    backgroundColor: colors.danger,
+    paddingVertical: spacing.md,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  emergencyButtonText: {
+    color: colors.white,
+    fontWeight: 'bold',
+    ...typography.bodyBold,
+    marginLeft: spacing.sm,
+  },
+
+  // ─── Panic Flash Overlay ───
+  panicFlash: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 9999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.danger,
+  },
+  panicText: {
+    color: colors.white,
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: 3,
+    textAlign: 'center',
+  },
+  panicSubText: {
+    color: 'rgba(255,255,255,0.8)',
+    ...typography.heading,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
 });
 
 export default styles;

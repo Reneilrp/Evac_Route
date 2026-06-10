@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { Plus, Minus, Footprints, Bike, Car } from 'lucide-react-native';
 import * as SecureStore from 'expo-secure-store';
 import api from '../services/api';
 import { useResidentStore } from '../context/useResidentStore';
+import PrimaryButton from '../components/PrimaryButton';
+import ChipSelector from '../components/ChipSelector';
+import { colors } from '../styles/theme';
 import styles from '../styles/ProfileSetupScreen.styles';
 
 export default function ProfileSetupScreen() {
@@ -17,6 +20,24 @@ export default function ProfileSetupScreen() {
   const [contact, setContact] = useState('');
   const [transportationMode, setTransportationMode] = useState('pedestrian');
   const [loading, setLoading] = useState(false);
+
+  const transportOptions = [
+    {
+      value: 'pedestrian',
+      label: 'Pedestrian',
+      icon: <Footprints size={18} color={transportationMode === 'pedestrian' ? colors.white : colors.textSecondary} />,
+    },
+    {
+      value: '2_wheel',
+      label: '2-Wheel',
+      icon: <Bike size={18} color={transportationMode === '2_wheel' ? colors.white : colors.textSecondary} />,
+    },
+    {
+      value: '4_wheel',
+      label: '4-Wheel',
+      icon: <Car size={18} color={transportationMode === '4_wheel' ? colors.white : colors.textSecondary} />,
+    },
+  ];
 
   const handleRegister = async () => {
     if (!name || !contact) {
@@ -47,7 +68,7 @@ export default function ProfileSetupScreen() {
       await login();
       setLoading(false);
 
-    } catch (error) {
+    } catch (_error) {
       alert('Registration failed. Please check your connection and try again.');
       setLoading(false);
     }
@@ -66,7 +87,7 @@ export default function ProfileSetupScreen() {
           <TextInput
             style={styles.input}
             placeholder="Juan Dela Cruz"
-            placeholderTextColor="#64748b"
+            placeholderTextColor={colors.textMuted}
             value={name}
             onChangeText={setName}
           />
@@ -77,7 +98,7 @@ export default function ProfileSetupScreen() {
           <TextInput
             style={styles.input}
             placeholder="09..."
-            placeholderTextColor="#64748b"
+            placeholderTextColor={colors.textMuted}
             keyboardType="phone-pad"
             value={contact}
             onChangeText={setContact}
@@ -89,74 +110,59 @@ export default function ProfileSetupScreen() {
           <TextInput
             style={styles.input}
             placeholder="e.g. Tetuan"
-            placeholderTextColor="#64748b"
+            placeholderTextColor={colors.textMuted}
             value={barangay}
             onChangeText={setBarangay}
           />
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Transportation Mode</Text>
-          <View style={styles.selectorContainer}>
-            <TouchableOpacity
-              style={[styles.selectorButton, transportationMode === 'pedestrian' && styles.selectorButtonActive]}
-              onPress={() => setTransportationMode('pedestrian')}
-            >
-              <Footprints size={24} color={transportationMode === 'pedestrian' ? '#fff' : '#94a3b8'} />
-              <Text style={[styles.selectorText, transportationMode === 'pedestrian' && styles.selectorTextActive]}>Pedestrian</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.selectorButton, transportationMode === '2_wheel' && styles.selectorButtonActive]}
-              onPress={() => setTransportationMode('2_wheel')}
-            >
-              <Bike size={24} color={transportationMode === '2_wheel' ? '#fff' : '#94a3b8'} />
-              <Text style={[styles.selectorText, transportationMode === '2_wheel' && styles.selectorTextActive]}>2-Wheel</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.selectorButton, transportationMode === '4_wheel' && styles.selectorButtonActive]}
-              onPress={() => setTransportationMode('4_wheel')}
-            >
-              <Car size={24} color={transportationMode === '4_wheel' ? '#fff' : '#94a3b8'} />
-              <Text style={[styles.selectorText, transportationMode === '4_wheel' && styles.selectorTextActive]}>4-Wheel</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.chipSection}>
+          <Text style={styles.chipLabel}>Transportation Mode</Text>
+          <ChipSelector
+            options={transportOptions}
+            value={transportationMode}
+            onChange={setTransportationMode}
+          />
         </View>
 
         <View style={styles.counterBox}>
           <Text style={styles.counterLabel}>Family Headcount</Text>
           <View style={styles.counterRow}>
-            <TouchableOpacity
-              style={styles.circleBtn}
+            <PrimaryButton
+              title=""
               onPress={() => setHeadcount(Math.max(1, headcount - 1))}
-            >
-              <Minus size={32} color="#fff" />
-            </TouchableOpacity>
+              variant="outline"
+              size="small"
+              icon={<Minus size={32} color={colors.white} />}
+              style={styles.circleBtn}
+              haptic={true}
+            />
 
             <Text style={styles.counterNumber}>{headcount}</Text>
 
-            <TouchableOpacity
-              style={[styles.circleBtn, { backgroundColor: '#2563eb' }]}
+            <PrimaryButton
+              title=""
               onPress={() => setHeadcount(headcount + 1)}
-            >
-              <Plus size={32} color="#fff" />
-            </TouchableOpacity>
+              variant="primary"
+              size="small"
+              icon={<Plus size={32} color={colors.white} />}
+              style={[styles.circleBtn, { backgroundColor: colors.primaryDark }]}
+              haptic={true}
+            />
           </View>
           <Text style={styles.helperText}>
             This ensures we reserve enough food and water for your exact family size.
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+        <PrimaryButton
+          title={loading ? 'GENERATING...' : 'REGISTER & GENERATE QR'}
           onPress={handleRegister}
+          loading={loading}
           disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'GENERATING...' : 'REGISTER & GENERATE QR'}
-          </Text>
-        </TouchableOpacity>
+          variant="primary"
+          size="large"
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
