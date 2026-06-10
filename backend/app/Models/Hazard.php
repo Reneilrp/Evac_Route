@@ -14,7 +14,7 @@ class Hazard extends Model
 
         // Automatically sync the POINT column for R-tree spatial indexing
         static::saving(function ($hazard) {
-            if ($hazard->latitude && $hazard->longitude) {
+            if (\DB::getDriverName() !== 'sqlite' && $hazard->latitude && $hazard->longitude) {
                 // For MySQL/MariaDB: POINT(longitude, latitude)
                 $hazard->location = \DB::raw("ST_GeomFromText('POINT({$hazard->longitude} {$hazard->latitude})')");
             }

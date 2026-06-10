@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\HazardCreated;
+use App\Events\HazardResolved;
 use App\Http\Controllers\Controller;
 use App\Models\Hazard;
 use Illuminate\Http\Request;
@@ -11,52 +13,55 @@ class HazardController extends Controller
     public function reportHazard(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
-            'radius_meters' => 'numeric',
-            'hazard_type' => 'required|in:flood,earthquake,maintenance',
+            'name'           => 'required|string',
+            'latitude'       => 'required|numeric',
+            'longitude'      => 'required|numeric',
+            'radius_meters'  => 'numeric',
+            'hazard_type'    => 'required|in:flood,earthquake,maintenance,debris',
             'severity_level' => 'required|in:low,medium,high',
+            'description'    => 'nullable|string|max:500',
+            'photo_path'     => 'nullable|string',
         ]);
 
         $hazard = Hazard::create([
-            'name' => $validated['name'],
-            'latitude' => $validated['latitude'],
-            'longitude' => $validated['longitude'],
-            'radius_meters' => $request->radius_meters ?? 50,
-            'hazard_type' => $validated['hazard_type'],
+            'name'           => $validated['name'],
+            'latitude'       => $validated['latitude'],
+            'longitude'      => $validated['longitude'],
+            'radius_meters'  => $request->radius_meters ?? 50,
+            'hazard_type'    => $validated['hazard_type'],
             'severity_level' => $validated['severity_level'],
-            'reported_by' => auth()->id(), // Assumes protected route
+            'reported_by'    => auth()->id(),
         ]);
 
-        return response()->json(['status' => 'success', 'data' => $hazard]);
+        // Broadcast real-time map update
+        broadcast(new HazardCreated($hazard));
+
+        return response()->json(['status' => 'success', 'data' => $hazard], 201);
     }
 
     public function getActiveHazards()
     {
-        // The frontend map will call this to know where NOT to route people
         $hazards = Hazard::where('is_active', true)->get();
 
         return response()->json([
             'status' => 'success',
-            'count' => $hazards->count(),
-            'data' => $hazards,
-        ], 200);
+            'count'  => $hazards->count(),
+            'data'   => $hazards,
+        ]);
     }
 
-    /**
-     * Mark a hazard as resolved.
-     * Route: PUT /api/hazards/{id}/resolve
-     */
     public function resolveHazard($id)
     {
         $hazard = Hazard::findOrFail($id);
         $hazard->update(['is_active' => false]);
 
+        // Broadcast real-time removal
+        broadcast(new HazardResolved((int) $id));
+
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'Hazard zone resolved successfully.',
-            'data' => $hazard,
-        ], 200);
+            'data'    => $hazard,
+        ]);
     }
 }

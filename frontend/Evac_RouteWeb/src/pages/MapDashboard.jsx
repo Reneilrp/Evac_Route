@@ -1,9 +1,10 @@
 import React from "react";
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/mapbox';
-import { MapPin, AlertTriangle, X, Info } from 'lucide-react';
+import { MapPin, AlertTriangle, X, Info, Layers } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
@@ -34,7 +35,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
 // --- Map Legend Component ---
 function MapLegend() {
   return (
-    <div className="absolute top-24 left-6 bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-gray-200 z-10 w-64">
+    <div className="absolute top-44 left-6 bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-gray-200 z-10 w-64">
       <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
         <Info size={14} /> Map Legend
       </h4>
@@ -261,6 +262,7 @@ function HazardFormModal({ location, onConfirm, onCancel, isLoading }) {
 
 // --- Shelter Edit Modal ---
 function ShelterEditModal({ shelter, onUpdate, onDelete, onCancel, isLoading }) {
+  const { user } = useAuth();
   const [name, setName] = useState(shelter.name);
   const [cap, setCap] = useState(shelter.max_capacity);
   const [status, setStatus] = useState(shelter.status);
@@ -317,17 +319,23 @@ function ShelterEditModal({ shelter, onUpdate, onDelete, onCancel, isLoading }) 
             </div>
           </div>
           <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm(`Are you sure you want to delete ${shelter.name}?`)) {
-                  onDelete();
-                }
-              }}
-              className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2.5 rounded-lg font-semibold text-sm transition"
-            >
-              Delete
-            </button>
+            {user?.role === 'admin' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm(`Are you sure you want to delete ${shelter.name}?`)) {
+                    onDelete();
+                  }
+                }}
+                className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2.5 rounded-lg font-semibold text-sm transition"
+              >
+                Delete
+              </button>
+            ) : (
+              <div className="text-xs text-gray-400 font-semibold flex items-center bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-200">
+                Staff Cannot Delete
+              </div>
+            )}
             <div className="flex-1 flex gap-2 justify-end">
               <button
                 type="button"
@@ -395,9 +403,18 @@ function HazardDetailModal({ hazard, onResolve, onCancel, isLoading }) {
 }
 
 // --- Memoized Map Viewer to prevent dragging/panning from re-rendering the parent dashboard ---
+const BARANGAY_COORDS = {
+  'Tetuan': [122.0886, 6.9192],
+  'Baliwasan': [122.0571, 6.9150],
+  'Tugbungan': [122.0975, 6.9231],
+  'San Jose': [122.0673, 6.9118],
+  'Santa Maria': [122.0789, 6.9322]
+};
+
 const MapViewer = React.memo(({ 
   shelters, 
   hazards, 
+  demographics = [],
   pinMode, 
   pendingLocation, 
   showShelterForm, 
@@ -412,6 +429,25 @@ const MapViewer = React.memo(({
     latitude: 6.9126,
     zoom: 13
   });
+
+  const [showWeather, setShowWeather] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [weatherTimestamp, setWeatherTimestamp] = useState(null);
+
+  // Fetch latest RainViewer timestamp dynamically when weather overlay is enabled
+  useEffect(() => {
+    if (showWeather) {
+      fetch('https://api.rainviewer.com/public/weather-maps.json')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.radar && data.radar.past && data.radar.past.length > 0) {
+            const latest = data.radar.past[data.radar.past.length - 1];
+            setWeatherTimestamp(latest.time);
+          }
+        })
+        .catch(err => console.error("Failed to load RainViewer weather maps json:", err));
+    }
+  }, [showWeather]);
 
   // Transform hazards into GeoJSON Polygons for accurate area representation
   const hazardsGeoJSON = useMemo(() => {
@@ -436,6 +472,69 @@ const MapViewer = React.memo(({
     };
   }, [hazards]);
 
+  // Transform checked-in evacuee demographics into GeoJSON Points for Heatmap layer
+  const demographicsGeoJSON = useMemo(() => {
+    const features = demographics.map(d => {
+      const coords = BARANGAY_COORDS[d.barangay];
+      if (!coords) return null;
+      return {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: coords
+        },
+        properties: {
+          barangay: d.barangay,
+          total_evacuees: parseInt(d.total_evacuees, 10) || 0
+        }
+      };
+    }).filter(Boolean);
+
+    return {
+      type: 'FeatureCollection',
+      features
+    };
+  }, [demographics]);
+
+  // Heatmap configuration paint properties
+  const heatmapLayerPaint = {
+    'heatmap-weight': [
+      'interpolate',
+      ['linear'],
+      ['get', 'total_evacuees'],
+      0, 0,
+      10, 0.4,
+      50, 0.7,
+      150, 1.0
+    ],
+    'heatmap-intensity': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      11, 1,
+      15, 3
+    ],
+    'heatmap-color': [
+      'interpolate',
+      ['linear'],
+      ['heatmap-density'],
+      0, 'rgba(0, 230, 240, 0)',
+      0.2, 'rgba(0, 128, 255, 0.3)',
+      0.4, 'rgba(0, 255, 128, 0.5)',
+      0.6, 'rgba(255, 255, 0, 0.6)',
+      0.8, 'rgba(255, 128, 0, 0.8)',
+      1.0, 'rgba(235, 50, 50, 0.9)'
+    ],
+    'heatmap-radius': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      11, 20,
+      15, 65
+    ],
+    'heatmap-opacity': 0.75
+  };
+
   return (
     <div className="w-full h-full relative">
       <Map
@@ -449,7 +548,61 @@ const MapViewer = React.memo(({
       >
         <NavigationControl position="top-right" />
 
+        {/* Floating Layer Controls Panel */}
+        <div className="absolute top-6 left-6 bg-white/95 backdrop-blur-md p-4 rounded-xl shadow-xl border border-gray-200 z-10 w-64 space-y-3">
+          <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-1.5 border-b border-gray-100 pb-2">
+            <Layers size={14} className="text-blue-500" /> Operational Overlays
+          </h4>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2.5 text-xs font-bold text-gray-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showHeatmap}
+                onChange={e => setShowHeatmap(e.target.checked)}
+                className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+              />
+              GIS Evacuee Density Heatmap
+            </label>
+            <label className="flex items-center gap-2.5 text-xs font-bold text-gray-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showWeather}
+                onChange={e => setShowWeather(e.target.checked)}
+                className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+              />
+              Live Weather Radar Overlay
+            </label>
+          </div>
+        </div>
+
         <MapLegend />
+
+        {/* --- GIS Population Heatmap Source and Layer --- */}
+        {showHeatmap && demographicsGeoJSON.features.length > 0 && (
+          <Source id="heatmap-source" type="geojson" data={demographicsGeoJSON}>
+            <Layer
+              id="evacuee-heatmap-layer"
+              type="heatmap"
+              paint={heatmapLayerPaint}
+            />
+          </Source>
+        )}
+
+        {/* --- Live RainViewer Weather Radar Overlay --- */}
+        {showWeather && weatherTimestamp && (
+          <Source
+            id="weather-radar-source"
+            type="raster"
+            tiles={[`https://tilecache.rainviewer.com/v2/radar/${weatherTimestamp}/256/{z}/{x}/{y}/2/1_1.png`]}
+            tileSize={256}
+          >
+            <Layer
+              id="weather-radar-layer"
+              type="raster"
+              paint={{ 'raster-opacity': 0.55 }}
+            />
+          </Source>
+        )}
 
         {/* --- Advanced Hazard Layers --- */}
         <Source id="hazards-source" type="geojson" data={hazardsGeoJSON}>
@@ -589,6 +742,7 @@ export default function MapDashboard() {
 
   const shelters = mapDashboardData?.shelters || [];
   const hazards = mapDashboardData?.hazards || [];
+  const demographics = mapDashboardData?.demographics || [];
 
   // Mutations for adding data
   const addShelterMutation = useMutation({
@@ -749,6 +903,7 @@ export default function MapDashboard() {
         <MapViewer
           shelters={shelters}
           hazards={hazards}
+          demographics={demographics}
           pinMode={pinMode}
           pendingLocation={pendingLocation}
           showShelterForm={showShelterForm}

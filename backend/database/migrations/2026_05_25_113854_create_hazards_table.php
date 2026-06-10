@@ -19,7 +19,9 @@ return new class extends Migration
 
             // Add a true spatial column and index for R-tree geographic bounding box lookups
             // Note: POINT type is required for SPATIAL INDEX in MySQL/PostgreSQL
-            $table->point('location')->nullable()->spatialIndex();
+            if (\Illuminate\Support\Facades\DB::getDriverName() !== 'sqlite') {
+                $table->point('location')->nullable()->spatialIndex();
+            }
 
             $table->decimal('radius_meters', 8, 2)->default(50); // How big the flood is
             $table->boolean('is_active')->default(true);
