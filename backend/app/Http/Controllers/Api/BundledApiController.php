@@ -116,4 +116,25 @@ class BundledApiController extends Controller
             'templates' => $templates,
         ], 200);
     }
+
+    /**
+     * Consolidate shelters and active/all ration templates for shelter management.
+     */
+    public function getSheltersDashboard(Request $request)
+    {
+        // 1. All shelters
+        $shelters = Shelter::orderBy('status')->orderBy('name')->get();
+
+        // 2. All ration templates with their item definitions
+        $templates = RationTemplate::with('items.inventoryItem')
+            ->orderBy('is_active', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'shelters' => $shelters,
+            'templates' => $templates,
+        ], 200);
+    }
 }

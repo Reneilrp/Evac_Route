@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
-import { Bell, ShieldAlert, CheckCircle, TrendingUp, AlertCircle } from 'lucide-react';
+import { Bell, ShieldAlert, CheckCircle, TrendingUp, AlertCircle, LayoutDashboard, Map, Building2, Package, ClipboardCheck, FileText, Flag, Users, LogOut } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import RoleGuard from './components/common/RoleGuard';
@@ -33,9 +33,31 @@ function NavLink({ to, children }) {
   );
 }
 
+function IconNavLink({ to, icon, label, badge = 0 }) {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+  return (
+    <Link
+      to={to}
+      title={label}
+      className={`flex justify-center items-center relative p-2 rounded-lg transition duration-200 ${
+        isActive ? 'bg-blue-600 text-white' : 'hover:bg-gray-800 text-gray-400 hover:text-white'
+      }`}
+    >
+      {icon}
+      {badge > 0 && (
+        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black rounded-full h-4 w-4 flex items-center justify-center animate-pulse">
+          {badge}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 function DashboardLayout({ children }) {
   const { logout } = useAuth();
   const location = useLocation();
+  const isMapRoute = location.pathname === '/admin/map';
   
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -58,7 +80,10 @@ function DashboardLayout({ children }) {
   // Reset badge count when staff visits the incidents queue
   useEffect(() => {
     if (location.pathname === '/admin/incidents') {
-      setPendingIncidentCount(0);
+      const timer = setTimeout(() => {
+        setPendingIncidentCount(0);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [location.pathname]);
 
@@ -224,50 +249,97 @@ function DashboardLayout({ children }) {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-900 text-white flex flex-col z-20 shadow-xl">
-        <div className="p-4 border-b border-gray-800">
-          <h1 className="text-xl font-black tracking-wider text-blue-400">Evac_Route</h1>
-          <p className="text-xs text-gray-400 mt-1 uppercase font-bold tracking-widest">LGU Command Center</p>
+      <aside className={`${isMapRoute ? 'w-16' : 'w-64'} bg-gray-900 text-white flex flex-col z-20 shadow-xl transition-all duration-300`}>
+        <div className={`border-b border-gray-800 flex items-center justify-center ${isMapRoute ? 'p-3' : 'p-4'}`}>
+          {isMapRoute ? (
+            <span className="text-blue-400 font-black text-lg" title="Evac_Route">E</span>
+          ) : (
+            <div>
+              <h1 className="text-xl font-black tracking-wider text-blue-400">Evac_Route</h1>
+              <p className="text-xs text-gray-400 mt-1 uppercase font-bold tracking-widest">LGU Command Center</p>
+            </div>
+          )}
         </div>
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 mt-2 px-4">Command</p>
-          <NavLink to="/admin/dashboard">Dashboard Overview</NavLink>
-          <NavLink to="/admin/map">Live Map View</NavLink>
-          
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 mt-6 px-4">Management</p>
-          <NavLink to="/admin/shelters">Shelters & Capacities</NavLink>
-          <NavLink to="/admin/inventory">Inventory & Relief</NavLink>
-          <NavLink to="/admin/relief-desk">Relief Claims Desk</NavLink>
-          
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 mt-6 px-4">Administration</p>
-          <NavLink to="/admin/reports">Evacuation Logs</NavLink>
-          <NavLink to="/admin/incidents">
-             <div className="flex justify-between items-center w-full">
-                <span>Incident Reports</span>
-                {pendingIncidentCount > 0 && (
-                  <span className="bg-red-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full animate-pulse">
-                    {pendingIncidentCount}
-                  </span>
-                )}
-             </div>
-          </NavLink>
+        <nav className={`flex-1 ${isMapRoute ? 'p-2' : 'p-4'} space-y-1 overflow-y-auto`}>
+          {!isMapRoute && <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 mt-2 px-4">Command</p>}
+          {isMapRoute ? (
+            <IconNavLink to="/admin/dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard Overview" />
+          ) : (
+            <NavLink to="/admin/dashboard">Dashboard Overview</NavLink>
+          )}
+          {isMapRoute ? (
+            <IconNavLink to="/admin/map" icon={<Map size={20} />} label="Live Map View" />
+          ) : (
+            <NavLink to="/admin/map">Live Map View</NavLink>
+          )}
+          {!isMapRoute && <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 mt-6 px-4">Management</p>}
+          {isMapRoute ? (
+            <IconNavLink to="/admin/shelters" icon={<Building2 size={20} />} label="Shelters & Capacities" />
+          ) : (
+            <NavLink to="/admin/shelters">Shelters &amp; Capacities</NavLink>
+          )}
+          {isMapRoute ? (
+            <IconNavLink to="/admin/inventory" icon={<Package size={20} />} label="Inventory & Relief" />
+          ) : (
+            <NavLink to="/admin/inventory">Inventory &amp; Relief</NavLink>
+          )}
+          {isMapRoute ? (
+            <IconNavLink to="/admin/relief-desk" icon={<ClipboardCheck size={20} />} label="Relief Claims Desk" />
+          ) : (
+            <NavLink to="/admin/relief-desk">Relief Claims Desk</NavLink>
+          )}
+          {!isMapRoute && <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 mt-6 px-4">Administration</p>}
+          {isMapRoute ? (
+            <IconNavLink to="/admin/reports" icon={<FileText size={20} />} label="Evacuation Logs" />
+          ) : (
+            <NavLink to="/admin/reports">Evacuation Logs</NavLink>
+          )}
+          {isMapRoute ? (
+            <IconNavLink to="/admin/incidents" icon={<Flag size={20} />} label="Incident Reports" badge={pendingIncidentCount} />
+          ) : (
+            <NavLink to="/admin/incidents">
+               <div className="flex justify-between items-center w-full">
+                  <span>Incident Reports</span>
+                  {pendingIncidentCount > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full animate-pulse">
+                      {pendingIncidentCount}
+                    </span>
+                  )}
+               </div>
+            </NavLink>
+          )}
           <RoleGuard allowedRoles={['admin']}>
-            <NavLink to="/admin/staff">Staff Operators</NavLink>
+            {isMapRoute ? (
+              <IconNavLink to="/admin/staff" icon={<Users size={20} />} label="Staff Operators" />
+            ) : (
+              <NavLink to="/admin/staff">Staff Operators</NavLink>
+            )}
           </RoleGuard>
         </nav>
-        <div className="p-4 border-t border-gray-800 bg-gray-950/20">
-           <button
-             onClick={logout}
-             className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2.5 rounded-lg transition font-bold text-sm tracking-wide"
-           >
-             Logout
-           </button>
+        <div className={`border-t border-gray-800 bg-gray-950/20 ${isMapRoute ? 'p-2' : 'p-4'}`}>
+          {isMapRoute ? (
+            <button
+              onClick={logout}
+              title="Logout"
+              className="w-full flex justify-center items-center p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition"
+            >
+              <LogOut size={18} />
+            </button>
+          ) : (
+            <button
+              onClick={logout}
+              className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2.5 rounded-lg transition font-bold text-sm tracking-wide"
+            >
+              Logout
+            </button>
+          )}
         </div>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Header */}
+        {/* Top Header - hidden on map route for max screen real estate */}
+        {!isMapRoute && (
         <header className="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-6 shadow-sm z-30 relative">
            <div className="flex items-center gap-2">
               <span className="flex h-2 w-2 relative">
@@ -344,6 +416,7 @@ function DashboardLayout({ children }) {
              )}
            </div>
         </header>
+        )}
 
         <div className="flex-1 overflow-hidden relative">
           {children}

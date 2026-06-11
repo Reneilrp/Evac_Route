@@ -177,5 +177,54 @@ class DatabaseSeeder extends Seeder
             'recorded_headcount' => 5,
             'ration_claimed' => true,
         ]);
+
+        // 7. Seed Road Nodes
+        $nodes = [
+            ['id' => 1, 'lat' => 6.9150, 'lng' => 122.0850, 'label' => 'User Home 1 (Tetuan residential)'],
+            ['id' => 2, 'lat' => 6.9170, 'lng' => 122.0850, 'label' => 'Intersection A (Tetuan Main Rd)'],
+            ['id' => 3, 'lat' => 6.9185, 'lng' => 122.0882, 'label' => 'Shelter 1 (Tetuan Covered Court)'],
+            ['id' => 4, 'lat' => 6.9250, 'lng' => 122.0900, 'label' => 'Intersection C (Tugbungan Road)'],
+            ['id' => 5, 'lat' => 6.9312, 'lng' => 122.0954, 'label' => 'Shelter 3 (Tugbungan Elementary School)'],
+            ['id' => 6, 'lat' => 6.9120, 'lng' => 122.0650, 'label' => 'Intersection D (Baliwasan crossroads)'],
+            ['id' => 7, 'lat' => 6.9126, 'lng' => 122.0573, 'label' => 'Shelter 2 (Baliwasan Gym)'],
+            ['id' => 8, 'lat' => 6.9170, 'lng' => 122.0870, 'label' => 'Intermediary road node near hazard'],
+            ['id' => 9, 'lat' => 6.9160, 'lng' => 122.0890, 'label' => 'Alternative bypass route node'],
+        ];
+
+        foreach ($nodes as $node) {
+            \App\Models\RoadNode::create($node);
+        }
+
+        // 8. Seed Road Edges (bi-directional as per offline mobile graph logic)
+        $edges = [
+            ['source_node_id' => 1, 'target_node_id' => 2, 'distance_meters' => 220.00, 'geometry' => [[122.0850, 6.9150], [122.0850, 6.9170]]],
+            ['source_node_id' => 2, 'target_node_id' => 8, 'distance_meters' => 220.00, 'geometry' => [[122.0850, 6.9170], [122.0870, 6.9170]]],
+            ['source_node_id' => 8, 'target_node_id' => 3, 'distance_meters' => 200.00, 'geometry' => [[122.0870, 6.9170], [122.0882, 6.9185]]],
+            ['source_node_id' => 1, 'target_node_id' => 9, 'distance_meters' => 450.00, 'geometry' => [[122.0850, 6.9150], [122.0870, 6.9155], [122.0890, 6.9160]]],
+            ['source_node_id' => 9, 'target_node_id' => 3, 'distance_meters' => 280.00, 'geometry' => [[122.0890, 6.9160], [122.0882, 6.9185]]],
+            ['source_node_id' => 2, 'target_node_id' => 4, 'distance_meters' => 1000.00, 'geometry' => [[122.0850, 6.9170], [122.0880, 6.9210], [122.0900, 6.9250]]],
+            ['source_node_id' => 4, 'target_node_id' => 5, 'distance_meters' => 900.00, 'geometry' => [[122.0900, 6.9250], [122.0920, 6.9280], [122.0954, 6.9312]]],
+            ['source_node_id' => 1, 'target_node_id' => 6, 'distance_meters' => 2200.00, 'geometry' => [[122.0850, 6.9150], [122.0750, 6.9130], [122.0650, 6.9120]]],
+            ['source_node_id' => 6, 'target_node_id' => 7, 'distance_meters' => 800.00, 'geometry' => [[122.0650, 6.9120], [122.0600, 6.9123], [122.0573, 6.9126]]],
+        ];
+
+        foreach ($edges as $edge) {
+            // Forward edge
+            \App\Models\RoadEdge::create([
+                'source_node_id' => $edge['source_node_id'],
+                'target_node_id' => $edge['target_node_id'],
+                'distance_meters' => $edge['distance_meters'],
+                'geometry' => $edge['geometry'],
+                'status' => 'open',
+            ]);
+            // Reverse edge
+            \App\Models\RoadEdge::create([
+                'source_node_id' => $edge['target_node_id'],
+                'target_node_id' => $edge['source_node_id'],
+                'distance_meters' => $edge['distance_meters'],
+                'geometry' => array_reverse($edge['geometry']),
+                'status' => 'open',
+            ]);
+        }
     }
 }

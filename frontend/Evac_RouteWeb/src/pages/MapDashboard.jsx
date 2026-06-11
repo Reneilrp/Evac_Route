@@ -1,7 +1,11 @@
 import React from "react";
 import { useState, useMemo, useEffect } from 'react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/mapbox';
-import { MapPin, AlertTriangle, X, Info, Layers } from 'lucide-react';
+import {
+  MapPin, AlertTriangle, X, Cloud, Flame, Zap,
+  ChevronRight, ChevronLeft, Moon, Satellite, Mountain,
+  TriangleAlert, Droplets, Waves, Shield, SlidersHorizontal
+} from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -32,50 +36,74 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
   };
 }
 
-// --- Map Legend Component ---
-function MapLegend() {
+// --- Toolbar Toggle Button ---
+function ToolbarBtn({ active, onClick, icon, label, color = 'blue', disabled = false }) {
+  const colorMap = {
+    blue:   { active: 'bg-blue-600 text-white shadow-blue-500/40', hover: 'hover:bg-white/20 text-white/70 hover:text-white' },
+    red:    { active: 'bg-red-600 text-white shadow-red-500/40', hover: 'hover:bg-white/20 text-white/70 hover:text-white' },
+    amber:  { active: 'bg-amber-500 text-white shadow-amber-400/40', hover: 'hover:bg-white/20 text-white/70 hover:text-white' },
+    green:  { active: 'bg-green-600 text-white shadow-green-500/40', hover: 'hover:bg-white/20 text-white/70 hover:text-white' },
+    purple: { active: 'bg-purple-600 text-white shadow-purple-500/40', hover: 'hover:bg-white/20 text-white/70 hover:text-white' },
+  };
+  const c = colorMap[color] || colorMap.blue;
   return (
-    <div className="absolute top-44 left-6 bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-gray-200 z-10 w-64">
-      <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-        <Info size={14} /> Map Legend
-      </h4>
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white shadow-sm" />
-          <span className="text-xs font-bold text-gray-700">Open Shelter</span>
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 select-none ${
+        active ? `${c.active} shadow-lg` : c.hover
+      } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+    >
+      {icon}
+      <span className="hidden sm:inline">{label}</span>
+    </button>
+  );
+}
+
+// --- Floating Map Legend (minimal, bottom-right) ---
+function MapLegend({ simulationMode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="absolute bottom-20 right-4 z-10">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="bg-gray-900/90 backdrop-blur-md border border-white/10 text-white/60 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg transition"
+      >
+        {open ? 'Hide Legend' : 'Map Legend'}
+      </button>
+      {open && (
+        <div className="absolute bottom-full right-0 mb-2 bg-gray-900/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-white/10 w-56">
+          <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-3">Shelters</p>
+          <div className="space-y-2 mb-3">
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded-full bg-green-400 shadow-green-400/60 shadow" /><span className="text-xs text-white/80">Open Shelter</span></div>
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded-full bg-red-400 shadow-red-400/60 shadow" /><span className="text-xs text-white/80">Full / Closed</span></div>
+          </div>
+          <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-3">Hazard Zones</p>
+          <div className="space-y-2 mb-3">
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-blue-600/50 border border-blue-400" /><span className="text-xs text-white/80">Flood — Low</span></div>
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-blue-800/60 border border-amber-400" /><span className="text-xs text-white/80">Flood — Medium</span></div>
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-red-700/60 border border-white/30" /><span className="text-xs text-white/80">Flood — High</span></div>
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-red-950/80 border-2 border-red-500" /><span className="text-xs text-white/80 font-bold">Earthquake — Block</span></div>
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-orange-600/50 border border-white/20" /><span className="text-xs text-white/80">Road Maintenance</span></div>
+          </div>
+          {simulationMode && (
+            <>
+              <p className="text-[10px] font-black text-amber-400/80 uppercase tracking-widest mb-2">Simulation Roads</p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2.5"><div className="w-6 h-0.5 bg-green-400" /><span className="text-xs text-white/80">Viable Route</span></div>
+                <div className="flex items-center gap-2.5"><div className="w-6 h-0.5 bg-amber-400" /><span className="text-xs text-white/80">Caution Zone</span></div>
+                <div className="flex items-center gap-2.5"><div className="w-6 h-0.5 bg-red-500 border-dashed" /><span className="text-xs text-white/80">Risk — Avoid</span></div>
+              </div>
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white shadow-sm" />
-          <span className="text-xs font-bold text-gray-700">Full/Closed Shelter</span>
-        </div>
-        <hr className="border-gray-200" />
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Hazard Zones</p>
-        <div className="flex items-center gap-3">
-          <div className="w-4 h-4 rounded bg-[#00509e]/30 border border-[#00509e]" />
-          <span className="text-xs text-gray-600">Flood (Low Severity)</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-4 h-4 rounded bg-[#1d4ed8]/40 border border-[#f59e0b]" />
-          <span className="text-xs text-gray-600">Flood (Medium + Amber)</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-4 h-4 rounded bg-[#d90429]/50 border border-white" />
-          <span className="text-xs text-gray-600">Flood (Critical/High)</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-4 h-4 rounded bg-[#7f1d1d]/60 border-2 border-[#ef4444]" />
-          <span className="text-xs text-gray-600 font-bold">Earthquake (No Pass)</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-4 h-4 rounded bg-[#f77f00]/50 border border-white" />
-          <span className="text-xs text-gray-600">Road Maintenance</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
-// ... (previous modals remain unchanged) ...
+
 
 // --- Shelter Form Modal ---
 function ShelterFormModal({ location, onConfirm, onCancel, isLoading }) {
@@ -402,7 +430,7 @@ function HazardDetailModal({ hazard, onResolve, onCancel, isLoading }) {
   );
 }
 
-// --- Memoized Map Viewer to prevent dragging/panning from re-rendering the parent dashboard ---
+// --- Memoized Map Viewer ---
 const BARANGAY_COORDS = {
   'Tetuan': [122.0886, 6.9192],
   'Baliwasan': [122.0571, 6.9150],
@@ -411,127 +439,108 @@ const BARANGAY_COORDS = {
   'Santa Maria': [122.0789, 6.9322]
 };
 
-const MapViewer = React.memo(({ 
-  shelters, 
-  hazards, 
+
+// Derive a mock road-risk GeoJSON from hazards (until backend bbox road endpoint lands)
+function buildSimulationRoadGeoJSON(hazards, scenario) {
+  if (!scenario || hazards.length === 0) return { type: 'FeatureCollection', features: [] };
+  // Represent each hazard centroid as a tiny "blocked road" line for visual demo
+  const features = hazards
+    .filter(h => {
+      if (scenario === 'rain') return h.hazard_type === 'flood';
+      if (scenario === 'tremors') return h.hazard_type === 'earthquake';
+      return true;
+    })
+    .map(h => {
+      const lng = parseFloat(h.longitude);
+      const lat = parseFloat(h.latitude);
+      const offset = 0.002;
+      return {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [lng - offset, lat],
+            [lng + offset, lat]
+          ]
+        },
+        properties: {
+          risk: h.severity_level === 'high' ? 'high' : h.severity_level === 'medium' ? 'medium' : 'low',
+          name: h.name
+        }
+      };
+    });
+  return { type: 'FeatureCollection', features };
+}
+
+const MAP_STYLES = {
+  dark:      { id: 'dark',      label: 'Dark',      icon: <Moon size={13} />,      url: 'mapbox://styles/mapbox/dark-v11' },
+  satellite: { id: 'satellite', label: 'Satellite', icon: <Satellite size={13} />, url: 'mapbox://styles/mapbox/satellite-streets-v12' },
+  terrain:   { id: 'terrain',   label: 'Terrain',   icon: <Mountain size={13} />,  url: 'mapbox://styles/mapbox/outdoors-v12' },
+};
+
+const MapViewer = React.memo(({
+  shelters,
+  hazards,
   demographics = [],
-  pinMode, 
-  pendingLocation, 
-  showShelterForm, 
-  showHazardForm, 
-  handleMapClick, 
-  setSelectedShelter, 
+  pinMode,
+  pendingLocation,
+  showShelterForm,
+  showHazardForm,
+  handleMapClick,
+  setSelectedShelter,
   setSelectedHazard,
-  MAPBOX_TOKEN
+  MAPBOX_TOKEN,
+  showWeather,
+  showHeatmap,
+  mapStyle,
+  simulationMode,
 }) => {
   const [viewState, setViewState] = useState({
-    longitude: 122.0729, // Default Zamboanga City coords
+    longitude: 122.0729,
     latitude: 6.9126,
     zoom: 13
   });
-
-  const [showWeather, setShowWeather] = useState(false);
-  const [showHeatmap, setShowHeatmap] = useState(true);
   const [weatherTimestamp, setWeatherTimestamp] = useState(null);
 
-  // Fetch latest RainViewer timestamp dynamically when weather overlay is enabled
   useEffect(() => {
     if (showWeather) {
       fetch('https://api.rainviewer.com/public/weather-maps.json')
         .then(res => res.json())
         .then(data => {
-          if (data && data.radar && data.radar.past && data.radar.past.length > 0) {
-            const latest = data.radar.past[data.radar.past.length - 1];
-            setWeatherTimestamp(latest.time);
+          if (data?.radar?.past?.length > 0) {
+            setWeatherTimestamp(data.radar.past[data.radar.past.length - 1].time);
           }
         })
-        .catch(err => console.error("Failed to load RainViewer weather maps json:", err));
+        .catch(err => console.error('RainViewer fetch failed:', err));
     }
   }, [showWeather]);
 
-  // Transform hazards into GeoJSON Polygons for accurate area representation
-  const hazardsGeoJSON = useMemo(() => {
-    return {
-      type: 'FeatureCollection',
-      features: hazards.map(h => {
-        const poly = createCirclePolygon(
-          [parseFloat(h.longitude), parseFloat(h.latitude)], 
-          parseFloat(h.radius_meters || 50)
-        );
-        return {
-          ...poly,
-          properties: {
-            id: h.id,
-            name: h.name,
-            hazard_type: h.hazard_type,
-            severity_level: h.severity_level,
-            radius: h.radius_meters
-          }
-        };
-      })
-    };
-  }, [hazards]);
+  const hazardsGeoJSON = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: hazards.map(h => ({
+      ...createCirclePolygon([parseFloat(h.longitude), parseFloat(h.latitude)], parseFloat(h.radius_meters || 50)),
+      properties: { id: h.id, name: h.name, hazard_type: h.hazard_type, severity_level: h.severity_level, radius: h.radius_meters }
+    }))
+  }), [hazards]);
 
-  // Transform checked-in evacuee demographics into GeoJSON Points for Heatmap layer
-  const demographicsGeoJSON = useMemo(() => {
-    const features = demographics.map(d => {
+  const demographicsGeoJSON = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: demographics.map(d => {
       const coords = BARANGAY_COORDS[d.barangay];
       if (!coords) return null;
-      return {
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: coords
-        },
-        properties: {
-          barangay: d.barangay,
-          total_evacuees: parseInt(d.total_evacuees, 10) || 0
-        }
-      };
-    }).filter(Boolean);
+      return { type: 'Feature', geometry: { type: 'Point', coordinates: coords }, properties: { total_evacuees: parseInt(d.total_evacuees, 10) || 0 } };
+    }).filter(Boolean)
+  }), [demographics]);
 
-    return {
-      type: 'FeatureCollection',
-      features
-    };
-  }, [demographics]);
+  const simulationRoadsGeoJSON = useMemo(() => buildSimulationRoadGeoJSON(hazards, simulationMode), [hazards, simulationMode]);
 
-  // Heatmap configuration paint properties
   const heatmapLayerPaint = {
-    'heatmap-weight': [
-      'interpolate',
-      ['linear'],
-      ['get', 'total_evacuees'],
-      0, 0,
-      10, 0.4,
-      50, 0.7,
-      150, 1.0
-    ],
-    'heatmap-intensity': [
-      'interpolate',
-      ['linear'],
-      ['zoom'],
-      11, 1,
-      15, 3
-    ],
-    'heatmap-color': [
-      'interpolate',
-      ['linear'],
-      ['heatmap-density'],
-      0, 'rgba(0, 230, 240, 0)',
-      0.2, 'rgba(0, 128, 255, 0.3)',
-      0.4, 'rgba(0, 255, 128, 0.5)',
-      0.6, 'rgba(255, 255, 0, 0.6)',
-      0.8, 'rgba(255, 128, 0, 0.8)',
-      1.0, 'rgba(235, 50, 50, 0.9)'
-    ],
-    'heatmap-radius': [
-      'interpolate',
-      ['linear'],
-      ['zoom'],
-      11, 20,
-      15, 65
-    ],
+    'heatmap-weight': ['interpolate', ['linear'], ['get', 'total_evacuees'], 0, 0, 10, 0.4, 50, 0.7, 150, 1.0],
+    'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 11, 1, 15, 3],
+    'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'],
+      0, 'rgba(0,230,240,0)', 0.2, 'rgba(0,128,255,0.3)', 0.4, 'rgba(0,255,128,0.5)',
+      0.6, 'rgba(255,255,0,0.6)', 0.8, 'rgba(255,128,0,0.8)', 1.0, 'rgba(235,50,50,0.9)'],
+    'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 11, 20, 15, 65],
     'heatmap-opacity': 0.75
   };
 
@@ -541,261 +550,216 @@ const MapViewer = React.memo(({
         {...viewState}
         onMove={evt => setViewState(evt.viewState)}
         onClick={handleMapClick}
-        mapStyle="mapbox://styles/mapbox/dark-v11"
+        mapStyle={MAP_STYLES[mapStyle].url}
         mapboxAccessToken={MAPBOX_TOKEN}
         style={{ width: '100%', height: '100%' }}
         cursor={pinMode ? 'crosshair' : 'grab'}
       >
-        <NavigationControl position="top-right" />
+        <NavigationControl position="top-right" showCompass showZoom />
 
-        {/* Floating Layer Controls Panel */}
-        <div className="absolute top-6 left-6 bg-white/95 backdrop-blur-md p-4 rounded-xl shadow-xl border border-gray-200 z-10 w-64 space-y-3">
-          <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-1.5 border-b border-gray-100 pb-2">
-            <Layers size={14} className="text-blue-500" /> Operational Overlays
-          </h4>
-          <div className="space-y-2">
-            <label className="flex items-center gap-2.5 text-xs font-bold text-gray-700 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={showHeatmap}
-                onChange={e => setShowHeatmap(e.target.checked)}
-                className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
-              />
-              GIS Evacuee Density Heatmap
-            </label>
-            <label className="flex items-center gap-2.5 text-xs font-bold text-gray-700 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={showWeather}
-                onChange={e => setShowWeather(e.target.checked)}
-                className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
-              />
-              Live Weather Radar Overlay
-            </label>
-          </div>
-        </div>
-
-        <MapLegend />
-
-        {/* --- GIS Population Heatmap Source and Layer --- */}
+        {/* GIS Population Heatmap */}
         {showHeatmap && demographicsGeoJSON.features.length > 0 && (
           <Source id="heatmap-source" type="geojson" data={demographicsGeoJSON}>
-            <Layer
-              id="evacuee-heatmap-layer"
-              type="heatmap"
-              paint={heatmapLayerPaint}
-            />
+            <Layer id="evacuee-heatmap-layer" type="heatmap" paint={heatmapLayerPaint} />
           </Source>
         )}
 
-        {/* --- Live RainViewer Weather Radar Overlay --- */}
+        {/* Live RainViewer Radar */}
         {showWeather && weatherTimestamp && (
-          <Source
-            id="weather-radar-source"
-            type="raster"
-            tiles={[`https://tilecache.rainviewer.com/v2/radar/${weatherTimestamp}/256/{z}/{x}/{y}/2/1_1.png`]}
-            tileSize={256}
-          >
-            <Layer
-              id="weather-radar-layer"
-              type="raster"
-              paint={{ 'raster-opacity': 0.55 }}
-            />
+          <Source id="weather-radar-source" type="raster" tiles={[`https://tilecache.rainviewer.com/v2/radar/${weatherTimestamp}/256/{z}/{x}/{y}/2/1_1.png`]} tileSize={256}>
+            <Layer id="weather-radar-layer" type="raster" paint={{ 'raster-opacity': 0.55 }} />
           </Source>
         )}
 
-        {/* --- Advanced Hazard Layers --- */}
+        {/* Hazard Zone Polygons */}
         <Source id="hazards-source" type="geojson" data={hazardsGeoJSON}>
-          {/* Fill Layer with contextual color hierarchy */}
-          <Layer
-            id="hazards-fill"
-            type="fill"
-            paint={{
-              'fill-color': [
-                'match',
-                ['get', 'hazard_type'],
-                'flood', [
-                  'match',
-                  ['get', 'severity_level'],
-                  'low', '#00509e',
-                  'medium', '#1d4ed8',
-                  'high', '#d90429',
-                  '#00509e'
-                ],
-                'earthquake', '#7f1d1d',
-                'maintenance', '#f77f00',
-                '#ef4444'
-              ],
-              'fill-opacity': [
-                'match',
-                ['get', 'hazard_type'],
-                'flood', [
-                  'match',
-                  ['get', 'severity_level'],
-                  'low', 0.3,
-                  'medium', 0.4,
-                  'high', 0.5,
-                  0.3
-                ],
-                'earthquake', 0.6,
-                'maintenance', 0.5,
-                0.4
-              ]
-            }}
-          />
-          {/* Stroke Layer for emphasis and earthquake outline */}
-          <Layer
-            id="hazards-line"
-            type="line"
-            paint={{
-              'line-color': [
-                'match',
-                ['get', 'hazard_type'],
-                'flood', [
-                  'match',
-                  ['get', 'severity_level'],
-                  'medium', '#f59e0b', // Amber accent for medium
-                  'high', '#ffffff',
-                  '#00509e'
-                ],
-                'earthquake', '#ef4444',
-                'maintenance', '#ffffff',
-                '#ef4444'
-              ],
-              'line-width': [
-                'match',
-                ['get', 'hazard_type'],
-                'earthquake', 4,
-                'maintenance', 1,
-                2
-              ]
-            }}
-          />
+          <Layer id="hazards-fill" type="fill" paint={{
+            'fill-color': ['match', ['get', 'hazard_type'],
+              'flood', ['match', ['get', 'severity_level'], 'low', '#00509e', 'medium', '#1d4ed8', 'high', '#d90429', '#00509e'],
+              'earthquake', '#7f1d1d', 'maintenance', '#f77f00', '#ef4444'],
+            'fill-opacity': ['match', ['get', 'hazard_type'],
+              'flood', ['match', ['get', 'severity_level'], 'low', 0.3, 'medium', 0.4, 'high', 0.5, 0.3],
+              'earthquake', 0.6, 'maintenance', 0.5, 0.4]
+          }} />
+          <Layer id="hazards-line" type="line" paint={{
+            'line-color': ['match', ['get', 'hazard_type'],
+              'flood', ['match', ['get', 'severity_level'], 'medium', '#f59e0b', 'high', '#ffffff', '#00509e'],
+              'earthquake', '#ef4444', 'maintenance', '#ffffff', '#ef4444'],
+            'line-width': ['match', ['get', 'hazard_type'], 'earthquake', 4, 'maintenance', 1, 2]
+          }} />
         </Source>
 
-      {/* Render Live Shelters */}
-      {shelters.map(shelter => (
-        <Marker key={`s-${shelter.id}`} longitude={parseFloat(shelter.longitude)} latitude={parseFloat(shelter.latitude)} anchor="bottom">
-          <div 
-            onClick={(e) => { e.stopPropagation(); setSelectedShelter(shelter); }}
-            className="flex flex-col items-center group relative cursor-pointer"
-          >
-            <MapPin size={32} className={shelter.status === 'open' ? 'text-green-500 fill-green-100/20' : 'text-red-500 fill-red-100/20'} />
-            <span className="bg-gray-900/90 text-white border border-gray-700 text-xs font-bold px-2 py-0.5 rounded-md shadow-lg mt-1 backdrop-blur-sm">
-              {shelter.current_occupancy}/{shelter.max_capacity}
-            </span>
-            
-            {/* Tooltip on Hover */}
-            <div className="absolute bottom-full mb-2 hidden group-hover:block w-max bg-white rounded-lg shadow-xl p-3 z-50">
-              <p className="font-bold text-gray-900 text-sm">{shelter.name}</p>
-              <p className="text-xs text-gray-500">Status: <span className="uppercase font-bold">{shelter.status}</span></p>
-              <p className="text-[10px] text-gray-400 mt-1">Click to edit details</p>
-            </div>
-          </div>
-        </Marker>
-      ))}
+        {/* Simulation Road Risk Lines */}
+        {simulationMode && simulationRoadsGeoJSON.features.length > 0 && (
+          <Source id="sim-roads-source" type="geojson" data={simulationRoadsGeoJSON}>
+            <Layer
+              id="sim-roads-layer"
+              type="line"
+              paint={{
+                'line-color': ['match', ['get', 'risk'], 'high', '#ef4444', 'medium', '#f97316', 'low', '#eab308', '#22c55e'],
+                'line-width': 4,
+                'line-dasharray': ['match', ['get', 'risk'], 'high', ['literal', [2, 2]], ['literal', [1]]]
+              }}
+            />
+          </Source>
+        )}
 
-        {/* Simplified Interaction Markers for Hazards (Invisible but clickable) */}
+        {/* Shelter Markers */}
+        {shelters.map(shelter => (
+          <Marker key={`s-${shelter.id}`} longitude={parseFloat(shelter.longitude)} latitude={parseFloat(shelter.latitude)} anchor="bottom">
+            <div onClick={e => { e.stopPropagation(); setSelectedShelter(shelter); }} className="flex flex-col items-center group relative cursor-pointer">
+              <MapPin size={30} className={shelter.status === 'open' ? 'text-green-400 drop-shadow-[0_0_6px_rgba(74,222,128,0.8)]' : 'text-red-400 drop-shadow-[0_0_6px_rgba(248,113,113,0.8)]'} />
+              <span className="bg-gray-950/90 text-white border border-white/10 text-[10px] font-black px-1.5 py-0.5 rounded-md shadow-lg mt-0.5">
+                {shelter.current_occupancy}/{shelter.max_capacity}
+              </span>
+              <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col w-max bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-3 z-50">
+                <p className="font-black text-white text-sm">{shelter.name}</p>
+                <p className="text-xs text-white/50 mt-0.5">Status: <span className={`font-bold uppercase ${shelter.status === 'open' ? 'text-green-400' : 'text-red-400'}`}>{shelter.status}</span></p>
+                <p className="text-[10px] text-white/30 mt-1">Click to manage</p>
+              </div>
+            </div>
+          </Marker>
+        ))}
+
+        {/* Hazard click zones */}
         {hazards.map(hazard => (
           <Marker key={`h-click-${hazard.id}`} longitude={parseFloat(hazard.longitude)} latitude={parseFloat(hazard.latitude)} anchor="center">
-            <div 
-              onClick={(e) => { e.stopPropagation(); setSelectedHazard(hazard); }}
-              className="w-12 h-12 flex items-center justify-center cursor-pointer group"
-            >
+            <div onClick={e => { e.stopPropagation(); setSelectedHazard(hazard); }} className="w-12 h-12 flex items-center justify-center cursor-pointer group">
               <AlertTriangle size={18} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </Marker>
         ))}
 
-      {/* Render the Pending User Pin (before form opens) */}
-      {pendingLocation && !showShelterForm && !showHazardForm && (
-        <Marker longitude={pendingLocation.longitude} latitude={pendingLocation.latitude} anchor="bottom">
-          <div className="flex flex-col items-center">
-            <MapPin size={48} className={`${pinMode === 'shelter' ? 'text-blue-500 fill-blue-500/20' : 'text-red-500 fill-red-500/20'} animate-bounce`} />
-          </div>
-        </Marker>
-      )}
+        {/* Pending pin */}
+        {pendingLocation && !showShelterForm && !showHazardForm && (
+          <Marker longitude={pendingLocation.longitude} latitude={pendingLocation.latitude} anchor="bottom">
+            <MapPin size={48} className={`${pinMode === 'shelter' ? 'text-blue-400 fill-blue-400/20' : 'text-red-400 fill-red-400/20'} animate-bounce drop-shadow-[0_0_12px_rgba(96,165,250,0.8)]`} />
+          </Marker>
+        )}
       </Map>
-      </div>
-      );
-      });
 
-// --- Main MapDashboard ---
+      <MapLegend simulationMode={simulationMode} />
+    </div>
+  );
+});
+
+// ─── Scoped Risk Alerts Drawer ───────────────────────────────────────────────
+function RiskAlertsDrawer({ hazards, simulationMode, drawerOpen, setDrawerOpen }) {
+  const activeHazards = hazards.filter(h =>
+    simulationMode === 'rain'
+      ? h.hazard_type === 'flood'
+      : simulationMode === 'tremors'
+      ? h.hazard_type === 'earthquake'
+      : true
+  );
+
+  const severityIcon = (s) => {
+    if (s === 'high') return <TriangleAlert size={14} className="text-red-400" />;
+    if (s === 'medium') return <Waves size={14} className="text-orange-400" />;
+    return <Droplets size={14} className="text-yellow-400" />;
+  };
+  const severityBg = (s) => {
+    if (s === 'high') return 'border-red-500/40 bg-red-950/30';
+    if (s === 'medium') return 'border-orange-500/40 bg-orange-950/20';
+    return 'border-yellow-500/30 bg-yellow-950/20';
+  };
+
+  return (
+    <div
+      className={`absolute top-0 right-0 h-full z-20 flex transition-all duration-300 ${
+        drawerOpen ? 'translate-x-0' : 'translate-x-full'
+      }`}
+      style={{ width: 300 }}
+    >
+      <button
+        onClick={() => setDrawerOpen(o => !o)}
+        className="absolute -left-8 top-1/2 -translate-y-1/2 bg-gray-900/90 border border-white/10 text-white/60 hover:text-white rounded-l-xl px-1.5 py-4 flex items-center transition"
+      >
+        {drawerOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+      </button>
+
+      <div className="w-full h-full bg-gray-950/95 backdrop-blur-xl border-l border-white/10 flex flex-col">
+        <div className="p-4 border-b border-white/10">
+          <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Command Feed</p>
+          <h3 className="text-sm font-black text-white mt-0.5 flex items-center gap-2">
+            <Shield size={15} className="text-blue-400" />
+            {simulationMode ? `Simulation: ${simulationMode === 'rain' ? '🌧 Heavy Rain' : '🌋 Tremors'}` : 'Active Risk Alerts'}
+          </h3>
+          <p className="text-[10px] text-white/30 mt-1">Showing {activeHazards.length} zone{activeHazards.length !== 1 ? 's' : ''} in current scope</p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {activeHazards.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full opacity-40">
+              <Shield size={32} className="text-white mb-3" />
+              <p className="text-xs text-white font-bold">No active alerts</p>
+            </div>
+          ) : (
+            activeHazards.map(h => (
+              <div key={h.id} className={`border rounded-xl p-3 ${severityBg(h.severity_level)}`}>
+                <div className="flex items-start gap-2">
+                  {severityIcon(h.severity_level)}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-black text-white truncate">{h.name}</p>
+                    <p className="text-[10px] text-white/50 mt-0.5 capitalize">
+                      {h.hazard_type} · {h.severity_level} severity · {h.radius_meters}m radius
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Dashboard Component ─────────────────────────────────────────────────
 export default function MapDashboard() {
   const queryClient = useQueryClient();
-  
-  const [pinMode, setPinMode] = useState(null); // 'shelter', 'hazard', or null
+  const [pinMode, setPinMode] = useState(null);
   const [pendingLocation, setPendingLocation] = useState(null);
   const [showShelterForm, setShowShelterForm] = useState(false);
   const [showHazardForm, setShowHazardForm] = useState(false);
-
-  // Selected elements for edit/view popups
   const [selectedShelter, setSelectedShelter] = useState(null);
   const [selectedHazard, setSelectedHazard] = useState(null);
 
-  // Poll Consolidated Map Data every 5 seconds (shelters + hazards)
-  const { data: mapDashboardData } = useQuery({
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showWeather, setShowWeather] = useState(false);
+  const [mapStyle, setMapStyle] = useState('dark');
+  const [simulationMode, setSimulationMode] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const { data: dashboardData } = useQuery({
     queryKey: ['map-dashboard'],
-    queryFn: () => api.get('/map/dashboard').then(res => res.data),
-    refetchInterval: 5000
+    queryFn: () => api.get('/map/dashboard').then(r => r.data),
+    refetchInterval: 30000,
   });
 
-  const shelters = mapDashboardData?.shelters || [];
-  const hazards = mapDashboardData?.hazards || [];
-  const demographics = mapDashboardData?.demographics || [];
+  const shelters = dashboardData?.shelters || [];
+  const hazards = dashboardData?.hazards || [];
+  const demographics = dashboardData?.demographics || [];
 
-  // Mutations for adding data
   const addShelterMutation = useMutation({
-    mutationFn: (newShelter) => api.post('/shelters', newShelter),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['map-dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
-      setPinMode(null);
-      setPendingLocation(null);
-      setShowShelterForm(false);
-    }
+    mutationFn: (data) => api.post('/shelters', data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['map-dashboard'] }); setPinMode(null); setPendingLocation(null); setShowShelterForm(false); }
   });
-
   const addHazardMutation = useMutation({
-    mutationFn: (newHazard) => api.post('/hazards', newHazard),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['map-dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
-      setPinMode(null);
-      setPendingLocation(null);
-      setShowHazardForm(false);
-    }
+    mutationFn: (data) => api.post('/hazards', data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['map-dashboard'] }); setPinMode(null); setPendingLocation(null); setShowHazardForm(false); }
   });
-
-  // Mutations for updates/deletes
   const updateShelterMutation = useMutation({
     mutationFn: ({ id, data }) => api.put(`/shelters/${id}`, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['map-dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
-      setSelectedShelter(null);
-    },
-    onError: (err) => alert(err.response?.data?.message || 'Failed to update shelter.')
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['map-dashboard'] }); setSelectedShelter(null); }
   });
-
   const deleteShelterMutation = useMutation({
     mutationFn: (id) => api.delete(`/shelters/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['map-dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
-      setSelectedShelter(null);
-    },
-    onError: (err) => alert(err.response?.data?.message || 'Failed to delete shelter.')
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['map-dashboard'] }); setSelectedShelter(null); }
   });
-
   const resolveHazardMutation = useMutation({
     mutationFn: (id) => api.put(`/hazards/${id}/resolve`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['map-dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
-      setSelectedHazard(null);
-    },
-    onError: (err) => alert(err.response?.data?.message || 'Failed to resolve hazard.')
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['map-dashboard'] }); setSelectedHazard(null); }
   });
 
   const handleMapClick = (e) => {
@@ -805,132 +769,64 @@ export default function MapDashboard() {
       if (pinMode === 'hazard') setShowHazardForm(true);
     }
   };
+  const handleCancelPin = () => { setPinMode(null); setPendingLocation(null); setShowShelterForm(false); setShowHazardForm(false); };
+  const handleConfirmShelter = ({ name, max_capacity }) => addShelterMutation.mutate({ name, latitude: pendingLocation.latitude, longitude: pendingLocation.longitude, max_capacity });
+  const handleConfirmHazard = ({ name, radius_meters, hazard_type, severity_level }) => addHazardMutation.mutate({ name, latitude: pendingLocation.latitude, longitude: pendingLocation.longitude, radius_meters, hazard_type, severity_level });
+  const handleUpdateShelter = (data) => updateShelterMutation.mutate({ id: selectedShelter.id, data });
+  const handleDeleteShelter = () => deleteShelterMutation.mutate(selectedShelter.id);
+  const handleResolveHazard = () => resolveHazardMutation.mutate(selectedHazard.id);
 
-  const handleCancelPin = () => {
-    setPinMode(null);
-    setPendingLocation(null);
-    setShowShelterForm(false);
-    setShowHazardForm(false);
-  };
-
-  const handleConfirmShelter = ({ name, max_capacity }) => {
-    addShelterMutation.mutate({
-      name,
-      latitude: pendingLocation.latitude,
-      longitude: pendingLocation.longitude,
-      max_capacity
-    });
-  };
-
-  const handleConfirmHazard = ({ name, radius_meters, hazard_type, severity_level }) => {
-    addHazardMutation.mutate({
-      name,
-      latitude: pendingLocation.latitude,
-      longitude: pendingLocation.longitude,
-      radius_meters,
-      hazard_type,
-      severity_level
-    });
-  };
-
-  const handleUpdateShelter = (data) => {
-    updateShelterMutation.mutate({ id: selectedShelter.id, data });
-  };
-
-  const handleDeleteShelter = () => {
-    deleteShelterMutation.mutate(selectedShelter.id);
-  };
-
-  const handleResolveHazard = () => {
-    resolveHazardMutation.mutate(selectedHazard.id);
+  const toggleSimulation = (mode) => {
+    setSimulationMode(prev => prev === mode ? null : mode);
+    if (!drawerOpen) setDrawerOpen(true);
   };
 
   return (
-    <div className="flex flex-col h-full relative">
-      {/* Modals */}
-      {showShelterForm && pendingLocation && (
-        <ShelterFormModal
-          location={pendingLocation}
-          onConfirm={handleConfirmShelter}
-          onCancel={handleCancelPin}
-          isLoading={addShelterMutation.isPending}
-        />
-      )}
-      {showHazardForm && pendingLocation && (
-        <HazardFormModal
-          location={pendingLocation}
-          onConfirm={handleConfirmHazard}
-          onCancel={handleCancelPin}
-          isLoading={addHazardMutation.isPending}
-        />
-      )}
-      {selectedShelter && (
-        <ShelterEditModal
-          shelter={selectedShelter}
-          onUpdate={handleUpdateShelter}
-          onDelete={handleDeleteShelter}
-          onCancel={() => setSelectedShelter(null)}
-          isLoading={updateShelterMutation.isPending || deleteShelterMutation.isPending}
-        />
-      )}
-      {selectedHazard && (
-        <HazardDetailModal
-          hazard={selectedHazard}
-          onResolve={handleResolveHazard}
-          onCancel={() => setSelectedHazard(null)}
-          isLoading={resolveHazardMutation.isPending}
-        />
-      )}
+    <div className="flex flex-col h-full relative bg-gray-950">
+      {showShelterForm && pendingLocation && <ShelterFormModal location={pendingLocation} onConfirm={handleConfirmShelter} onCancel={handleCancelPin} isLoading={addShelterMutation.isPending} />}
+      {showHazardForm && pendingLocation && <HazardFormModal location={pendingLocation} onConfirm={handleConfirmHazard} onCancel={handleCancelPin} isLoading={addHazardMutation.isPending} />}
+      {selectedShelter && <ShelterEditModal shelter={selectedShelter} onUpdate={handleUpdateShelter} onDelete={handleDeleteShelter} onCancel={() => setSelectedShelter(null)} isLoading={updateShelterMutation.isPending || deleteShelterMutation.isPending} />}
+      {selectedHazard && <HazardDetailModal hazard={selectedHazard} onResolve={handleResolveHazard} onCancel={() => setSelectedHazard(null)} isLoading={resolveHazardMutation.isPending} />}
 
-      <header className="bg-white shadow-sm px-6 py-3 flex justify-between items-center z-10 border-b border-gray-200">
-        <h2 className="text-lg font-bold text-gray-800">Live Control Room</h2>
-        {pinMode && (
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-red-600 animate-pulse bg-red-50 px-3 py-1 rounded-full border border-red-200">
-              Click on the map to place your {pinMode === 'shelter' ? 'shelter' : 'hazard'} pin
-            </span>
-            <button 
-              onClick={handleCancelPin}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1.5 rounded-lg font-bold text-sm transition"
-            >
-              Cancel Placement
-            </button>
-          </div>
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl px-3 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
+        <ToolbarBtn active={showHeatmap} onClick={() => setShowHeatmap(o => !o)} icon={<Flame size={14} />} label="Heatmap" color="amber" />
+        <ToolbarBtn active={showWeather} onClick={() => setShowWeather(o => !o)} icon={<Cloud size={14} />} label="Weather" color="blue" />
+        <div className="w-px h-5 bg-white/10 mx-1" />
+        {Object.values(MAP_STYLES).map(s => (
+          <ToolbarBtn key={s.id} active={mapStyle === s.id} onClick={() => setMapStyle(s.id)} icon={s.icon} label={s.label} color="blue" />
+        ))}
+        <div className="w-px h-5 bg-white/10 mx-1" />
+        <ToolbarBtn active={simulationMode === 'rain'} onClick={() => toggleSimulation('rain')} icon={<Droplets size={14} />} label="Rain" color="blue" />
+        <ToolbarBtn active={simulationMode === 'tremors'} onClick={() => toggleSimulation('tremors')} icon={<Zap size={14} />} label="Tremors" color="amber" />
+        <div className="w-px h-5 bg-white/10 mx-1" />
+        {!pinMode ? (
+          <>
+            <ToolbarBtn active={false} onClick={() => setPinMode('shelter')} icon={<MapPin size={14} />} label="Shelter" color="blue" />
+            <ToolbarBtn active={false} onClick={() => setPinMode('hazard')} icon={<AlertTriangle size={14} />} label="Hazard" color="red" />
+          </>
+        ) : (
+          <ToolbarBtn active={false} onClick={handleCancelPin} icon={<X size={14} />} label="Cancel" color="red" />
         )}
-      </header>
-      
-      <div className="flex-1 relative bg-gray-900">
+        <div className="w-px h-5 bg-white/10 mx-1" />
+        <ToolbarBtn active={drawerOpen} onClick={() => setDrawerOpen(o => !o)} icon={<SlidersHorizontal size={14} />} label="Alerts" color="purple" />
+      </div>
+
+      <div className="flex-1 relative overflow-hidden">
         <MapViewer
-          shelters={shelters}
-          hazards={hazards}
-          demographics={demographics}
-          pinMode={pinMode}
-          pendingLocation={pendingLocation}
-          showShelterForm={showShelterForm}
-          showHazardForm={showHazardForm}
-          handleMapClick={handleMapClick}
-          setSelectedShelter={setSelectedShelter}
-          setSelectedHazard={setSelectedHazard}
-          MAPBOX_TOKEN={MAPBOX_TOKEN}
+          shelters={shelters} hazards={hazards} demographics={demographics}
+          pinMode={pinMode} pendingLocation={pendingLocation}
+          showShelterForm={showShelterForm} showHazardForm={showHazardForm}
+          handleMapClick={handleMapClick} setSelectedShelter={setSelectedShelter}
+          setSelectedHazard={setSelectedHazard} MAPBOX_TOKEN={MAPBOX_TOKEN}
+          showHeatmap={showHeatmap}
+          showWeather={showWeather}
+          mapStyle={mapStyle}
+          simulationMode={simulationMode}
         />
-
-        {/* Floating Panel for Actions */}
-        {!pinMode && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4">
-            <button 
-              onClick={() => setPinMode('shelter')}
-              className="bg-blue-600/90 hover:bg-blue-700 backdrop-blur-md text-white font-bold py-3 px-6 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.5)] transition flex items-center gap-2 border border-blue-400/50"
-            >
-              <MapPin size={20} /> Pin New Shelter
-            </button>
-            <button 
-              onClick={() => setPinMode('hazard')}
-              className="bg-red-600/90 hover:bg-red-700 backdrop-blur-md text-white font-bold py-3 px-6 rounded-full shadow-[0_0_15px_rgba(220,38,38,0.5)] transition flex items-center gap-2 border border-red-400/50"
-            >
-              <AlertTriangle size={20} /> Flag Hazard Zone
-            </button>
-          </div>
-        )}
+        <RiskAlertsDrawer
+          hazards={hazards} simulationMode={simulationMode}
+          drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen}
+        />
       </div>
     </div>
   );

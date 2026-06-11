@@ -1,4 +1,4 @@
-import axios, { create } from 'axios';
+import { create } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 

@@ -27,6 +27,17 @@ import { calculateOfflineRoute } from '../utils/astarRouter';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// ─── ETA Calculator ───
+function getETAMinutes(distanceMeters, mode) {
+  const speeds = { pedestrian: 80, '2_wheel': 250, '4_wheel': 400 }; // metres per minute
+  const mPerMin = speeds[mode] || 80;
+  const minutes = Math.ceil(distanceMeters / mPerMin);
+  if (minutes < 1) return '< 1 min';
+  if (minutes >= 60) return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+  return `${minutes} min`;
+}
+
+
 // Bottom sheet snap points
 const SHEET_COLLAPSED = 160;
 const SHEET_EXPANDED = SCREEN_HEIGHT * 0.45;
@@ -49,6 +60,16 @@ export default function EvacMapScreen() {
   const [lastRoutingLocation, setLastRoutingLocation] = useState(null);
   const [isRouteBlocked, setIsRouteBlocked] = useState(false);
   const [routeWarnings, setRouteWarnings] = useState([]);
+
+  // Map style switcher
+  const [mapStyleMode, setMapStyleMode] = useState('dark');
+  const MAP_STYLE_URLS = {
+    dark:      Mapbox.StyleURL.Dark,
+    satellite: Mapbox.StyleURL.SatelliteStreet,
+    streets:   Mapbox.StyleURL.Street,
+  };
+
+
 
   // Panic flash state
   const [showPanicFlash, setShowPanicFlash] = useState(false);
@@ -148,28 +169,26 @@ export default function EvacMapScreen() {
     }
   }, []);
 
-  // Poll Consolidated Resident Map Data every 5 seconds (active shelters + active hazards)
+  // Poll Consolidated Resident Map Data every 30 seconds (active shelters + active hazards)
   const { data: mapData, isLoading: isLoadingMap, isError: isMapError } = useQuery({
     queryKey: ['resident-map-data'],
     queryFn: () => api.get('/resident/map-data').then(res => res.data),
-    refetchInterval: 5000,
+    refetchInterval: 30000,
+    staleTime: 20000,
     retry: 1
   });
 
-  // One-time road network sync on startup (no polling needed — LGU pushes status changes)
   const { data: roadNetworkData } = useQuery({
     queryKey: ['road-network'],
     queryFn: () => api.get('/road-network').then(res => res.data),
-    staleTime: 5 * 60 * 1000,  // 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: 1,
     gcTime: 10 * 60 * 1000,
   });
 
-  // Sync road network to SQLite whenever it updates
   useEffect(() => {
     if (roadNetworkData && roadNetworkData.nodes?.length > 0) {
       syncRoadNetworkFromApi(roadNetworkData);
-      // Reload the preloaded graph after sync
       try {
         const dbNodes = getOfflineNodes();
         const dbEdges = getOfflineEdges();
@@ -186,8 +205,9 @@ export default function EvacMapScreen() {
             geometry: JSON.parse(e.geometry),
           });
         }
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setPreloadedGraph({ nodesMap, edgesBySource });
+        setTimeout(() => {
+          setPreloadedGraph({ nodesMap, edgesBySource });
+        }, 0);
       } catch (e) {
         console.warn('Graph reload after network sync failed:', e);
       }
@@ -198,53 +218,62 @@ export default function EvacMapScreen() {
   const hazardsData = mapData?.hazards;
   const isLoadingShelters = isLoadingMap;
 
-  // Sync cache and handle network status changes
   useEffect(() => {
     if (sheltersData) {
       saveShelters(sheltersData);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOfflineShelters(sheltersData);
-      setIsOffline(false);
+      setTimeout(() => {
+        setOfflineShelters(sheltersData);
+        setIsOffline(false);
+      }, 0);
     }
   }, [sheltersData]);
 
   useEffect(() => {
     if (hazardsData) {
-      saveHazardsExtended(hazardsData);  // Use extended save to preserve type/severity for A* routing
-      saveHazards(hazardsData);           // Also keep basic compat save
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOfflineHazards(hazardsData);
-      setIsOffline(false);
+      saveHazardsExtended(hazardsData);
+      saveHazards(hazardsData);
+      setTimeout(() => {
+        setOfflineHazards(hazardsData);
+        setIsOffline(false);
+      }, 0);
     }
   }, [hazardsData]);
 
-  // Set offline indicator if network query fails
   useEffect(() => {
     if (isMapError) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsOffline(true);
+      setTimeout(() => {
+        setIsOffline(true);
+      }, 0);
     }
   }, [isMapError]);
 
-  // Request GPS Permissions
   useEffect(() => {
+    let subscription;
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         console.warn('Permission to access location was denied');
         return;
       }
-
-      let loc = await Location.getCurrentPositionAsync({});
-      setLocation([loc.coords.longitude, loc.coords.latitude]);
+      const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      setLocation([initial.coords.longitude, initial.coords.latitude]);
+      subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          distanceInterval: 10,
+          timeInterval: 8000,
+        },
+        (loc) => {
+          setLocation([loc.coords.longitude, loc.coords.latitude]);
+        }
+      );
     })();
+    return () => { subscription?.remove(); };
   }, []);
 
-  // Combine live data with offline fallback
   const shelters = sheltersData && sheltersData.length > 0 ? sheltersData : offlineShelters;
   const hazards = hazardsData && hazardsData.length > 0 ? hazardsData : offlineHazards;
 
-  // GEOGRAPHIC NEAREST OPEN SHELTER SELECTION (using Haversine)
   const openShelters = shelters.filter(s => s.status === 'open');
   let nearestShelter = null;
   let minDistance = Infinity;
@@ -261,30 +290,31 @@ export default function EvacMapScreen() {
     }
   }
 
-  // DYNAMIC HAZARD-AVOIDING A* PATH ROUTER
   const nearestShelterCoords = nearestShelter
     ? [parseFloat(nearestShelter.longitude), parseFloat(nearestShelter.latitude)]
     : null;
 
-  // Recalculate route only when location moves > 10m, nearest shelter changes, or hazards update
   useEffect(() => {
     if (!location || !nearestShelterCoords || !preloadedGraph) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCachedRoute(null);
-      setLastRoutingLocation(null);
+      setTimeout(() => {
+        setCachedRoute(null);
+        setLastRoutingLocation(null);
+      }, 0);
       return;
     }
 
     let shouldRecalculate = false;
 
-    // Check if shelter or hazards changed
-    const shelterChanged = JSON.stringify(nearestShelterCoords) !== JSON.stringify(lastShelterCoordsRef.current);
-    const hazardsChanged = JSON.stringify(hazards) !== JSON.stringify(lastHazardsRef.current);
+    const shelterChanged =
+      nearestShelterCoords?.[0] !== lastShelterCoordsRef.current?.[0] ||
+      nearestShelterCoords?.[1] !== lastShelterCoordsRef.current?.[1];
+    const hazardsChanged =
+      hazards.length !== (lastHazardsRef.current?.length ?? -1) ||
+      hazards.some((h, i) => h.id !== lastHazardsRef.current?.[i]?.id);
 
     if (shelterChanged || hazardsChanged || !lastRoutingLocation || !cachedRoute) {
       shouldRecalculate = true;
     } else {
-      // Location changed. Check if user moved > 10 meters.
       const dist = getDistanceMeters(
         location[1],
         location[0],
@@ -305,23 +335,23 @@ export default function EvacMapScreen() {
 
       const result = calculateOfflineRoute(location, nearestShelterCoords, data, transportationMode);
       
-      if (result && result.status === 'success') {
-        setCachedRoute(result.path);
-        setRouteWarnings(result.warnings || []);
-        setIsRouteBlocked(false);
-      } else {
-        // Intercept failure: clear route lines and set blocked state
-        setCachedRoute(null);
-        setRouteWarnings([]);
-        setIsRouteBlocked(true);
-      }
+      setTimeout(() => {
+        if (result && result.status === 'success') {
+          setCachedRoute(result.path);
+          setRouteWarnings(result.warnings || []);
+          setIsRouteBlocked(false);
+        } else {
+          setCachedRoute(null);
+          setRouteWarnings([]);
+          setIsRouteBlocked(true);
+        }
+        setLastRoutingLocation(location);
+      }, 0);
       
-      setLastRoutingLocation(location);
-
-      // Update refs
       lastHazardsRef.current = hazards;
       lastShelterCoordsRef.current = nearestShelterCoords;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location, nearestShelterCoords, hazards, preloadedGraph, transportationMode]);
 
   if (!location || (isLoadingShelters && offlineShelters.length === 0)) {
@@ -335,76 +365,52 @@ export default function EvacMapScreen() {
 
   const routeGeoJSON = cachedRoute ? {
     type: 'FeatureCollection',
-    features: [
-      {
-        type: 'Feature',
-        properties: {},
-        geometry: {
-          type: 'LineString',
-          coordinates: cachedRoute
-        }
-      }
-    ]
+    features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: cachedRoute } }]
   } : null;
 
-  // Transform hazards into GeoJSON (handle both SQL 'lat'/'lng' and API 'latitude'/'longitude')
   const hazardsGeoJSON = {
     type: 'FeatureCollection',
     features: hazards.map(hazard => ({
       type: 'Feature',
       properties: {
         id: hazard.id,
-        radius: parseFloat(hazard.radius_meters ?? 0)
+        radius: parseFloat(hazard.radius_meters ?? 0),
+        hazard_type: hazard.hazard_type ?? 'hazard',
+        severity: hazard.severity_level ?? 'medium',
       },
       geometry: {
         type: 'Point',
-        coordinates: [
-          parseFloat(hazard.longitude),
-          parseFloat(hazard.latitude)
-        ]
+        coordinates: [parseFloat(hazard.longitude), parseFloat(hazard.latitude)]
       }
     }))
   };
 
-  // Launch external map application for turn-by-turn navigation
   const startNavigation = () => {
     if (!nearestShelter) return;
     const destLat = parseFloat(nearestShelter.latitude);
     const destLng = parseFloat(nearestShelter.longitude);
     const label = encodeURIComponent(nearestShelter.name);
-
     const url = Platform.select({
       ios: `maps:0,0?q=${label}@${destLat},${destLng}`,
       android: `geo:0,0?q=${destLat},${destLng}(${label})`
     }) || `https://www.google.com/maps/search/?api=1&query=${destLat},${destLng}`;
 
-    Linking.canOpenURL(url)
-      .then(supported => {
-        if (supported) {
-          Linking.openURL(url);
-        } else {
-          Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${destLat},${destLng}`);
-        }
-      })
-      .catch(err => {
-        Alert.alert('Navigation Error', 'Could not open maps application.');
-      });
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) Linking.openURL(url);
+      else Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${destLat},${destLng}`);
+    }).catch(err => Alert.alert('Navigation Error', 'Could not open maps application.'));
   };
 
   const callEmergencyHotline = () => {
     const phoneUrl = 'tel:911';
     Linking.canOpenURL(phoneUrl).then(supported => {
-      if (supported) {
-        Linking.openURL(phoneUrl);
-      } else {
-        Alert.alert('Error', 'Direct calling is not supported on this device.');
-      }
+      if (supported) Linking.openURL(phoneUrl);
+      else Alert.alert('Error', 'Direct calling is not supported on this device.');
     });
   };
 
   return (
     <View style={styles.container}>
-      {/* ─── Panic Flash Overlay ─── */}
       {showPanicFlash && (
         <Animated.View style={[styles.panicFlash, { opacity: panicOpacityRef.current }]}>
           <Text style={styles.panicText}>⚠️ EVACUATION ORDER</Text>
@@ -414,7 +420,7 @@ export default function EvacMapScreen() {
 
       <Mapbox.MapView
         style={styles.map}
-        styleURL={Mapbox.StyleURL.Dark}
+        styleURL={MAP_STYLE_URLS[mapStyleMode]}
         logoEnabled={false}
         attributionEnabled={false}
       >
@@ -424,10 +430,7 @@ export default function EvacMapScreen() {
           animationMode="flyTo"
           animationDuration={2000}
         />
-
         <Mapbox.UserLocation visible={true} showsUserHeadingIndicator={true} />
-
-        {/* Render Shelters */}
         {shelters.map(shelter => {
           const sLat = parseFloat(shelter.latitude);
           const sLng = parseFloat(shelter.longitude);
@@ -444,12 +447,11 @@ export default function EvacMapScreen() {
           );
         })}
 
-        {/* Render Hazards using CircleLayer for GPU accelerated native shapes */}
+        {/* Hazards: Circle + Label Layers */}
         <Mapbox.ShapeSource id="hazardsSource" shape={hazardsGeoJSON}>
           <Mapbox.CircleLayer
             id="hazardsLayer"
             style={{
-              // Interpolates radius relative to map zoom level to represent real-world meters
               circleRadius: [
                 'interpolate',
                 ['exponential', 2],
@@ -458,14 +460,38 @@ export default function EvacMapScreen() {
                 15, ['/', ['get', 'radius'], 1.2],
                 22, ['/', ['get', 'radius'], 0.01]
               ],
-              circleColor: colors.hazardFill,
-              circleStrokeColor: colors.hazardStroke,
+              circleColor: [
+                'match', ['get', 'severity'],
+                'high', 'rgba(220,38,38,0.45)',
+                'medium', 'rgba(249,115,22,0.40)',
+                'rgba(234,179,8,0.35)'
+              ],
+              circleStrokeColor: [
+                'match', ['get', 'severity'],
+                'high', 'rgba(220,38,38,0.9)',
+                'medium', 'rgba(249,115,22,0.85)',
+                'rgba(234,179,8,0.8)'
+              ],
               circleStrokeWidth: 2,
+            }}
+          />
+          {/* Hazard type label above each circle */}
+          <Mapbox.SymbolLayer
+            id="hazardLabels"
+            style={{
+              textField: ['get', 'hazard_type'],
+              textSize: 10,
+              textColor: '#ffffff',
+              textHaloColor: '#000000',
+              textHaloWidth: 1.5,
+              textTranslate: [0, -20],
+              textFont: ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+              textTransform: 'uppercase',
             }}
           />
         </Mapbox.ShapeSource>
 
-        {/* Render Navigation Route */}
+        {/* Route line */}
         {routeGeoJSON && (
           <Mapbox.ShapeSource id="routeSource" shape={routeGeoJSON}>
             <Mapbox.LineLayer
@@ -481,7 +507,7 @@ export default function EvacMapScreen() {
         )}
       </Mapbox.MapView>
 
-      {/* ─── Critical Action Required Overlay ─── */}
+      {/* ─── Critical Overlay ─── */}
       {isRouteBlocked && (
         <View style={styles.criticalOverlay}>
           <Text style={styles.criticalTitle}>
@@ -494,7 +520,7 @@ export default function EvacMapScreen() {
         </View>
       )}
 
-      {/* ─── Live Data Overlay / Offline Status Warning ─── */}
+      {/* ─── Top Status Overlay ─── */}
       <View style={styles.overlay}>
         <View style={styles.statusBox}>
           {isOffline && (
@@ -511,33 +537,47 @@ export default function EvacMapScreen() {
             <Text style={styles.statusText}>{hazards.length} Active Hazards</Text>
           </View>
 
-          {/* Dynamic route recalculation toggles */}
+          {/* Transport mode selector with icons */}
           <View style={styles.modeSelectorRow}>
-            <TouchableOpacity 
-              style={[styles.modeButton, transportationMode === 'pedestrian' && styles.modeButtonActive]}
-              onPress={() => setTransportationMode('pedestrian')}
-            >
-              <Text style={[styles.modeButtonText, transportationMode === 'pedestrian' && styles.modeButtonTextActive]}>Pedestrian</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.modeButton, transportationMode === '2_wheel' && styles.modeButtonActive]}
-              onPress={() => setTransportationMode('2_wheel')}
-            >
-              <Text style={[styles.modeButtonText, transportationMode === '2_wheel' && styles.modeButtonTextActive]}>2-Wheel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.modeButton, transportationMode === '4_wheel' && styles.modeButtonActive]}
-              onPress={() => setTransportationMode('4_wheel')}
-            >
-              <Text style={[styles.modeButtonText, transportationMode === '4_wheel' && styles.modeButtonTextActive]}>4-Wheel</Text>
-            </TouchableOpacity>
+            {[
+              { key: 'pedestrian', icon: '🚶', label: 'Walk' },
+              { key: '2_wheel',    icon: '🏍', label: 'Bike' },
+              { key: '4_wheel',    icon: '🚗', label: 'Car'  },
+            ].map(m => (
+              <TouchableOpacity
+                key={m.key}
+                style={[styles.modeButton, transportationMode === m.key && styles.modeButtonActive]}
+                onPress={() => setTransportationMode(m.key)}
+              >
+                <Text style={styles.modeIcon}>{m.icon}</Text>
+                <Text style={[styles.modeButtonText, transportationMode === m.key && styles.modeButtonTextActive]}>
+                  {m.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
       </View>
 
+      {/* ─── Map Style Switcher (floating, bottom-left) ─── */}
+      <View style={styles.mapStyleSwitcher}>
+        {[
+          { key: 'dark',      icon: '🌑' },
+          { key: 'satellite', icon: '🛰' },
+          { key: 'streets',   icon: '🗺' },
+        ].map(s => (
+          <TouchableOpacity
+            key={s.key}
+            onPress={() => setMapStyleMode(s.key)}
+            style={[styles.mapStyleBtn, mapStyleMode === s.key && styles.mapStyleBtnActive]}
+          >
+            <Text style={styles.mapStyleBtnText}>{s.icon}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {/* ─── Draggable Bottom Sheet ─── */}
       <Animated.View style={[styles.bottomSheet, { height: sheetHeightRef.current }]}>
-        {/* Drag Handle */}
         <View {...panResponder.panHandlers} style={styles.bottomSheetHandle}>
           <View style={styles.bottomSheetBar} />
         </View>
@@ -548,11 +588,32 @@ export default function EvacMapScreen() {
               <View style={styles.routingInfo}>
                 <Text style={styles.destinationLabel}>NEAREST OPEN SHELTER:</Text>
                 <Text style={styles.destinationName}>{nearestShelter.name}</Text>
+
+                {/* ETA + Distance */}
                 <Text style={styles.etaText}>
-                  Distance: {(minDistance / 1000).toFixed(2)} km (Avoiding Hazards)
+                  {getETAMinutes(minDistance, transportationMode)} away · {(minDistance / 1000).toFixed(2)} km
                 </Text>
 
-                {/* Route Warnings as Pill Badges */}
+                {/* Occupancy progress bar */}
+                <View style={styles.occupancyBarTrack}>
+                  <View
+                    style={[
+                      styles.occupancyBarFill,
+                      {
+                        width: `${Math.min(100, Math.round((nearestShelter.current_occupancy / nearestShelter.max_capacity) * 100))}%`,
+                        backgroundColor:
+                          nearestShelter.current_occupancy / nearestShelter.max_capacity > 0.8
+                            ? colors.danger
+                            : colors.successLight,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.occupancyText}>
+                  {nearestShelter.current_occupancy}/{nearestShelter.max_capacity} occupancy
+                </Text>
+
+                {/* Route warnings */}
                 {routeWarnings.length > 0 && (
                   <View style={styles.warningsContainer}>
                     {routeWarnings.map((w, idx) => (

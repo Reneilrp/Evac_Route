@@ -184,6 +184,37 @@ class BundledApiTest extends TestCase
         $this->assertCount(1, $response->json('templates'));
     }
 
+    public function test_shelters_dashboard_returns_shelters_and_templates()
+    {
+        Shelter::create([
+            'name' => 'Test Shelter',
+            'latitude' => 6.9,
+            'longitude' => 122.0,
+            'max_capacity' => 100,
+            'current_occupancy' => 0,
+            'status' => 'open',
+            'pinned_by' => $this->admin->id,
+        ]);
+
+        RationTemplate::create([
+            'name' => 'Active Ration Template',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->admin, 'sanctum')
+            ->getJson('/api/shelters/dashboard');
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'status',
+            'shelters',
+            'templates',
+        ]);
+
+        $this->assertCount(1, $response->json('shelters'));
+        $this->assertCount(1, $response->json('templates'));
+    }
+
     public function test_resident_cannot_access_bundled_apis()
     {
         $response = $this->actingAs($this->resident, 'sanctum')

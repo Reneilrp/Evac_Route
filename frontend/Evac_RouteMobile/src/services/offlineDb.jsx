@@ -417,7 +417,7 @@ export function getOfflineHazardsExtended() {
     return db.getAllSync(
       'SELECT id, lat AS latitude, lng AS longitude, radius AS radius_meters, hazard_type, severity_level FROM hazards'
     );
-  } catch (e) {
+  } catch {
     // Fallback to basic schema
     return getOfflineHazards();
   }

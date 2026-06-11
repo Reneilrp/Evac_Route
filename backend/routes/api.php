@@ -47,6 +47,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/dashboard/overview', [BundledApiController::class, 'getDashboardOverview']);
         Route::get('/map/dashboard', [BundledApiController::class, 'getMapDashboard']);
         Route::get('/inventory/dashboard', [BundledApiController::class, 'getInventoryDashboard']);
+        Route::get('/shelters/dashboard', [BundledApiController::class, 'getSheltersDashboard']);
 
         // 1. Shelter Management
         Route::get('/shelters', [ShelterController::class, 'getAll']);

@@ -252,6 +252,60 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     textAlign: 'center',
   },
+
+  // ─── Mode Icon ───
+  modeIcon: {
+    fontSize: 16,
+    marginBottom: 2,
+  },
+
+  // ─── Map Style Switcher (floating, bottom-left) ───
+  mapStyleSwitcher: {
+    position: 'absolute',
+    bottom: 200,
+    left: 16,
+    flexDirection: 'column',
+    gap: 6,
+    zIndex: 10,
+  },
+  mapStyleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(30, 41, 59, 0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  mapStyleBtnActive: {
+    borderColor: '#3b82f6',
+    borderWidth: 2,
+    backgroundColor: 'rgba(59, 130, 246, 0.25)',
+  },
+  mapStyleBtnText: {
+    fontSize: 18,
+  },
+
+  // ─── Occupancy Bar ───
+  occupancyBarTrack: {
+    height: 5,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 3,
+    marginTop: 8,
+    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  occupancyBarFill: {
+    height: 5,
+    borderRadius: 3,
+  },
+  occupancyText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
 });
 
 export default styles;

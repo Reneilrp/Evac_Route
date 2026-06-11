@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { QrCode, ClipboardList, CheckCircle, AlertTriangle, AlertCircle, RefreshCw, Search, ArrowRight } from 'lucide-react';
+import { QrCode, ClipboardList, CheckCircle, AlertTriangle, AlertCircle, RefreshCw, ArrowRight } from 'lucide-react';
 import api from '../services/api';
 import { playScanSuccessTone, playScanErrorTone } from '../services/sound';
 
@@ -87,12 +87,11 @@ export default function ReliefDistribution() {
   };
 
   const initScanner = useCallback(() => {
-    setScanResult(null);
-    setError(null);
-    setManualHash('');
-    
-    // Tiny delay to ensure DOM is ready
+    // Tiny delay to ensure DOM is ready and state updates don't cause synchronous cascades
     setTimeout(() => {
+      setScanResult(null);
+      setError(null);
+      setManualHash('');
       if (document.getElementById("desk-qr-reader")) {
         const scanner = new Html5QrcodeScanner(
           "desk-qr-reader",
