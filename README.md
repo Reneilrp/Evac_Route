@@ -7,18 +7,18 @@
 ## 🚀 System Features
 
 ### 📱 Resident Mobile App
-*   **Real-time Hazard Map:** View active hazards and safe zones using Mapbox integration.
-*   **Safe Check-in:** Quick check-in system to notify authorities of your safety status.
-*   **Profile QR Code:** Unique identity for rapid scanning at shelters.
-*   **Family Management:** Setup profiles for family members and specify transportation needs.
-*   **Offline Mode:** Local database support for accessing critical info without connectivity.
+*   **Offline A* Spatial Routing:** Dynamic pathfinding algorithm that recalculates escape routes based on hazard type, vehicle mode, and severity.
+*   **Dynamic TOTP QR Code:** Military-grade, time-based regenerating QR codes that prevent replay attacks during shelter check-ins.
+*   **Real-time Hazard Tracking:** View active hazards and safe zones using Mapbox integration.
+*   **Family Management:** Setup profiles for family members and track relief allocations.
+*   **Local Graph Database:** Offline SQLite road network cache for calculating evacuation routes without internet access.
 
 ### 💻 Admin Web Dashboard
-*   **Map Dashboard:** Real-time visualization of resident locations and hazard spreads.
-*   **Inventory Manager:** Track rations, medical supplies, and shelter capacity.
-*   **Shelter Management:** Coordinate evacuation centers and monitor occupancy.
-*   **Staff Management:** Organize and deploy emergency response teams.
-*   **Evacuation Logs:** Detailed audit trails of all evacuation activities.
+*   **Live Map Command Center:** Real-time visualization of resident locations, hazard spreads, and shelter statuses.
+*   **Relief Claims Desk:** High-concurrency QR scanner interface for checking in residents and distributing rations.
+*   **Inventory Manager:** Track rations, medical supplies, and shelter capacities securely.
+*   **Shelter Management:** Coordinate evacuation centers and monitor live occupancy limits.
+*   **Evacuation Logs:** Detailed audit trails of all evacuation activities and relief claims.
 
 ---
 
@@ -74,4 +74,4 @@ npm run dev
 ---
 
 ## 🗺 System Architecture
-The system uses a **monolithic backend** providing a RESTful API and WebSocket events. The **Mobile app** communicates via Axios and Laravel Echo for real-time hazard updates, while the **Web dashboard** provides an administrative interface for resource allocation and monitoring.
+The system utilizes a **monolithic backend** providing a highly-concurrent RESTful API and WebSocket broadcast events. Database transactions utilize **pessimistic row locking** to prevent race conditions during mass evacuation check-ins. The **Mobile app** acts as an offline-first node, computing escape routes locally via an A* graph algorithm using `expo-sqlite`, while the **Web dashboard** provides real-time administrative command capabilities.
