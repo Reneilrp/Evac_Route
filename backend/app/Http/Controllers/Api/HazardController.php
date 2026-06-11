@@ -14,9 +14,9 @@ class HazardController extends Controller
     {
         $validated = $request->validate([
             'name'           => 'required|string',
-            'latitude'       => 'required|numeric',
-            'longitude'      => 'required|numeric',
-            'radius_meters'  => 'numeric',
+            'latitude'       => 'required|numeric|between:-90,90',
+            'longitude'      => 'required|numeric|between:-180,180',
+            'radius_meters'  => 'numeric|min:1|max:5000',
             'hazard_type'    => 'required|in:flood,earthquake,maintenance,debris',
             'severity_level' => 'required|in:low,medium,high',
             'description'    => 'nullable|string|max:500',

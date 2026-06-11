@@ -22,18 +22,19 @@ class CheckInController extends Controller
     public function processCheckIn(Request $request, $shelter_id)
     {
         $request->validate([
-            'qr_code_hash' => 'required|string|exists:family_profiles,qr_code_hash',
+            'qr_code_hash' => 'required|string',
         ]);
 
         try {
             // Start the Database Transaction with 5 retry attempts for high concurrency
             $result = DB::transaction(function () use ($request, $shelter_id) {
 
-                $family = FamilyProfile::where('qr_code_hash', $request->qr_code_hash)->firstOrFail();
+                $family = FamilyProfile::verifyTotpPayload($request->qr_code_hash, true);
 
                 // Check if they are already checked into a shelter
                 $activeLog = EvacuationLog::where('family_profile_id', $family->id)
                     ->whereNull('checked_out_at')
+                    ->lockForUpdate()
                     ->first();
 
                 // Gather shelter IDs involved and lock them in sorted order to prevent deadlocks
@@ -228,14 +229,15 @@ class CheckInController extends Controller
     public function processCheckOut(Request $request, $shelter_id)
     {
         $request->validate([
-            'qr_code_hash' => 'required|string|exists:family_profiles,qr_code_hash',
+            'qr_code_hash' => 'required|string',
         ]);
 
         try {
             $result = DB::transaction(function () use ($request) {
-                $family = FamilyProfile::where('qr_code_hash', $request->qr_code_hash)->firstOrFail();
+                $family = FamilyProfile::verifyTotpPayload($request->qr_code_hash, true);
                 $activeLog = EvacuationLog::where('family_profile_id', $family->id)
                     ->whereNull('checked_out_at')
+                    ->lockForUpdate()
                     ->firstOrFail();
 
                 $shelter = Shelter::lockForUpdate()->findOrFail($activeLog->shelter_id);

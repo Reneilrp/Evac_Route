@@ -17,13 +17,11 @@ class ReliefClaimController extends Controller
     public function claim(Request $request)
     {
         $request->validate([
-            'qr_code_hash' => 'required|string|exists:family_profiles,qr_code_hash',
+            'qr_code_hash' => 'required|string',
         ]);
 
         return DB::transaction(function () use ($request) {
-            $family = FamilyProfile::where('qr_code_hash', $request->qr_code_hash)
-                ->lockForUpdate()
-                ->firstOrFail();
+            $family = FamilyProfile::verifyTotpPayload($request->qr_code_hash, true);
 
             // Must be checked in to a shelter
             $activeLog = EvacuationLog::where('family_profile_id', $family->id)
@@ -72,10 +70,11 @@ class ReliefClaimController extends Controller
     public function status(Request $request)
     {
         $request->validate([
-            'qr_code_hash' => 'required|string|exists:family_profiles,qr_code_hash',
+            'qr_code_hash' => 'required|string',
         ]);
 
-        $family = FamilyProfile::where('qr_code_hash', $request->qr_code_hash)->firstOrFail();
+        // Non-locking verification for simple status check
+        $family = FamilyProfile::verifyTotpPayload($request->qr_code_hash, false);
 
         $activeLog = EvacuationLog::where('family_profile_id', $family->id)
             ->whereNull('checked_out_at')

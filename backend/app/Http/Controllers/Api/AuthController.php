@@ -42,7 +42,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'headcount' => 'required|integer|min:1',
-            'contact_number' => 'required|string',
+            'contact_number' => ['required', 'string', 'regex:/^\+?[0-9\s\-]+$/'],
             'barangay' => 'required|string',
             'transportation_mode' => 'required|in:pedestrian,2_wheel,4_wheel',
         ]);
