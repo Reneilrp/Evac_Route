@@ -59,32 +59,52 @@ function getHazardCostMultiplier(geometryCoords, hazardsWithBounds, transportati
 
   let maxMultiplier = 1;
 
-  for (const coord of geometryCoords) {
-    const edgeLng = coord[0];
-    const edgeLat = coord[1];
-
+  // Handle single-point geometry fallback
+  if (geometryCoords.length < 2) {
+    const coord = geometryCoords[0];
+    if (!coord) return 1;
     for (const h of hazardsWithBounds) {
-      // 1. Fast 2D bounding box pre-filtering
-      if (
-        edgeLat >= h.minLat &&
-        edgeLat <= h.maxLat &&
-        edgeLng >= h.minLng &&
-        edgeLng <= h.maxLng
-      ) {
-        // 2. Precise Haversine distance check only if inside bounding box
-        const dist = getDistanceMeters(edgeLat, edgeLng, h.lat, h.lng);
-        if (dist <= h.radius) {
-          // Inside hazard radius. Apply multi-hazard and transportation rules:
-          if (h.hazard_type === 'earthquake' || h.hazard_type === 'maintenance' || h.severity_level === 'high') {
-            return Infinity;
-          }
-          if (h.hazard_type === 'flood') {
-            if (h.severity_level === 'medium') {
-              if (transportationMode === 'pedestrian' || transportationMode === '2_wheel') return Infinity;
-              maxMultiplier = Math.max(maxMultiplier, 2.5);
-            } else if (h.severity_level === 'low') {
-              if (transportationMode === 'pedestrian') return Infinity;
-              maxMultiplier = Math.max(maxMultiplier, 1.5);
+      if (coord[1] >= h.minLat && coord[1] <= h.maxLat && coord[0] >= h.minLng && coord[0] <= h.maxLng) {
+        if (getDistanceMeters(coord[1], coord[0], h.lat, h.lng) <= h.radius) {
+          return 99999; // Fallback instead of Infinity
+        }
+      }
+    }
+    return 1;
+  }
+
+  for (let i = 0; i < geometryCoords.length - 1; i++) {
+    const start = geometryCoords[i];
+    const end = geometryCoords[i + 1];
+    
+    const segmentDist = getDistanceMeters(start[1], start[0], end[1], end[0]);
+    const numSteps = Math.max(2, Math.ceil(segmentDist / 20)); // check every 20 meters
+
+    for (let step = 0; step <= numSteps; step++) {
+      const fraction = step / numSteps;
+      const edgeLng = start[0] + (end[0] - start[0]) * fraction;
+      const edgeLat = start[1] + (end[1] - start[1]) * fraction;
+
+      for (const h of hazardsWithBounds) {
+        if (
+          edgeLat >= h.minLat &&
+          edgeLat <= h.maxLat &&
+          edgeLng >= h.minLng &&
+          edgeLng <= h.maxLng
+        ) {
+          const dist = getDistanceMeters(edgeLat, edgeLng, h.lat, h.lng);
+          if (dist <= h.radius) {
+            if (h.hazard_type === 'earthquake' || h.hazard_type === 'maintenance' || h.severity_level === 'high') {
+              return 99999;
+            }
+            if (h.hazard_type === 'flood') {
+              if (h.severity_level === 'medium') {
+                if (transportationMode === 'pedestrian' || transportationMode === '2_wheel') return 99999;
+                maxMultiplier = Math.max(maxMultiplier, 2.5);
+              } else if (h.severity_level === 'low') {
+                if (transportationMode === 'pedestrian') return 99999;
+                maxMultiplier = Math.max(maxMultiplier, 1.5);
+              }
             }
           }
         }
@@ -197,11 +217,7 @@ export function calculateOfflineRoute(userLocation, shelterLocation, preloadedDa
         // Calculate penalty based on intersecting hazards and transportation mode
         const hazardMultiplier = getHazardCostMultiplier(edgeGeometry, hazardsWithBounds, transportationMode);
         
-        if (hazardMultiplier === Infinity) {
-          // Block this edge entirely by ignoring it
-          continue;
-        }
-
+        // Remove Infinity check to allow "least dangerous" escape paths through 99999 penalty
         const tentativeGScore = gScore[currentId] + (edge.distance * hazardMultiplier);
 
         if (tentativeGScore < (gScore[neighborId] ?? Infinity)) {

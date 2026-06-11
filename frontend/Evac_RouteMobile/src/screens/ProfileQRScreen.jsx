@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Animated } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { Navigation, MapPin, Phone, Bell, Users, LogOut } from 'lucide-react-native';
@@ -11,6 +11,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import EmptyState from '../components/EmptyState';
 import { colors } from '../styles/theme';
 import styles from '../styles/ProfileQRScreen.styles';
+import * as Crypto from 'expo-crypto';
 
 export default function ProfileQRScreen({ navigation }) {
   const profile = useResidentStore(state => state.profile);
@@ -34,6 +35,31 @@ export default function ProfileQRScreen({ navigation }) {
       anim.setValue(1);
     }
   }, [status]);
+
+  // Dynamic TOTP Payload Generation
+  const [totpPayload, setTotpPayload] = useState(null);
+  useEffect(() => {
+    if (!qrHash || !profile?.id) return;
+    
+    let isMounted = true;
+    
+    const generateTotp = async () => {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const dataToSign = `${profile.id}:${timestamp}${qrHash}`;
+      const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, dataToSign);
+      if (isMounted) {
+        setTotpPayload(`${profile.id}:${timestamp}:${hash}`);
+      }
+    };
+
+    generateTotp();
+    const interval = setInterval(generateTotp, 5000); // Regenerate every 5 seconds
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [qrHash, profile?.id]);
 
   // Poll check-in status every 5 seconds
   const { data: statusUpdate } = useQuery({
@@ -119,8 +145,8 @@ export default function ProfileQRScreen({ navigation }) {
             <Text style={styles.qrCardTitle}>YOUR FAMILY QR ID</Text>
 
             <View style={styles.qrWrapper}>
-              {qrHash ? (
-                <QRCode value={qrHash} size={140} color="#000000" bgColor="#ffffff" />
+              {totpPayload ? (
+                <QRCode value={totpPayload} size={180} color="#000000" bgColor="#ffffff" />
               ) : (
                 <EmptyState
                   title="No QR Generated"
@@ -129,7 +155,7 @@ export default function ProfileQRScreen({ navigation }) {
               )}
             </View>
 
-            <Text style={styles.qrHashText}>{qrHash || 'N/A'}</Text>
+            <Text style={styles.qrHashText} numberOfLines={1} ellipsizeMode="middle">{totpPayload || 'N/A'}</Text>
 
             {profile && (
               <View style={styles.qrInfoBox}>
@@ -185,8 +211,8 @@ export default function ProfileQRScreen({ navigation }) {
         <Text style={styles.qrCardTitle}>YOUR FAMILY QR ID</Text>
 
         <View style={styles.qrWrapper}>
-          {qrHash ? (
-            <QRCode value={qrHash} size={180} color="#000000" bgColor="#ffffff" />
+          {totpPayload ? (
+            <QRCode value={totpPayload} size={180} color="#000000" bgColor="#ffffff" />
           ) : (
             <EmptyState
               title="No QR Generated"
@@ -195,7 +221,7 @@ export default function ProfileQRScreen({ navigation }) {
           )}
         </View>
 
-        <Text style={styles.qrHashText}>{qrHash || 'N/A'}</Text>
+        <Text style={styles.qrHashText} numberOfLines={1} ellipsizeMode="middle">{totpPayload || 'N/A'}</Text>
 
         {profile && (
           <View style={styles.qrInfoBox}>
