@@ -7,6 +7,7 @@ use App\Models\EvacuationLog;
 use App\Models\Hazard;
 use App\Models\InventoryItem;
 use App\Models\RationTemplate;
+use App\Models\RoadMaintenance;
 use App\Models\Shelter;
 use Illuminate\Http\Request;
 
@@ -68,11 +69,15 @@ class BundledApiController extends Controller
             ->groupBy('family_profiles.barangay')
             ->get();
 
+        // 4. Active road maintenance blocks
+        $roadMaintenances = \App\Models\RoadMaintenance::where('is_active', true)->get();
+
         return response()->json([
             'status' => 'success',
             'shelters' => $activeShelters,
             'hazards' => $hazards,
             'demographics' => $demographics,
+            'road_maintenances' => $roadMaintenances,
         ], 200);
     }
 
@@ -89,10 +94,22 @@ class BundledApiController extends Controller
         // 2. Fetch active hazards
         $hazards = Hazard::where('is_active', true)->get();
 
+        // 3. P3: Fetch active road maintenance blocks so mobile can render them
+        //    Returns only the fields needed for map rendering (no reporter PII)
+        $roadMaintenances = RoadMaintenance::where('is_active', true)
+            ->select(
+                'id', 'description',
+                'start_latitude', 'start_longitude',
+                'end_latitude', 'end_longitude',
+                'estimated_duration_hours', 'created_at'
+            )
+            ->get();
+
         return response()->json([
-            'status' => 'success',
-            'shelters' => $shelters,
-            'hazards' => $hazards,
+            'status'            => 'success',
+            'shelters'          => $shelters,
+            'hazards'           => $hazards,
+            'road_maintenances' => $roadMaintenances,
         ], 200);
     }
 

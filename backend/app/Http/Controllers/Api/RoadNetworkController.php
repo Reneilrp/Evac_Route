@@ -17,8 +17,12 @@ class RoadNetworkController extends Controller
      */
     public function index()
     {
-        $nodes = RoadNode::all(['id', 'lat', 'lng', 'label']);
-        $edges = RoadEdge::all(['id', 'source_node_id', 'target_node_id', 'distance_meters', 'geometry', 'status', 'block_reason']);
+        $nodes = RoadNode::all(['id', 'lat', 'lng', 'label', 'elevation_meters']);
+        $edges = RoadEdge::all([
+            'id', 'source_node_id', 'target_node_id', 'distance_meters', 'geometry', 
+            'status', 'block_reason', 'slope_degrees', 'flood_susceptibility', 
+            'landslide_susceptibility', 'min_elevation_meters'
+        ]);
 
         return response()->json([
             'status' => 'success',

@@ -21,16 +21,23 @@ class HazardController extends Controller
             'severity_level' => 'required|in:low,medium,high',
             'description'    => 'nullable|string|max:500',
             'photo_path'     => 'nullable|string',
+            'estimated_duration_hours' => 'nullable|integer|min:1',
+            'is_fixed_flood_spot' => 'nullable|boolean',
         ]);
+
+        $isFixed = (bool)($validated['is_fixed_flood_spot'] ?? false);
 
         $hazard = Hazard::create([
             'name'           => $validated['name'],
             'latitude'       => $validated['latitude'],
             'longitude'      => $validated['longitude'],
-            'radius_meters'  => $request->radius_meters ?? 50,
+            'radius_meters'  => $validated['radius_meters'] ?? 50,
             'hazard_type'    => $validated['hazard_type'],
             'severity_level' => $validated['severity_level'],
+            'estimated_duration_hours' => $validated['estimated_duration_hours'] ?? null,
             'reported_by'    => auth()->id(),
+            'is_fixed_flood_spot' => $isFixed,
+            'is_active'      => !$isFixed,
         ]);
 
         // Broadcast real-time map update

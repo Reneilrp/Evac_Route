@@ -35,6 +35,7 @@ class HazardCreated implements ShouldBroadcastNow
             'latitude'       => (float) $this->hazard->latitude,
             'longitude'      => (float) $this->hazard->longitude,
             'radius_meters'  => (float) $this->hazard->radius_meters,
+            'estimated_duration_hours' => $this->hazard->estimated_duration_hours ? (int) $this->hazard->estimated_duration_hours : null,
             'hazard_type'    => $this->hazard->hazard_type,
             'severity_level' => $this->hazard->severity_level,
             'is_active'      => $this->hazard->is_active,
