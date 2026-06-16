@@ -47,9 +47,24 @@ class ReliefClaimController extends Controller
                 ], 409);
             }
 
+            $activeRation = \App\Models\RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
+            $claimedItems = null;
+
+            if ($activeRation && $activeRation->items->isNotEmpty()) {
+                $claimedItems = [];
+                foreach ($activeRation->items as $rationItem) {
+                    $claimedItems[] = [
+                        'item_name' => $rationItem->inventoryItem?->item_name ?? 'Unknown Item',
+                        'quantity' => $rationItem->quantity_per_head * $family->headcount,
+                        'unit_type' => $rationItem->inventoryItem?->unit_type ?? '',
+                    ];
+                }
+            }
+
             $activeLog->update([
-                'ration_claimed'    => true,
-                'ration_claimed_at' => now(),
+                'ration_claimed'       => true,
+                'ration_claimed_at'    => now(),
+                'claimed_ration_items' => $claimedItems,
             ]);
 
             return response()->json([
@@ -84,6 +99,7 @@ class ReliefClaimController extends Controller
         return response()->json([
             'status'         => 'success',
             'family_name'    => $family->family_name,
+            'headcount'      => $family->headcount,
             'checked_in'     => (bool) $activeLog,
             'shelter'        => $activeLog?->shelter?->name,
             'ration_claimed' => $activeLog?->ration_claimed ?? false,

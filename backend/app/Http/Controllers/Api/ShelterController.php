@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Shelter;
 use Illuminate\Http\Request;
 
@@ -64,6 +65,14 @@ class ShelterController extends Controller
             'pinned_by' => auth()->id(), // Assuming the LGU official is logged in
         ]);
 
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'shelter_create',
+            'ip_address' => $request->ip(),
+            'old_values' => null,
+            'new_values' => $shelter->toArray(),
+        ]);
+
         return response()->json([
             'status' => 'success',
             'message' => 'New shelter pinned successfully.',
@@ -78,6 +87,7 @@ class ShelterController extends Controller
     public function update(Request $request, $id)
     {
         $shelter = Shelter::findOrFail($id);
+        $oldValues = $shelter->toArray();
 
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:shelters,name,'.$shelter->id,
@@ -86,6 +96,14 @@ class ShelterController extends Controller
         ]);
 
         $shelter->update($validated);
+
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'shelter_update',
+            'ip_address' => $request->ip(),
+            'old_values' => $oldValues,
+            'new_values' => $shelter->toArray(),
+        ]);
 
         return response()->json([
             'status' => 'success',
@@ -101,13 +119,56 @@ class ShelterController extends Controller
     public function destroy($id)
     {
         $shelter = Shelter::findOrFail($id);
+        $oldValues = $shelter->toArray();
 
         // cascade deletion of logs will be handled by DB constrained cascade
         $shelter->delete();
 
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'shelter_delete',
+            'ip_address' => request()->ip(),
+            'old_values' => $oldValues,
+            'new_values' => null,
+        ]);
+
         return response()->json([
             'status' => 'success',
             'message' => 'Shelter deleted successfully.',
+        ], 200);
+    }
+
+    /**
+     * Fetch detailed shelter state including currently checked-in residents.
+     * Route: GET /api/shelters/{id}/details
+     */
+    public function getDetails($id)
+    {
+        $shelter = Shelter::findOrFail($id);
+
+        $activeLogs = $shelter->evacuationLogs()
+            ->whereNull('checked_out_at')
+            ->with(['familyProfile.user'])
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'family_name' => $log->familyProfile?->name ?? 'N/A',
+                    'contact_number' => $log->familyProfile?->contact_number ?? 'N/A',
+                    'headcount' => $log->recorded_headcount,
+                    'ration_claimed' => $log->ration_claimed,
+                    'ration_claimed_at' => $log->ration_claimed_at?->toIso8601String(),
+                    'checked_in_at' => $log->checked_in_at?->toIso8601String(),
+                    'claimed_ration_items' => $log->claimed_ration_items,
+                ];
+            });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'shelter' => $shelter,
+                'active_logs' => $activeLogs,
+            ]
         ], 200);
     }
 }

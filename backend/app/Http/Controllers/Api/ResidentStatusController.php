@@ -30,6 +30,17 @@ class ResidentStatusController extends Controller
             ->latest('checked_in_at')
             ->first();
 
+        // Fetch active alerts targeted to this resident's barangay or all residents
+        $barangay = $family->barangay;
+        $alertsQuery = \App\Models\BroadcastAlert::where('scope', 'all');
+        if ($barangay) {
+            $alertsQuery->orWhere(function ($q) use ($barangay) {
+                $q->where('scope', 'barangay')
+                  ->where('barangay', $barangay);
+            });
+        }
+        $activeAlerts = $alertsQuery->orderBy('created_at', 'desc')->get();
+
         if ($log) {
             // Simulate the receipt generation based on active template
             $activeRation = RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
@@ -60,12 +71,14 @@ class ResidentStatusController extends Controller
                 'shelter_name' => $log->shelter?->name ?? 'Assigned Shelter', // null-safe: shelter may be deleted
                 'allocation' => $allocation,
                 'template_name' => $activeRation ? $activeRation->name : 'Emergency Kit',
+                'active_alerts' => $activeAlerts,
             ]);
         }
 
         return response()->json([
             'status' => 'danger',
             'message' => 'Awaiting Evacuation',
+            'active_alerts' => $activeAlerts,
         ]);
     }
 }

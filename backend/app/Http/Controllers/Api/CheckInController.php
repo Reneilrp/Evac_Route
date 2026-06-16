@@ -111,10 +111,12 @@ class CheckInController extends Controller
                         broadcast(new ShelterStatusUpdated($shelter));
 
                         // Allocate rations (Eager loaded & locked in sorted order to prevent deadlocks)
-                        $activeRation = RationTemplate::with('items')->where('is_active', true)->first();
+                        $activeRation = RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
+                        $claimedItems = null;
                         if ($activeRation && $activeRation->items->isNotEmpty()) {
                             $inventoryItemIds = $activeRation->items->pluck('inventory_item_id')->unique()->sort()->toArray();
                             $inventoryItems = InventoryItem::lockForUpdate()->whereIn('id', $inventoryItemIds)->get()->keyBy('id');
+                            $claimedItems = [];
 
                             foreach ($activeRation->items as $rationItem) {
                                 $totalDeduction = $rationItem->quantity_per_head * $family->headcount;
@@ -126,6 +128,12 @@ class CheckInController extends Controller
                                     $itemName = $inventory ? $inventory->item_name : 'Unknown Item';
                                     throw new \Exception("Insufficient inventory stock for {$itemName}.");
                                 }
+
+                                $claimedItems[] = [
+                                    'item_name' => $inventory ? $inventory->item_name : 'Unknown Item',
+                                    'quantity' => $totalDeduction,
+                                    'unit_type' => $inventory ? $inventory->unit_type : '',
+                                ];
                             }
                         }
 
@@ -135,6 +143,7 @@ class CheckInController extends Controller
                             'recorded_headcount' => $family->headcount,
                             'ration_claimed' => $activeRation !== null,
                             'checked_in_at' => now(),
+                            'claimed_ration_items' => $claimedItems,
                         ]);
 
                         return [
@@ -167,11 +176,13 @@ class CheckInController extends Controller
                 broadcast(new ShelterStatusUpdated($shelter));
 
                 // Find the currently active LGU ration template
-                $activeRation = RationTemplate::with('items')->where('is_active', true)->first();
+                $activeRation = RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
+                $claimedItems = null;
 
                 if ($activeRation && $activeRation->items->isNotEmpty()) {
                     $inventoryItemIds = $activeRation->items->pluck('inventory_item_id')->unique()->sort()->toArray();
                     $inventoryItems = InventoryItem::lockForUpdate()->whereIn('id', $inventoryItemIds)->get()->keyBy('id');
+                    $claimedItems = [];
 
                     foreach ($activeRation->items as $rationItem) {
                         // Math: Quantity per person * Family Headcount
@@ -185,6 +196,12 @@ class CheckInController extends Controller
                             $itemName = $inventory ? $inventory->item_name : 'Unknown Item';
                             throw new \Exception("Insufficient inventory stock for {$itemName}.");
                         }
+
+                        $claimedItems[] = [
+                            'item_name' => $inventory ? $inventory->item_name : 'Unknown Item',
+                            'quantity' => $totalDeduction,
+                            'unit_type' => $inventory ? $inventory->unit_type : '',
+                        ];
                     }
                 }
 
@@ -195,6 +212,7 @@ class CheckInController extends Controller
                     'recorded_headcount' => $family->headcount,
                     'ration_claimed' => $activeRation !== null, // Only true when a template was applied
                     'checked_in_at' => now(),
+                    'claimed_ration_items' => $claimedItems,
                 ]);
 
                 return [

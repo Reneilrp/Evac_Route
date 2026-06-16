@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\FamilyProfile;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -111,12 +112,33 @@ class AuthController extends Controller
             'status' => $validated['status'],
         ]);
 
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'staff_create',
+            'ip_address' => $request->ip(),
+            'old_values' => null,
+            'new_values' => [
+                'id' => $staff->id,
+                'name' => $staff->name,
+                'email' => $staff->email,
+                'role' => $staff->role,
+                'status' => $staff->status,
+            ],
+        ]);
+
         return response()->json(['status' => 'success', 'message' => 'Staff operator created successfully.', 'data' => $staff], 201);
     }
 
     public function updateStaff(Request $request, $id)
     {
         $user = User::findOrFail($id);
+        $oldValues = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'status' => $user->status,
+        ];
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -139,6 +161,20 @@ class AuthController extends Controller
 
         $user->update($updateData);
 
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'staff_update',
+            'ip_address' => $request->ip(),
+            'old_values' => $oldValues,
+            'new_values' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'status' => $user->status,
+            ],
+        ]);
+
         return response()->json(['status' => 'success', 'message' => 'Staff operator updated successfully.', 'data' => $user]);
     }
 
@@ -151,10 +187,69 @@ class AuthController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Cannot revoke your own account.'], 400);
         }
 
+        $oldValues = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'status' => $user->status,
+        ];
+
         // Revoke tokens
         $user->tokens()->delete();
-        $user->delete();
+        $user->update(['status' => 'inactive']);
+
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'staff_deactivate',
+            'ip_address' => request()->ip(),
+            'old_values' => $oldValues,
+            'new_values' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'status' => 'inactive',
+            ],
+        ]);
 
         return response()->json(['status' => 'success', 'message' => 'Staff operator revoked successfully.']);
+    }
+
+    /**
+     * Store or update the Expo Push Token for the authenticated user.
+     * Called on every mobile app launch — idempotent via update().
+     * Allows the backend to send server-initiated push notifications via Expo's Push API.
+     */
+    public function storePushToken(Request $request)
+    {
+        $validated = $request->validate([
+            'push_token' => 'required|string|max:255',
+        ]);
+
+        $request->user()->update(['push_token' => $validated['push_token']]);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Push token registered successfully.',
+        ]);
+    }
+
+    public function updateLocation(Request $request)
+    {
+        $validated = $request->validate([
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+        ]);
+
+        $request->user()->update([
+            'last_latitude' => $validated['latitude'],
+            'last_longitude' => $validated['longitude'],
+        ]);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Location updated successfully.',
+        ]);
     }
 }

@@ -12,6 +12,7 @@ class EvacuationLog extends Model
         'checked_in_at' => 'datetime',
         'checked_out_at' => 'datetime',
         'ration_claimed' => 'boolean',
+        'claimed_ration_items' => 'array',
     ];
 
     public function familyProfile()

@@ -8,12 +8,18 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['user_id', 'headcount', 'contact_number', 'barangay', 'qr_code_hash', 'transportation_mode'])]
 class FamilyProfile extends Model
 {
-    protected $appends = ['name'];
+    protected $appends = ['name', 'family_name'];
 
     public function getNameAttribute()
     {
         return $this->user?->name;
     }
+
+    public function getFamilyNameAttribute()
+    {
+        return $this->user?->name;
+    }
+
 
     public function user()
     {

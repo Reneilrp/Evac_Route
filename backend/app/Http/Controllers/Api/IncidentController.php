@@ -95,15 +95,25 @@ class IncidentController extends Controller
             return response()->json(['message' => 'Incident already reviewed.'], 422);
         }
 
+        $validated = $request->validate([
+            'note' => 'nullable|string',
+            'is_fixed_flood_spot' => 'nullable|boolean',
+            'radius_meters' => 'nullable|numeric|min:1|max:5000',
+        ]);
+
+        $isFixed = (bool)($validated['is_fixed_flood_spot'] ?? false);
+
         // Promote to official hazard
         $hazard = Hazard::create([
             'name'           => $incident->name,
             'latitude'       => $incident->latitude,
             'longitude'      => $incident->longitude,
-            'radius_meters'  => 75,
+            'radius_meters'  => $validated['radius_meters'] ?? 75,
             'hazard_type'    => $incident->hazard_type,
             'severity_level' => $incident->severity_level,
             'reported_by'    => $incident->reported_by,
+            'is_fixed_flood_spot' => $isFixed,
+            'is_active'      => !$isFixed,
         ]);
 
         // Mark incident as approved
@@ -111,7 +121,7 @@ class IncidentController extends Controller
             'status'      => 'approved',
             'reviewed_by' => auth()->id(),
             'reviewed_at' => now(),
-            'review_note' => $request->input('note'),
+            'review_note' => $validated['note'] ?? null,
         ]);
 
         // Broadcast real-time to all map listeners

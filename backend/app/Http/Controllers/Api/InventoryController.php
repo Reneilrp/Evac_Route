@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\InventoryItem;
 use App\Models\RationTemplate;
 use App\Models\RationTemplateItem;
@@ -38,6 +39,14 @@ class InventoryController extends Controller
         ]);
 
         $item = InventoryItem::create($validated);
+
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'inventory_create_item',
+            'ip_address' => $request->ip(),
+            'old_values' => null,
+            'new_values' => $item->toArray(),
+        ]);
 
         return response()->json([
             'status' => 'success',
@@ -83,6 +92,14 @@ class InventoryController extends Controller
                 return $template->load('items.inventoryItem');
             });
 
+            AuditLog::create([
+                'user_id' => auth()->id(),
+                'action' => 'ration_template_create',
+                'ip_address' => $request->ip(),
+                'old_values' => null,
+                'new_values' => $template->toArray(),
+            ]);
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Ration template created successfully.',
@@ -110,7 +127,16 @@ class InventoryController extends Controller
         ]);
 
         $item = InventoryItem::findOrFail($id);
+        $oldStock = $item->total_stock;
         $item->update(['total_stock' => $validated['total_stock']]);
+
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'inventory_adjust_stock',
+            'ip_address' => $request->ip(),
+            'old_values' => ['item_name' => $item->item_name, 'total_stock' => $oldStock],
+            'new_values' => ['item_name' => $item->item_name, 'total_stock' => $item->total_stock],
+        ]);
 
         return response()->json([
             'status' => 'success',
@@ -143,12 +169,21 @@ class InventoryController extends Controller
     public function activateTemplate(Request $request, $id)
     {
         $template = RationTemplate::findOrFail($id);
+        $oldActiveTemplate = RationTemplate::where('is_active', true)->first();
 
         try {
             DB::transaction(function () use ($template) {
                 RationTemplate::query()->update(['is_active' => false]);
                 $template->update(['is_active' => true]);
             });
+
+            AuditLog::create([
+                'user_id' => auth()->id(),
+                'action' => 'ration_template_activate',
+                'ip_address' => $request->ip(),
+                'old_values' => $oldActiveTemplate ? ['id' => $oldActiveTemplate->id, 'name' => $oldActiveTemplate->name] : null,
+                'new_values' => ['id' => $template->id, 'name' => $template->name],
+            ]);
 
             return response()->json([
                 'status' => 'success',
