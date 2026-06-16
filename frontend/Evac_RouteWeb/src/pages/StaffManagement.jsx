@@ -2,8 +2,13 @@ import { useState } from 'react';
 import { UserPlus, Shield, User, X, Edit2, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
+import ConfirmationModal from '../components/common/ConfirmationModal';
+import { showSuccess, showError } from '../utils/toast';
+import { useAuth } from '../context/AuthContext';
+
 
 export default function StaffManagement() {
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
@@ -29,9 +34,10 @@ export default function StaffManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff'] });
       closeModal();
+      showSuccess('Staff operator added successfully.');
     },
     onError: (err) => {
-      alert(err.response?.data?.message || 'Failed to create staff member.');
+      showError(err.response?.data?.message || 'Failed to create staff member.');
     }
   });
 
@@ -41,9 +47,10 @@ export default function StaffManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff'] });
       closeModal();
+      showSuccess('Staff operator updated successfully.');
     },
     onError: (err) => {
-      alert(err.response?.data?.message || 'Failed to update staff member.');
+      showError(err.response?.data?.message || 'Failed to update staff member.');
     }
   });
 
@@ -52,9 +59,10 @@ export default function StaffManagement() {
     mutationFn: (id) => api.delete(`/staff/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff'] });
+      showSuccess('Staff operator access revoked successfully.');
     },
     onError: (err) => {
-      alert(err.response?.data?.message || 'Failed to revoke staff access.');
+      showError(err.response?.data?.message || 'Failed to revoke staff access.');
     }
   });
 
@@ -94,16 +102,23 @@ export default function StaffManagement() {
       updateMutation.mutate({ id: editingStaff.id, data });
     } else {
       if (!password) {
-        alert('Password is required for new accounts.');
+        showError('Password is required for new accounts.');
         return;
       }
       createMutation.mutate(data);
     }
   };
 
+  const [revokeConfirmUser, setRevokeConfirmUser] = useState(null);
+
   const handleRevoke = (user) => {
-    if (confirm(`Are you sure you want to revoke access for ${user.name}? This will log them out immediately.`)) {
-      deleteMutation.mutate(user.id);
+    setRevokeConfirmUser(user);
+  };
+
+  const handleConfirmRevoke = () => {
+    if (revokeConfirmUser) {
+      deleteMutation.mutate(revokeConfirmUser.id);
+      setRevokeConfirmUser(null);
     }
   };
 
@@ -172,18 +187,24 @@ export default function StaffManagement() {
                         </span>
                       </td>
                       <td className="py-4 px-6 text-right space-x-2">
-                        <button 
-                          onClick={() => openEditModal(user)}
-                          className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium text-sm transition"
-                        >
-                          <Edit2 size={14} /> Edit
-                        </button>
-                        <button 
-                          onClick={() => handleRevoke(user)}
-                          className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 font-medium text-sm transition"
-                        >
-                          <Trash2 size={14} /> Revoke
-                        </button>
+                        {user.id !== currentUser?.id ? (
+                          <>
+                            <button 
+                              onClick={() => openEditModal(user)}
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium text-sm transition"
+                            >
+                              <Edit2 size={14} /> Edit
+                            </button>
+                            <button 
+                              onClick={() => handleRevoke(user)}
+                              className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 font-medium text-sm transition"
+                            >
+                              <Trash2 size={14} /> Revoke
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">Current Account</span>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -294,6 +315,16 @@ export default function StaffManagement() {
           </div>
         </div>
       )}
+      <ConfirmationModal
+        isOpen={revokeConfirmUser !== null}
+        onClose={() => setRevokeConfirmUser(null)}
+        onConfirm={handleConfirmRevoke}
+        title="Revoke Access"
+        message={`Are you sure you want to revoke access for ${revokeConfirmUser?.name}? This will log them out immediately and they will no longer be able to access the LGU Command Center.`}
+        confirmText="Revoke Access"
+        cancelText="Cancel"
+        confirmButtonClass="bg-red-600 hover:bg-red-700"
+      />
     </div>
   );
 }

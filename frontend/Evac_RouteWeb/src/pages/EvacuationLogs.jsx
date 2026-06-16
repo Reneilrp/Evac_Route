@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Download, Search, Filter, Calendar } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
+import ConfirmationModal from '../components/common/ConfirmationModal';
+import { showSuccess, showError } from '../utils/toast';
 
 export default function EvacuationLogs() {
   const [search, setSearch] = useState('');
@@ -34,9 +36,10 @@ export default function EvacuationLogs() {
     mutationFn: (logId) => api.post(`/evacuation-logs/${logId}/check-out`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evacuation-logs'] });
+      showSuccess('Resident checked out successfully.');
     },
     onError: (err) => {
-      alert(err.response?.data?.message || 'Failed to check out resident.');
+      showError(err.response?.data?.message || 'Failed to check out resident.');
     }
   });
 
@@ -44,9 +47,16 @@ export default function EvacuationLogs() {
   const logs = logsData?.data?.data || [];
   const filteredLogs = logs; // Keep same variable to avoid rewriting table mapping
 
+  const [checkoutConfirmId, setCheckoutConfirmId] = useState(null);
+
   const handleCheckOut = (logId) => {
-    if (confirm('Are you sure you want to manually check out this family?')) {
-      checkoutMutation.mutate(logId);
+    setCheckoutConfirmId(logId);
+  };
+
+  const handleConfirmCheckout = () => {
+    if (checkoutConfirmId) {
+      checkoutMutation.mutate(checkoutConfirmId);
+      setCheckoutConfirmId(null);
     }
   };
 
@@ -211,6 +221,16 @@ export default function EvacuationLogs() {
           </div>
         )}
       </div>
+      <ConfirmationModal
+        isOpen={checkoutConfirmId !== null}
+        onClose={() => setCheckoutConfirmId(null)}
+        onConfirm={handleConfirmCheckout}
+        title="Confirm Check-Out"
+        message="Are you sure you want to manually check out this family? This action will mark them as checked out in the database."
+        confirmText="Check-Out"
+        cancelText="Cancel"
+        confirmButtonClass="bg-red-600 hover:bg-red-700"
+      />
     </div>
   );
 }

@@ -3,8 +3,10 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 import { QrCode, ClipboardList, CheckCircle, AlertTriangle, AlertCircle, RefreshCw, ArrowRight } from 'lucide-react';
 import api from '../services/api';
 import { playScanSuccessTone, playScanErrorTone } from '../services/sound';
+import { useAuth } from '../context/AuthContext';
 
 export default function ReliefDistribution() {
+  const { user } = useAuth();
   const scannerRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [scanResult, setScanResult] = useState(null);
@@ -220,26 +222,36 @@ export default function ReliefDistribution() {
           )}
 
           {/* Manual Input Fallback */}
-          <form onSubmit={handleManualSubmit} className="w-full mt-6 pt-6 border-t border-gray-100">
-            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Manual Entry Fallback</h4>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 font-mono"
-                placeholder="Paste/type QR Code Hash..."
-                value={manualHash}
-                onChange={e => setManualHash(e.target.value)}
-                disabled={loading}
-              />
-              <button
-                type="submit"
-                className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm transition flex items-center gap-1 disabled:opacity-50"
-                disabled={loading}
-              >
-                Claim <ArrowRight size={14} />
-              </button>
+          {user?.role === 'admin' ? (
+            <form onSubmit={handleManualSubmit} className="w-full mt-6 pt-6 border-t border-gray-100">
+              <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Manual Entry Fallback</h4>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 font-mono"
+                  placeholder="Paste/type QR Code Hash..."
+                  value={manualHash}
+                  onChange={e => setManualHash(e.target.value)}
+                  disabled={loading}
+                />
+                <button
+                  type="submit"
+                  className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm transition flex items-center gap-1 disabled:opacity-50"
+                  disabled={loading}
+                >
+                  Claim <ArrowRight size={14} />
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="w-full mt-6 pt-6 border-t border-gray-100 text-center">
+              <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Manual Entry Fallback</h4>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 font-medium flex items-center justify-center gap-2">
+                <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+                <span>Manual override requires Admin / Supervisor authorization.</span>
+              </div>
             </div>
-          </form>
+          )}
 
           {/* Dev Simulated Button */}
           <div className="w-full mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs">

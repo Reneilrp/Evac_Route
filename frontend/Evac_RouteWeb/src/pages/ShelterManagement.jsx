@@ -1,13 +1,34 @@
 import { useState } from 'react';
-import { QrCode, Search, MapPin, ClipboardList, FileSpreadsheet, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
+import { QrCode, Search, MapPin, ClipboardList, FileSpreadsheet, AlertTriangle, CheckCircle, TrendingUp, X } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRScannerModal from '../components/common/QRScannerModal';
 import api from '../services/api';
+import { showSuccess, showError } from '../utils/toast';
+
+const getDurationOpen = (createdAt) => {
+  if (!createdAt) return '—';
+  const start = new Date(createdAt);
+  const now = new Date();
+  const diffMs = now - start;
+  if (diffMs < 0) return 'Just opened';
+  
+  const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(diffHrs / 24);
+  const hours = diffHrs % 24;
+  
+  const parts = [];
+  if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+  if (hours > 0 || parts.length === 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+  return parts.join(', ');
+};
 
 export default function ShelterManagement() {
+  const location = useLocation();
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedShelterForScanner, setSelectedShelterForScanner] = useState(null);
-  const [search, setSearch] = useState('');
+  const [selectedShelterForDetails, setSelectedShelterForDetails] = useState(null);
+  const [search, setSearch] = useState(location.state?.search || '');
   const [activeTab, setActiveTab] = useState('capacities'); // 'capacities' or 'ration-planning'
 
   // Consolidated query fetching both shelters and templates in one request
@@ -81,26 +102,37 @@ export default function ShelterManagement() {
   };
 
   return (
-    <div className="p-6 h-full overflow-y-auto bg-gray-50">
+    <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
       <QRScannerModal 
         isOpen={isScannerOpen} 
         onClose={() => { setIsScannerOpen(false); setSelectedShelterForScanner(null); }} 
         selectedShelterId={selectedShelterForScanner} 
       />
+
+      {selectedShelterForDetails && (
+        <ShelterDetailsModal 
+          shelterId={selectedShelterForDetails} 
+          onClose={() => setSelectedShelterForDetails(null)} 
+          onLaunchScanner={(shelter) => {
+            setSelectedShelterForDetails(null);
+            handleLaunchScanner(shelter);
+          }}
+        />
+      )}
       
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Shelter Management</h2>
-          <p className="text-sm text-gray-500 mt-1">Manage physical locations, capacities, and monitor logistical requirements.</p>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Shelter Management</h2>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Manage physical locations, capacities, and monitor logistical requirements.</p>
         </div>
       </div>
 
       {/* Tabs Switcher */}
-      <div className="flex space-x-1 bg-gray-200 p-1 rounded-lg w-fit mb-6">
+      <div className="flex space-x-1 bg-gray-200 dark:bg-slate-900 p-1 rounded-lg w-fit mb-6">
         <button
           onClick={() => { setActiveTab('capacities'); setSearch(''); }}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
-            activeTab === 'capacities' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            activeTab === 'capacities' ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
           }`}
         >
           <MapPin size={16} /> Shelters &amp; Capacities
@@ -108,7 +140,7 @@ export default function ShelterManagement() {
         <button
           onClick={() => { setActiveTab('ration-planning'); setSearch(''); }}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
-            activeTab === 'ration-planning' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            activeTab === 'ration-planning' ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
           }`}
         >
           <ClipboardList size={16} /> Ration Planning &amp; Buffers
@@ -123,17 +155,17 @@ export default function ShelterManagement() {
           placeholder="Search shelters..." 
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
       {/* Tab 1: Shelters & Capacities */}
       {activeTab === 'capacities' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-            <h3 className="font-semibold text-gray-700">Evacuation Centers Status</h3>
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
+          <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-950/50">
+            <h3 className="font-semibold text-gray-700 dark:text-slate-200">Evacuation Centers Status</h3>
             {selectedShelterForScanner && (
-              <span className="text-xs bg-blue-100 text-blue-700 font-bold px-3 py-1 rounded-full">
+              <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-bold px-3 py-1 rounded-full">
                 Scanner locked to shelter #{selectedShelterForScanner}
               </span>
             )}
@@ -146,22 +178,23 @@ export default function ShelterManagement() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-6 w-6 bg-blue-500"></span>
                 </span>
-                <p className="text-gray-500 font-medium">Loading shelters...</p>
+                <p className="text-gray-500 dark:text-slate-400 font-medium">Loading shelters...</p>
               </div>
             ) : (
               <table className="min-w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                  <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wider">
                     <th className="py-3 px-6 font-semibold">Shelter Name</th>
                     <th className="py-3 px-6 font-semibold">Capacity Status</th>
                     <th className="py-3 px-6 font-semibold">State</th>
+                    <th className="py-3 px-6 font-semibold">Opened</th>
                     <th className="py-3 px-6 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                   {filteredShelters.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-12 text-center text-gray-400 font-medium">
+                      <td colSpan={4} className="py-12 text-center text-gray-400 dark:text-slate-500 font-medium">
                         {search ? 'No shelters match your search.' : 'No active shelters. Use the Live Map to pin one.'}
                       </td>
                     </tr>
@@ -170,22 +203,22 @@ export default function ShelterManagement() {
                       const percentage = Math.round((shelter.current_occupancy / shelter.max_capacity) * 100);
                       const isSelected = selectedShelterForScanner === shelter.id;
                       return (
-                        <tr key={shelter.id} className={`hover:bg-blue-50/30 transition ${isSelected ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' : ''}`}>
+                        <tr key={shelter.id} className={`hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition ${isSelected ? 'bg-blue-50 dark:bg-slate-800 ring-1 ring-inset ring-blue-200 dark:ring-blue-900' : ''}`}>
                           <td className="py-4 px-6">
-                            <div className="font-semibold text-gray-800 flex items-center gap-2">
-                              <MapPin size={16} className="text-gray-400" />
+                            <div className="font-semibold text-gray-800 dark:text-slate-200 flex items-center gap-2">
+                              <MapPin size={16} className="text-gray-400 dark:text-slate-500" />
                               {shelter.name}
                             </div>
-                            <div className="text-xs text-gray-400 mt-0.5 pl-6">
+                            <div className="text-xs text-gray-400 dark:text-slate-500 mt-0.5 pl-6">
                               {shelter.current_occupancy}/{shelter.max_capacity} occupants
                             </div>
                           </td>
                           <td className="py-4 px-6 w-1/3">
                             <div className="flex justify-between text-xs mb-1">
-                              <span className="font-medium text-gray-700">{shelter.current_occupancy} / {shelter.max_capacity}</span>
-                              <span className="text-gray-500">{Math.min(percentage, 100)}%</span>
+                              <span className="font-medium text-gray-700 dark:text-slate-300">{shelter.current_occupancy} / {shelter.max_capacity}</span>
+                              <span className="text-gray-500 dark:text-slate-400">{Math.min(percentage, 100)}%</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="w-full bg-gray-200 dark:bg-slate-800 rounded-full h-2">
                               <div 
                                 className={`h-2 rounded-full ${getCapacityColor(shelter.current_occupancy, shelter.max_capacity)}`} 
                                 style={{ width: `${Math.min(percentage, 100)}%` }}
@@ -193,21 +226,29 @@ export default function ShelterManagement() {
                             </div>
                           </td>
                           <td className="py-4 px-6">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${shelter.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                              shelter.status === 'open' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' : 
+                              shelter.status === 'full' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' :
+                              'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+                            }`}>
                               {shelter.status}
                             </span>
                           </td>
+                          <td className="py-4 px-6 text-gray-700 dark:text-slate-300 text-xs">
+                            <div className="font-semibold">
+                              {new Date(shelter.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}{' '}
+                              {new Date(shelter.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            <div className="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">
+                              {getDurationOpen(shelter.created_at)} ago
+                            </div>
+                          </td>
                           <td className="py-4 px-6 text-right">
                             <button
-                              onClick={() => handleLaunchScanner(shelter)}
-                              disabled={shelter.status !== 'open'}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-sm transition ${
-                                shelter.status === 'open'
-                                  ? 'bg-gray-800 hover:bg-gray-900 text-white'
-                                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              }`}
+                              onClick={() => setSelectedShelterForDetails(shelter.id)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition shadow-sm"
                             >
-                              <QrCode size={14} /> Scan
+                              View Details
                             </button>
                           </td>
                         </tr>
@@ -225,11 +266,11 @@ export default function ShelterManagement() {
       {activeTab === 'ration-planning' && (
         <div>
           {!activeTemplate ? (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 flex items-start gap-4">
-              <AlertTriangle className="text-yellow-600 flex-shrink-0 mt-1" size={24} />
+            <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900/30 rounded-xl p-6 flex items-start gap-4">
+              <AlertTriangle className="text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-1" size={24} />
               <div>
-                <h4 className="font-bold text-yellow-800 text-lg">No Active Ration Template Found</h4>
-                <p className="text-sm text-yellow-700 mt-1">
+                <h4 className="font-bold text-yellow-800 dark:text-yellow-400 text-lg">No Active Ration Template Found</h4>
+                <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
                   There is currently no active ration template in the system. Go to the <strong>Inventory &amp; Relief</strong> dashboard to create and activate a template (e.g. specifying water, blankets, and rice quotas per head). Once active, this page will automatically calculate needs and pre-emptive buffer requirements.
                 </p>
               </div>
@@ -238,27 +279,27 @@ export default function ShelterManagement() {
             <>
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                   <div>
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Active Planning Profile</span>
+                    <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Active Planning Profile</span>
                     <div className="flex items-center gap-2 mt-1">
-                      <ClipboardList className="text-blue-500" size={20} />
-                      <span className="font-black text-gray-800 text-lg leading-tight">{activeTemplate.name}</span>
+                      <ClipboardList className="text-blue-500 dark:text-blue-400" size={20} />
+                      <span className="font-black text-gray-800 dark:text-slate-100 text-lg leading-tight">{activeTemplate.name}</span>
                     </div>
                   </div>
-                  <p className="mt-4 text-xs text-gray-500">All predictions are dynamically computed using this profile's quotas.</p>
+                  <p className="mt-4 text-xs text-gray-500 dark:text-slate-400">All predictions are dynamically computed using this profile's quotas.</p>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Active Evacuee Demand (Current)</span>
-                  <div className="text-2xl font-black text-gray-900 mt-1">
-                    {shelters.reduce((acc, s) => acc + s.current_occupancy, 0)} <span className="text-sm font-medium text-gray-500">Pax currently checked in</span>
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm">
+                  <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Active Evacuee Demand (Current)</span>
+                  <div className="text-2xl font-black text-gray-900 dark:text-slate-100 mt-1">
+                    {shelters.reduce((acc, s) => acc + s.current_occupancy, 0)} <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Pax currently checked in</span>
                   </div>
                   <div className="mt-3 text-xs text-gray-500 flex flex-wrap gap-x-2 gap-y-1.5">
                     {activeTemplate.items.map(item => {
                       const totalNeeded = shelters.reduce((acc, s) => acc + (s.current_occupancy * item.quantity_per_head), 0);
                       return (
-                        <span key={item.id} className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded font-bold">
+                        <span key={item.id} className="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded font-bold border border-blue-100 dark:border-blue-900/50">
                           {item.inventory_item.item_name.split(' (')[0]}: {totalNeeded} {item.inventory_item.unit_type}
                         </span>
                       );
@@ -266,16 +307,16 @@ export default function ShelterManagement() {
                   </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Recommended Stock (Full Max Capacity)</span>
-                  <div className="text-2xl font-black text-green-600 mt-1">
-                    {shelters.reduce((acc, s) => acc + s.max_capacity, 0)} <span className="text-sm font-medium text-gray-500">Max potential capacity</span>
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm">
+                  <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Recommended Stock (Full Max Capacity)</span>
+                  <div className="text-2xl font-black text-green-600 dark:text-green-400 mt-1">
+                    {shelters.reduce((acc, s) => acc + s.max_capacity, 0)} <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Max potential capacity</span>
                   </div>
                   <div className="mt-3 text-xs text-gray-500 flex flex-wrap gap-x-2 gap-y-1.5">
                     {activeTemplate.items.map(item => {
                       const totalMax = shelters.reduce((acc, s) => acc + (s.max_capacity * item.quantity_per_head), 0);
                       return (
-                        <span key={item.id} className="bg-green-50 text-green-700 px-2.5 py-1 rounded font-bold">
+                        <span key={item.id} className="bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 px-2.5 py-1 rounded font-bold border border-green-100 dark:border-green-900/50">
                           {item.inventory_item.item_name.split(' (')[0]}: {totalMax} {item.inventory_item.unit_type}
                         </span>
                       );
@@ -285,11 +326,11 @@ export default function ShelterManagement() {
               </div>
 
               {/* Demand Table */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-gray-50/50">
+              <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
+                <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-gray-50/50 dark:bg-slate-950/50">
                   <div>
-                    <h3 className="font-bold text-gray-700">Shelter Logistical Projections</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Calculated requirements and safety stock recommendations based on max capacity slots.</p>
+                    <h3 className="font-bold text-gray-700 dark:text-slate-200">Shelter Logistical Projections</h3>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Calculated requirements and safety stock recommendations based on max capacity slots.</p>
                   </div>
                   <button 
                     onClick={handleExportRationNeeds}
@@ -302,17 +343,17 @@ export default function ShelterManagement() {
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                      <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wider">
                         <th className="py-3 px-6 font-semibold">Shelter Details</th>
                         <th className="py-3 px-6 font-semibold">Occupancy Load</th>
                         <th className="py-3 px-6 font-semibold">Calculated Demands</th>
                         <th className="py-3 px-6 font-semibold">Safety Buffer Recommendation</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                       {filteredShelters.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="py-12 text-center text-gray-400 font-medium">
+                          <td colSpan={4} className="py-12 text-center text-gray-400 dark:text-slate-500 font-medium">
                             No shelters found matching your search.
                           </td>
                         </tr>
@@ -320,21 +361,21 @@ export default function ShelterManagement() {
                         filteredShelters.map(shelter => {
                           const bufferPax = shelter.max_capacity - shelter.current_occupancy;
                           return (
-                            <tr key={shelter.id} className="hover:bg-blue-50/10 transition">
+                            <tr key={shelter.id} className="hover:bg-blue-50/10 dark:hover:bg-slate-800/10 transition">
                               <td className="py-4 px-6">
-                                <div className="font-semibold text-gray-800 flex items-center gap-2">
-                                  <MapPin size={16} className="text-gray-400 animate-pulse" />
+                                <div className="font-semibold text-gray-800 dark:text-slate-200 flex items-center gap-2">
+                                  <MapPin size={16} className="text-gray-400 dark:text-slate-500 animate-pulse" />
                                   {shelter.name}
                                 </div>
-                                <div className="text-xs text-gray-400 mt-0.5 pl-6">
+                                <div className="text-xs text-gray-400 dark:text-slate-500 mt-0.5 pl-6">
                                   Barangay: {shelter.barangay || 'N/A'}
                                 </div>
                               </td>
                               <td className="py-4 px-6">
-                                <div className="text-sm font-bold text-gray-700">
-                                  {shelter.current_occupancy} <span className="text-xs font-normal text-gray-400">/ {shelter.max_capacity} Pax</span>
+                                <div className="text-sm font-bold text-gray-700 dark:text-slate-300">
+                                  {shelter.current_occupancy} <span className="text-xs font-normal text-gray-400 dark:text-slate-500">/ {shelter.max_capacity} Pax</span>
                                 </div>
-                                <div className="text-xs text-gray-500 mt-0.5">
+                                <div className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                                   {bufferPax} remaining slots
                                 </div>
                               </td>
@@ -345,13 +386,13 @@ export default function ShelterManagement() {
                                     const maxNeed = shelter.max_capacity * item.quantity_per_head;
                                     return (
                                       <div key={item.id} className="text-xs">
-                                        <span className="font-extrabold text-gray-700">
+                                        <span className="font-extrabold text-gray-700 dark:text-slate-200">
                                           {item.inventory_item.item_name.split(' (')[0]}
                                         </span>
-                                        <div className="flex gap-3 text-gray-500 mt-0.5">
+                                        <div className="flex gap-3 text-gray-500 dark:text-slate-400 mt-0.5">
                                           <span>Need: <strong>{currentNeed}</strong> {item.inventory_item.unit_type}</span>
-                                          <span className="text-gray-300">|</span>
-                                          <span className="text-blue-600 font-bold">Max Cap: {maxNeed}</span>
+                                          <span className="text-gray-300 dark:text-slate-700">|</span>
+                                          <span className="text-blue-600 dark:text-blue-400 font-bold">Max Cap: {maxNeed}</span>
                                         </div>
                                       </div>
                                     );
@@ -360,12 +401,12 @@ export default function ShelterManagement() {
                               </td>
                               <td className="py-4 px-6 w-1/3">
                                 {bufferPax > 0 ? (
-                                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-800">
+                                  <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-xl p-3 text-xs text-blue-800 dark:text-blue-300">
                                     <div className="font-bold flex items-center gap-1.5">
-                                      <TrendingUp size={14} className="text-blue-600" />
+                                      <TrendingUp size={14} className="text-blue-600 dark:text-blue-400" />
                                       Pre-emptive Stocking Recommendation
                                     </div>
-                                    <p className="mt-1.5 text-blue-700 leading-relaxed">
+                                    <p className="mt-1.5 text-blue-700 dark:text-blue-400 leading-relaxed">
                                       Recommend dispatching an additional{' '}
                                       <strong>
                                         {activeTemplate.items.map(i => `${bufferPax * i.quantity_per_head} ${i.inventory_item.unit_type} of ${i.inventory_item.item_name.split(' (')[0]}`).join(', ')}
@@ -374,8 +415,8 @@ export default function ShelterManagement() {
                                     </p>
                                   </div>
                                 ) : (
-                                  <div className="bg-green-50 border border-green-100 rounded-xl p-3 text-xs text-green-800 flex items-start gap-2">
-                                    <CheckCircle size={15} className="text-green-600 flex-shrink-0 mt-0.5" />
+                                  <div className="bg-green-50 dark:bg-green-950/20 border border-green-100 dark:border-green-900/30 rounded-xl p-3 text-xs text-green-800 dark:text-green-305 flex items-start gap-2">
+                                    <CheckCircle size={15} className="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                                     <span>
                                       <strong>Shelter at Full Capacity</strong>. Ration supply is fully allocated. No additional pre-emptive stocking buffer required.
                                     </span>
@@ -394,6 +435,183 @@ export default function ShelterManagement() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Scoped Shelter Details Modal Component ─────────────────────────────────
+function ShelterDetailsModal({ shelterId, onClose, onLaunchScanner }) {
+  const { data: detailsData, isLoading } = useQuery({
+    queryKey: ['shelter-details', shelterId],
+    queryFn: () => api.get(`/shelters/${shelterId}/details`).then(res => res.data.data),
+    refetchInterval: 5000,
+  });
+
+  const queryClient = useQueryClient();
+  const checkoutMutation = useMutation({
+    mutationFn: (logId) => api.post(`/evacuation-logs/${logId}/check-out`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shelter-details'] });
+      queryClient.invalidateQueries({ queryKey: ['shelters-dashboard'] });
+      showSuccess('Resident checked out successfully.');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to check out resident.');
+    }
+  });
+
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-2xl p-6 flex items-center justify-center h-64">
+          <span className="flex h-6 w-6 relative mr-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-6 w-6 bg-blue-500"></span>
+          </span>
+          <p className="text-gray-500 dark:text-slate-400 font-medium">Loading details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const shelter = detailsData?.shelter;
+  const activeLogs = detailsData?.active_logs || [];
+
+
+  return (
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h3 className="font-bold text-gray-800 dark:text-slate-100 text-xl flex items-center gap-2">
+              <MapPin size={22} className="text-blue-500" /> {shelter?.name}
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+              Started: <strong className="text-gray-700 dark:text-slate-200">{new Date(shelter?.created_at).toLocaleString()}</strong> ({getDurationOpen(shelter?.created_at)} ago)
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition"><X size={22} /></button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-lg">
+            <span className="block text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">Status</span>
+            <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-black uppercase ${
+              shelter?.status === 'open' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' :
+              shelter?.status === 'full' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' :
+              'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+            }`}>
+              {shelter?.status}
+            </span>
+          </div>
+          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-lg">
+            <span className="block text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">Occupancy</span>
+            <span className="block mt-1 text-sm font-bold text-gray-700 dark:text-slate-200">
+              {shelter?.current_occupancy} / {shelter?.max_capacity}
+            </span>
+          </div>
+          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-lg">
+            <span className="block text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">Capacity Load</span>
+            <span className="block mt-1 text-sm font-bold text-gray-700 dark:text-slate-200">
+              {Math.min(100, Math.round((shelter?.current_occupancy / shelter?.max_capacity) * 100))}%
+            </span>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="font-bold text-gray-800 dark:text-slate-100 text-sm">Currently Checked-in Residents</h4>
+            <button
+              onClick={() => onLaunchScanner(shelter)}
+              disabled={shelter?.status !== 'open'}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs uppercase transition shadow-sm ${
+                shelter?.status === 'open'
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-600 cursor-not-allowed'
+              }`}
+            >
+              <QrCode size={14} /> Scan &amp; Check In
+            </button>
+          </div>
+
+          <div className="border border-gray-100 dark:border-slate-800 rounded-lg overflow-hidden">
+            <table className="min-w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider">
+                  <th className="py-2.5 px-4">Family Name</th>
+                  <th className="py-2.5 px-4">Headcount</th>
+                  <th className="py-2.5 px-4">Checked In</th>
+                  <th className="py-2.5 px-4">Ration</th>
+                  <th className="py-2.5 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-xs">
+                {activeLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-gray-400 dark:text-slate-500 font-semibold">
+                      No residents checked in currently.
+                    </td>
+                  </tr>
+                ) : (
+                  activeLogs.map(log => (
+                    <tr key={log.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-900/50">
+                      <td className="py-3 px-4 font-semibold text-gray-800 dark:text-slate-200">
+                        {log.family_name}
+                        {log.contact_number && log.contact_number !== 'N/A' && (
+                          <span className="block text-[10px] text-gray-400 dark:text-slate-500 font-normal">{log.contact_number}</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-gray-750 dark:text-slate-300 font-bold">{log.headcount}</td>
+                      <td className="py-3 px-4 text-gray-500 dark:text-slate-400">
+                        {new Date(log.checked_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col gap-1">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase w-fit ${
+                            log.ration_claimed 
+                              ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' 
+                              : 'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400'
+                          }`}>
+                            {log.ration_claimed ? 'Claimed' : 'Pending'}
+                          </span>
+                          {log.ration_claimed && log.claimed_ration_items && log.claimed_ration_items.length > 0 && (
+                            <div className="mt-1 border-t border-green-100 dark:border-green-900/30 pt-1 text-[9px] text-green-755 dark:text-green-300 space-y-0.5 bg-green-50/50 dark:bg-green-950/10 p-1.5 rounded">
+                              {log.claimed_ration_items.map((item, idx) => (
+                                <div key={idx} className="flex justify-between gap-2 font-medium">
+                                  <span>{item.item_name}:</span>
+                                  <span className="font-bold">{item.quantity} {item.unit_type}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => checkoutMutation.mutate(log.id)}
+                          disabled={checkoutMutation.isPending}
+                          className="bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 font-bold px-2 py-1 rounded text-[10px] uppercase transition"
+                        >
+                          {checkoutMutation.isPending ? 'Checking out...' : 'Check Out'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-2 border-t border-gray-100 dark:border-slate-800">
+          <button
+            onClick={onClose}
+            className="bg-gray-200 hover:bg-gray-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 px-4 py-2 rounded-lg font-bold text-xs uppercase transition"
+          >
+            Close Details
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Package, ClipboardList, Plus, AlertCircle, X, Trash2 } from 'lucide-react';
+import { Package, ClipboardList, Plus, AlertCircle, X, Trash2, Truck, CheckCircle, Clock, MapPin } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { showSuccess, showError } from '../utils/toast';
 
 // --- Add Stock Modal ---
 function AddStockModal({ onCancel, onAdd }) {
@@ -218,6 +219,7 @@ export default function InventoryManager() {
   const [showTemplateForm, setShowTemplateForm] = useState(false);
   const [showAddStockModal, setShowAddStockModal] = useState(false);
   const [adjustingItem, setAdjustingItem] = useState(null);
+  const [showDispatchModal, setShowDispatchModal] = useState(false);
 
   // Fetch consolidated inventory and ration templates
   const { data: inventoryDashboardData, isLoading } = useQuery({
@@ -233,6 +235,10 @@ export default function InventoryManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+      showSuccess('Inventory item added successfully.');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to add item.');
     }
   });
 
@@ -242,8 +248,11 @@ export default function InventoryManager() {
       queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
       setAdjustingItem(null);
+      showSuccess('Stock level adjusted successfully.');
     },
-    onError: (err) => alert(err.response?.data?.message || 'Failed to adjust stock.')
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to adjust stock.');
+    }
   });
 
   const createTemplateMutation = useMutation({
@@ -252,6 +261,10 @@ export default function InventoryManager() {
       queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
       setShowTemplateForm(false);
+      showSuccess('Ration template created successfully.');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to create ration template.');
     }
   });
 
@@ -260,13 +273,40 @@ export default function InventoryManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+      showSuccess('Ration template activated successfully.');
     },
-    onError: (err) => alert(err.response?.data?.message || 'Failed to activate template.')
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to activate template.');
+    }
   });
 
   const items = inventoryDashboardData?.inventory || [];
   const templates = inventoryDashboardData?.templates || [];
   const activeTemplate = templates.find(t => t.is_active);
+
+  // Dispatch Orders
+  const { data: dispatchData, isLoading: isLoadingDispatch, refetch: refetchDispatch } = useQuery({
+    queryKey: ['dispatch-orders'],
+    queryFn: () => api.get('/dispatch-orders').then(r => r.data),
+    refetchInterval: 30000,
+  });
+  const dispatchOrders = dispatchData?.data ?? [];
+  const pendingDispatchCount = dispatchOrders.filter(o => o.status === 'pending').length;
+
+  const { data: sheltersData } = useQuery({
+    queryKey: ['shelters-list-dispatch'],
+    queryFn: () => api.get('/shelters').then(r => r.data),
+  });
+  const shelterOptions = sheltersData?.data ?? [];
+
+  const cancelDispatchMutation = useMutation({
+    mutationFn: (id) => api.post(`/dispatch-orders/${id}/cancel`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
+      showSuccess('Dispatch order cancelled.');
+    },
+    onError: () => showError('Could not cancel this order.'),
+  });
 
   const handleAddStock = (newItem) => {
     addItemMutation.mutate(newItem);
@@ -325,6 +365,19 @@ export default function InventoryManager() {
         >
           <ClipboardList size={16} /> Ration Builder
         </button>
+        <button
+          onClick={() => setActiveTab('dispatch')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+            activeTab === 'dispatch' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Truck size={16} /> Dispatch Orders
+          {pendingDispatchCount > 0 && (
+            <span className="bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+              {pendingDispatchCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Tab 1: Warehouse Stock */}
@@ -345,6 +398,21 @@ export default function InventoryManager() {
               </span>
             )}
           </div>
+
+          {items.some(item => item.total_stock < 200) && (
+            <div className="mx-6 mt-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl flex items-start gap-3 text-red-700 dark:text-red-400 animate-pulse">
+              <AlertCircle size={20} className="mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-bold text-sm">Critical Stock Deficits Detected</h4>
+                <p className="text-xs mt-0.5">
+                  The following warehouse item levels are critically low (&lt; 200 units):{' '}
+                  <span className="font-bold">
+                    {items.filter(item => item.total_stock < 200).map(item => `${item.item_name} (${item.total_stock} ${item.unit_type})`).join(', ')}
+                  </span>. Please schedule emergency supplier deliveries.
+                </p>
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             {isLoadingInventory ? (
               <div className="flex items-center justify-center h-32">
@@ -376,9 +444,28 @@ export default function InventoryManager() {
                       <tr key={item.id} className="hover:bg-blue-50/30 transition">
                         <td className="py-4 px-6 font-medium text-gray-800">{item.item_name}</td>
                         <td className="py-4 px-6">
-                          <span className={`py-1 px-3 rounded-full text-xs font-bold ${item.total_stock < 200 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                            {item.total_stock}
-                          </span>
+                          <div className="flex items-center gap-3">
+                            <span className={`py-1 px-3 rounded-full text-xs font-bold w-16 text-center inline-block ${
+                              item.total_stock < 200 ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' :
+                              item.total_stock < 500 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' :
+                              'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400'
+                            }`}>
+                              {item.total_stock}
+                            </span>
+                            <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden flex-shrink-0">
+                              <div 
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  item.total_stock < 200 ? 'bg-red-500' :
+                                  item.total_stock < 500 ? 'bg-amber-500' :
+                                  'bg-green-500'
+                                }`} 
+                                style={{ width: `${Math.min(100, Math.max(5, (item.total_stock / 1000) * 100))}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-gray-400 font-bold uppercase select-none">
+                              {Math.min(100, Math.round((item.total_stock / 1000) * 100))}% of Cap
+                            </span>
+                          </div>
                         </td>
                         <td className="py-4 px-6 text-gray-600 text-sm">{item.unit_type}</td>
                         <td className="py-4 px-6 text-right">
@@ -508,6 +595,228 @@ export default function InventoryManager() {
           </div>
         </div>
       )}
+
+      {/* Tab 3: Dispatch Orders */}
+      {activeTab === 'dispatch' && (
+        <div>
+          {showDispatchModal && (
+            <CreateDispatchModal
+              inventoryItems={items}
+              shelters={shelterOptions}
+              onCancel={() => setShowDispatchModal(false)}
+              onCreated={() => {
+                setShowDispatchModal(false);
+                queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
+                showSuccess('Dispatch order created. Staff have been notified.');
+              }}
+            />
+          )}
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <div>
+                <h3 className="font-semibold text-gray-700">Delivery Dispatch Orders</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Stock deducted from warehouse upon staff delivery confirmation.</p>
+              </div>
+              <button
+                onClick={() => setShowDispatchModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm"
+              >
+                <Plus size={16} /> New Dispatch Order
+              </button>
+            </div>
+
+            {isLoadingDispatch ? (
+              <div className="flex items-center justify-center h-32 text-gray-400 text-sm">Loading orders…</div>
+            ) : dispatchOrders.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-40 gap-3 text-gray-400">
+                <Truck size={32} />
+                <p className="text-sm">No dispatch orders yet. Create one to send supplies to a shelter.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50/80 text-xs text-gray-500 uppercase tracking-wider">
+                    <tr>
+                      <th className="px-4 py-3 text-left">#</th>
+                      <th className="px-4 py-3 text-left">Destination</th>
+                      <th className="px-4 py-3 text-left">Manifest</th>
+                      <th className="px-4 py-3 text-left">Status</th>
+                      <th className="px-4 py-3 text-left">Timeline</th>
+                      <th className="px-4 py-3 text-left">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {dispatchOrders.map(order => {
+                      const scfg = {
+                        pending:    { label: 'Pending',    cls: 'bg-red-100 text-red-700',    Icon: Clock },
+                        in_transit: { label: 'In Transit', cls: 'bg-amber-100 text-amber-700', Icon: Truck },
+                        delivered:  { label: 'Delivered',  cls: 'bg-green-100 text-green-700', Icon: CheckCircle },
+                        cancelled:  { label: 'Cancelled',  cls: 'bg-gray-100 text-gray-500',  Icon: X },
+                      }[order.status] ?? { label: order.status, cls: 'bg-gray-100 text-gray-500', Icon: Package };
+                      const { Icon } = scfg;
+                      return (
+                        <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3 font-bold text-gray-700">#{order.id}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5 font-semibold text-gray-800">
+                              <MapPin size={13} className="text-blue-500 flex-shrink-0" />
+                              {order.shelter?.name ?? '—'}
+                            </div>
+                            {order.notes && <p className="text-xs text-gray-400 mt-0.5 italic truncate max-w-[180px]">{order.notes}</p>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="space-y-0.5">
+                              {order.items?.slice(0, 2).map(item => (
+                                <div key={item.id} className="text-xs text-gray-600">
+                                  {item.inventory_item?.item_name ?? '—'} ×{item.quantity}
+                                </div>
+                              ))}
+                              {(order.items?.length ?? 0) > 2 && (
+                                <div className="text-xs text-gray-400">+{order.items.length - 2} more</div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${scfg.cls}`}>
+                              <Icon size={12} /> {scfg.label}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500 space-y-0.5">
+                            <div>Created: {new Date(order.created_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                            {order.departed_at && <div className="text-amber-600">Departed: {new Date(order.departed_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>}
+                            {order.delivered_at && <div className="text-green-600">Delivered: {new Date(order.delivered_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>}
+                          </td>
+                          <td className="px-4 py-3">
+                            {order.status === 'pending' ? (
+                              <button
+                                onClick={() => { if (window.confirm(`Cancel order #${order.id}?`)) cancelDispatchMutation.mutate(order.id); }}
+                                className="text-xs text-red-500 hover:text-red-700 font-semibold flex items-center gap-1 transition"
+                              >
+                                <X size={13} /> Cancel
+                              </button>
+                            ) : <span className="text-xs text-gray-300">—</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Create Dispatch Modal ---
+function CreateDispatchModal({ inventoryItems, shelters, onCancel, onCreated }) {
+  const [shelterId, setShelterId] = useState('');
+  const [notes, setNotes] = useState('');
+  const [manifest, setManifest] = useState([{ inventory_item_id: '', quantity: 1 }]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const addRow = () => setManifest([...manifest, { inventory_item_id: '', quantity: 1 }]);
+  const removeRow = (i) => setManifest(manifest.filter((_, idx) => idx !== i));
+  const updateRow = (i, field, value) => {
+    const updated = [...manifest];
+    updated[i] = { ...updated[i], [field]: value };
+    setManifest(updated);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!shelterId) { setError('Please select a destination shelter.'); return; }
+    const validItems = manifest.filter(r => r.inventory_item_id && r.quantity > 0);
+    if (validItems.length === 0) { setError('Add at least one item to the manifest.'); return; }
+    setIsSubmitting(true); setError('');
+    try {
+      await api.post('/dispatch-orders', {
+        shelter_id: parseInt(shelterId, 10),
+        notes: notes || null,
+        items: validItems.map(r => ({ inventory_item_id: parseInt(r.inventory_item_id, 10), quantity: parseInt(r.quantity, 10) })),
+      });
+      onCreated();
+    } catch (err) {
+      setError(err?.response?.data?.message ?? 'Failed to create dispatch order.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-5 border-b border-gray-100">
+          <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+            <Truck size={20} className="text-blue-500" /> New Dispatch Order
+          </h3>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition"><X size={22} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-5">
+          {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Destination Shelter</label>
+            <select
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={shelterId} onChange={e => setShelterId(e.target.value)} required
+            >
+              <option value="">Select a shelter…</option>
+              {shelters.map(s => <option key={s.id} value={s.id}>{s.name} ({s.status})</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Manifest</label>
+            <div className="space-y-2">
+              {manifest.map((row, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <select
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={row.inventory_item_id} onChange={e => updateRow(i, 'inventory_item_id', e.target.value)}
+                  >
+                    <option value="">Select item…</option>
+                    {inventoryItems.map(item => (
+                      <option key={item.id} value={item.id}>{item.item_name} (stock: {item.total_stock} {item.unit_type})</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number" min="1" placeholder="Qty"
+                    className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={row.quantity} onChange={e => updateRow(i, 'quantity', e.target.value)}
+                  />
+                  {manifest.length > 1 && (
+                    <button type="button" onClick={() => removeRow(i)} className="text-red-400 hover:text-red-600 transition">
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button type="button" onClick={addRow} className="mt-2 text-blue-600 text-sm font-semibold hover:underline flex items-center gap-1">
+              <Plus size={14} /> Add Item
+            </button>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Instructions for Staff (optional)</label>
+            <textarea
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              rows={2} placeholder="e.g. Priority delivery — shelter at 85% capacity"
+              value={notes} onChange={e => setNotes(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg font-semibold text-sm transition">
+              Cancel
+            </button>
+            <button type="submit" disabled={isSubmitting} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm transition disabled:opacity-60 flex items-center justify-center gap-2">
+              {isSubmitting ? 'Creating…' : 'Create & Notify Staff'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

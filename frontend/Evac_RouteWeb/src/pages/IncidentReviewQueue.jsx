@@ -21,6 +21,8 @@ export default function IncidentReviewQueue() {
   const [activeTab, setActiveTab] = useState('pending');
   const [reviewModal, setReviewModal] = useState(null); // { id, action: 'approve'|'reject' }
   const [note, setNote] = useState('');
+  const [isFixedFloodSpot, setIsFixedFloodSpot] = useState(false);
+  const [radiusMeters, setRadiusMeters] = useState(75);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
@@ -29,12 +31,14 @@ export default function IncidentReviewQueue() {
   });
 
   const reviewMutation = useMutation({
-    mutationFn: ({ id, action, note }) =>
-      api.post(`/incidents/${id}/${action}`, { note }),
+    mutationFn: ({ id, action, note, is_fixed_flood_spot, radius_meters }) =>
+      api.post(`/incidents/${id}/${action}`, { note, is_fixed_flood_spot, radius_meters }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incidents'] });
       setReviewModal(null);
       setNote('');
+      setIsFixedFloodSpot(false);
+      setRadiusMeters(75);
     },
   });
 
@@ -132,13 +136,21 @@ export default function IncidentReviewQueue() {
               {activeTab === 'pending' && (
                 <div className="flex gap-2">
                   <button
-                    onClick={() => { setReviewModal({ id: incident.id, action: 'approve' }); setNote(''); }}
+                    onClick={() => {
+                      setReviewModal({ id: incident.id, action: 'approve', hazard_type: incident.hazard_type });
+                      setNote('');
+                      setIsFixedFloodSpot(incident.hazard_type === 'flood');
+                      setRadiusMeters(75);
+                    }}
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-1.5 rounded-lg font-medium transition"
                   >
                     ✓ Approve
                   </button>
                   <button
-                    onClick={() => { setReviewModal({ id: incident.id, action: 'reject' }); setNote(''); }}
+                    onClick={() => {
+                      setReviewModal({ id: incident.id, action: 'reject' });
+                      setNote('');
+                    }}
                     className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-1.5 rounded-lg font-medium transition"
                   >
                     ✕ Reject
@@ -166,10 +178,48 @@ export default function IncidentReviewQueue() {
                 ? 'This will promote the report to an official hazard on the live map.'
                 : 'Provide a reason for rejection.'}
             </p>
+
+            {reviewModal.action === 'approve' && (
+              <div className="mb-4 bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                {reviewModal.hazard_type === 'flood' && (
+                  <div className="mb-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isFixedFloodSpot}
+                        onChange={e => setIsFixedFloodSpot(e.target.checked)}
+                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                      <span className="text-sm font-semibold text-gray-700">
+                        Promote as Weather-Triggered Fixed Flood Spot
+                      </span>
+                    </label>
+                    <p className="text-xs text-gray-400 mt-1 pl-6">
+                      Only active when rainfall duration exceeds 60 minutes. Alerts will target nearby residents based on their chosen radius.
+                    </p>
+                  </div>
+                )}
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-gray-650 uppercase tracking-wider">
+                    Hazard Alert Radius (meters)
+                  </label>
+                  <input
+                    type="number"
+                    value={radiusMeters}
+                    onChange={e => setRadiusMeters(parseInt(e.target.value) || 75)}
+                    className="w-full border border-gray-350 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="1"
+                    max="5000"
+                  />
+                </div>
+              </div>
+            )}
+
             <textarea
               value={note}
               onChange={e => setNote(e.target.value)}
-              placeholder="Add a note (optional for approve, recommended for reject)..."
+              placeholder="Add a review note (optional for approval, required for rejection)..."
               rows={3}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-4"
             />
@@ -181,7 +231,13 @@ export default function IncidentReviewQueue() {
                 Cancel
               </button>
               <button
-                onClick={() => reviewMutation.mutate({ id: reviewModal.id, action: reviewModal.action, note })}
+                onClick={() => reviewMutation.mutate({ 
+                  id: reviewModal.id, 
+                  action: reviewModal.action, 
+                  note,
+                  is_fixed_flood_spot: isFixedFloodSpot,
+                  radius_meters: radiusMeters
+                })}
                 disabled={reviewMutation.isPending}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium text-white transition ${
                   reviewModal.action === 'approve'

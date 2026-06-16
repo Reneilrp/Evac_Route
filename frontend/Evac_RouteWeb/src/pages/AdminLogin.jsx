@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ShieldAlert } from 'lucide-react';
+import { showSuccess, showError } from '../utils/toast';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -13,9 +14,10 @@ export default function AdminLogin() {
     e.preventDefault();
     const success = await login(email, password);
     if (success) {
+      showSuccess("Welcome! Logged in successfully.");
       navigate('/admin/dashboard');
     } else {
-      alert("Login failed");
+      showError("Login failed. Please check your email and password.");
     }
   };
 
