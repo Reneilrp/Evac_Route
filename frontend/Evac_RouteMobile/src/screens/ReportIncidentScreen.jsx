@@ -112,6 +112,21 @@ export default function ReportIncidentScreen({ navigation }) {
       return;
     }
 
+    if (!photo) {
+      Alert.alert(
+        'Add Photo?',
+        'Providing a photo of the incident helps the LGU verify and approve it immediately. Would you like to take/select one now?',
+        [
+          { text: 'Add Photo', onPress: () => showPhotoPicker() },
+          { text: 'Submit Anyway', onPress: () => sendReportToServer() }
+        ]
+      );
+    } else {
+      sendReportToServer();
+    }
+  };
+
+  const sendReportToServer = async () => {
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -220,7 +235,7 @@ export default function ReportIncidentScreen({ navigation }) {
       </TouchableOpacity>
 
       {/* Photo */}
-      <Text style={styles.label}>Photo (optional)</Text>
+      <Text style={styles.label}>Photo (Recommended for fast LGU approval)</Text>
       {photo ? (
         <View style={styles.photoPreviewContainer}>
           <Image source={{ uri: photo.uri }} style={styles.photoPreview} />

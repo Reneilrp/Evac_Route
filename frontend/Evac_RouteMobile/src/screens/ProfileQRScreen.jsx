@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Animated, Alert } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { Navigation, MapPin, Phone, Bell, Users, LogOut } from 'lucide-react-native';
 import { useResidentStore } from '../context/useResidentStore';
@@ -19,6 +19,17 @@ export default function ProfileQRScreen({ navigation }) {
   const status = useResidentStore(state => state.status);
   const setSafeStatus = useResidentStore(state => state.setSafeStatus);
   const { logout } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Confirm Logout",
+      "Are you sure you want to logout? You will need to sign in again to access your account.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Logout", style: "destructive", onPress: logout }
+      ]
+    );
+  };
 
   // Danger mode pulse animation
   const pulseAnimRef = useRef(new Animated.Value(1));
@@ -176,7 +187,7 @@ export default function ProfileQRScreen({ navigation }) {
           <View style={{ marginTop: 24 }}>
             <PrimaryButton
               title="Sign Out"
-              onPress={logout}
+              onPress={handleLogout}
               variant="outline"
               size="small"
               icon={<LogOut size={16} color={colors.textMuted} />}

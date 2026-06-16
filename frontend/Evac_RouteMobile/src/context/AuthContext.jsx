@@ -84,6 +84,36 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithCredentials = async (email, password) => {
+    try {
+      const response = await api.post('/login', { email, password });
+      const { access_token, user } = response.data;
+      await SecureStore.setItemAsync('auth_token', access_token);
+      setUser(user);
+
+      // Sync profile data to Zustand if they are a resident
+      if (user && user.role === 'resident' && user.family_profile) {
+        useResidentStore.getState().setProfileData(
+          {
+            name: user.name,
+            barangay: user.family_profile.barangay,
+            headcount: user.family_profile.headcount,
+            contact_number: user.family_profile.contact_number,
+            transportation_mode: user.family_profile.transportation_mode
+          },
+          user.family_profile.qr_code_hash
+        );
+      }
+      return { success: true, user };
+    } catch (e) {
+      console.error('Credential login failed:', e.message);
+      return {
+        success: false,
+        message: e.response?.data?.message || 'Login failed. Please check credentials.'
+      };
+    }
+  };
+
   const logout = async () => {
     try {
       // Revoke the Sanctum token on the backend
@@ -98,7 +128,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, loginWithCredentials, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

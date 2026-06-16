@@ -70,6 +70,43 @@ const styles = StyleSheet.create({
     marginTop: spacing['2xl'],
     letterSpacing: 1,
   },
+  inputContainer: {
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  inputLabel: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginTop: spacing.xs,
+  },
+  textInput: {
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+    padding: spacing.md,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    fontSize: 15,
+  },
+  errorText: {
+    color: colors.error,
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginVertical: spacing.xs,
+  },
+  staffPortalButton: {
+    alignItems: 'center',
+    marginTop: spacing.xl,
+    padding: spacing.base,
+  },
+  staffPortalText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
 });
 
 export default styles;

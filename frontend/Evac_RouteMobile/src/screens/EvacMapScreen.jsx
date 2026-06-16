@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Dimensions, Linking, Alert, Platform, Animated, PanResponder, Vibration } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Linking, Alert, Platform, Animated, PanResponder, Vibration } from 'react-native';
 import { AlertTriangle, Navigation, Phone } from 'lucide-react-native';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
@@ -18,10 +18,12 @@ import {
   saveHazardsExtended,
   syncRoadNetworkFromApi,
   getOfflineShelters,
-  getOfflineHazards,
+  getOfflineHazardsExtended,
   getOfflineNodes,
   getOfflineEdges,
-  getDistanceMeters
+  getDistanceMeters,
+  saveRoadMaintenances,
+  getOfflineRoadMaintenances,
 } from '../services/offlineDb';
 import { calculateOfflineRoute } from '../utils/astarRouter';
 
@@ -52,6 +54,7 @@ export default function EvacMapScreen() {
   // Local cache fallback state
   const [offlineShelters, setOfflineShelters] = useState([]);
   const [offlineHazards, setOfflineHazards] = useState([]);
+  const [offlineMaintenances, setOfflineMaintenances] = useState([]); // P3
   const [isOffline, setIsOffline] = useState(false);
 
   // Optimized in-memory Graph Caching and Route Throttle states
@@ -67,6 +70,24 @@ export default function EvacMapScreen() {
     dark:      Mapbox.StyleURL.Dark,
     satellite: Mapbox.StyleURL.SatelliteStreet,
     streets:   Mapbox.StyleURL.Street,
+  };
+
+  // High Contrast, Sub-tab, and Heading States
+  const [isHighContrast, setIsHighContrast] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState('info'); // 'info' | 'checklist'
+  const [deviceHeading, setDeviceHeading] = useState(0);
+
+  // Compass Bearing Calculation Helper
+  const getBearing = (lat1, lon1, lat2, lon2) => {
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const lat1Rad = (lat1 * Math.PI) / 180;
+    const lat2Rad = (lat2 * Math.PI) / 180;
+    const y = Math.sin(dLon) * Math.cos(lat2Rad);
+    const x =
+      Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+      Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+    const brng = (Math.atan2(y, x) * 180) / Math.PI;
+    return (brng + 360) % 360;
   };
 
 
@@ -134,11 +155,12 @@ export default function EvacMapScreen() {
     initDb();
     try {
       const cachedS = getOfflineShelters();
-      const cachedH = getOfflineHazards();
+      const cachedH = getOfflineHazardsExtended(); // P4: use extended schema so offline hazards have type+severity
+      const cachedM = getOfflineRoadMaintenances(); // P3: load cached maintenance zones
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOfflineShelters(cachedS);
-       
       setOfflineHazards(cachedH);
+      setOfflineMaintenances(cachedM);
 
       // Load road graph data from database
       const dbNodes = getOfflineNodes();
@@ -216,6 +238,7 @@ export default function EvacMapScreen() {
 
   const sheltersData = mapData?.shelters;
   const hazardsData = mapData?.hazards;
+  const maintenanceData = mapData?.road_maintenances; // P3
   const isLoadingShelters = isLoadingMap;
 
   useEffect(() => {
@@ -239,6 +262,16 @@ export default function EvacMapScreen() {
     }
   }, [hazardsData]);
 
+  // P3: Cache and apply road maintenance zones from API response
+  useEffect(() => {
+    if (maintenanceData) {
+      saveRoadMaintenances(maintenanceData);
+      setTimeout(() => {
+        setOfflineMaintenances(maintenanceData);
+      }, 0);
+    }
+  }, [maintenanceData]);
+
   useEffect(() => {
     if (isMapError) {
       setTimeout(() => {
@@ -249,6 +282,7 @@ export default function EvacMapScreen() {
 
   useEffect(() => {
     let subscription;
+    let headingSubscription;
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
@@ -257,6 +291,7 @@ export default function EvacMapScreen() {
       }
       const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       setLocation([initial.coords.longitude, initial.coords.latitude]);
+      
       subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
@@ -267,12 +302,27 @@ export default function EvacMapScreen() {
           setLocation([loc.coords.longitude, loc.coords.latitude]);
         }
       );
+
+      try {
+        headingSubscription = await Location.watchHeadingAsync((data) => {
+          setDeviceHeading(data.trueHeading || data.magneticHeading || 0);
+        });
+      } catch (e) {
+        console.warn('Failed to start watchHeadingAsync:', e);
+      }
     })();
-    return () => { subscription?.remove(); };
+    return () => {
+      subscription?.remove();
+      headingSubscription?.remove();
+    };
   }, []);
 
   const shelters = sheltersData && sheltersData.length > 0 ? sheltersData : offlineShelters;
   const hazards = hazardsData && hazardsData.length > 0 ? hazardsData : offlineHazards;
+  // P3: Use live data when available, fall back to SQLite cache offline
+  const maintenances = (maintenanceData && maintenanceData.length > 0)
+    ? maintenanceData
+    : offlineMaintenances;
 
   const openShelters = shelters.filter(s => s.status === 'open');
   let nearestShelter = null;
@@ -340,10 +390,14 @@ export default function EvacMapScreen() {
           setCachedRoute(result.path);
           setRouteWarnings(result.warnings || []);
           setIsRouteBlocked(false);
+          // Haptic double-pulse feedback on successful safe route pathfinding
+          Vibration.vibrate([0, 80, 100, 80]);
         } else {
           setCachedRoute(null);
           setRouteWarnings([]);
           setIsRouteBlocked(true);
+          // Loud haptic alarms feedback when route is blocked
+          Vibration.vibrate([0, 500, 200, 500, 200, 500]);
         }
         setLastRoutingLocation(location);
       }, 0);
@@ -505,6 +559,38 @@ export default function EvacMapScreen() {
             />
           </Mapbox.ShapeSource>
         )}
+
+        {/* P3: Road Maintenance — dashed purple line segments */}
+        {maintenances.length > 0 && (
+          <Mapbox.ShapeSource
+            id="maintenanceSource"
+            shape={{
+              type: 'FeatureCollection',
+              features: maintenances.map(m => ({
+                type: 'Feature',
+                properties: { description: m.description },
+                geometry: {
+                  type: 'LineString',
+                  coordinates: [
+                    [parseFloat(m.start_longitude), parseFloat(m.start_latitude)],
+                    [parseFloat(m.end_longitude),   parseFloat(m.end_latitude)],
+                  ],
+                },
+              }))
+            }}
+          >
+            <Mapbox.LineLayer
+              id="maintenanceLayer"
+              style={{
+                lineColor: '#a855f7',
+                lineWidth: 5,
+                lineDasharray: [2, 2],
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+          </Mapbox.ShapeSource>
+        )}
       </Mapbox.MapView>
 
       {/* ─── Critical Overlay ─── */}
@@ -536,6 +622,13 @@ export default function EvacMapScreen() {
             <View style={[styles.dot, { backgroundColor: colors.danger }]} />
             <Text style={styles.statusText}>{hazards.length} Active Hazards</Text>
           </View>
+          {/* P3: Road closure count badge */}
+          {maintenances.length > 0 && (
+            <View style={styles.statusRow}>
+              <View style={[styles.dot, { backgroundColor: '#a855f7' }]} />
+              <Text style={styles.statusText}>{maintenances.length} Road Closure{maintenances.length > 1 ? 's' : ''}</Text>
+            </View>
+          )}
 
           {/* Transport mode selector with icons */}
           <View style={styles.modeSelectorRow}>
@@ -547,7 +640,10 @@ export default function EvacMapScreen() {
               <TouchableOpacity
                 key={m.key}
                 style={[styles.modeButton, transportationMode === m.key && styles.modeButtonActive]}
-                onPress={() => setTransportationMode(m.key)}
+                onPress={() => {
+                  setTransportationMode(m.key);
+                  Vibration.vibrate(50);
+                }}
               >
                 <Text style={styles.modeIcon}>{m.icon}</Text>
                 <Text style={[styles.modeButtonText, transportationMode === m.key && styles.modeButtonTextActive]}>
@@ -576,62 +672,211 @@ export default function EvacMapScreen() {
         ))}
       </View>
 
+      {/* ─── High Contrast Mode Toggle (floating, bottom-right) ─── */}
+      <View style={{ position: 'absolute', bottom: 180, right: 16, zIndex: 30 }}>
+        <TouchableOpacity
+          onPress={() => {
+            setIsHighContrast(o => !o);
+            Vibration.vibrate(80);
+          }}
+          style={[
+            styles.mapStyleBtn,
+            isHighContrast && { backgroundColor: '#FFFF00', borderColor: '#000000', borderWidth: 2 }
+          ]}
+        >
+          <Text style={[
+            styles.mapStyleBtnText,
+            isHighContrast && { color: '#000000', fontWeight: '900' }
+          ]}>
+            {isHighContrast ? '👁' : '🕶'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ─── Compass Heading Widget (floating, top-right) ─── */}
+      {location && nearestShelterCoords && (
+        <View style={{ position: 'absolute', top: 110, right: 16, zIndex: 30, alignItems: 'center' }}>
+          <View style={{
+            width: 50,
+            height: 50,
+            borderRadius: 25,
+            backgroundColor: isHighContrast ? '#000000' : 'rgba(15,23,42,0.85)',
+            borderWidth: 2,
+            borderColor: isHighContrast ? '#FFFF00' : 'rgba(255,255,255,0.15)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 4,
+            elevation: 5,
+          }}>
+            <Animated.View style={{
+              transform: [{
+                rotate: `${(getBearing(location[1], location[0], nearestShelterCoords[1], nearestShelterCoords[0]) - deviceHeading + 360) % 360}deg`
+              }]
+            }}>
+              <Text style={{ fontSize: 22, color: isHighContrast ? '#FFFF00' : colors.primary }}>▲</Text>
+            </Animated.View>
+          </View>
+          <Text style={{
+            fontSize: 8,
+            fontWeight: '900',
+            color: isHighContrast ? '#FFFF00' : '#ffffff',
+            marginTop: 4,
+            backgroundColor: isHighContrast ? '#000000' : 'rgba(0,0,0,0.6)',
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 6,
+            overflow: 'hidden',
+          }}>
+            TO SHELTER
+          </Text>
+        </View>
+      )}
+
       {/* ─── Draggable Bottom Sheet ─── */}
-      <Animated.View style={[styles.bottomSheet, { height: sheetHeightRef.current }]}>
-        <View {...panResponder.panHandlers} style={styles.bottomSheetHandle}>
-          <View style={styles.bottomSheetBar} />
+      <Animated.View style={[
+        styles.bottomSheet, 
+        { height: sheetHeightRef.current }, 
+        isHighContrast && { backgroundColor: '#000000', borderTopWidth: 3, borderTopColor: '#FFFF00' }
+      ]}>
+        <View {...panResponder.panHandlers} style={[styles.bottomSheetHandle, isHighContrast && { backgroundColor: '#000000' }]}>
+          <View style={[styles.bottomSheetBar, isHighContrast && { backgroundColor: '#FFFF00' }]} />
         </View>
 
         <View style={styles.bottomSheetContent}>
           {nearestShelter ? (
             <>
-              <View style={styles.routingInfo}>
-                <Text style={styles.destinationLabel}>NEAREST OPEN SHELTER:</Text>
-                <Text style={styles.destinationName}>{nearestShelter.name}</Text>
-
-                {/* ETA + Distance */}
-                <Text style={styles.etaText}>
-                  {getETAMinutes(minDistance, transportationMode)} away · {(minDistance / 1000).toFixed(2)} km
-                </Text>
-
-                {/* Occupancy progress bar */}
-                <View style={styles.occupancyBarTrack}>
-                  <View
-                    style={[
-                      styles.occupancyBarFill,
-                      {
-                        width: `${Math.min(100, Math.round((nearestShelter.current_occupancy / nearestShelter.max_capacity) * 100))}%`,
-                        backgroundColor:
-                          nearestShelter.current_occupancy / nearestShelter.max_capacity > 0.8
-                            ? colors.danger
-                            : colors.successLight,
-                      },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.occupancyText}>
-                  {nearestShelter.current_occupancy}/{nearestShelter.max_capacity} occupancy
-                </Text>
-
-                {/* Route warnings */}
-                {routeWarnings.length > 0 && (
-                  <View style={styles.warningsContainer}>
-                    {routeWarnings.map((w, idx) => (
-                      <View key={idx} style={styles.warningPill}>
-                        <AlertTriangle size={12} color={colors.warningText} />
-                        <Text style={styles.warningPillText}>{w}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
+              {/* Sub-tabs for Map Info / Checklist */}
+              <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: isHighContrast ? '#FFFF00' : 'rgba(0,0,0,0.05)', marginBottom: 12, paddingBottom: 4 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setActiveSubTab('info');
+                    Vibration.vibrate(40);
+                  }}
+                  style={{ marginRight: 16, paddingVertical: 4, borderBottomWidth: activeSubTab === 'info' ? 2 : 0, borderBottomColor: isHighContrast ? '#FFFF00' : colors.primary }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: 'bold', color: activeSubTab === 'info' ? (isHighContrast ? '#FFFF00' : colors.primary) : (isHighContrast ? '#FFFF00' : '#888') }}>
+                    Map Details
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setActiveSubTab('checklist');
+                    Vibration.vibrate(40);
+                  }}
+                  style={{ paddingVertical: 4, borderBottomWidth: activeSubTab === 'checklist' ? 2 : 0, borderBottomColor: isHighContrast ? '#FFFF00' : colors.primary }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: 'bold', color: activeSubTab === 'checklist' ? (isHighContrast ? '#FFFF00' : colors.primary) : (isHighContrast ? '#FFFF00' : '#888') }}>
+                    Checklist Guide
+                  </Text>
+                </TouchableOpacity>
               </View>
 
+              {activeSubTab === 'info' ? (
+                <View style={styles.routingInfo}>
+                  <Text style={[styles.destinationLabel, isHighContrast && { color: '#FFFF00', fontSize: 11, fontWeight: '900' }]}>NEAREST OPEN SHELTER:</Text>
+                  <Text style={[styles.destinationName, isHighContrast && { color: '#FFFF00', fontSize: 18, fontWeight: '900' }]}>{nearestShelter.name}</Text>
+
+                  {/* ETA + Distance */}
+                  <Text style={[styles.etaText, isHighContrast && { color: '#FFFF00', fontSize: 15, fontWeight: '900' }]}>
+                    {getETAMinutes(minDistance, transportationMode)} away · {(minDistance / 1000).toFixed(2)} km
+                  </Text>
+
+                  {/* Occupancy progress bar */}
+                  <View style={[styles.occupancyBarTrack, isHighContrast && { borderColor: '#FFFF00', borderWidth: 1, backgroundColor: '#000000' }]}>
+                    <View
+                      style={[
+                        styles.occupancyBarFill,
+                        {
+                          width: `${Math.min(100, Math.round((nearestShelter.current_occupancy / nearestShelter.max_capacity) * 100))}%`,
+                          backgroundColor:
+                            isHighContrast ? '#FFFF00' : (
+                              nearestShelter.current_occupancy / nearestShelter.max_capacity > 0.8
+                                ? colors.danger
+                                : colors.successLight
+                            ),
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={[styles.occupancyText, isHighContrast && { color: '#FFFF00', fontWeight: 'bold' }]}>
+                    {nearestShelter.current_occupancy}/{nearestShelter.max_capacity} occupancy
+                  </Text>
+
+                  {/* Route warnings */}
+                  {routeWarnings.length > 0 && (
+                    <View style={styles.warningsContainer}>
+                      {routeWarnings.map((w, idx) => (
+                        <View key={idx} style={[styles.warningPill, isHighContrast && { borderColor: '#FFFF00', borderWidth: 1, backgroundColor: '#000000' }]}>
+                          <AlertTriangle size={12} color={isHighContrast ? '#FFFF00' : colors.warningText} />
+                          <Text style={[styles.warningPillText, isHighContrast && { color: '#FFFF00', fontWeight: 'bold' }]}>{w}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <ScrollView style={{ maxHeight: 180, marginBottom: 12 }} showsVerticalScrollIndicator={false}>
+                  <View style={{ gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 14, color: isHighContrast ? '#FFFF00' : '#22C55E', marginRight: 8, fontWeight: '900' }}>✓</Text>
+                      <Text style={{ fontSize: 13, color: isHighContrast ? '#FFFF00' : '#444', fontWeight: '700' }}>
+                        Start from your current position
+                      </Text>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 14, color: isHighContrast ? '#FFFF00' : colors.primary, marginRight: 8, fontWeight: '900' }}>➔</Text>
+                      <Text style={{ fontSize: 13, color: isHighContrast ? '#FFFF00' : '#444', fontWeight: '700' }}>
+                        Follow the designated safe route ({transportationMode === 'pedestrian' ? 'Walking' : transportationMode === '2_wheel' ? 'Bike' : 'Driving'})
+                      </Text>
+                    </View>
+
+                    {routeWarnings.length > 0 ? (
+                      routeWarnings.map((w, idx) => (
+                        <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                          <Text style={{ fontSize: 14, color: isHighContrast ? '#FFFF00' : '#F59E0B', marginRight: 8, fontWeight: '900' }}>⚠</Text>
+                          <Text style={{ fontSize: 13, color: isHighContrast ? '#FFFF00' : '#444', fontWeight: '700' }}>
+                            {w}
+                          </Text>
+                        </View>
+                      ))
+                    ) : (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                        <Text style={{ fontSize: 14, color: isHighContrast ? '#FFFF00' : '#22C55E', marginRight: 8, fontWeight: '900' }}>✓</Text>
+                        <Text style={{ fontSize: 13, color: isHighContrast ? '#FFFF00' : '#444', fontWeight: '700' }}>
+                          No hazard warning segments crossed
+                        </Text>
+                      </View>
+                    )}
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 14, color: isHighContrast ? '#FFFF00' : colors.primary, marginRight: 8, fontWeight: '900' }}>🏠</Text>
+                      <Text style={{ fontSize: 13, color: isHighContrast ? '#FFFF00' : '#444', fontWeight: '700' }}>
+                        Arrive at {nearestShelter.name}
+                      </Text>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 14, color: isHighContrast ? '#FFFF00' : colors.primary, marginRight: 8, fontWeight: '900' }}>📲</Text>
+                      <Text style={{ fontSize: 13, color: isHighContrast ? '#FFFF00' : '#444', fontWeight: '700' }}>
+                        Go to QR Profile and present it to shelter staff to check in
+                      </Text>
+                    </View>
+                  </View>
+                </ScrollView>
+              )}
+
               <PrimaryButton
-                title="Start Navigation"
+                title={activeSubTab === 'checklist' ? "Acknowledge Route" : "Start Navigation"}
                 onPress={startNavigation}
                 variant="primary"
                 size="large"
-                icon={<Navigation color={colors.white} size={20} />}
+                icon={<Navigation color={isHighContrast ? '#000000' : colors.white} size={20} />}
+                style={isHighContrast && { backgroundColor: '#FFFF00' }}
+                textStyle={isHighContrast && { color: '#000000', fontWeight: '900' }}
               />
             </>
           ) : (
