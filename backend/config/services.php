@@ -39,4 +39,8 @@ return [
         'token' => env('MAPBOX_TOKEN'),
     ],
 
+    'openweather' => [
+        'key' => env('OPENWEATHER_API_KEY'),
+    ],
+
 ];
