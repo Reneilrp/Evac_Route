@@ -1559,9 +1559,9 @@ const MapViewer = React.memo(({
             }} />
             <Layer id="hazards-line" type="line" paint={{
               'line-color': ['match', ['get', 'hazard_type'],
-                'flood', ['match', ['get', 'severity_level'], 'medium', '#2563eb', 'high', '#ffffff', '#60a5fa'],
-                'earthquake', '#f87171', 'maintenance', '#ea580c', '#ca8a04'],
-              'line-width': ['match', ['get', 'hazard_type'], 'earthquake', 3, 'maintenance', 2, 2],
+                'flood', ['match', ['get', 'severity_level'], 'low', '#93c5fd', 'medium', '#e0f2fe', 'high', '#ffffff', '#ffffff'],
+                'earthquake', '#fca5a5', 'maintenance', '#fdba74', '#fef08a'],
+              'line-width': ['match', ['get', 'hazard_type'], 'earthquake', 3.5, 'maintenance', 2.5, 2.5],
               'line-dasharray': ['literal', [3, 2]]
             }} />
           </Source>
