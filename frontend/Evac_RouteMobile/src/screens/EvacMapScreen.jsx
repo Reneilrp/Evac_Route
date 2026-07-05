@@ -516,17 +516,32 @@ export default function EvacMapScreen() {
               ],
               circleColor: [
                 'match', ['get', 'severity'],
-                'high', 'rgba(220,38,38,0.45)',
-                'medium', 'rgba(249,115,22,0.40)',
-                'rgba(234,179,8,0.35)'
+                'high', isHighContrast ? 'rgba(255,0,0,0.6)' : 'rgba(220,38,38,0.45)',
+                'medium', isHighContrast ? 'rgba(255,140,0,0.5)' : 'rgba(249,115,22,0.40)',
+                isHighContrast ? 'rgba(255,255,0,0.4)' : 'rgba(234,179,8,0.35)'
               ],
               circleStrokeColor: [
                 'match', ['get', 'severity'],
-                'high', 'rgba(220,38,38,0.9)',
-                'medium', 'rgba(249,115,22,0.85)',
-                'rgba(234,179,8,0.8)'
+                'high', isHighContrast ? '#FF0000' : 'rgba(220,38,38,0.9)',
+                'medium', isHighContrast ? '#FF8C00' : 'rgba(249,115,22,0.85)',
+                isHighContrast ? '#FFFF00' : 'rgba(234,179,8,0.8)'
               ],
-              circleStrokeWidth: 2,
+              circleStrokeWidth: isHighContrast ? 4 : 2,
+            }}
+          />
+          {/* Core epicenter dot for high visibility at all zoom levels */}
+          <Mapbox.CircleLayer
+            id="hazardCenters"
+            style={{
+              circleRadius: isHighContrast ? 8 : 6,
+              circleColor: [
+                'match', ['get', 'severity'],
+                'high', '#dc2626', // Solid Red
+                'medium', '#f97316', // Solid Orange
+                '#eab308' // Solid Yellow
+              ],
+              circleStrokeColor: isHighContrast ? '#000000' : '#ffffff',
+              circleStrokeWidth: isHighContrast ? 2.5 : 1.5,
             }}
           />
           {/* Hazard type label above each circle */}
@@ -548,11 +563,22 @@ export default function EvacMapScreen() {
         {/* Route line */}
         {routeGeoJSON && (
           <Mapbox.ShapeSource id="routeSource" shape={routeGeoJSON}>
+            {/* Route line casing / outline for high-contrast separation */}
+            <Mapbox.LineLayer
+              id="routeCasing"
+              style={{
+                lineColor: isHighContrast ? '#000000' : '#0f172a',
+                lineWidth: isHighContrast ? 12 : 9,
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+            {/* Route line core */}
             <Mapbox.LineLayer
               id="routeLayer"
               style={{
-                lineColor: colors.routeLine,
-                lineWidth: 6,
+                lineColor: isHighContrast ? '#FFFF00' : colors.routeLine,
+                lineWidth: isHighContrast ? 8 : 5,
                 lineCap: 'round',
                 lineJoin: 'round',
               }}
