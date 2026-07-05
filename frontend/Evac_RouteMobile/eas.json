@@ -1,0 +1,50 @@
+{
+  "cli": {
+    "version": ">= 18.0.4",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "environment": "development",
+      "env": {
+        "APP_ENV": "development"
+      },
+      "channel": "development"
+    },
+    "preview": {
+      "distribution": "internal",
+      "environment": "preview",
+      "env": {
+        "APP_ENV": "preview",
+        "EXPO_PUBLIC_API_URL": "https://accommotrack.me/api",
+        "EXPO_PUBLIC_WEB_URL": "https://accommotrack.me",
+        "EXPO_PUBLIC_ECHO_HOST": "accommotrack.me",
+        "EXPO_PUBLIC_ECHO_PORT": "443",
+        "EXPO_PUBLIC_ECHO_SCHEME": "https",
+        "EXPO_PUBLIC_REVERB_APP_KEY": "w4k7x9m2p5n8v3b6"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "preview"
+    },
+    "production": {
+      "environment": "production",
+      "env": {
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_API_URL": "https://accommotrack.me/api",
+        "EXPO_PUBLIC_WEB_URL": "https://accommotrack.me",
+        "EXPO_PUBLIC_ECHO_HOST": "accommotrack.me",
+        "EXPO_PUBLIC_ECHO_PORT": "443",
+        "EXPO_PUBLIC_ECHO_SCHEME": "https",
+        "EXPO_PUBLIC_REVERB_APP_KEY": "w4k7x9m2p5n8v3b6"
+      },
+      "channel": "production"
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

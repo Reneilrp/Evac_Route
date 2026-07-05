@@ -7,9 +7,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pheinz.evacroutemobile"
     },
     "android": {
+      "package": "com.pheinz.evacroutemobile",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -25,10 +27,16 @@
       "expo-secure-store",
       "@rnmapbox/maps"
     ],
+    "updates": {
+      "url": "https://u.expo.dev/315fb1d4-26ab-4cd8-b5ce-696b39dfccc9"
+    },
     "extra": {
       "eas": {
-        "projectId": "..."
+        "projectId": "315fb1d4-26ab-4cd8-b5ce-696b39dfccc9"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
