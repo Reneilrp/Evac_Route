@@ -2,7 +2,7 @@
   "expo": {
     "name": "Evac_RouteMobile",
     "slug": "Evac_RouteMobile",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -25,7 +25,8 @@
     "plugins": [
       "@react-native-community/datetimepicker",
       "expo-secure-store",
-      "@rnmapbox/maps"
+      "@rnmapbox/maps",
+      "expo-sqlite"
     ],
     "updates": {
       "url": "https://u.expo.dev/315fb1d4-26ab-4cd8-b5ce-696b39dfccc9"

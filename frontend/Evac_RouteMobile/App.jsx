@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
-import { registerRootComponent } from 'expo';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -27,31 +26,31 @@ const queryClient = new QueryClient();
  * Failure is non-fatal — real-time WebSocket delivery (P1) still works independently.
  */
 async function registerForPushNotificationsAsync() {
-  // Android: create the notification channel first
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('emergency', {
-      name: 'Emergency Alerts',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 300, 100, 300, 100, 300],
-      lightColor: '#EF4444',
-      sound: 'default',
-    });
-  }
-
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-
-  if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-
-  if (finalStatus !== 'granted') {
-    console.warn('[Push] Permission denied — push notifications unavailable.');
-    return;
-  }
-
   try {
+    // Android: create the notification channel first
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('emergency', {
+        name: 'Emergency Alerts',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 300, 100, 300, 100, 300],
+        lightColor: '#EF4444',
+        sound: 'default',
+      });
+    }
+
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+      console.warn('[Push] Permission denied — push notifications unavailable.');
+      return;
+    }
+
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ??
       Constants.easConfig?.projectId;
@@ -64,7 +63,7 @@ async function registerForPushNotificationsAsync() {
     console.log('[Push] Token registered with backend successfully.');
   } catch (error) {
     // Non-fatal: real-time WebSocket (P1) still delivers alerts in-app
-    console.warn('[Push] Token registration failed:', error.message);
+    console.warn('[Push] Token registration or permission request failed:', error.message);
   }
 }
 
@@ -189,5 +188,3 @@ function App() {
     </QueryClientProvider>
   );
 }
-
-registerRootComponent(App);

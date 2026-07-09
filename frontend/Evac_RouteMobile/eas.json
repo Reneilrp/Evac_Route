@@ -18,9 +18,9 @@
       "environment": "preview",
       "env": {
         "APP_ENV": "preview",
-        "EXPO_PUBLIC_API_URL": "https://accommotrack.me/api",
-        "EXPO_PUBLIC_WEB_URL": "https://accommotrack.me",
-        "EXPO_PUBLIC_ECHO_HOST": "accommotrack.me",
+        "EXPO_PUBLIC_API_URL": "https://inculcative-carina-atomistical.ngrok-free.dev/api",
+        "EXPO_PUBLIC_WEB_URL": "https://inculcative-carina-atomistical.ngrok-free.dev",
+        "EXPO_PUBLIC_ECHO_HOST": "inculcative-carina-atomistical.ngrok-free.dev",
         "EXPO_PUBLIC_ECHO_PORT": "443",
         "EXPO_PUBLIC_ECHO_SCHEME": "https",
         "EXPO_PUBLIC_REVERB_APP_KEY": "w4k7x9m2p5n8v3b6"

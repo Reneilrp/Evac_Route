@@ -9,6 +9,7 @@ import { MapPin, QrCode, AlertTriangle, BarChart2, Package } from 'lucide-react-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { colors, typography } from '../styles/theme';
+import api from '../services/api';
 
 // Import Screens
 import EvacMapScreen from '../screens/EvacMapScreen';
@@ -137,7 +138,7 @@ export default function AppNavigator() {
   const isStaff = user?.role === 'admin' || user?.role === 'lgu_staff';
   const { data: dispatchData } = useQuery({
     queryKey: ['dispatch-orders'],
-    queryFn: () => import('../services/api').then(m => m.default.get('/dispatch-orders').then(r => r.data)),
+    queryFn: () => api.get('/dispatch-orders').then(r => r.data),
     enabled: !!isStaff,
     refetchInterval: 30000,
   });

@@ -46,7 +46,11 @@ const SHEET_EXPANDED = SCREEN_HEIGHT * 0.45;
 
 // Read Mapbox token from app.json extra config
 const MAPBOX_TOKEN = Constants.expoConfig?.extra?.mapboxToken || '';
-Mapbox.setAccessToken(MAPBOX_TOKEN);
+if (MAPBOX_TOKEN) {
+  Mapbox.setAccessToken(MAPBOX_TOKEN);
+} else {
+  console.warn('[Mapbox] Access token is missing or empty. Map will not render.');
+}
 
 export default function EvacMapScreen() {
   const [location, setLocation] = useState(null);
