@@ -71,6 +71,31 @@ function DashboardLayout({ children }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [timeDriftWarning, setTimeDriftWarning] = useState(false);
 
+  // Master Emergency Mode Switch State
+  const [isEmergencyActive, setIsEmergencyActive] = useState(true);
+
+  useEffect(() => {
+    api.get('/settings').then(res => {
+      const active = res.data.data?.master_emergency_active;
+      setIsEmergencyActive(active === true || active === 'true' || active === 1 || active === '1');
+    }).catch(err => console.warn("Failed to load emergency setting:", err));
+  }, []);
+
+  const toggleMasterEmergency = async () => {
+    const nextState = !isEmergencyActive;
+    setIsEmergencyActive(nextState);
+    try {
+      await api.post('/settings', { master_emergency_active: nextState });
+      if (nextState) {
+        toast.error('🚨 MASTER EMERGENCY MODE ACTIVATED! Real-time threat routing & disaster layers revealed.', { duration: 6000 });
+      } else {
+        toast.success('🟢 Standby Peacetime Mode Restored. Routine monitoring active.', { duration: 5000 });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const checkTimeDrift = useCallback(async () => {
     try {
       const startTime = Date.now();
@@ -547,12 +572,33 @@ function DashboardLayout({ children }) {
         {/* Top Header - hidden on map route for max screen real estate */}
         {!isMapRoute && (
         <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 h-14 flex items-center justify-between px-6 shadow-sm z-30 relative transition-colors duration-200">
-           <div className="flex items-center gap-2">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-              </span>
-              <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">System Online - Reverb Core Active</span>
+           <div className="flex items-center gap-3">
+              {isEmergencyActive ? (
+                <div className="flex items-center gap-2 bg-red-600 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-sm animate-pulse">
+                  <ShieldAlert size={14} />
+                  <span>🔴 EMERGENCY CRISIS MODE ACTIVATED</span>
+                  <button 
+                    onClick={toggleMasterEmergency}
+                    className="ml-2 bg-white text-red-700 hover:bg-red-50 text-[10px] px-2 py-0.5 rounded font-black transition uppercase cursor-pointer"
+                  >
+                    Deactivate
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-900/50">
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span>🟢 STANDBY PEACETIME MODE</span>
+                  <button 
+                    onClick={toggleMasterEmergency}
+                    className="ml-2 bg-red-600 hover:bg-red-700 text-white text-[10px] px-2.5 py-0.5 rounded font-black transition uppercase shadow-sm cursor-pointer"
+                  >
+                    🚨 ACTIVATE DISASTER MODE
+                  </button>
+                </div>
+              )}
            </div>
 
            <div className="flex items-center gap-4">

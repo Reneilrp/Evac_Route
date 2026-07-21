@@ -553,15 +553,22 @@ function MapLegend({ simulationMode }) {
 
 
 
-// --- Shelter Form Modal ---
+// --- Shelter / Safe Zone / Assembly Point Form Modal ---
 function ShelterFormModal({ location, onConfirm, onCancel, isLoading }) {
   const [name, setName] = useState('');
   const [cap, setCap] = useState('');
+  const [facilityType, setFacilityType] = useState('evacuation_center');
+  const [elevation, setElevation] = useState('15');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name || !cap || isNaN(parseInt(cap, 10))) return;
-    onConfirm({ name, max_capacity: parseInt(cap, 10) });
+    onConfirm({
+      name,
+      max_capacity: parseInt(cap, 10),
+      facility_type: facilityType,
+      elevation_meters: parseInt(elevation, 10) || 10
+    });
   };
 
   return (
@@ -569,7 +576,7 @@ function ShelterFormModal({ location, onConfirm, onCancel, isLoading }) {
       <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
-            <MapPin size={20} className="text-blue-500" /> Pin New Shelter
+            <MapPin size={20} className="text-blue-500" /> Pin Emergency Facility
           </h3>
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition"><X size={22} /></button>
         </div>
@@ -578,11 +585,11 @@ function ShelterFormModal({ location, onConfirm, onCancel, isLoading }) {
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Shelter Name</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Facility Name</label>
             <input
               type="text"
               className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-              placeholder="e.g. Tetuan Covered Court"
+              placeholder="e.g. Tetuan Covered Court or Pasonanca Safe Zone"
               value={name}
               onChange={e => setName(e.target.value)}
               required
@@ -590,16 +597,45 @@ function ShelterFormModal({ location, onConfirm, onCancel, isLoading }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Maximum Capacity</label>
-            <input
-              type="number"
-              min="1"
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Facility Type (REV-03)</label>
+            <select
               className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-              placeholder="e.g. 150"
-              value={cap}
-              onChange={e => setCap(e.target.value)}
-              required
-            />
+              value={facilityType}
+              onChange={e => setFacilityType(e.target.value)}
+            >
+              <option value="evacuation_center">🏫 Indoor Evacuation Center</option>
+              <option value="safe_zone">🛡️ Open-Air High-Ground Safe Zone</option>
+              <option value="assembly_point">🚩 Bus Pick-up Assembly Point</option>
+              <option value="police_station">👮 Police Station Precinct</option>
+              <option value="military_base">🪖 Military Command Outpost</option>
+              <option value="hospital">🏥 Hospital / Decontamination Center</option>
+              <option value="fire_station">🚒 Fire & Rescue Station</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Capacity</label>
+              <input
+                type="number"
+                min="1"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+                placeholder="e.g. 200"
+                value={cap}
+                onChange={e => setCap(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Elevation (m)</label>
+              <input
+                type="number"
+                min="0"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+                placeholder="e.g. 18"
+                value={elevation}
+                onChange={e => setElevation(e.target.value)}
+              />
+            </div>
           </div>
           <div className="flex gap-3 pt-2">
             <button
@@ -1624,8 +1660,8 @@ const MapViewer = React.memo(({
           </Source>
         )}
 
-        {/* Shelter Markers */}
-        {showShelters && shelters.map(shelter => (
+        {/* Shelter & Emergency Facility Markers */}
+        {showShelters && (viewAsResident || activeDisasterSim !== 'none' ? filteredSheltersForView : shelters).map(shelter => (
           <Marker key={`s-${shelter.id}`} longitude={parseFloat(shelter.longitude)} latitude={parseFloat(shelter.latitude)} anchor="bottom">
             <div onClick={e => { e.stopPropagation(); setSelectedShelter(shelter); inspectLocation(parseFloat(shelter.longitude), parseFloat(shelter.latitude)); }} className="flex flex-col items-center group relative cursor-pointer">
               <MapPin size={30} className={shelter.status === 'open' ? 'text-green-400 drop-shadow-[0_0_6px_rgba(74,222,128,0.8)]' : 'text-red-400 drop-shadow-[0_0_6px_rgba(248,113,113,0.8)]'} />
@@ -2156,8 +2192,32 @@ export default function MapDashboard() {
   const [simSetupState, setSimSetupState] = useState('idle'); // 'idle' | 'configuring' | 'placing' | 'processing' | 'rendered'
   const [selectedRadiusMeters, setSelectedRadiusMeters] = useState(2000); // Default 2km (2000m)
   const [simCenter, setSimCenter] = useState(null); // Coordinate { longitude, latitude }
-  const [placementCoords, setPlacementCoords] = useState(null);
   const [simOverlayMode, setSimOverlayMode] = useState('flow'); // 'flow' | 'gradient'
+
+  // Disaster Scenario Simulation & View as Resident States (Revisions Defense Feature)
+  const [activeDisasterSim, setActiveDisasterSim] = useState('none'); // 'none' | 'flood' | 'siege' | 'fire' | 'chemical'
+  const [viewAsResident, setViewAsResident] = useState(false);
+
+  const filteredSheltersForView = useMemo(() => {
+    if (!viewAsResident && activeDisasterSim === 'none') return shelters;
+
+    const targetSim = activeDisasterSim !== 'none' ? activeDisasterSim : 'flood';
+
+    if (targetSim === 'flood') {
+      return shelters.filter(s => s.facility_type === 'safe_zone' || s.facility_type === 'evacuation_center' || !s.facility_type);
+    }
+    if (targetSim === 'siege') {
+      return shelters.filter(s => s.facility_type === 'police_station' || s.facility_type === 'military_base');
+    }
+    if (targetSim === 'fire') {
+      return shelters.filter(s => s.facility_type === 'fire_station' || s.facility_type === 'assembly_point' || s.facility_type === 'evacuation_center');
+    }
+    if (targetSim === 'chemical') {
+      return shelters.filter(s => s.facility_type === 'hospital' || s.facility_type === 'safe_zone');
+    }
+
+    return shelters;
+  }, [shelters, viewAsResident, activeDisasterSim]);
 
   const handleSetLocalSimulation = useCallback((value) => {
     setShowLocalSimulation(value);
@@ -2607,19 +2667,65 @@ export default function MapDashboard() {
 
         <div className="w-px bg-white/10 self-stretch my-1" />
 
-        {/* Simulation Group */}
+        {/* Disaster Testing Simulation Group (Revisions Defense Feature) */}
         <div className="flex flex-col items-center">
-          <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Simulation</span>
+          <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-1 select-none">Disaster Test Sim</span>
           <div className="flex items-center gap-1">
-            <ToolbarBtn active={simulationMode === 'rain'} onClick={() => toggleSimulation('rain')} icon={<Droplets size={14} />} label="Rain" color="blue" />
-            <ToolbarBtn active={simulationMode === 'tremors'} onClick={() => toggleSimulation('tremors')} icon={<Zap size={14} />} label="Tremors" color="amber" />
-            <ToolbarBtn active={showLocalSimulation} onClick={() => handleSetLocalSimulation(!showLocalSimulation)} icon={<Waves size={14} />} label="Flood Flow" color="blue" />
+            <button
+              onClick={() => setActiveDisasterSim(prev => prev === 'flood' ? 'none' : 'flood')}
+              className={`px-2 py-1 rounded text-[11px] font-extrabold transition flex items-center gap-1 ${
+                activeDisasterSim === 'flood' ? 'bg-blue-600 text-white shadow-md' : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
+              }`}
+            >
+              🌊 Flood
+            </button>
+            <button
+              onClick={() => setActiveDisasterSim(prev => prev === 'siege' ? 'none' : 'siege')}
+              className={`px-2 py-1 rounded text-[11px] font-extrabold transition flex items-center gap-1 ${
+                activeDisasterSim === 'siege' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
+              }`}
+            >
+              👮 Siege
+            </button>
+            <button
+              onClick={() => setActiveDisasterSim(prev => prev === 'fire' ? 'none' : 'fire')}
+              className={`px-2 py-1 rounded text-[11px] font-extrabold transition flex items-center gap-1 ${
+                activeDisasterSim === 'fire' ? 'bg-orange-600 text-white shadow-md' : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
+              }`}
+            >
+              🚒 Fire
+            </button>
+            <button
+              onClick={() => setActiveDisasterSim(prev => prev === 'chemical' ? 'none' : 'chemical')}
+              className={`px-2 py-1 rounded text-[11px] font-extrabold transition flex items-center gap-1 ${
+                activeDisasterSim === 'chemical' ? 'bg-rose-600 text-white shadow-md' : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
+              }`}
+            >
+              🧪 Chem
+            </button>
           </div>
         </div>
 
         <div className="w-px bg-white/10 self-stretch my-1" />
 
-        {/* Tools Group */}
+        {/* View as Resident Mode Toggle */}
+        <div className="flex flex-col items-center justify-center">
+          <button
+            onClick={() => setViewAsResident(prev => !prev)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-1.5 border ${
+              viewAsResident 
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-emerald-400 shadow-lg shadow-emerald-500/30 animate-pulse' 
+                : 'bg-white/10 text-white/80 hover:bg-white/20 border-white/20'
+            }`}
+          >
+            <Eye size={14} />
+            <span>{viewAsResident ? '👁️ Resident View Active' : '👁️ View as Resident'}</span>
+          </button>
+        </div>
+
+        <div className="w-px bg-white/10 self-stretch my-1" />
+
+        {/* Pinpoint & Orbit Tools Group */}
         <div className="flex flex-col items-center">
           <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Pinpoint &amp; Orbit</span>
           <div className="flex items-center gap-1">
@@ -2648,6 +2754,34 @@ export default function MapDashboard() {
       </div>
 
       <div className="flex-1 relative overflow-hidden">
+        {/* Resident Perspective Simulation Banner Overlay */}
+        {(viewAsResident || activeDisasterSim !== 'none') && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md border-2 border-emerald-500 text-white rounded-2xl px-5 py-2.5 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+            <span className="flex h-3 w-3 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            <div className="text-xs font-bold">
+              {activeDisasterSim === 'flood' ? (
+                <span>🌊 <strong className="text-blue-400">FLOOD SIMULATION MODE ACTIVE:</strong> Showing Flood Evacuation Centers &amp; High-Ground Safe Zones (🛡️ 45m Elevation).</span>
+              ) : activeDisasterSim === 'siege' ? (
+                <span>👮 <strong className="text-indigo-400 font-black">HOSTILE SIEGE SIMULATION MODE ACTIVE:</strong> Re-routing to Police Stations 👮 &amp; Military Security Points 🪖.</span>
+              ) : activeDisasterSim === 'fire' ? (
+                <span>🚒 <strong className="text-orange-400 font-black">FIRE DISASTER SIMULATION MODE ACTIVE:</strong> Showing Fire Stations 🚒 &amp; Safe Assembly Points 🚩.</span>
+              ) : activeDisasterSim === 'chemical' ? (
+                <span>🧪 <strong className="text-rose-400 font-black">CHEMICAL SPILL SIMULATION MODE ACTIVE:</strong> Showing Medical Hospitals 🏥 &amp; Decontamination Zones.</span>
+              ) : (
+                <span>👁️ <strong className="text-emerald-400 font-black">RESIDENT MOBILE PERSPECTIVE PREVIEW:</strong> Map filters pins to show active evac locations.</span>
+              )}
+            </div>
+            <button
+              onClick={() => { setViewAsResident(false); setActiveDisasterSim('none'); }}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-2.5 py-1 rounded-lg font-black uppercase transition ml-2 cursor-pointer"
+            >
+              Reset View
+            </button>
+          </div>
+        )}
         {pinMode && (
           <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-blue-600/95 backdrop-blur-md border border-blue-500/50 text-white rounded-2xl px-5 py-3.5 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
             <span className="flex h-2.5 w-2.5 relative">
