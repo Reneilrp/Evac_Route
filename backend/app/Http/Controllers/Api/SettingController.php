@@ -18,6 +18,9 @@ class SettingController extends Controller
     public function index()
     {
         $defaults = [
+            'master_emergency_active' => true,
+            'active_emergency_title' => 'ACTIVE EMERGENCY DISASTER RESPONSE MODE',
+            'active_disaster_type' => 'all', // 'natural' | 'man_made' | 'all'
             'map_center_lat' => 6.9126,
             'map_center_lng' => 122.0729,
             'map_zoom' => 13,
@@ -34,8 +37,9 @@ class SettingController extends Controller
         // Merge defaults with database values
         $merged = array_merge($defaults, $settings);
 
-        // Ensure boolean cast for audio setting
+        // Ensure boolean casts
         $merged['audio_alerts_enabled'] = filter_var($merged['audio_alerts_enabled'], FILTER_VALIDATE_BOOLEAN);
+        $merged['master_emergency_active'] = filter_var($merged['master_emergency_active'], FILTER_VALIDATE_BOOLEAN);
 
         return response()->json([
             'status' => 'success',
@@ -50,6 +54,9 @@ class SettingController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'master_emergency_active' => 'nullable|boolean',
+            'active_emergency_title' => 'nullable|string|max:255',
+            'active_disaster_type' => 'nullable|string|in:natural,man_made,all',
             'map_center_lat' => 'nullable|numeric',
             'map_center_lng' => 'nullable|numeric',
             'map_zoom' => 'nullable|integer|min:1|max:22',

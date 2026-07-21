@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['name', 'latitude', 'longitude', 'location', 'radius_meters', 'estimated_duration_hours', 'is_active', 'reported_by', 'hazard_type', 'severity_level', 'is_fixed_flood_spot'])]
+#[Fillable(['name', 'latitude', 'longitude', 'location', 'radius_meters', 'estimated_duration_hours', 'is_active', 'reported_by', 'hazard_type', 'severity_level', 'is_fixed_flood_spot', 'disaster_category'])]
 class Hazard extends Model
 {
     protected $hidden = ['location'];

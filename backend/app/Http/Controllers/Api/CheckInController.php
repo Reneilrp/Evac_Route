@@ -9,6 +9,7 @@ use App\Models\FamilyProfile;
 use App\Models\InventoryItem;
 use App\Models\RationTemplate;
 use App\Models\Shelter;
+use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -94,15 +95,7 @@ class CheckInController extends Controller
                         $activeLog->checked_out_at = now();
                         $activeLog->save();
 
-                        // Now check in to the new shelter
-                        if ($shelter->status !== 'open') {
-                            throw new \Exception('Target shelter is at maximum capacity.');
-                        }
-
-                        if ($shelter->current_occupancy + $family->headcount > $shelter->max_capacity) {
-                            throw new \Exception('Target shelter has insufficient capacity.');
-                        }
-
+                        // Now check in to the new shelter (Emergency Overflow Allowed - REV-04)
                         $shelter->current_occupancy += $family->headcount;
                         if ($shelter->current_occupancy >= $shelter->max_capacity) {
                             $shelter->status = 'full';
@@ -156,24 +149,21 @@ class CheckInController extends Controller
                     }
                 }
 
-                // Prevent checking into a full shelter
-                if ($shelter->status !== 'open') {
-                    throw new \Exception('Shelter is already at maximum capacity.');
-                }
-
-                if ($shelter->current_occupancy + $family->headcount > $shelter->max_capacity) {
-                    throw new \Exception('Shelter has insufficient capacity.');
-                }
-
-                // Update Shelter Occupancy
+                // Update Shelter Occupancy (Emergency Overflow Allowed - REV-04)
                 $shelter->current_occupancy += $family->headcount;
 
-                // Capacity Matching Logic: Flip status if full
+                // Set status to full if capacity is met or exceeded
                 if ($shelter->current_occupancy >= $shelter->max_capacity) {
                     $shelter->status = 'full';
                 }
                 $shelter->save();
                 broadcast(new ShelterStatusUpdated($shelter));
+
+                $isOverflow = $shelter->current_occupancy > $shelter->max_capacity;
+                $overflowCount = max(0, $shelter->current_occupancy - $shelter->max_capacity);
+                $msg = $isOverflow 
+                    ? "Check-in recorded under EMERGENCY OVERFLOW (+{$overflowCount} occupants over capacity)." 
+                    : "Check-in successful.";
 
                 // Find the currently active LGU ration template
                 $activeRation = RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
@@ -220,7 +210,7 @@ class CheckInController extends Controller
                     'shelter' => $shelter,
                     'log' => $log,
                     'ration_applied' => $activeRation ? $activeRation->name : 'No active ration template.',
-                    'message' => 'Check-in successful.',
+                    'message' => $msg,
                 ];
             }, 5);
 
@@ -237,6 +227,121 @@ class CheckInController extends Controller
             }
 
             // If ANYTHING fails, the DB rolls back and returns this error
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Handle rapid on-the-spot registration & check-in for unregistered walk-in evacuees (REV-05).
+     * Route: POST /api/shelters/{shelter_id}/rapid-check-in
+     */
+    public function rapidCheckIn(Request $request, $shelter_id)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'headcount' => 'required|integer|min:1',
+            'barangay' => 'required|string|max:255',
+            'contact_number' => 'nullable|string|max:50',
+        ]);
+
+        try {
+            $result = DB::transaction(function () use ($request, $shelter_id) {
+                // 1. Create User & Family Profile on-the-fly
+                $email = 'walkin_' . time() . '_' . rand(1000, 9999) . '@evacroute.local';
+                $user = User::create([
+                    'name' => $request->name,
+                    'email' => $email,
+                    'password' => bcrypt('walkin_password_' . time()),
+                    'role' => 'resident',
+                    'status' => 'active',
+                ]);
+
+                $qrHash = 'WALKIN_' . strtoupper(bin2hex(random_bytes(8)));
+
+                $family = FamilyProfile::create([
+                    'user_id' => $user->id,
+                    'headcount' => $request->headcount,
+                    'contact_number' => $request->contact_number ?? 'N/A',
+                    'barangay' => $request->barangay,
+                    'qr_code_hash' => $qrHash,
+                    'transportation_mode' => 'pedestrian',
+                ]);
+
+                // 2. Lock shelter and process occupancy increment + Emergency Overflow
+                $shelter = Shelter::lockForUpdate()->findOrFail($shelter_id);
+                $shelter->current_occupancy += $family->headcount;
+
+                if ($shelter->current_occupancy >= $shelter->max_capacity) {
+                    $shelter->status = 'full';
+                }
+                $shelter->save();
+                broadcast(new ShelterStatusUpdated($shelter));
+
+                $isOverflow = $shelter->current_occupancy > $shelter->max_capacity;
+                $overflowCount = max(0, $shelter->current_occupancy - $shelter->max_capacity);
+                $msg = $isOverflow 
+                    ? "Walk-in registered & checked in under EMERGENCY OVERFLOW (+{$overflowCount} occupants)." 
+                    : "Walk-in registered & checked in successfully.";
+
+                // 3. Allocate Rations
+                $activeRation = RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
+                $claimedItems = null;
+
+                if ($activeRation && $activeRation->items->isNotEmpty()) {
+                    $inventoryItemIds = $activeRation->items->pluck('inventory_item_id')->unique()->sort()->toArray();
+                    $inventoryItems = InventoryItem::lockForUpdate()->whereIn('id', $inventoryItemIds)->get()->keyBy('id');
+                    $claimedItems = [];
+
+                    foreach ($activeRation->items as $rationItem) {
+                        $totalDeduction = $rationItem->quantity_per_head * $family->headcount;
+                        $inventory = $inventoryItems->get($rationItem->inventory_item_id);
+
+                        if ($inventory && $inventory->total_stock >= $totalDeduction) {
+                            $inventory->decrement('total_stock', $totalDeduction);
+                        } else {
+                            $itemName = $inventory ? $inventory->item_name : 'Unknown Item';
+                            throw new \Exception("Insufficient inventory stock for {$itemName}.");
+                        }
+
+                        $claimedItems[] = [
+                            'item_name' => $inventory ? $inventory->item_name : 'Unknown Item',
+                            'quantity' => $totalDeduction,
+                            'unit_type' => $inventory ? $inventory->unit_type : '',
+                        ];
+                    }
+                }
+
+                // 4. Create Evacuation Log
+                $log = EvacuationLog::create([
+                    'family_profile_id' => $family->id,
+                    'shelter_id' => $shelter->id,
+                    'recorded_headcount' => $family->headcount,
+                    'ration_claimed' => $activeRation !== null,
+                    'checked_in_at' => now(),
+                    'claimed_ration_items' => $claimedItems,
+                ]);
+
+                return [
+                    'action' => 'rapid_checkin',
+                    'shelter' => $shelter,
+                    'family' => $family,
+                    'log' => $log,
+                    'ration_applied' => $activeRation ? $activeRation->name : 'No active ration template.',
+                    'message' => $msg,
+                    'generated_qr_hash' => $qrHash,
+                ];
+            }, 5);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => $result['message'],
+                'data' => $result,
+            ], 200);
+
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
                 'message' => $e->getMessage(),

@@ -51,9 +51,13 @@ class DatabaseSeeder extends Seeder
             'name' => 'Tetuan Covered Court',
             'latitude' => 6.9185,
             'longitude' => 122.0882,
+            'elevation_meters' => 12,
+            'amenities' => 'Overnight Beds, Drinking Water, Medical Station, Rations Desk',
+            'barangay' => 'Tetuan',
             'max_capacity' => 150,
             'current_occupancy' => 45,
             'status' => 'open',
+            'facility_type' => 'evacuation_center',
             'pinned_by' => $admin->id,
         ]);
 
@@ -61,9 +65,13 @@ class DatabaseSeeder extends Seeder
             'name' => 'Baliwasan Gym',
             'latitude' => 6.9126,
             'longitude' => 122.0573,
+            'elevation_meters' => 8,
+            'amenities' => 'Overnight Beds, Food Rations, First Aid',
+            'barangay' => 'Baliwasan',
             'max_capacity' => 200,
             'current_occupancy' => 18,
             'status' => 'open',
+            'facility_type' => 'evacuation_center',
             'pinned_by' => $admin->id,
         ]);
 
@@ -71,10 +79,172 @@ class DatabaseSeeder extends Seeder
             'name' => 'Tugbungan Elementary School',
             'latitude' => 6.9312,
             'longitude' => 122.0954,
+            'elevation_meters' => 15,
+            'amenities' => 'Classroom Beds, Water Tanks',
+            'barangay' => 'Tugbungan',
             'max_capacity' => 100,
             'current_occupancy' => 0,
             'status' => 'closed',
+            'facility_type' => 'evacuation_center',
             'pinned_by' => $admin->id,
+        ]);
+
+        // 2b. Create Law Enforcement, Military, Hospital & Fire Station Facilities (REV-02 & REV-03)
+        $police = Shelter::create([
+            'name' => 'Zamboanga Police Station 11 (Central HQ)',
+            'latitude' => 6.9155,
+            'longitude' => 122.0790,
+            'elevation_meters' => 14,
+            'amenities' => 'Armed Security, Ballistic Armor, Emergency Dispatch',
+            'barangay' => 'Zone 3',
+            'max_capacity' => 200,
+            'current_occupancy' => 12,
+            'status' => 'open',
+            'facility_type' => 'police_station',
+            'is_secured_facility' => true,
+            'emergency_contact' => '0917-POLICE-911',
+            'pinned_by' => $admin->id,
+        ]);
+
+        $military = Shelter::create([
+            'name' => 'WESTMINCOM Military Command Outpost',
+            'latitude' => 6.9240,
+            'longitude' => 122.0620,
+            'elevation_meters' => 18,
+            'amenities' => 'Heavy Armed Guards, Fortified Bunker, Helicopter Pad',
+            'barangay' => 'Canelar',
+            'max_capacity' => 500,
+            'current_occupancy' => 40,
+            'status' => 'open',
+            'facility_type' => 'military_base',
+            'is_secured_facility' => true,
+            'emergency_contact' => '0917-MILITARY-01',
+            'pinned_by' => $admin->id,
+        ]);
+
+        $hospital = Shelter::create([
+            'name' => 'Zamboanga City Medical Center (ZCMC)',
+            'latitude' => 6.9210,
+            'longitude' => 122.0750,
+            'elevation_meters' => 16,
+            'amenities' => 'ICU Trauma Center, Decontamination Unit, Emergency Ward',
+            'barangay' => 'Zone 4',
+            'max_capacity' => 300,
+            'current_occupancy' => 180,
+            'status' => 'open',
+            'facility_type' => 'hospital',
+            'is_secured_facility' => false,
+            'emergency_contact' => '0917-ZCMC-999',
+            'pinned_by' => $admin->id,
+        ]);
+
+        $fireStation = Shelter::create([
+            'name' => 'Central Fire Station & Rescue Depot',
+            'latitude' => 6.9140,
+            'longitude' => 122.0810,
+            'elevation_meters' => 12,
+            'amenities' => 'Search & Rescue Truck, Chemical Hose Decontam',
+            'barangay' => 'Zone 1',
+            'max_capacity' => 150,
+            'current_occupancy' => 5,
+            'status' => 'open',
+            'facility_type' => 'fire_station',
+            'is_secured_facility' => false,
+            'emergency_contact' => '0917-FIRE-160',
+            'pinned_by' => $admin->id,
+        ]);
+
+        // Explicit Safe Zones (REV-03)
+        $safeZone1 = Shelter::create([
+            'name' => 'Pasonanca Park High-Ground Safe Zone',
+            'latitude' => 6.9450,
+            'longitude' => 122.0700,
+            'elevation_meters' => 45,
+            'amenities' => 'High Ground Elevation (45m), Open Air Field, Fresh Water Springs',
+            'barangay' => 'Pasonanca',
+            'max_capacity' => 1000,
+            'current_occupancy' => 0,
+            'status' => 'open',
+            'facility_type' => 'safe_zone',
+            'is_secured_facility' => false,
+            'pinned_by' => $admin->id,
+        ]);
+
+        $safeZone2 = Shelter::create([
+            'name' => 'Tetuan Elevated Ridge Open Field',
+            'latitude' => 6.9195,
+            'longitude' => 122.0895,
+            'elevation_meters' => 22,
+            'amenities' => 'Flood Safe Elevation (22m), Solar Lighting, First Aid Tent',
+            'barangay' => 'Tetuan',
+            'max_capacity' => 400,
+            'current_occupancy' => 0,
+            'status' => 'open',
+            'facility_type' => 'safe_zone',
+            'is_secured_facility' => false,
+            'pinned_by' => $admin->id,
+        ]);
+
+        // Explicit Assembly Points (REV-03)
+        $assembly1 = Shelter::create([
+            'name' => 'Barangay Tetuan Hall Pick-up Assembly Point',
+            'latitude' => 6.9165,
+            'longitude' => 122.0840,
+            'elevation_meters' => 11,
+            'transport_schedule' => 'LGU Evacuation Bus pick-up every 15 mins',
+            'amenities' => 'LGU Transport Desk, Drinking Water, First Aid',
+            'barangay' => 'Tetuan',
+            'max_capacity' => 250,
+            'current_occupancy' => 15,
+            'status' => 'open',
+            'facility_type' => 'assembly_point',
+            'is_secured_facility' => false,
+            'pinned_by' => $admin->id,
+        ]);
+
+        $assembly2 = Shelter::create([
+            'name' => 'Guiwan Staging & Pick-up Assembly Point',
+            'latitude' => 6.9260,
+            'longitude' => 122.0910,
+            'elevation_meters' => 14,
+            'transport_schedule' => 'Military/LGU Truck pickup every 20 mins',
+            'amenities' => 'LGU Bus Stop, Quick Water Station',
+            'barangay' => 'Guiwan',
+            'max_capacity' => 300,
+            'current_occupancy' => 0,
+            'status' => 'open',
+            'facility_type' => 'assembly_point',
+            'is_secured_facility' => false,
+            'pinned_by' => $admin->id,
+        ]);
+
+        // Seed Sample Hazards (Natural & Man-Made)
+        \App\Models\Hazard::create([
+            'name' => 'Downtown Armed Conflict & Siege Zone',
+            'latitude' => 6.9160,
+            'longitude' => 122.0860,
+            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9160 122.0860)', 4326)") : null,
+            'radius_meters' => 400,
+            'estimated_duration_hours' => 24,
+            'is_active' => true,
+            'disaster_category' => 'man_made',
+            'hazard_type' => 'siege',
+            'severity_level' => 'high',
+            'reported_by' => $admin->id,
+        ]);
+
+        \App\Models\Hazard::create([
+            'name' => 'Industrial Park Chemical & Gas Leak',
+            'latitude' => 6.9280,
+            'longitude' => 122.0880,
+            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9280 122.0880)', 4326)") : null,
+            'radius_meters' => 350,
+            'estimated_duration_hours' => 12,
+            'is_active' => true,
+            'disaster_category' => 'man_made',
+            'hazard_type' => 'chemical_spill',
+            'severity_level' => 'high',
+            'reported_by' => $admin->id,
         ]);
 
         // 3. Create Warehouse Stock Inventory

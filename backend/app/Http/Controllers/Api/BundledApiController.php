@@ -154,4 +154,53 @@ class BundledApiController extends Controller
             'templates' => $templates,
         ], 200);
     }
+
+    /**
+     * Proactive Barangay Relief Summary & Pre-Staging Supply Aggregator (Privacy-Preserving / Zero Background GPS).
+     * Now includes +20% Safety Buffer Margin & Emergency Overflow Reserve calculation.
+     * Route: GET /api/lgu/barangay-relief-summary/{barangay}
+     */
+    public function getBarangayReliefSummary(Request $request, $barangay)
+    {
+        $families = \App\Models\FamilyProfile::where('barangay', 'like', "%{$barangay}%")->get();
+        $totalFamilies = $families->count();
+        $totalHeadcount = $families->sum('headcount');
+
+        // Configurable Contingency Reserve Buffer (Default 20% extra to handle unannounced overflow / walk-ins)
+        $bufferPercentage = (int) $request->query('buffer_percentage', 20);
+        $bufferHeadcount = (int) ceil($totalHeadcount * ($bufferPercentage / 100));
+        $recommendedTotalHeadcount = $totalHeadcount + $bufferHeadcount;
+
+        $activeTemplate = RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
+
+        $requiredSupplies = [];
+        if ($activeTemplate) {
+            foreach ($activeTemplate->items as $item) {
+                $baseQty = $item->quantity_per_head * $totalHeadcount;
+                $bufferQty = $item->quantity_per_head * $bufferHeadcount;
+                $recommendedTotalQty = $item->quantity_per_head * $recommendedTotalHeadcount;
+
+                $requiredSupplies[] = [
+                    'item_name' => $item->inventoryItem?->item_name ?? 'Unknown Item',
+                    'quantity_per_head' => $item->quantity_per_head,
+                    'base_required' => $baseQty,
+                    'safety_buffer_amount' => $bufferQty,
+                    'recommended_total_amount' => $recommendedTotalQty,
+                    'unit_type' => $item->inventoryItem?->unit_type ?? '',
+                ];
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'barangay' => $barangay,
+            'total_registered_families' => $totalFamilies,
+            'total_affected_headcount' => $totalHeadcount,
+            'contingency_buffer_percentage' => $bufferPercentage,
+            'safety_buffer_headcount' => $bufferHeadcount,
+            'recommended_total_headcount' => $recommendedTotalHeadcount,
+            'active_ration_template' => $activeTemplate?->name ?? 'No active template',
+            'estimated_supplies_needed' => $requiredSupplies,
+        ], 200);
+    }
 }

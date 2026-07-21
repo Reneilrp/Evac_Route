@@ -20,7 +20,7 @@ beforeEach(function () {
     ]);
 });
 
-it('prevents check-in when capacity is exceeded and redirects users', function () {
+it('allows check-in under emergency overflow state when capacity is exceeded (REV-04)', function () {
     // 1. Mock two shelters
     $shelterA = Shelter::create([
         'name' => 'Shelter A',
@@ -40,7 +40,7 @@ it('prevents check-in when capacity is exceeded and redirects users', function (
         'status' => 'open'
     ]);
 
-    // 2. Simulate a family profile with headcount 5
+    // 2. Simulate a family profile with headcount 5 (total 13 > 10 max capacity)
     $user = User::factory()->create();
     $family = FamilyProfile::create([
         'user_id' => $user->id,
@@ -51,31 +51,71 @@ it('prevents check-in when capacity is exceeded and redirects users', function (
         'transportation_mode' => 'pedestrian'
     ]);
 
-    // 3. Act: Simulate a check-in request to Shelter A
+    // 3. Act: Check-in request to Shelter A (Overflow allowed)
     Sanctum::actingAs($this->admin, ['*']);
     
     $response = $this->postJson("/api/shelters/{$shelterA->id}/check-in", [
         'qr_code_hash' => 'hash_test_123'
     ]);
 
-    // 4. Assert: CheckInController safely blocks the check-in
-    // Expecting 400 status because it throws an Exception caught by the controller
-    $response->assertStatus(400)
-             ->assertJsonPath('status', 'error');
+    // 4. Assert: Returns status 200 under Emergency Overflow
+    $response->assertStatus(200)
+             ->assertJsonPath('status', 'success');
 
-    // 5. Assert: Shelter A's status automatically flips to 'full'
+    // 5. Assert: Shelter A's occupancy is 13 and status is 'full'
     $shelterA->refresh();
+    expect($shelterA->current_occupancy)->toBe(13);
     expect($shelterA->status)->toBe('full');
+});
 
-    // 6. Assert: GET request to active shelters does NOT include Shelter A
-    $activeResponse = $this->getJson('/api/shelters/active');
-    
-    $activeResponse->assertStatus(200);
-    $activeShelters = $activeResponse->json('data');
-    
-    $shelterIds = collect($activeShelters)->pluck('id')->toArray();
-    expect($shelterIds)->not->toContain($shelterA->id)
-          ->and($shelterIds)->toContain($shelterB->id);
+it('supports rapid on-the-spot registration and relief check-in for unregistered walk-ins (REV-05)', function () {
+    $shelter = Shelter::create([
+        'name' => 'Tetuan Covered Court',
+        'latitude' => 6.9185,
+        'longitude' => 122.0882,
+        'max_capacity' => 100,
+        'current_occupancy' => 10,
+        'status' => 'open'
+    ]);
+
+    Sanctum::actingAs($this->admin, ['*']);
+
+    $response = $this->postJson("/api/shelters/{$shelter->id}/rapid-check-in", [
+        'name' => 'Unregistered Resident',
+        'headcount' => 4,
+        'barangay' => 'Tetuan',
+        'contact_number' => '09991234567'
+    ]);
+
+    $response->assertStatus(200)
+             ->assertJsonPath('status', 'success')
+             ->assertJsonPath('data.action', 'rapid_checkin');
+
+    $shelter->refresh();
+    expect($shelter->current_occupancy)->toBe(14);
+});
+
+it('calculates proactive barangay-based relief supply summary without continuous GPS tracking', function () {
+    $user = User::factory()->create();
+    FamilyProfile::create([
+        'user_id' => $user->id,
+        'headcount' => 4,
+        'barangay' => 'Tumaga',
+        'contact_number' => '09123456789',
+        'qr_code_hash' => 'hash_tumaga_1',
+        'transportation_mode' => 'pedestrian'
+    ]);
+
+    Sanctum::actingAs($this->admin, ['*']);
+
+    $response = $this->getJson('/api/lgu/barangay-relief-summary/Tumaga');
+
+    $response->assertStatus(200)
+             ->assertJsonPath('status', 'success')
+             ->assertJsonPath('barangay', 'Tumaga')
+             ->assertJsonPath('total_affected_headcount', 4)
+             ->assertJsonPath('safety_buffer_headcount', 1)
+             ->assertJsonPath('recommended_total_headcount', 5);
 });
 
 it('calculates automated shelter-specific supply aggregation (dispatch manifests)', function () {

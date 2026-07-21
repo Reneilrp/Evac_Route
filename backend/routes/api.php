@@ -61,6 +61,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/map/dashboard', [BundledApiController::class, 'getMapDashboard']);
         Route::get('/inventory/dashboard', [BundledApiController::class, 'getInventoryDashboard']);
         Route::get('/shelters/dashboard', [BundledApiController::class, 'getSheltersDashboard']);
+        Route::get('/lgu/barangay-relief-summary/{barangay}', [BundledApiController::class, 'getBarangayReliefSummary']);
 
         // 1. Shelter Management
         Route::get('/shelters', [ShelterController::class, 'getAll']);
@@ -71,6 +72,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
         // 2. Check-in & Relief
         Route::post('/shelters/{shelter_id}/check-in', [CheckInController::class, 'processCheckIn']);
+        Route::post('/shelters/{shelter_id}/rapid-check-in', [CheckInController::class, 'rapidCheckIn']);
         Route::post('/shelters/{shelter_id}/check-out', [CheckInController::class, 'processCheckOut']);
         Route::post('/evacuation-logs/{id}/check-out', [CheckInController::class, 'manualCheckOut']);
 
