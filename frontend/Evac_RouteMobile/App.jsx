@@ -10,13 +10,17 @@ import { useResidentStore } from './src/context/useResidentStore';
 import api from './src/services/api';
 
 // ─── Global notification handler — show alerts even when app is in foreground ───
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+} catch (e) {
+  console.warn('[Notifications] Failed to set notification handler:', e);
+}
 
 const queryClient = new QueryClient();
 
@@ -34,7 +38,7 @@ async function registerForPushNotificationsAsync() {
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 300, 100, 300, 100, 300],
         lightColor: '#EF4444',
-        sound: 'default',
+        sound: true,
       });
     }
 
@@ -188,3 +192,5 @@ function App() {
     </QueryClientProvider>
   );
 }
+
+export default App;

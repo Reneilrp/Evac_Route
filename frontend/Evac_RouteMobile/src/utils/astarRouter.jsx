@@ -3,10 +3,15 @@ import { getDistanceMeters } from '../services/offlineDb';
 
 let db = null;
 
-try {
-  db = SQLite.openDatabaseSync('evac_route.db');
-} catch (e) {
-  console.error('Failed to open SQLite database for router:', e);
+function getDb() {
+  if (!db) {
+    try {
+      db = SQLite.openDatabaseSync('evac_route.db');
+    } catch (e) {
+      console.error('Failed to open SQLite database for router:', e);
+    }
+  }
+  return db;
 }
 
 /**
@@ -29,11 +34,12 @@ export function findNearestNode(lat, lng, nodesList = null) {
     return nearestNode;
   }
 
-  if (!db) return null;
+  const database = getDb();
+  if (!database) return null;
 
   try {
     // Quick squared-distance approximation in SQL to find nearest node
-    const result = db.getAllSync(
+    const result = database.getAllSync(
       `SELECT id, lat, lng, 
               ((lat - ?)*(lat - ?) + (lng - ?)*(lng - ?)) as dist_sq 
        FROM nodes 
@@ -115,6 +121,96 @@ function getHazardCostMultiplier(geometryCoords, hazardsWithBounds, transportati
 }
 
 /**
+ * Selects the optimal target facility based on active hazards and threat types (REV-02).
+ * e.g., Hostile threats (siege, war, active shooter) -> Police Stations / Military Outposts.
+ * Chemical/Gas spills -> Hospitals / Medical Facilities.
+ * Building Fire -> Fire Stations / Safe Zones.
+ */
+export function determineTargetFacility(userLat, userLng, facilities, activeHazards, requestedCategory = 'all') {
+  if (!facilities || facilities.length === 0) return null;
+
+  // Direct category preference (REV-03: Resident choice of Safe Zone vs Assembly Point vs Shelter)
+  if (requestedCategory && requestedCategory !== 'all') {
+    let filtered = [];
+    if (requestedCategory === 'safe_zone') {
+      filtered = facilities.filter(f => f.facility_type === 'safe_zone');
+    } else if (requestedCategory === 'assembly_point') {
+      filtered = facilities.filter(f => f.facility_type === 'assembly_point');
+    } else if (requestedCategory === 'shelter') {
+      filtered = facilities.filter(f => f.facility_type === 'evacuation_center' || !f.facility_type);
+    }
+    if (filtered.length > 0) {
+      return findClosestFacility(userLat, userLng, filtered, `Targeting requested ${requestedCategory.replace('_', ' ')}.`);
+    }
+  }
+
+  // Check for hostile man-made threats (siege, war, active shooter, etc.)
+  const hostileThreat = (activeHazards || []).find(h => 
+    ['siege', 'war', 'active_shooter', 'civil_unrest'].includes(h.hazard_type) ||
+    (h.disaster_category === 'man_made' && h.severity_level === 'high')
+  );
+
+  if (hostileThreat) {
+    const policeOrMilitary = facilities.filter(f => 
+      ['police_station', 'military_base'].includes(f.facility_type) || f.is_secured_facility === 1 || f.is_secured_facility === true
+    );
+    if (policeOrMilitary.length > 0) {
+      return findClosestFacility(userLat, userLng, policeOrMilitary, '👮 HOSTILE THREAT ACTIVE: Rerouting to nearest Police Station / Military Base for armed protection.');
+    }
+  }
+
+  // Check for chemical or toxic gas spills
+  const chemicalThreat = (activeHazards || []).find(h => 
+    ['chemical_spill', 'gas_leak'].includes(h.hazard_type)
+  );
+
+  if (chemicalThreat) {
+    const hospitals = facilities.filter(f => f.facility_type === 'hospital');
+    if (hospitals.length > 0) {
+      return findClosestFacility(userLat, userLng, hospitals, '🧪 TOXIC HAZARD DETECTED: Rerouting to Medical Decontamination Hospital.');
+    }
+  }
+
+  // Check for building fires
+  const fireThreat = (activeHazards || []).find(h => 
+    ['building_fire', 'explosion'].includes(h.hazard_type)
+  );
+
+  if (fireThreat) {
+    const fireDepots = facilities.filter(f => ['fire_station', 'safe_zone'].includes(f.facility_type));
+    if (fireDepots.length > 0) {
+      return findClosestFacility(userLat, userLng, fireDepots, '🔥 FIRE HAZARD DETECTED: Rerouting to Fire Station / Assembly Safe Zone.');
+    }
+  }
+
+  // Fallback to closest open evacuation center / shelter
+  const openFacilities = facilities.filter(f => f.status === 'open' || !f.status);
+  const pool = openFacilities.length > 0 ? openFacilities : facilities;
+  return findClosestFacility(userLat, userLng, pool, null);
+}
+
+function findClosestFacility(userLat, userLng, pool, customReason) {
+  let closest = pool[0];
+  let minDistance = Infinity;
+
+  for (const f of pool) {
+    const fLat = parseFloat(f.latitude ?? f.lat);
+    const fLng = parseFloat(f.longitude ?? f.lng);
+    const dist = getDistanceMeters(userLat, userLng, fLat, fLng);
+    if (dist < minDistance) {
+      minDistance = dist;
+      closest = f;
+    }
+  }
+
+  return {
+    facility: closest,
+    reason: customReason,
+    distanceMeters: minDistance
+  };
+}
+
+/**
  * Calculates a hazard-avoiding route from userLocation [lng, lat] to shelterLocation [lng, lat]
  * using the local SQLite road network graph. If preloadedData is provided, A* runs
  * entirely in memory with O(1) adjacency lookups.
@@ -145,10 +241,11 @@ export function calculateOfflineRoute(userLocation, shelterLocation, preloadedDa
       startNode = findNearestNode(userLat, userLng, nodesList);
       endNode = findNearestNode(shelterLat, shelterLng, nodesList);
     } else {
-      if (!db) return { status: 'error', path: [userLocation, shelterLocation] };
+      const database = getDb();
+      if (!database) return { status: 'error', path: [userLocation, shelterLocation] };
       startNode = findNearestNode(userLat, userLng);
       endNode = findNearestNode(shelterLat, shelterLng);
-      hazards = db.getAllSync('SELECT lat AS latitude, lng AS longitude, radius AS radius_meters FROM hazards');
+      hazards = database.getAllSync('SELECT lat AS latitude, lng AS longitude, radius AS radius_meters FROM hazards');
     }
 
     if (!startNode || !endNode) {
@@ -203,10 +300,11 @@ export function calculateOfflineRoute(userLocation, shelterLocation, preloadedDa
       if (edgesBySource) {
         edges = edgesBySource[currentId] || [];
       } else {
-        edges = db.getAllSync(
+        const database = getDb();
+        edges = database ? database.getAllSync(
           'SELECT target_node, distance, geometry FROM edges WHERE source_node = ?',
           [currentId]
-        );
+        ) : [];
       }
 
       for (const edge of edges) {
@@ -233,7 +331,8 @@ export function calculateOfflineRoute(userLocation, shelterLocation, preloadedDa
           if (nodesMap) {
             neighborNode = nodesMap[neighborId];
           } else {
-            neighborNode = db.getAllSync('SELECT lat, lng FROM nodes WHERE id = ?', [neighborId])[0];
+            const database = getDb();
+            neighborNode = database ? database.getAllSync('SELECT lat, lng FROM nodes WHERE id = ?', [neighborId])[0] : null;
           }
 
           const h = neighborNode 

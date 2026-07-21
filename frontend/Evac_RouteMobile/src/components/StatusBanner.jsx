@@ -1,6 +1,5 @@
 import { useRef, useEffect } from 'react';
 import { Text, Animated, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlertTriangle, ShieldCheck } from 'lucide-react-native';
 import { colors, spacing, typography } from '../styles/theme';
 
@@ -8,7 +7,6 @@ import { colors, spacing, typography } from '../styles/theme';
  * StatusBanner — Safe-area-aware status banner with pulse animation in danger mode.
  */
 export default function StatusBanner({ status = 'danger', text, icon }) {
-  const insets = useSafeAreaInsets();
   const pulseAnimRef = useRef(new Animated.Value(1));
 
   useEffect(() => {
@@ -39,7 +37,6 @@ export default function StatusBanner({ status = 'danger', text, icon }) {
       style={[
         styles.banner,
         isDanger ? styles.bannerDanger : styles.bannerSafe,
-        { paddingTop: insets.top + spacing.base },
         { transform: [{ scale: pulseAnimRef.current }] },
       ]}
     >
@@ -53,14 +50,14 @@ const styles = StyleSheet.create({
   banner: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
+    paddingVertical: spacing.xs,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   bannerDanger: { backgroundColor: colors.danger },
   bannerSafe: { backgroundColor: colors.success },

@@ -5,7 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { MapPin, QrCode, AlertTriangle, BarChart2, Package } from 'lucide-react-native';
+import { MapPin, QrCode, AlertTriangle, BarChart2, Package, User } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { colors, typography } from '../styles/theme';
@@ -74,10 +74,10 @@ function ResidentTabs() {
         tabBarIcon: ({ color, size }) => {
           if (route.name === 'Evacuation Map') {
             return <MapPin color={color} size={size} />;
-          } else if (route.name === 'Resident Home') {
-            return <QrCode color={color} size={size} />;
           } else if (route.name === 'Report Hazard') {
             return <AlertTriangle color={color} size={size} />;
+          } else if (route.name === 'Profile') {
+            return <User color={color} size={size} />;
           }
         },
         tabBarActiveTintColor: colors.primary,
@@ -96,13 +96,13 @@ function ResidentTabs() {
         },
       })}
     >
-      <Tab.Screen name="Resident Home" component={ProfileQRScreen} />
       <Tab.Screen name="Evacuation Map" component={EvacMapScreen} />
       <Tab.Screen
         name="Report Hazard"
         component={ReportIncidentScreen}
         options={{ tabBarActiveTintColor: colors.warning }}
       />
+      <Tab.Screen name="Profile" component={ProfileQRScreen} />
     </Tab.Navigator>
   );
 }

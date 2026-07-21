@@ -1,6 +1,6 @@
-import { View, Text, FlatList } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Bell } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Bell, ArrowLeft } from 'lucide-react-native';
 import { useResidentStore } from '../context/useResidentStore';
 import EmptyState from '../components/EmptyState';
 import { colors } from '../styles/theme';
@@ -55,8 +55,7 @@ function formatTimestamp(timestamp) {
   return date.toLocaleDateString();
 }
 
-export default function AlertHistoryScreen() {
-  const insets = useSafeAreaInsets();
+export default function AlertHistoryScreen({ navigation }) {
   const alertHistory = useResidentStore(state => state.alertHistory);
 
   const renderAlert = ({ item }) => {
@@ -80,11 +79,24 @@ export default function AlertHistoryScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Alert History</Text>
-          <Text style={styles.headerSubtitle}>Past alerts and notifications</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+          <TouchableOpacity
+            onPress={() => navigation?.goBack?.()}
+            style={{
+              padding: 8,
+              borderRadius: 20,
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              marginRight: 12,
+            }}
+          >
+            <ArrowLeft size={20} color="#ffffff" />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>Alert History</Text>
+            <Text style={styles.headerSubtitle}>Past alerts and notifications</Text>
+          </View>
         </View>
 
         {alertHistory && alertHistory.length > 0 ? (
@@ -102,6 +114,6 @@ export default function AlertHistoryScreen() {
           />
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

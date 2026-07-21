@@ -1,13 +1,18 @@
 import { create } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
-// Read API base URL from app.json extra config so it works across all dev environments.
-// Set extra.apiBaseUrl in app.json for your local dev IP, e.g. "http://192.168.1.X:8000/api"
-const BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl || 'http://localhost:8000/api';
+// On Android Emulator, 10.0.2.2 routes directly to host PC port 8000
+const BASE_URL = Platform.OS === 'android'
+  ? 'http://10.0.2.2:8000/api'
+  : (Constants.expoConfig?.extra?.apiBaseUrl || 'http://localhost:8000/api');
+
+console.log('[API] Target API Base URL:', BASE_URL);
 
 const api = create({
   baseURL: BASE_URL,
+  timeout: 12000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

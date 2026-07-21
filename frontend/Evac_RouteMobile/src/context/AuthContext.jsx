@@ -24,16 +24,18 @@ export const AuthProvider = ({ children }) => {
         setUser(user);
 
         // Sync profile data to Zustand if they are a resident
-        if (user && user.role === 'resident' && user.family_profile) {
+        if (user && user.role === 'resident') {
+          const familyProfile = user.family_profile || user.family || {};
           useResidentStore.getState().setProfileData(
             {
+              id: user.id,
               name: user.name,
-              barangay: user.family_profile.barangay,
-              headcount: user.family_profile.headcount,
-              contact_number: user.family_profile.contact_number,
-              transportation_mode: user.family_profile.transportation_mode
+              barangay: familyProfile.barangay || 'Tetuan',
+              headcount: familyProfile.headcount || 1,
+              contact_number: familyProfile.contact_number || '',
+              transportation_mode: familyProfile.transportation_mode || 'pedestrian'
             },
-            user.family_profile.qr_code_hash
+            familyProfile.qr_code_hash || `hash_${user.id}`
           );
         }
       }
@@ -58,23 +60,28 @@ export const AuthProvider = ({ children }) => {
    * by the calling screen (ProfileSetupScreen / LoginScreen).
    * This method fetches the user from the API and sets them in state.
    */
-  const login = async () => {
+  const login = async (userData = null) => {
     try {
-      const response = await api.get('/user');
-      const user = response.data;
+      let user = userData;
+      if (!user) {
+        const response = await api.get('/user');
+        user = response.data;
+      }
       setUser(user);
 
       // Sync profile data to Zustand if they are a resident
-      if (user && user.role === 'resident' && user.family_profile) {
+      if (user && user.role === 'resident') {
+        const familyProfile = user?.family_profile || user?.family || {};
         useResidentStore.getState().setProfileData(
           {
+            id: user.id,
             name: user.name,
-            barangay: user.family_profile.barangay,
-            headcount: user.family_profile.headcount,
-            contact_number: user.family_profile.contact_number,
-            transportation_mode: user.family_profile.transportation_mode
+            barangay: familyProfile.barangay || 'Tetuan',
+            headcount: familyProfile.headcount || 1,
+            contact_number: familyProfile.contact_number || '',
+            transportation_mode: familyProfile.transportation_mode || 'pedestrian'
           },
-          user.family_profile.qr_code_hash
+          familyProfile.qr_code_hash || `hash_${user.id}`
         );
       }
       return true;
@@ -92,16 +99,18 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
 
       // Sync profile data to Zustand if they are a resident
-      if (user && user.role === 'resident' && user.family_profile) {
+      if (user && user.role === 'resident') {
+        const familyProfile = user.family_profile || user.family || {};
         useResidentStore.getState().setProfileData(
           {
+            id: user.id,
             name: user.name,
-            barangay: user.family_profile.barangay,
-            headcount: user.family_profile.headcount,
-            contact_number: user.family_profile.contact_number,
-            transportation_mode: user.family_profile.transportation_mode
+            barangay: familyProfile.barangay || 'Tetuan',
+            headcount: familyProfile.headcount || 1,
+            contact_number: familyProfile.contact_number || '',
+            transportation_mode: familyProfile.transportation_mode || 'pedestrian'
           },
-          user.family_profile.qr_code_hash
+          familyProfile.qr_code_hash || `hash_${user.id}`
         );
       }
       return { success: true, user };

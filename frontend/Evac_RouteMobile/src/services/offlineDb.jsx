@@ -2,24 +2,30 @@ import * as SQLite from 'expo-sqlite';
 
 let db = null;
 
-try {
-  db = SQLite.openDatabaseSync('evac_route.db');
-} catch (e) {
-  console.error('Failed to open SQLite database:', e);
+export function getDb() {
+  if (!db) {
+    try {
+      db = SQLite.openDatabaseSync('evac_route.db');
+    } catch (e) {
+      console.error('Failed to open SQLite database:', e);
+    }
+  }
+  return db;
 }
 
 /**
  * Initializes the database schema and sets up indexing for fast routing lookups.
  */
 export function initDb() {
-  if (!db) return;
+  const database = getDb();
+  if (!database) return;
 
   try {
     // 1. Enable WAL mode for concurrency and performance
-    db.execSync('PRAGMA journal_mode = WAL;');
+    database.execSync('PRAGMA journal_mode = WAL;');
 
     // 2. Create nodes table
-    db.execSync(`
+    database.execSync(`
       CREATE TABLE IF NOT EXISTS nodes (
         id INTEGER PRIMARY KEY NOT NULL,
         lat REAL NOT NULL,
@@ -28,7 +34,7 @@ export function initDb() {
     `);
 
     // 3. Create edges table (road graph links)
-    db.execSync(`
+    database.execSync(`
       CREATE TABLE IF NOT EXISTS edges (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         source_node INTEGER NOT NULL,
@@ -41,7 +47,7 @@ export function initDb() {
     `);
 
     // 4. Create shelters table for offline tracking
-    db.execSync(`
+    database.execSync(`
       CREATE TABLE IF NOT EXISTS shelters (
         id INTEGER PRIMARY KEY NOT NULL,
         name TEXT NOT NULL,
@@ -49,22 +55,29 @@ export function initDb() {
         lng REAL NOT NULL,
         max_capacity INTEGER,
         current_occupancy INTEGER,
-        status TEXT NOT NULL
+        status TEXT NOT NULL,
+        facility_type TEXT DEFAULT 'evacuation_center',
+        is_secured_facility INTEGER DEFAULT 0,
+        emergency_contact TEXT
       );
     `);
 
     // 5. Create hazards table for dynamic path avoidance
-    db.execSync(`
+    database.execSync(`
       CREATE TABLE IF NOT EXISTS hazards (
         id INTEGER PRIMARY KEY NOT NULL,
+        name TEXT,
         lat REAL NOT NULL,
         lng REAL NOT NULL,
-        radius REAL NOT NULL
+        radius REAL NOT NULL,
+        disaster_category TEXT DEFAULT 'natural',
+        hazard_type TEXT DEFAULT 'flood',
+        severity_level TEXT DEFAULT 'medium'
       );
     `);
 
     // 6. P3: Create road_maintenances table for offline visibility of LGU-closed roads
-    db.execSync(`
+    database.execSync(`
       CREATE TABLE IF NOT EXISTS road_maintenances (
         id INTEGER PRIMARY KEY NOT NULL,
         description TEXT,
@@ -77,10 +90,10 @@ export function initDb() {
     `);
 
     // 7. Create performance indexes
-    db.execSync('CREATE INDEX IF NOT EXISTS idx_nodes_coords ON nodes(lat, lng);');
-    db.execSync('CREATE INDEX IF NOT EXISTS idx_edges_source ON edges(source_node);');
-    db.execSync('CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(target_node);');
-    db.execSync('CREATE INDEX IF NOT EXISTS idx_hazards_coords ON hazards(lat, lng);');
+    database.execSync('CREATE INDEX IF NOT EXISTS idx_nodes_coords ON nodes(lat, lng);');
+    database.execSync('CREATE INDEX IF NOT EXISTS idx_edges_source ON edges(source_node);');
+    database.execSync('CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(target_node);');
+    database.execSync('CREATE INDEX IF NOT EXISTS idx_hazards_coords ON hazards(lat, lng);');
 
     console.log('SQLite schemas and indexes initialized successfully.');
     
@@ -210,8 +223,8 @@ export function saveShelters(sheltersList) {
   try {
     db.execSync('DELETE FROM shelters');
     const stmt = db.prepareSync(`
-      INSERT INTO shelters (id, name, lat, lng, max_capacity, current_occupancy, status)
-      VALUES ($id, $name, $lat, $lng, $max_cap, $cur_occ, $status)
+      INSERT INTO shelters (id, name, lat, lng, max_capacity, current_occupancy, status, facility_type, is_secured_facility, emergency_contact)
+      VALUES ($id, $name, $lat, $lng, $max_cap, $cur_occ, $status, $fac_type, $is_sec, $contact)
     `);
     
     for (const s of sheltersList) {
@@ -222,7 +235,10 @@ export function saveShelters(sheltersList) {
         $lng: parseFloat(s.longitude),
         $max_cap: s.max_capacity,
         $cur_occ: s.current_occupancy,
-        $status: s.status
+        $status: s.status,
+        $fac_type: s.facility_type || 'evacuation_center',
+        $is_sec: s.is_secured_facility ? 1 : 0,
+        $contact: s.emergency_contact || null
       });
     }
     stmt.finalizeSync();
@@ -237,7 +253,7 @@ export function saveShelters(sheltersList) {
 export function getOfflineShelters() {
   if (!db) return [];
   try {
-    return db.getAllSync('SELECT id, name, lat AS latitude, lng AS longitude, max_capacity, current_occupancy, status FROM shelters');
+    return db.getAllSync('SELECT id, name, lat AS latitude, lng AS longitude, max_capacity, current_occupancy, status, facility_type, is_secured_facility, emergency_contact FROM shelters');
   } catch (e) {
     console.error('Error fetching offline shelters:', e);
     return [];
@@ -253,16 +269,20 @@ export function saveHazards(hazardsList) {
   try {
     db.execSync('DELETE FROM hazards');
     const stmt = db.prepareSync(`
-      INSERT INTO hazards (id, lat, lng, radius)
-      VALUES ($id, $lat, $lng, $radius)
+      INSERT INTO hazards (id, name, lat, lng, radius, disaster_category, hazard_type, severity_level)
+      VALUES ($id, $name, $lat, $lng, $radius, $category, $type, $severity)
     `);
     
     for (const h of hazardsList) {
       stmt.executeSync({
         $id: h.id,
+        $name: h.name || 'Hazard Zone',
         $lat: parseFloat(h.latitude),
         $lng: parseFloat(h.longitude),
-        $radius: parseFloat(h.radius_meters)
+        $radius: parseFloat(h.radius_meters),
+        $category: h.disaster_category || 'natural',
+        $type: h.hazard_type || 'flood',
+        $severity: h.severity_level || 'medium'
       });
     }
     stmt.finalizeSync();
@@ -277,7 +297,7 @@ export function saveHazards(hazardsList) {
 export function getOfflineHazards() {
   if (!db) return [];
   try {
-    return db.getAllSync('SELECT id, lat AS latitude, lng AS longitude, radius AS radius_meters FROM hazards');
+    return db.getAllSync('SELECT id, name, lat AS latitude, lng AS longitude, radius AS radius_meters, disaster_category, hazard_type, severity_level FROM hazards');
   } catch (e) {
     console.error('Error fetching offline hazards:', e);
     return [];

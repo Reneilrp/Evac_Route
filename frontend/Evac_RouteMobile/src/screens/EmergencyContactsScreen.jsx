@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Phone, Shield, Flame, Anchor, Heart, Building } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Phone, Shield, Flame, Anchor, Heart, Building, ArrowLeft } from 'lucide-react-native';
 import { colors } from '../styles/theme';
 import styles from '../styles/EmergencyContactsScreen.styles';
 
@@ -29,9 +29,7 @@ const EMERGENCY_CONTACTS = [
   },
 ];
 
-export default function EmergencyContactsScreen() {
-  const insets = useSafeAreaInsets();
-
+export default function EmergencyContactsScreen({ navigation }) {
   const handleCall = (number, name) => {
     // Clean number for dialing (remove parentheses, spaces, dashes)
     const cleanNumber = number.replace(/[^0-9+]/g, '');
@@ -47,13 +45,26 @@ export default function EmergencyContactsScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Emergency Contacts</Text>
-          <Text style={styles.headerSubtitle}>
-            Tap any contact to call directly. Keep this list accessible during emergencies.
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+          <TouchableOpacity
+            onPress={() => navigation?.goBack?.()}
+            style={{
+              padding: 8,
+              borderRadius: 20,
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              marginRight: 12,
+            }}
+          >
+            <ArrowLeft size={20} color="#ffffff" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>Emergency Contacts</Text>
+            <Text style={styles.headerSubtitle}>
+              Tap any contact to call directly. Keep this list accessible during emergencies.
+            </Text>
+          </View>
         </View>
 
         {EMERGENCY_CONTACTS.map((section, sIdx) => (
@@ -94,6 +105,6 @@ export default function EmergencyContactsScreen() {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

@@ -9,7 +9,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, MapPin, AlertTriangle, X } from 'lucide-react-native';
@@ -20,10 +20,20 @@ import { colors } from '../styles/theme';
 import styles from '../styles/ReportIncidentScreen.styles';
 
 const HAZARD_TYPES = [
+  // Natural Hazards
   { value: 'flood', label: '🌊 Flood' },
   { value: 'earthquake', label: '🏚️ Earthquake' },
-  { value: 'maintenance', label: '🚧 Maintenance' },
-  { value: 'debris', label: '🪨 Debris' },
+  { value: 'typhoon', label: '🌀 Typhoon / Storm' },
+  { value: 'landslide', label: '⛰️ Landslide' },
+  
+  // Man-Made Threats (REV-02)
+  { value: 'siege', label: '⚔️ Siege / Conflict' },
+  { value: 'building_fire', label: '🔥 Building Fire' },
+  { value: 'chemical_spill', label: '🧪 Chemical Spill' },
+  { value: 'gas_leak', label: '⚠️ Gas Leak' },
+  { value: 'active_shooter', label: '🚨 Security Threat' },
+  { value: 'structural_collapse', label: '🏗️ Collapse' },
+  { value: 'maintenance', label: '🚧 Road Block' },
 ];
 
 const SEVERITY_LEVELS = [
@@ -39,7 +49,6 @@ const SEVERITY_COLORS = {
 };
 
 export default function ReportIncidentScreen({ navigation }) {
-  const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [hazardType, setHazardType] = useState('flood');
@@ -162,11 +171,12 @@ export default function ReportIncidentScreen({ navigation }) {
   };
 
   return (
-    <ScrollView
-      style={[styles.container, { paddingTop: insets.top }]}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
       {/* Header */}
       <View style={styles.header}>
         <AlertTriangle color={colors.warning} size={24} />
@@ -266,6 +276,7 @@ export default function ReportIncidentScreen({ navigation }) {
       <Text style={styles.disclaimer}>
         Your report will be reviewed by LGU staff before appearing on the live map.
       </Text>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }

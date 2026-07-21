@@ -7,6 +7,7 @@ import api from '../services/api';
 import { useResidentStore } from '../context/useResidentStore';
 import PrimaryButton from '../components/PrimaryButton';
 import ChipSelector from '../components/ChipSelector';
+import BarangayAutocomplete from '../components/BarangayAutocomplete';
 import { colors } from '../styles/theme';
 import styles from '../styles/ProfileSetupScreen.styles';
 
@@ -14,7 +15,9 @@ export default function ProfileSetupScreen() {
   const { login } = useAuth();
   const setProfileData = useResidentStore((state) => state.setProfileData);
 
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [barangay, setBarangay] = useState('Tetuan');
   const [headcount, setHeadcount] = useState(1);
   const [contact, setContact] = useState('');
@@ -40,36 +43,55 @@ export default function ProfileSetupScreen() {
   ];
 
   const handleRegister = async () => {
-    if (!name || !contact) {
-      alert('Please enter your Full Name and Contact Number.');
+    const trimmedFirst = firstName.trim();
+    const trimmedMiddle = middleName.trim();
+    const trimmedLast = lastName.trim();
+
+    if (!trimmedFirst || !trimmedLast || !contact) {
+      alert('Please fill in First Name, Last Name, and Contact Number.');
       return;
     }
+
+    const fullName = [trimmedFirst, trimmedMiddle, trimmedLast].filter(Boolean).join(' ');
 
     setLoading(true);
     try {
       // 1. Call the real Laravel API
       const response = await api.post('/register/family', {
-        name,
+        name: fullName,
         barangay,
         headcount,
         contact_number: contact,
         transportation_mode: transportationMode
       });
 
-      const { access_token, qr_code_hash } = response.data;
+      const { access_token, qr_code_hash, user, family } = response.data;
 
-      // 2. Save auth token securely FIRST (login() will use it to call /user)
+      const registeredUser = {
+        ...(user || {}),
+        family_profile: family || {
+          barangay,
+          headcount,
+          contact_number: contact,
+          transportation_mode: transportationMode,
+          qr_code_hash,
+        },
+      };
+
+      // 2. Save auth token securely FIRST
       await SecureStore.setItemAsync('auth_token', access_token);
 
       // 3. Use ZUSTAND to save the profile and QR hash (Persists to AsyncStorage automatically)
-      setProfileData({ name, barangay, headcount, contact_number: contact, transportation_mode: transportationMode }, qr_code_hash);
+      setProfileData({ name: fullName, barangay, headcount, contact_number: contact, transportation_mode: transportationMode }, qr_code_hash);
 
-      // 4. Sync user state from backend using the real token
-      await login();
+      // 4. Sync user state into AuthContext directly
+      await login(registeredUser);
       setLoading(false);
 
-    } catch (_error) {
-      alert('Registration failed. Please check your connection and try again.');
+    } catch (error) {
+      const serverMsg = error?.response?.data?.message || error?.message || 'Connection error. Please check your network and try again.';
+      console.error('[Registration Failed]:', error?.response?.data || error);
+      alert(`Registration Failed: ${serverMsg}`);
       setLoading(false);
     }
   };
@@ -83,13 +105,35 @@ export default function ProfileSetupScreen() {
         <Text style={styles.title}>Family Profile</Text>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Full Name</Text>
+          <Text style={styles.label}>First Name</Text>
           <TextInput
             style={styles.input}
-            placeholder="Juan Dela Cruz"
+            placeholder="Juan"
             placeholderTextColor={colors.textMuted}
-            value={name}
-            onChangeText={setName}
+            value={firstName}
+            onChangeText={setFirstName}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Middle Name (Optional)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Santos"
+            placeholderTextColor={colors.textMuted}
+            value={middleName}
+            onChangeText={setMiddleName}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Last Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Dela Cruz"
+            placeholderTextColor={colors.textMuted}
+            value={lastName}
+            onChangeText={setLastName}
           />
         </View>
 
@@ -105,14 +149,12 @@ export default function ProfileSetupScreen() {
           />
         </View>
 
-        <View style={styles.inputGroup}>
+        <View style={[styles.inputGroup, { zIndex: 1000 }]}>
           <Text style={styles.label}>Barangay</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Tetuan"
-            placeholderTextColor={colors.textMuted}
+          <BarangayAutocomplete
             value={barangay}
             onChangeText={setBarangay}
+            placeholder="Search or type Barangay (e.g. Tetuan)"
           />
         </View>
 

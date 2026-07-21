@@ -7,7 +7,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
     paddingBottom: spacing['4xl'],
   },
   header: {
@@ -15,7 +16,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     marginBottom: spacing.sm,
-    marginTop: spacing.base,
+    marginTop: 0,
   },
   title: {
     fontSize: 22,

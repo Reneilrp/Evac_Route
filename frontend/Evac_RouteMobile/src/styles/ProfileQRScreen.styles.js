@@ -12,8 +12,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   safeHomeContent: {
-    padding: spacing.xl,
-    paddingBottom: spacing['4xl'],
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing['3xl'],
   },
   profileHeader: {
     alignItems: 'center',
