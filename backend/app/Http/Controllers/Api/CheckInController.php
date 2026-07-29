@@ -149,6 +149,30 @@ class CheckInController extends Controller
                     }
                 }
 
+                // DEDUPLICATION (REV-06): Check if temporary walk-in record exists at same shelter today
+                $matchingWalkInLog = EvacuationLog::where('shelter_id', $shelter_id)
+                    ->whereNull('checked_out_at')
+                    ->whereHas('familyProfile.user', function ($q) use ($family) {
+                        $q->where('email', 'LIKE', 'walkin_%')
+                          ->where(function ($sub) use ($family) {
+                              $sub->where('name', 'LIKE', '%' . $family->family_name . '%')
+                                 ->orWhere('name', 'LIKE', '%' . ($family->user?->name ?? 'N/A') . '%');
+                          });
+                    })
+                    ->lockForUpdate()
+                    ->first();
+
+                $mergedWalkIn = false;
+                if ($matchingWalkInLog) {
+                    $tempHeadcount = $matchingWalkInLog->recorded_headcount;
+                    $matchingWalkInLog->checked_out_at = now();
+                    $matchingWalkInLog->save();
+
+                    // Adjust shelter occupancy to remove temp walk-in headcount before adding registered family
+                    $shelter->current_occupancy = max(0, $shelter->current_occupancy - $tempHeadcount);
+                    $mergedWalkIn = true;
+                }
+
                 // Update Shelter Occupancy (Emergency Overflow Allowed - REV-04)
                 $shelter->current_occupancy += $family->headcount;
 
@@ -163,7 +187,7 @@ class CheckInController extends Controller
                 $overflowCount = max(0, $shelter->current_occupancy - $shelter->max_capacity);
                 $msg = $isOverflow 
                     ? "Check-in recorded under EMERGENCY OVERFLOW (+{$overflowCount} occupants over capacity)." 
-                    : "Check-in successful.";
+                    : ($mergedWalkIn ? "Official profile verified. Merged temporary walk-in record to prevent duplicate occupancy." : "Check-in successful.");
 
                 // Find the currently active LGU ration template
                 $activeRation = RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
