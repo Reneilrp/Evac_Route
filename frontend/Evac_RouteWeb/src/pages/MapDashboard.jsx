@@ -2218,8 +2218,15 @@ export default function MapDashboard() {
   const [showWeather, setShowWeather] = useState(false);
   const [showResidentSignals, setShowResidentSignals] = useState(false); // On-demand resident GPS layer
   const [viewportBounds, setViewportBounds] = useState(null); // [west, south, east, north] Spatial BBOX
+  const bboxAbortControllerRef = useRef(null);
 
   const updateViewportBounds = useCallback(() => {
+    // AbortController: Cancel in-flight HTTP BBOX requests on rapid pan/zoom to prevent out-of-order stale data overwrites
+    if (bboxAbortControllerRef.current) {
+      bboxAbortControllerRef.current.abort();
+    }
+    bboxAbortControllerRef.current = new AbortController();
+
     if (mapRef.current) {
       const map = mapRef.current.getMap ? mapRef.current.getMap() : mapRef.current;
       if (map && map.getBounds) {
