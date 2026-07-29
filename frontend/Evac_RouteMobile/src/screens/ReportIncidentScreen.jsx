@@ -67,10 +67,23 @@ export default function ReportIncidentScreen({ navigation }) {
         Alert.alert('Permission Denied', 'Location access is required to pin this report.');
         return;
       }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      
+      // Cold-Start GPS Lock Guard: High Accuracy with 4s timeout race
+      const loc = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('GPS_TIMEOUT')), 4000))
+      ]).catch(async () => {
+        return await Location.getLastKnownPositionAsync();
+      });
+
+      if (!loc || !loc.coords || (loc.coords.latitude === 0 && loc.coords.longitude === 0)) {
+        Alert.alert('⚠️ GPS Signal Weak', 'Could not acquire a valid GPS location lock. Please ensure Location Services are enabled and try again.');
+        return;
+      }
+
       setCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
     } catch (_e) {
-      Alert.alert('Error', 'Could not get your location. Please try again.');
+      Alert.alert('Error', 'Could not get your location. Please ensure GPS location services are enabled.');
     } finally {
       setLocating(false);
     }
@@ -116,8 +129,14 @@ export default function ReportIncidentScreen({ navigation }) {
       Alert.alert('Missing Info', 'Please provide a name for this incident.');
       return;
     }
-    if (!coords) {
-      Alert.alert('Missing Location', 'Please pin your current location first.');
+
+    // Cold-Start Protection: Block submission if coords are missing or zero
+    if (!coords || (coords.latitude === 0 && coords.longitude === 0)) {
+      Alert.alert(
+        '📍 Acquiring GPS Location...',
+        'Valid GPS coordinates are required before transmitting your emergency report. Please tap "Pin My Location" first.',
+        [{ text: 'Acquire Location', onPress: () => handleGetLocation() }]
+      );
       return;
     }
 
