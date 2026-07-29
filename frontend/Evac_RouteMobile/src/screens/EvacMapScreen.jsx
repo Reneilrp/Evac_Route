@@ -490,11 +490,30 @@ export default function EvacMapScreen({ navigation }) {
           setRouteWarnings(result.warnings || []);
           setIsRouteBlocked(false);
           Vibration.vibrate([0, 80, 100, 80]);
+        } else if (result && (result.status === 'isolated_target' || result.status === 'no_safe_route')) {
+          setCachedRoute(null);
+          setRouteWarnings([]);
+          setIsRouteBlocked(true);
+
+          // Fallback Reroute to High-Ground Safe Zone / Assembly Point if distant shelter is graph-isolated
+          const fallbackFacility = (shelters || []).find(f => 
+            (f.facility_type === 'safe_zone' || f.facility_type === 'assembly_point') &&
+            f.id !== activeTargetShelter?.id
+          );
+          if (fallbackFacility) {
+            setSelectedShelter(fallbackFacility);
+            Alert.alert(
+              '⚠️ Shelter Isolated by Hazard Closures',
+              `Target shelter is completely isolated by road closures/floods. Rerouting to local ${fallbackFacility.name || 'Safe Zone'}!`,
+              [{ text: 'OK' }]
+            );
+          }
+          Vibration.vibrate([0, 500, 200, 500]);
         } else {
           setCachedRoute(null);
           setRouteWarnings([]);
           setIsRouteBlocked(true);
-          Vibration.vibrate([0, 500, 200, 500, 200, 500]);
+          Vibration.vibrate([0, 500, 200, 500]);
         }
         setLastRoutingLocation(activeUserLocation);
       }, 0);

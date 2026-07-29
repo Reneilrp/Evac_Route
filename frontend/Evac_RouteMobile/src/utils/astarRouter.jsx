@@ -283,7 +283,20 @@ export function calculateOfflineRoute(userLocation, shelterLocation, preloadedDa
     gScore[startNode.id] = 0;
     fScore[startNode.id] = getDistanceMeters(startNode.lat, startNode.lng, endNode.lat, endNode.lng) / 1000; // in km
 
+    const MAX_ASTAR_ITERATIONS = 4000; // Cap to prevent UI freeze on isolated graph targets
+    let iterations = 0;
+
     while (openSet.length > 0) {
+      iterations++;
+      if (iterations > MAX_ASTAR_ITERATIONS) {
+        console.warn(`A* search exceeded max iteration limit (${MAX_ASTAR_ITERATIONS}). Target facility likely isolated by hazards.`);
+        return { 
+          status: 'isolated_target', 
+          path: [], 
+          reason: 'Target facility is isolated by surrounding hazard closures.' 
+        };
+      }
+
       // Sort openSet by fScore to get the node with the lowest estimate
       openSet.sort((a, b) => (fScore[a] ?? Infinity) - (fScore[b] ?? Infinity));
       const currentId = openSet.shift();
