@@ -48,16 +48,71 @@ class ReliefClaimController extends Controller
             }
 
             $activeRation = \App\Models\RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
-            $claimedItems = null;
+            $claimedItems = [];
+            $hasShortage = false;
 
             if ($activeRation && $activeRation->items->isNotEmpty()) {
-                $claimedItems = [];
+                // Deadlock Elimination: Sort inventory IDs numerically before locking
+                $inventoryItemIds = $activeRation->items->pluck('inventory_item_id')->unique()->sort()->toArray();
+                $inventoryItems = \App\Models\InventoryItem::lockForUpdate()
+                    ->whereIn('id', $inventoryItemIds)
+                    ->get()
+                    ->keyBy('id');
+
+                $shortageItems = [];
+
                 foreach ($activeRation->items as $rationItem) {
-                    $claimedItems[] = [
-                        'item_name' => $rationItem->inventoryItem?->item_name ?? 'Unknown Item',
-                        'quantity' => $rationItem->quantity_per_head * $family->headcount,
-                        'unit_type' => $rationItem->inventoryItem?->unit_type ?? '',
-                    ];
+                    $requestedQty = $rationItem->quantity_per_head * $family->headcount;
+                    $inventory = $inventoryItems->get($rationItem->inventory_item_id);
+
+                    if ($inventory) {
+                        $availableStock = $inventory->total_stock;
+                        $issuedQty = min($requestedQty, $availableStock);
+                        $shortageQty = max(0, $requestedQty - $issuedQty);
+
+                        if ($issuedQty > 0) {
+                            $inventory->decrement('total_stock', $issuedQty);
+                        }
+
+                        if ($shortageQty > 0) {
+                            $hasShortage = true;
+                            $shortageItems[] = [
+                                'inventory_item_id' => $inventory->id,
+                                'item_name' => $inventory->item_name,
+                                'shortage_quantity' => $shortageQty,
+                            ];
+                        }
+
+                        $claimedItems[] = [
+                            'item_name' => $inventory->item_name,
+                            'quantity' => $issuedQty,
+                            'shortage' => $shortageQty,
+                            'unit_type' => $inventory->unit_type ?? '',
+                        ];
+                    }
+                }
+
+                // Partial Stock Fulfillment: Auto-generate dispatch order for replenishment
+                if ($hasShortage && !empty($shortageItems)) {
+                    $orderNumber = 'DSP-AUTO-' . strtoupper(bin2hex(random_bytes(3)));
+                    $dispatchOrder = \App\Models\DispatchOrder::create([
+                        'order_number' => $orderNumber,
+                        'shelter_id' => $activeLog->shelter_id,
+                        'requested_by' => auth()->id() ?? 1,
+                        'status' => 'pending',
+                        'priority' => 'high',
+                        'notes' => 'Urgent auto-generated replenishment for partial ration fulfillment at Shelter #' . $activeLog->shelter_id,
+                    ]);
+
+                    foreach ($shortageItems as $sItem) {
+                        \App\Models\DispatchOrderItem::create([
+                            'dispatch_order_id' => $dispatchOrder->id,
+                            'inventory_item_id' => $sItem['inventory_item_id'],
+                            'requested_quantity' => $sItem['shortage_quantity'],
+                        ]);
+                    }
+
+                    event(new \App\Events\DispatchOrderCreated($dispatchOrder));
                 }
             }
 
@@ -67,13 +122,18 @@ class ReliefClaimController extends Controller
                 'claimed_ration_items' => $claimedItems,
             ]);
 
+            $message = $hasShortage 
+                ? 'Ration claim partially fulfilled. Auto-generated logistics replenishment dispatch order sent to central warehouse.' 
+                : 'Ration claim recorded successfully.';
+
             return response()->json([
-                'status'      => 'success',
-                'message'     => 'Ration claim recorded successfully.',
-                'family_name' => $family->family_name,
-                'headcount'   => $activeLog->recorded_headcount,
-                'shelter_id'  => $activeLog->shelter_id,
-                'claimed_at'  => $activeLog->ration_claimed_at->toIso8601String(),
+                'status'       => 'success',
+                'message'      => $message,
+                'has_shortage' => $hasShortage,
+                'family_name'  => $family->family_name,
+                'headcount'    => $activeLog->recorded_headcount,
+                'shelter_id'   => $activeLog->shelter_id,
+                'claimed_at'   => $activeLog->ration_claimed_at->toIso8601String(),
             ]);
         });
     }
