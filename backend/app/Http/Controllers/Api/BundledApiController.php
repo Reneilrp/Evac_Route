@@ -55,8 +55,7 @@ class BundledApiController extends Controller
         $activeShelters = Shelter::with(['evacuationLogs' => function ($query) {
             $query->whereNull('checked_out_at');
         }])
-            ->where('status', 'open')
-            ->whereColumn('current_occupancy', '<', 'max_capacity')
+            ->whereIn('status', ['open', 'full'])
             ->get();
 
         // 2. Active hazards
@@ -86,10 +85,8 @@ class BundledApiController extends Controller
      */
     public function getResidentMapData(Request $request)
     {
-        // 1. Fetch active shelters (open and occupancy < capacity)
-        $shelters = Shelter::where('status', 'open')
-            ->whereColumn('current_occupancy', '<', 'max_capacity')
-            ->get();
+        // 1. Fetch operational shelters (open or full/overflow state)
+        $shelters = Shelter::whereIn('status', ['open', 'full'])->get();
 
         // 2. Fetch active hazards
         $hazards = Hazard::where('is_active', true)->get();

@@ -425,6 +425,25 @@ export default function EvacMapScreen({ navigation }) {
     ? getDistanceMeters(activeUserLocation[1], activeUserLocation[0], targetShelterCoords[1], targetShelterCoords[0])
     : 0;
 
+  const distanceKm = distanceMeters > 0 ? (distanceMeters / 1000).toFixed(2) : '0.00';
+  const SIEGE_PROXIMITY_THRESHOLD_METERS = 1500; // 1.5 km threshold for active siege/conflict
+  const isShelterNearbyForSiege = nearestShelter && distanceMeters > 0 && distanceMeters <= SIEGE_PROXIMITY_THRESHOLD_METERS;
+
+  const handleOneClickEvacuate = (targetFacility) => {
+    const dest = targetFacility || activeTargetShelter || nearestShelter;
+    if (!dest) return;
+    setSelectedShelter(dest);
+    setIsNavigating(true);
+    if (cameraRef.current && activeUserLocation) {
+      cameraRef.current.setCamera({
+        centerCoordinate: activeUserLocation,
+        zoomLevel: 16,
+        animationDuration: 800,
+      });
+    }
+    Vibration.vibrate([0, 100, 50, 100]);
+  };
+
   useEffect(() => {
     if (!isNavigating || !activeUserLocation || !targetShelterCoords || !preloadedGraph) {
       setTimeout(() => {
@@ -832,41 +851,78 @@ export default function EvacMapScreen({ navigation }) {
         </View>
       )}
 
-      {/* ─── Siege / Armed Threat Safety Protocol Banner (5s Auto-dismiss) ─── */}
+      {/* ─── Siege / War / Armed Threat Smart Safety Protocol Banner ─── */}
       {showAlertBanner && activeSiegeThreat && (
         <View style={{
           position: 'absolute',
           top: 100,
           left: 16,
           right: 16,
-          backgroundColor: '#7f1d1d',
-          borderRadius: 12,
-          padding: 12,
+          backgroundColor: isShelterNearbyForSiege ? '#064e3b' : '#7f1d1d',
+          borderRadius: 16,
+          padding: 14,
           borderWidth: 2,
-          borderColor: '#ef4444',
+          borderColor: isShelterNearbyForSiege ? '#10b981' : '#ef4444',
           zIndex: 50,
-          elevation: 8,
-          flexDirection: 'row',
-          alignItems: 'flex-start',
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.5,
+          shadowRadius: 8,
         }}>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-              <AlertTriangle color="#ffffff" size={18} style={{ marginRight: 6 }} />
-              <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 12 }}>
-                🔒 SHELTER IN PLACE: ARMED SIEGE THREAT
-              </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 }}>
+                <AlertTriangle color="#ffffff" size={18} />
+                <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 13, flex: 1 }}>
+                  {isShelterNearbyForSiege 
+                    ? `🛡️ NEARBY SECURE SHELTER AVAILABLE (${distanceKm} km)` 
+                    : `🔒 ARMED THREAT / SIEGE: SHELTER IN PLACE`}
+                </Text>
+              </View>
+
+              {isShelterNearbyForSiege ? (
+                <Text style={{ color: '#d1fae5', fontSize: 11.5, lineHeight: 16, fontWeight: '600', marginBottom: 8 }}>
+                  A secured evacuation center (<Text style={{ fontWeight: '900', color: '#ffffff' }}>{nearestShelter?.name}</Text>) is nearby ({distanceKm} km). Proceed immediately using the safest path.
+                </Text>
+              ) : (
+                <Text style={{ color: '#fef2f2', fontSize: 11.5, lineHeight: 16, fontWeight: '600', marginBottom: 8 }}>
+                  ⚠️ Nearest shelter is <Text style={{ fontWeight: '900', color: '#ffffff' }}>TOO FAR ({distanceKm} km)</Text>. <Text style={{ fontWeight: '900', color: '#fbbf24' }}>Lock all doors & windows</Text>, turn off lights, stay away from exterior glass, and remain low indoors until security forces arrive.
+                </Text>
+              )}
+
+              {/* One-Click Navigation Action Button */}
+              <TouchableOpacity
+                onPress={() => handleOneClickEvacuate(nearestShelter)}
+                style={{
+                  backgroundColor: isShelterNearbyForSiege ? '#10b981' : '#dc2626',
+                  paddingVertical: 9,
+                  paddingHorizontal: 12,
+                  borderRadius: 10,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  elevation: 2,
+                }}
+              >
+                <Navigation color="#ffffff" size={15} />
+                <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 12 }}>
+                  {isShelterNearbyForSiege
+                    ? `⚡ ONE-CLICK NAVIGATE TO ${nearestShelter?.name?.toUpperCase() || 'NEAREST SHELTER'}`
+                    : `⚡ ONE-CLICK EVACUATE PATH (${distanceKm} km)`}
+                </Text>
+              </TouchableOpacity>
             </View>
-            <Text style={{ color: '#fef2f2', fontSize: 11, lineHeight: 15, fontWeight: '600' }}>
-              Do NOT move outside! Lock all doors and windows, turn off lights, and stay away from exterior windows.
-            </Text>
+
+            <TouchableOpacity onPress={() => setDismissedAlertKey(activeAlertKey)} style={{ padding: 4, marginLeft: 8 }}>
+              <X size={18} color="#ffffff" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => setDismissedAlertKey(activeAlertKey)} style={{ padding: 4, marginLeft: 8 }}>
-            <X size={16} color="#ffffff" />
-          </TouchableOpacity>
         </View>
       )}
 
-      {/* ─── Disaster Proximity Recommendation Banner (5s Auto-dismiss) ─── */}
+      {/* ─── Disaster Proximity Recommendation Banner ─── */}
       {showAlertBanner && !activeSiegeThreat && activeDisasterNearUser && (
         <View style={{
           position: 'absolute',
@@ -874,29 +930,51 @@ export default function EvacMapScreen({ navigation }) {
           left: 16,
           right: 16,
           backgroundColor: '#c2410c',
-          borderRadius: 12,
-          padding: 12,
+          borderRadius: 16,
+          padding: 14,
           borderWidth: 2,
           borderColor: '#fb923c',
           zIndex: 50,
-          elevation: 8,
-          flexDirection: 'row',
-          alignItems: 'flex-start',
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.5,
+          shadowRadius: 8,
         }}>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-              <AlertTriangle color="#ffffff" size={18} style={{ marginRight: 6 }} />
-              <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 12 }}>
-                🚨 DISASTER NEAR YOU: {activeDisasterNearUser.name}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 }}>
+                <AlertTriangle color="#ffffff" size={18} />
+                <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 13, flex: 1 }}>
+                  🚨 DISASTER NEAR YOU: {activeDisasterNearUser.name?.toUpperCase()}
+                </Text>
+              </View>
+              <Text style={{ color: '#fff7ed', fontSize: 11.5, lineHeight: 16, fontWeight: '600', marginBottom: 8 }}>
+                Hazard inside location radius ({distanceKm} km to {activeTargetShelter?.name || 'Nearest Shelter'}).
               </Text>
+              <TouchableOpacity
+                onPress={() => handleOneClickEvacuate(activeTargetShelter)}
+                style={{
+                  backgroundColor: '#ea580c',
+                  paddingVertical: 9,
+                  paddingHorizontal: 12,
+                  borderRadius: 10,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+              >
+                <Navigation color="#ffffff" size={15} />
+                <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 12 }}>
+                  ⚡ ONE-CLICK NAVIGATE TO SHELTER ({distanceKm} km)
+                </Text>
+              </TouchableOpacity>
             </View>
-            <Text style={{ color: '#fff7ed', fontSize: 11, lineHeight: 15, fontWeight: '600' }}>
-              Hazard inside location radius. System recommends proceeding to {activeTargetShelter?.name || 'Nearest Shelter'}.
-            </Text>
+            <TouchableOpacity onPress={() => setDismissedAlertKey(activeAlertKey)} style={{ padding: 4, marginLeft: 8 }}>
+              <X size={18} color="#ffffff" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => setDismissedAlertKey(activeAlertKey)} style={{ padding: 4, marginLeft: 8 }}>
-            <X size={16} color="#ffffff" />
-          </TouchableOpacity>
         </View>
       )}
 

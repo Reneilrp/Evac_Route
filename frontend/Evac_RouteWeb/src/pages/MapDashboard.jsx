@@ -1747,6 +1747,51 @@ const MapViewer = React.memo(({
           </Source>
         )}
 
+        {/* Simulated Resident GPS Device Marker & Proximity Distance Radar Line */}
+        {activeDisasterSim !== 'none' && simulatedResidentCoords && (
+          <Marker longitude={simulatedResidentCoords[0]} latitude={simulatedResidentCoords[1]} anchor="center">
+            <div 
+              onClick={e => { e.stopPropagation(); setPinMode('resident'); }}
+              className="group relative cursor-pointer hover:scale-110 active:scale-95 transition-transform"
+              title="Click map or tap pin to relocate simulated resident"
+            >
+              <div className={`w-11 h-11 ${isResidentNearShelter ? 'bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.9)]' : 'bg-red-600 shadow-[0_0_20px_rgba(239,68,68,0.9)]'} border-2 border-white rounded-full flex items-center justify-center animate-pulse`}>
+                <span className="text-xl select-none">📱</span>
+              </div>
+              <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-slate-950/95 border border-white/20 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xl whitespace-nowrap">
+                Resident GPS ({residentDistanceKm} km)
+              </div>
+            </div>
+          </Marker>
+        )}
+
+        {activeDisasterSim !== 'none' && simulatedResidentCoords && nearestShelterToResident && (
+          <Source
+            id="resident-shelter-radar-line"
+            type="geojson"
+            data={{
+              type: 'Feature',
+              geometry: {
+                type: 'LineString',
+                coordinates: [
+                  simulatedResidentCoords,
+                  [parseFloat(nearestShelterToResident.longitude), parseFloat(nearestShelterToResident.latitude)]
+                ]
+              }
+            }}
+          >
+            <Layer
+              id="resident-shelter-radar-layer"
+              type="line"
+              paint={{
+                'line-color': isResidentNearShelter ? '#10b981' : '#ef4444',
+                'line-width': 4,
+                'line-dasharray': [3, 2]
+              }}
+            />
+          </Source>
+        )}
+
         {/* Active Road Maintenance Lines */}
         {showRoadMaintenances && roadMaintenancesGeoJSON.features.length > 0 && (
           <Source id="road-maintenances-source" type="geojson" data={roadMaintenancesGeoJSON}>
@@ -2171,6 +2216,23 @@ export default function MapDashboard() {
 
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showWeather, setShowWeather] = useState(false);
+  const [showResidentSignals, setShowResidentSignals] = useState(false); // On-demand resident GPS layer
+  const [viewportBounds, setViewportBounds] = useState(null); // [west, south, east, north] Spatial BBOX
+
+  const updateViewportBounds = useCallback(() => {
+    if (mapRef.current) {
+      const map = mapRef.current.getMap ? mapRef.current.getMap() : mapRef.current;
+      if (map && map.getBounds) {
+        const bounds = map.getBounds();
+        setViewportBounds([
+          bounds.getWest(),
+          bounds.getSouth(),
+          bounds.getEast(),
+          bounds.getNorth()
+        ]);
+      }
+    }
+  }, []);
   const [mapStyle, setMapStyle] = useState('dark');
   const [is3D, setIs3D] = useState(true);
   const mapRef = useRef(null);
@@ -2196,7 +2258,43 @@ export default function MapDashboard() {
 
   // Disaster Scenario Simulation & View as Resident States (Revisions Defense Feature)
   const [activeDisasterSim, setActiveDisasterSim] = useState('none'); // 'none' | 'flood' | 'siege' | 'fire' | 'chemical'
+  const [siegeTestMode, setSiegeTestMode] = useState('none'); // 'none' | 'siege_near' | 'siege_far'
   const [viewAsResident, setViewAsResident] = useState(false);
+
+  // Dynamic Resident GPS Device Simulation for Siege & Disaster Proximity Protocol
+  const [simulatedResidentCoords, setSimulatedResidentCoords] = useState([122.084, 6.918]); // Default Tetuan [lng, lat]
+
+  const nearestShelterToResident = useMemo(() => {
+    if (!shelters || shelters.length === 0 || !simulatedResidentCoords) return null;
+    let minDistance = Infinity;
+    let closest = null;
+
+    const availableShelters = shelters.filter(s => s.status === 'open' || !s.status);
+    const targetList = availableShelters.length > 0 ? availableShelters : shelters;
+
+    targetList.forEach(s => {
+      const sLat = parseFloat(s.latitude);
+      const sLng = parseFloat(s.longitude);
+      if (!isNaN(sLat) && !isNaN(sLng)) {
+        const R = 6371e3;
+        const φ1 = (simulatedResidentCoords[1] * Math.PI) / 180;
+        const φ2 = (sLat * Math.PI) / 180;
+        const Δφ = ((sLat - simulatedResidentCoords[1]) * Math.PI) / 180;
+        const Δλ = ((sLng - simulatedResidentCoords[0]) * Math.PI) / 180;
+        const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        if (dist < minDistance) {
+          minDistance = dist;
+          closest = { ...s, distanceMeters: dist };
+        }
+      }
+    });
+    return closest;
+  }, [shelters, simulatedResidentCoords]);
+
+  const residentDistanceKm = nearestShelterToResident ? (nearestShelterToResident.distanceMeters / 1000).toFixed(2) : '0.00';
+  const isResidentNearShelter = nearestShelterToResident && nearestShelterToResident.distanceMeters <= 1500;
 
   const filteredSheltersForView = useMemo(() => {
     if (!viewAsResident && activeDisasterSim === 'none') return shelters;
@@ -2480,6 +2578,9 @@ export default function MapDashboard() {
           setIsDrawingRadius(false);
           setShowHazardForm(true);
         }
+      } else if (pinMode === 'resident') {
+        setSimulatedResidentCoords([e.lngLat.lng, e.lngLat.lat]);
+        setPinMode(null);
       } else if (pinMode === 'maintenance') {
         setMaintenancePoints(prev => {
           const newPoints = [...prev, { longitude: e.lngLat.lng, latitude: e.lngLat.lat }];
@@ -2662,48 +2763,39 @@ export default function MapDashboard() {
           <div className="flex items-center gap-1">
             <ToolbarBtn active={showHeatmap} onClick={() => setShowHeatmap(o => !o)} icon={<Flame size={14} />} label="Heatmap" color="amber" />
             <ToolbarBtn active={showWeather} onClick={() => setShowWeather(o => !o)} icon={<Cloud size={14} />} label="Weather" color="blue" />
+            <ToolbarBtn active={showResidentSignals} onClick={() => setShowResidentSignals(o => !o)} icon={<Users size={14} />} label="Residents" color="purple" />
           </div>
         </div>
 
         <div className="w-px bg-white/10 self-stretch my-1" />
 
-        {/* Disaster Testing Simulation Group (Revisions Defense Feature) */}
+        {/* Disaster Scenario Simulation Group (Revisions Defense Feature) */}
         <div className="flex flex-col items-center">
           <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-1 select-none">Disaster Test Sim</span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setActiveDisasterSim(prev => prev === 'flood' ? 'none' : 'flood')}
-              className={`px-2 py-1 rounded text-[11px] font-extrabold transition flex items-center gap-1 ${
-                activeDisasterSim === 'flood' ? 'bg-blue-600 text-white shadow-md' : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
-              }`}
-            >
-              🌊 Flood
-            </button>
-            <button
-              onClick={() => setActiveDisasterSim(prev => prev === 'siege' ? 'none' : 'siege')}
-              className={`px-2 py-1 rounded text-[11px] font-extrabold transition flex items-center gap-1 ${
-                activeDisasterSim === 'siege' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
-              }`}
-            >
-              👮 Siege
-            </button>
-            <button
-              onClick={() => setActiveDisasterSim(prev => prev === 'fire' ? 'none' : 'fire')}
-              className={`px-2 py-1 rounded text-[11px] font-extrabold transition flex items-center gap-1 ${
-                activeDisasterSim === 'fire' ? 'bg-orange-600 text-white shadow-md' : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
-              }`}
-            >
-              🚒 Fire
-            </button>
-            <button
-              onClick={() => setActiveDisasterSim(prev => prev === 'chemical' ? 'none' : 'chemical')}
-              className={`px-2 py-1 rounded text-[11px] font-extrabold transition flex items-center gap-1 ${
-                activeDisasterSim === 'chemical' ? 'bg-rose-600 text-white shadow-md' : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
-              }`}
-            >
-              🧪 Chem
-            </button>
-          </div>
+          <select
+            value={activeDisasterSim === 'siege' ? (siegeTestMode !== 'none' ? siegeTestMode : 'siege') : activeDisasterSim}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === 'siege_near') {
+                setActiveDisasterSim('siege');
+                setSiegeTestMode('siege_near');
+              } else if (val === 'siege_far') {
+                setActiveDisasterSim('siege');
+                setSiegeTestMode('siege_far');
+              } else {
+                setActiveDisasterSim(val);
+                setSiegeTestMode('none');
+              }
+            }}
+            className="bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-extrabold rounded-lg px-2 py-1 focus:ring-2 focus:ring-amber-400 outline-none cursor-pointer shadow-md"
+          >
+            <option value="none">⚪ Command Mode (Off)</option>
+            <option value="siege_near">👮 Siege — Near (0.6 km Evacuate)</option>
+            <option value="siege_far">🔒 Siege — Far (3.2 km Lock Doors)</option>
+            <option value="flood">🌊 Flood & Safe Zones</option>
+            <option value="fire">🚒 Fire & Assembly Points</option>
+            <option value="chemical">🧪 Chem & Decontamination</option>
+          </select>
         </div>
 
         <div className="w-px bg-white/10 self-stretch my-1" />
@@ -2780,6 +2872,86 @@ export default function MapDashboard() {
             >
               Reset View
             </button>
+          </div>
+        )}
+
+        {/* Live Resident Mobile Phone Mirror Simulation Card */}
+        {activeDisasterSim === 'siege' && (
+          <div className="absolute top-24 right-6 z-40 w-96 bg-slate-950/95 backdrop-blur-xl border-2 border-indigo-500/80 rounded-3xl p-5 shadow-[0_12px_40px_rgba(0,0,0,0.8)] text-white animate-in slide-in-from-right duration-300">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">👮</span>
+                <div>
+                  <h4 className="text-xs font-black text-indigo-400 uppercase tracking-wider">Armed Siege Safety Protocol</h4>
+                  <p className="text-[10px] text-white/50 font-semibold">Live Resident Phone Mirror (GPS Proximity Calc)</p>
+                </div>
+              </div>
+              <button onClick={() => { setActiveDisasterSim('none'); setSiegeTestMode('none'); }} className="text-white/40 hover:text-white transition">
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Quick Location Test Presets & Pin Tool */}
+            <div className="flex items-center gap-1.5 mb-3.5">
+              <button
+                onClick={() => setPinMode('resident')}
+                className={`flex-1 py-1.5 rounded-xl text-[10px] font-black uppercase transition border flex items-center justify-center gap-1 ${
+                  pinMode === 'resident' ? 'bg-amber-500 text-slate-950 border-amber-400 animate-pulse' : 'bg-white/10 text-white/80 hover:bg-white/20 border-white/10'
+                }`}
+              >
+                <span>📍 Move Resident Pin</span>
+              </button>
+              <button
+                onClick={() => setSimulatedResidentCoords([122.084, 6.918])}
+                className="px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/50 transition"
+                title="Position near Tetuan Gym"
+              >
+                0.5 km (Near)
+              </button>
+              <button
+                onClick={() => setSimulatedResidentCoords([122.040, 6.960])}
+                className="px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold bg-red-600/30 text-red-300 border border-red-500/40 hover:bg-red-600/50 transition"
+                title="Position far in conflict zone"
+              >
+                3.8 km (Far)
+              </button>
+            </div>
+
+            {isResidentNearShelter ? (
+              <div className="bg-emerald-950/90 border border-emerald-500/50 rounded-2xl p-4 flex flex-col gap-2 shadow-inner">
+                <div className="flex items-center gap-2 text-emerald-400 font-black text-xs">
+                  <span>🛡️ NEARBY SECURE SHELTER AVAILABLE</span>
+                  <span className="ml-auto text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30 font-extrabold">{residentDistanceKm} km</span>
+                </div>
+                <p className="text-xs text-emerald-100/90 leading-relaxed font-medium">
+                  A secured evacuation center (<strong className="text-white font-bold">{nearestShelterToResident?.name || 'Tetuan Gym'}</strong>) is nearby ({residentDistanceKm} km). Proceed immediately along the safe A* route.
+                </p>
+                <div 
+                  onClick={() => inspectLocation(simulatedResidentCoords[0], simulatedResidentCoords[1])}
+                  className="mt-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 shadow-lg transition cursor-pointer active:scale-95"
+                >
+                  <Navigation size={14} />
+                  <span>⚡ ONE-CLICK NAVIGATE ({residentDistanceKm} km)</span>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-red-950/90 border border-red-500/50 rounded-2xl p-4 flex flex-col gap-2 shadow-inner">
+                <div className="flex items-center gap-2 text-red-400 font-black text-xs">
+                  <span>🔒 ARMED THREAT: SHELTER IN PLACE</span>
+                  <span className="ml-auto text-[10px] bg-red-500/20 px-2 py-0.5 rounded-full border border-red-500/30 font-extrabold">{residentDistanceKm} km</span>
+                </div>
+                <p className="text-xs text-red-100/90 leading-relaxed font-medium">
+                  ⚠️ Nearest shelter (<strong className="text-white font-bold">{nearestShelterToResident?.name || 'Shelter'}</strong>) is <strong className="text-white font-bold">TOO FAR ({residentDistanceKm} km)</strong> during active siege. <strong className="text-yellow-300 font-bold">Lock all doors &amp; windows</strong>, turn off lights, stay away from exterior glass/windows, and remain low indoors until security forces arrive.
+                </p>
+                <div 
+                  onClick={() => inspectLocation(simulatedResidentCoords[0], simulatedResidentCoords[1])}
+                  className="mt-2 bg-red-600 hover:bg-red-500 text-white font-black text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 shadow-lg transition cursor-pointer active:scale-95"
+                >
+                  <Navigation size={14} />
+                  <span>⚡ ONE-CLICK EVACUATE PATH ({residentDistanceKm} km)</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
         {pinMode && (

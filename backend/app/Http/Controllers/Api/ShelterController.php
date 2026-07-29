@@ -15,10 +15,8 @@ class ShelterController extends Controller
      */
     public function getActiveShelters()
     {
-        // THE ALGORITHM: Only return shelters where current_occupancy is strictly less than max_capacity
-        $availableShelters = Shelter::where('status', 'open')
-            ->whereColumn('current_occupancy', '<', 'max_capacity')
-            ->get();
+        // Fetch operational shelters (open or full/overflow state), excluding closed facilities
+        $availableShelters = Shelter::whereIn('status', ['open', 'full'])->get();
 
         return response()->json([
             'status' => 'success',

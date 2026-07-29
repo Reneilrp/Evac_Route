@@ -109,7 +109,7 @@ class BundledApiTest extends TestCase
             'pinned_by' => $this->admin->id,
         ]);
 
-        // 2. Full shelter (should not be returned in map / active endpoint)
+        // 2. Full shelter (returned for emergency overflow routing - REV-04)
         Shelter::create([
             'name' => 'Full Shelter',
             'latitude' => 6.91,
@@ -120,7 +120,18 @@ class BundledApiTest extends TestCase
             'pinned_by' => $this->admin->id,
         ]);
 
-        // 3. Active hazard
+        // 3. Closed shelter (should be excluded)
+        Shelter::create([
+            'name' => 'Closed Decommissioned Shelter',
+            'latitude' => 6.915,
+            'longitude' => 122.015,
+            'max_capacity' => 10,
+            'current_occupancy' => 0,
+            'status' => 'closed',
+            'pinned_by' => $this->admin->id,
+        ]);
+
+        // 4. Active hazard
         Hazard::create([
             'name' => 'Fire area',
             'latitude' => 6.92,
@@ -130,7 +141,7 @@ class BundledApiTest extends TestCase
             'is_active' => true,
         ]);
 
-        // 4. Inactive hazard (should not be returned)
+        // 5. Inactive hazard (should not be returned)
         Hazard::create([
             'name' => 'Resolved area',
             'latitude' => 6.93,
@@ -150,9 +161,8 @@ class BundledApiTest extends TestCase
             'hazards',
         ]);
 
-        // Assert only active shelters/hazards are loaded
-        $this->assertCount(1, $response->json('shelters'));
-        $this->assertEquals('Open Shelter', $response->json('shelters.0.name'));
+        // Assert operational (open & full) shelters are loaded, closed shelter excluded
+        $this->assertCount(2, $response->json('shelters'));
         $this->assertCount(1, $response->json('hazards'));
         $this->assertEquals('Fire area', $response->json('hazards.0.name'));
     }
