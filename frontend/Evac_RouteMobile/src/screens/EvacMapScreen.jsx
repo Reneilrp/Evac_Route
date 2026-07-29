@@ -426,8 +426,28 @@ export default function EvacMapScreen({ navigation }) {
     : 0;
 
   const distanceKm = distanceMeters > 0 ? (distanceMeters / 1000).toFixed(2) : '0.00';
-  const SIEGE_PROXIMITY_THRESHOLD_METERS = 1500; // 1.5 km threshold for active siege/conflict
-  const isShelterNearbyForSiege = nearestShelter && distanceMeters > 0 && distanceMeters <= SIEGE_PROXIMITY_THRESHOLD_METERS;
+
+  // Hysteresis Deadband Buffer (1.4 km - 1.6 km) to prevent GPS Jitter UI Flickering
+  const prevSiegeStateRef = useRef(false);
+
+  const isShelterNearbyForSiege = useMemo(() => {
+    if (!nearestShelter || distanceMeters <= 0) {
+      prevSiegeStateRef.current = false;
+      return false;
+    }
+
+    // Dual Threshold Hysteresis:
+    // Switch to NEAR at <= 1400m (1.4 km)
+    // Switch to FAR at >= 1600m (1.6 km)
+    // Between 1400m and 1600m: Maintain previous state to eliminate boundary GPS jitter
+    if (distanceMeters <= 1400) {
+      prevSiegeStateRef.current = true;
+    } else if (distanceMeters >= 1600) {
+      prevSiegeStateRef.current = false;
+    }
+
+    return prevSiegeStateRef.current;
+  }, [distanceMeters, nearestShelter]);
 
   const handleOneClickEvacuate = (targetFacility) => {
     const dest = targetFacility || activeTargetShelter || nearestShelter;
