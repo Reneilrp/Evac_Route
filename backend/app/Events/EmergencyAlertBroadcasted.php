@@ -36,6 +36,7 @@ class EmergencyAlertBroadcasted implements ShouldBroadcastNow
             'severity' => $this->alert->severity,
             'scope' => $this->alert->scope,
             'barangay' => $this->alert->barangay,
+            'is_simulation' => (bool) ($this->alert->is_simulation ?? false),
             'created_at' => $this->alert->created_at->toIso8601String(),
         ];
     }

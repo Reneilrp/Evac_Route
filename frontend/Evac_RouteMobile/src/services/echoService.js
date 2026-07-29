@@ -68,3 +68,20 @@ export function disconnectEcho() {
     console.log('[Echo] WebSocket disconnected.');
   }
 }
+
+/**
+ * SOCKET GUARD: Wraps WebSocket channel listeners with a simulation guard.
+ * Automatically drops any test simulation broadcasts (is_simulation: true) on production clients.
+ */
+export function listenWithSimulationGuard(channelName, eventName, callback) {
+  const echo = getEcho();
+  if (!echo || !echo.channel) return null;
+
+  return echo.channel(channelName).listen(eventName, (data) => {
+    if (data && (data.is_simulation === true || data.is_test === true)) {
+      console.log(`[SocketGuard] Dropped simulation event '${eventName}' on resident mobile client.`);
+      return; // Hard drop test simulation broadcasts on production mobile devices
+    }
+    callback(data);
+  });
+}
