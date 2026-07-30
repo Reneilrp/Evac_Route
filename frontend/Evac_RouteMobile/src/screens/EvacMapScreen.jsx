@@ -302,12 +302,18 @@ export default function EvacMapScreen({ navigation }) {
   }, [maintenanceData]);
 
   useEffect(() => {
-    if (isMapError) {
+    if (sheltersData || mapData) {
+      setIsOffline(false);
+    }
+  }, [sheltersData, mapData]);
+
+  useEffect(() => {
+    if (isMapError && !mapData) {
       setTimeout(() => {
         setIsOffline(true);
       }, 0);
     }
-  }, [isMapError]);
+  }, [isMapError, mapData]);
 
   useEffect(() => {
     let subscription;
