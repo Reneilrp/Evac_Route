@@ -388,6 +388,21 @@ export default function EvacMapScreen({ navigation }) {
     ) || (hazards || []).find(h => ['siege', 'war', 'active_shooter'].includes(h.hazard_type));
   }, [activeThreatsNearUser, hazards]);
 
+  const isResidentInsideSiege = useMemo(() => {
+    if (!activeUserLocation || !hazards || hazards.length === 0) return false;
+    return hazards.some(h => {
+      if (!['siege', 'war', 'active_shooter', 'civil_unrest'].includes(h.hazard_type) &&
+          !(h.disaster_category === 'man_made' && h.severity_level === 'high')) {
+        return false;
+      }
+      const hLat = parseFloat(h.latitude);
+      const hLng = parseFloat(h.longitude);
+      const radius = parseFloat(h.radius_meters || 500);
+      const dist = getDistanceMeters(activeUserLocation[1], activeUserLocation[0], hLat, hLng);
+      return dist <= radius + 300; // Inside siege zone or 300m crossfire danger buffer
+    });
+  }, [activeUserLocation, hazards]);
+
   const activeDisasterNearUser = useMemo(() => {
     return activeThreatsNearUser.find(h =>
       ['flood', 'landslide', 'typhoon', 'tsunami', 'fire', 'explosion'].includes(h.hazard_type) ||
@@ -398,17 +413,17 @@ export default function EvacMapScreen({ navigation }) {
   const activeAlertKey = activeSiegeThreat?.id || activeDisasterNearUser?.id || null;
   const [dismissedAlertKey, setDismissedAlertKey] = useState(null);
 
-  // Auto-dismiss threat & alert banners after 5 seconds
+  // Auto-dismiss disaster alert banners after 8 seconds, but keep Siege Threat banners ALWAYS VISIBLE
   useEffect(() => {
-    if (activeAlertKey) {
+    if (activeAlertKey && !activeSiegeThreat) {
       const timer = setTimeout(() => {
         setDismissedAlertKey(activeAlertKey);
-      }, 5000);
+      }, 8000);
       return () => clearTimeout(timer);
     }
-  }, [activeAlertKey]);
+  }, [activeAlertKey, activeSiegeThreat]);
 
-  const showAlertBanner = activeAlertKey ? (dismissedAlertKey !== activeAlertKey) : false;
+  const showAlertBanner = Boolean(activeSiegeThreat || (activeAlertKey && dismissedAlertKey !== activeAlertKey));
 
   let nearestShelter = null;
   let smartRoutingReason = null;
@@ -457,27 +472,30 @@ export default function EvacMapScreen({ navigation }) {
 
   const handleOneClickEvacuate = (targetFacility) => {
     const dest = targetFacility || activeTargetShelter || nearestShelter;
-    if (!dest) return;
 
-    // Siege Hazard Safety Check: If active siege hazard exists and shelter is NOT nearby (or if user is in siege range)
-    if (activeSiegeThreat && !isShelterNearbyForSiege) {
+    // Siege Hazard Safety Check: If user is inside siege zone OR active siege threat exists and shelter is NOT nearby
+    if (isResidentInsideSiege || (activeSiegeThreat && !isShelterNearbyForSiege)) {
       Alert.alert(
         '🔒 ARMED THREAT: SHELTER IN PLACE',
-        `⚠️ DANGEROUS OUTDOOR MOVEMENT!\n\nYour current position is inside/near an active Armed Siege & Crossfire Zone (${activeSiegeThreat.name || 'Armed Siege Zone'}). The nearest shelter (${dest.name || 'Shelter'}) is ${distanceKm} km away.\n\nRECOMMENDED SAFETY ACTION:\n• Do NOT move outdoors.\n• Lock all doors & windows.\n• Turn off lights and stay low indoors.\n• Await perimeter security forces clearance.`,
+        `⚠️ DANGEROUS OUTDOOR MOVEMENT!\n\nYour current location is INSIDE an active Armed Siege & Crossfire Zone (${activeSiegeThreat?.name || 'Armed Siege Zone'}).\n\nWE ADVISE YOU TO STAY INSIDE:\n• Do NOT attempt to go outdoors.\n• Close and lock all doors, windows, and open areas.\n• Turn off lights and stay away from exterior glass/windows.\n• Remain low indoors until security forces secure the perimeter.`,
         [
-          { text: 'Understand & Shelter in Place', style: 'cancel' },
+          { text: 'Understand & Stay Inside', style: 'cancel' },
           {
             text: 'Override & Force Navigate',
             style: 'destructive',
             onPress: () => {
-              setSelectedShelter(dest);
-              setIsNavigating(true);
+              if (dest) {
+                setSelectedShelter(dest);
+                setIsNavigating(true);
+              }
             }
           }
         ]
       );
       return;
     }
+
+    if (!dest) return;
 
     setSelectedShelter(dest);
     setIsNavigating(true);
