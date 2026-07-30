@@ -2261,6 +2261,7 @@ export default function MapDashboard() {
   const [simSetupState, setSimSetupState] = useState('idle'); // 'idle' | 'configuring' | 'placing' | 'processing' | 'rendered'
   const [selectedRadiusMeters, setSelectedRadiusMeters] = useState(2000); // Default 2km (2000m)
   const [simCenter, setSimCenter] = useState(null); // Coordinate { longitude, latitude }
+  const [placementCoords, setPlacementCoords] = useState(null);
   const [simOverlayMode, setSimOverlayMode] = useState('flow'); // 'flow' | 'gradient'
 
   // Disaster Scenario Simulation & View as Resident States (Revisions Defense Feature)
