@@ -458,6 +458,27 @@ export default function EvacMapScreen({ navigation }) {
   const handleOneClickEvacuate = (targetFacility) => {
     const dest = targetFacility || activeTargetShelter || nearestShelter;
     if (!dest) return;
+
+    // Siege Hazard Safety Check: If active siege hazard exists and shelter is NOT nearby (or if user is in siege range)
+    if (activeSiegeThreat && !isShelterNearbyForSiege) {
+      Alert.alert(
+        '🔒 ARMED THREAT: SHELTER IN PLACE',
+        `⚠️ DANGEROUS OUTDOOR MOVEMENT!\n\nYour current position is inside/near an active Armed Siege & Crossfire Zone (${activeSiegeThreat.name || 'Armed Siege Zone'}). The nearest shelter (${dest.name || 'Shelter'}) is ${distanceKm} km away.\n\nRECOMMENDED SAFETY ACTION:\n• Do NOT move outdoors.\n• Lock all doors & windows.\n• Turn off lights and stay low indoors.\n• Await perimeter security forces clearance.`,
+        [
+          { text: 'Understand & Shelter in Place', style: 'cancel' },
+          {
+            text: 'Override & Force Navigate',
+            style: 'destructive',
+            onPress: () => {
+              setSelectedShelter(dest);
+              setIsNavigating(true);
+            }
+          }
+        ]
+      );
+      return;
+    }
+
     setSelectedShelter(dest);
     setIsNavigating(true);
     if (cameraRef.current && activeUserLocation) {
@@ -1530,8 +1551,12 @@ export default function EvacMapScreen({ navigation }) {
                   <PrimaryButton
                     title={isNavigating ? "Stop Navigation" : "Start Navigation"}
                     onPress={() => {
-                      setIsNavigating(prev => !prev);
-                      Vibration.vibrate(80);
+                      if (!isNavigating) {
+                        handleOneClickEvacuate(nearestShelter);
+                      } else {
+                        setIsNavigating(false);
+                        Vibration.vibrate(80);
+                      }
                     }}
                     variant={isNavigating ? "outline" : "primary"}
                     size="large"
