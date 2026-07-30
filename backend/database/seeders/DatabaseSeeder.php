@@ -4,9 +4,12 @@ namespace Database\Seeders;
 
 use App\Models\EvacuationLog;
 use App\Models\FamilyProfile;
+use App\Models\Hazard;
 use App\Models\InventoryItem;
 use App\Models\RationTemplate;
 use App\Models\RationTemplateItem;
+use App\Models\RoadEdge;
+use App\Models\RoadNode;
 use App\Models\Shelter;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -218,13 +221,13 @@ class DatabaseSeeder extends Seeder
             'pinned_by' => $admin->id,
         ]);
 
-        // Seed Sample Hazards (Natural & Man-Made)
-        \App\Models\Hazard::create([
-            'name' => 'Downtown Armed Conflict & Siege Zone',
-            'latitude' => 6.9160,
-            'longitude' => 122.0860,
-            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9160 122.0860)', 4326)") : null,
-            'radius_meters' => 400,
+        // Seed Active Armed Siege Hazards in Tumaga, Tetuan, and Calarian (REV-07)
+        Hazard::create([
+            'name' => 'Tumaga Active Conflict & Armed Siege Zone',
+            'latitude' => 6.9410,
+            'longitude' => 122.0780,
+            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9410 122.0780)', 4326)") : null,
+            'radius_meters' => 500,
             'estimated_duration_hours' => 24,
             'is_active' => true,
             'disaster_category' => 'man_made',
@@ -233,7 +236,23 @@ class DatabaseSeeder extends Seeder
             'reported_by' => $admin->id,
         ]);
 
-        \App\Models\Hazard::create([
+        Hazard::create([
+            'name' => 'Tetuan Armed Siege & Crossfire Zone',
+            'latitude' => 6.9160,
+            'longitude' => 122.0860,
+            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9160 122.0860)', 4326)") : null,
+            'radius_meters' => 450,
+            'estimated_duration_hours' => 24,
+            'is_active' => true,
+            'disaster_category' => 'man_made',
+            'hazard_type' => 'siege',
+            'severity_level' => 'high',
+            'reported_by' => $admin->id,
+        ]);
+
+
+
+        Hazard::create([
             'name' => 'Industrial Park Chemical & Gas Leak',
             'latitude' => 6.9280,
             'longitude' => 122.0880,
@@ -296,27 +315,39 @@ class DatabaseSeeder extends Seeder
             'quantity_per_head' => 1,
         ]);
 
-        // 5. Create Family Residents & Profiles
-        $names = ['Cruz Family', 'Santos Family', 'Flores Family', 'Reyes Family', 'Gonzales Family'];
-        $headcounts = [4, 6, 3, 5, 2];
-        $baranguays = ['Tetuan', 'Baliwasan', 'Tugbungan', 'San Jose', 'Santa Maria'];
+        // 5. Create 10 Family Resident Profiles per Barangay (50 Total Residents - REV-07)
+        $targetBarangays = [
+            'Baliwasan'    => [6.9126, 122.0573],
+            'San Jose'     => [6.9230, 122.0450],
+            'Tetuan'       => [6.9185, 122.0882],
+            'Putik'        => [6.9380, 122.0980],
+            'Tumaga'       => [6.9410, 122.0780],
+        ];
 
         $families = [];
-        for ($i = 0; $i < 5; $i++) {
-            $user = User::create([
-                'name' => $names[$i],
-                'email' => "resident_{$i}@evacroute.local",
-                'password' => bcrypt('password'),
-                'role' => 'resident',
-            ]);
+        $resCount = 0;
 
-            $families[] = FamilyProfile::create([
-                'user_id' => $user->id,
-                'headcount' => $headcounts[$i],
-                'contact_number' => '0912345678'.$i,
-                'barangay' => $baranguays[$i],
-                'qr_code_hash' => 'hash_test_code_'.$i,
-            ]);
+        foreach ($targetBarangays as $bgyName => $coords) {
+            for ($k = 1; $k <= 10; $k++) {
+                $resCount++;
+                $slugName = strtolower(str_replace(' ', '', $bgyName));
+                $user = User::create([
+                    'name' => "{$bgyName} Resident {$k}",
+                    'email' => "resident_{$slugName}_{$k}@evacroute.local",
+                    'password' => bcrypt('password'),
+                    'role' => 'resident',
+                    'last_latitude' => $coords[0] + (rand(-50, 50) / 10000),
+                    'last_longitude' => $coords[1] + (rand(-50, 50) / 10000),
+                ]);
+
+                $families[] = FamilyProfile::create([
+                    'user_id' => $user->id,
+                    'headcount' => rand(2, 6),
+                    'contact_number' => '0917' . str_pad($resCount, 7, '0', STR_PAD_LEFT),
+                    'barangay' => $bgyName,
+                    'qr_code_hash' => 'hash_test_code_' . $slugName . '_' . $k,
+                ]);
+            }
         }
 
         // 6. Create Evacuation Logs (Check-ins & historical check-outs)
@@ -362,7 +393,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($nodes as $node) {
-            \App\Models\RoadNode::create($node);
+            RoadNode::create($node);
         }
 
         // 8. Seed Road Edges (bi-directional as per offline mobile graph logic)
@@ -380,7 +411,7 @@ class DatabaseSeeder extends Seeder
 
         foreach ($edges as $edge) {
             // Forward edge
-            \App\Models\RoadEdge::create([
+            RoadEdge::create([
                 'source_node_id' => $edge['source_node_id'],
                 'target_node_id' => $edge['target_node_id'],
                 'distance_meters' => $edge['distance_meters'],
@@ -388,7 +419,7 @@ class DatabaseSeeder extends Seeder
                 'status' => 'open',
             ]);
             // Reverse edge
-            \App\Models\RoadEdge::create([
+            RoadEdge::create([
                 'source_node_id' => $edge['target_node_id'],
                 'target_node_id' => $edge['source_node_id'],
                 'distance_meters' => $edge['distance_meters'],
