@@ -702,15 +702,11 @@ export default function EvacMapScreen({ navigation }) {
                 id={`s-${shelter.id}`}
                 coordinate={[sLng, sLat]}
                 onSelected={() => {
-                  setSelectedShelter(shelter);
+                  handleOneClickEvacuate(shelter);
                   setSelectedFacilityDetails(shelter);
                 }}
               >
-                <TouchableOpacity 
-                  onPress={() => {
-                    setSelectedShelter(shelter);
-                    setSelectedFacilityDetails(shelter);
-                  }}
+                <View 
                   style={{
                     backgroundColor: pinBg,
                     padding: 6,
@@ -721,7 +717,7 @@ export default function EvacMapScreen({ navigation }) {
                   }}
                 >
                   <Text style={{ fontSize: 13 }}>{pinIcon}</Text>
-                </TouchableOpacity>
+                </View>
               </Mapbox.PointAnnotation>
             );
           })}

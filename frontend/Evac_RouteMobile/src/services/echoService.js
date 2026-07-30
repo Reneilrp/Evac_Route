@@ -15,11 +15,16 @@ export function getEcho() {
     const appKey   = extra.reverbKey    || 'evac-route-key';
     const useTLS   = (extra.reverbScheme || 'http') === 'https';
 
-    const EchoClass = typeof Echo === 'function' ? Echo : (Echo?.default || Echo);
-    const PusherClass = typeof Pusher === 'function' ? Pusher : (Pusher?.default || Pusher);
+    let EchoClass = typeof Echo === 'function' ? Echo : (Echo?.default || Echo);
+    let PusherClass = typeof Pusher === 'function' ? Pusher : (Pusher?.default || Pusher?.Pusher || Pusher);
 
-    if (typeof EchoClass !== 'function' || typeof PusherClass !== 'function') {
-      throw new Error(`Echo or Pusher constructor unavailable (Echo: ${typeof EchoClass}, Pusher: ${typeof PusherClass})`);
+    if (PusherClass) {
+      if (typeof global !== 'undefined') global.Pusher = PusherClass;
+      if (typeof window !== 'undefined') window.Pusher = PusherClass;
+    }
+
+    if (typeof EchoClass !== 'function') {
+      throw new Error(`Echo constructor unavailable (Echo type: ${typeof EchoClass})`);
     }
 
     const pusherClient = new PusherClass(appKey, {
