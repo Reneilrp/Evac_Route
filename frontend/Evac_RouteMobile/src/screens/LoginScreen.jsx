@@ -22,6 +22,8 @@ export default function LoginScreen({ navigation }) {
   const floatAnimRef = useRef(new Animated.Value(0));
   const fadeAnimRef = useRef(new Animated.Value(0));
 
+  const [isLoginForm, setIsLoginForm] = useState(false);
+
   useEffect(() => {
     const bgAnim = bgAnimRef.current;
     const floatAnim = floatAnimRef.current;
@@ -47,17 +49,17 @@ export default function LoginScreen({ navigation }) {
     Animated.timing(fadeAnim, { toValue: 1, duration: 1000, useNativeDriver: true }).start();
   }, []);
 
-  const handleStaffLogin = async () => {
+  const handleLoginSubmit = async () => {
     if (!email.trim() || !password.trim()) {
-      setError('Please fill in all fields.');
+      setError('Please fill in email and password.');
       return;
     }
     setError('');
     setLoading(true);
     const result = await loginWithCredentials(email.trim().toLowerCase(), password);
     setLoading(false);
-    if (!result.success) {
-      setError(result.message);
+    if (!result || !result.success) {
+      setError(result?.message || 'Invalid email or password.');
     }
   };
 
@@ -89,8 +91,8 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.cityLabel}>{isStaffMode ? 'LGU STAFF PORTAL' : 'ZAMBOANGA CITY'}</Text>
         </View>
 
-        {/* Action Buttons */}
-        {!isStaffMode ? (
+        {/* Action Buttons & Login Form */}
+        {!isLoginForm ? (
           <View style={styles.buttonSection}>
             <PrimaryButton
               title="REGISTER FAMILY"
@@ -107,7 +109,11 @@ export default function LoginScreen({ navigation }) {
 
             <PrimaryButton
               title="I ALREADY REGISTERED"
-              onPress={() => login()}
+              onPress={() => {
+                setError('');
+                setIsStaffMode(false);
+                setIsLoginForm(true);
+              }}
               variant="outline"
               size="medium"
             />
@@ -117,6 +123,7 @@ export default function LoginScreen({ navigation }) {
               onPress={() => {
                 setError('');
                 setIsStaffMode(true);
+                setIsLoginForm(true);
               }}
             >
               <Text style={styles.staffPortalText}>LGU Staff Portal Sign In</Text>
@@ -124,10 +131,10 @@ export default function LoginScreen({ navigation }) {
           </View>
         ) : (
           <View style={styles.buttonSection}>
-            <Text style={styles.inputLabel}>LGU Email Address</Text>
+            <Text style={styles.inputLabel}>{isStaffMode ? 'LGU Staff Email' : 'Resident Email Address'}</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="operator@zamboanga.gov.ph"
+              placeholder={isStaffMode ? 'scanner1@lgu.gov.ph' : 'resident_tetuan_1@evacroute.local'}
               placeholderTextColor="#64748b"
               value={email}
               onChangeText={setEmail}
@@ -156,17 +163,18 @@ export default function LoginScreen({ navigation }) {
               <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 10 }} />
             ) : (
               <PrimaryButton
-                title="LOG IN AS STAFF"
-                onPress={handleStaffLogin}
+                title={isStaffMode ? 'LOG IN AS STAFF' : 'SIGN IN TO MY ACCOUNT'}
+                onPress={handleLoginSubmit}
                 variant="primary"
                 size="large"
               />
             )}
 
             <PrimaryButton
-              title="BACK TO RESIDENT SIGN IN"
+              title="BACK TO MAIN MENU"
               onPress={() => {
                 setError('');
+                setIsLoginForm(false);
                 setIsStaffMode(false);
               }}
               variant="outline"
