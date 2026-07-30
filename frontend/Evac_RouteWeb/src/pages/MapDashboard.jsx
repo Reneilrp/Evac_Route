@@ -2271,58 +2271,7 @@ export default function MapDashboard() {
   // Dynamic Resident GPS Device Simulation for Siege & Disaster Proximity Protocol
   const [simulatedResidentCoords, setSimulatedResidentCoords] = useState([122.084, 6.918]); // Default Tetuan [lng, lat]
 
-  const nearestShelterToResident = useMemo(() => {
-    if (!shelters || shelters.length === 0 || !simulatedResidentCoords) return null;
-    let minDistance = Infinity;
-    let closest = null;
 
-    const availableShelters = shelters.filter(s => s.status === 'open' || !s.status);
-    const targetList = availableShelters.length > 0 ? availableShelters : shelters;
-
-    targetList.forEach(s => {
-      const sLat = parseFloat(s.latitude);
-      const sLng = parseFloat(s.longitude);
-      if (!isNaN(sLat) && !isNaN(sLng)) {
-        const R = 6371e3;
-        const φ1 = (simulatedResidentCoords[1] * Math.PI) / 180;
-        const φ2 = (sLat * Math.PI) / 180;
-        const Δφ = ((sLat - simulatedResidentCoords[1]) * Math.PI) / 180;
-        const Δλ = ((sLng - simulatedResidentCoords[0]) * Math.PI) / 180;
-        const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        if (dist < minDistance) {
-          minDistance = dist;
-          closest = { ...s, distanceMeters: dist };
-        }
-      }
-    });
-    return closest;
-  }, [shelters, simulatedResidentCoords]);
-
-  const residentDistanceKm = nearestShelterToResident ? (nearestShelterToResident.distanceMeters / 1000).toFixed(2) : '0.00';
-  const isResidentNearShelter = nearestShelterToResident && nearestShelterToResident.distanceMeters <= 1500;
-
-  const filteredSheltersForView = useMemo(() => {
-    if (!viewAsResident && activeDisasterSim === 'none') return shelters;
-
-    const targetSim = activeDisasterSim !== 'none' ? activeDisasterSim : 'flood';
-
-    if (targetSim === 'flood') {
-      return shelters.filter(s => s.facility_type === 'safe_zone' || s.facility_type === 'evacuation_center' || !s.facility_type);
-    }
-    if (targetSim === 'siege') {
-      return shelters.filter(s => s.facility_type === 'police_station' || s.facility_type === 'military_base');
-    }
-    if (targetSim === 'fire') {
-      return shelters.filter(s => s.facility_type === 'fire_station' || s.facility_type === 'assembly_point' || s.facility_type === 'evacuation_center');
-    }
-    if (targetSim === 'chemical') {
-      return shelters.filter(s => s.facility_type === 'hospital' || s.facility_type === 'safe_zone');
-    }
-
-    return shelters;
-  }, [shelters, viewAsResident, activeDisasterSim]);
 
   const handleSetLocalSimulation = useCallback((value) => {
     setShowLocalSimulation(value);
@@ -2462,6 +2411,59 @@ export default function MapDashboard() {
   const hazards = dashboardData?.hazards || [];
   const roadMaintenances = dashboardData?.road_maintenances || [];
   const demographics = dashboardData?.demographics || [];
+
+  const nearestShelterToResident = useMemo(() => {
+    if (!shelters || shelters.length === 0 || !simulatedResidentCoords) return null;
+    let minDistance = Infinity;
+    let closest = null;
+
+    const availableShelters = shelters.filter(s => s.status === 'open' || !s.status);
+    const targetList = availableShelters.length > 0 ? availableShelters : shelters;
+
+    targetList.forEach(s => {
+      const sLat = parseFloat(s.latitude);
+      const sLng = parseFloat(s.longitude);
+      if (!isNaN(sLat) && !isNaN(sLng)) {
+        const R = 6371e3;
+        const φ1 = (simulatedResidentCoords[1] * Math.PI) / 180;
+        const φ2 = (sLat * Math.PI) / 180;
+        const Δφ = ((sLat - simulatedResidentCoords[1]) * Math.PI) / 180;
+        const Δλ = ((sLng - simulatedResidentCoords[0]) * Math.PI) / 180;
+        const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        if (dist < minDistance) {
+          minDistance = dist;
+          closest = { ...s, distanceMeters: dist };
+        }
+      }
+    });
+    return closest;
+  }, [shelters, simulatedResidentCoords]);
+
+  const residentDistanceKm = nearestShelterToResident ? (nearestShelterToResident.distanceMeters / 1000).toFixed(2) : '0.00';
+  const isResidentNearShelter = nearestShelterToResident && nearestShelterToResident.distanceMeters <= 1500;
+
+  const filteredSheltersForView = useMemo(() => {
+    if (!viewAsResident && activeDisasterSim === 'none') return shelters;
+
+    const targetSim = activeDisasterSim !== 'none' ? activeDisasterSim : 'flood';
+
+    if (targetSim === 'flood') {
+      return shelters.filter(s => s.facility_type === 'safe_zone' || s.facility_type === 'evacuation_center' || !s.facility_type);
+    }
+    if (targetSim === 'siege') {
+      return shelters.filter(s => s.facility_type === 'police_station' || s.facility_type === 'military_base');
+    }
+    if (targetSim === 'fire') {
+      return shelters.filter(s => s.facility_type === 'fire_station' || s.facility_type === 'assembly_point' || s.facility_type === 'evacuation_center');
+    }
+    if (targetSim === 'chemical') {
+      return shelters.filter(s => s.facility_type === 'hospital' || s.facility_type === 'safe_zone');
+    }
+
+    return shelters;
+  }, [shelters, viewAsResident, activeDisasterSim]);
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
