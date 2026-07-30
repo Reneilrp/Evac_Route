@@ -327,6 +327,24 @@ class DatabaseSeeder extends Seeder
         $families = [];
         $resCount = 0;
 
+        // Primary Resident Account (Pheinz Reneil Tambis Magnun)
+        $pheinzUser = User::create([
+            'name' => 'Pheinz Reneil Tambis Magnun',
+            'email' => 'pheinz@evacroute.local',
+            'password' => bcrypt('password'),
+            'role' => 'resident',
+            'last_latitude' => 6.9185,
+            'last_longitude' => 122.0882,
+        ]);
+
+        FamilyProfile::create([
+            'user_id' => $pheinzUser->id,
+            'headcount' => 4,
+            'contact_number' => '09171234567',
+            'barangay' => 'Tetuan',
+            'qr_code_hash' => 'hash_test_code_pheinz',
+        ]);
+
         foreach ($targetBarangays as $bgyName => $coords) {
             for ($k = 1; $k <= 10; $k++) {
                 $resCount++;
