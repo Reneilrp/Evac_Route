@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\User;
-use App\Models\RoadMaintenance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -100,4 +99,3 @@ test('authorized users can report road maintenance blocks using multi-point coor
         'estimated_duration_hours' => 48,
     ]);
 });
-

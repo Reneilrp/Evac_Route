@@ -19,13 +19,13 @@ class IncidentController extends Controller
     public function submit(Request $request)
     {
         $validated = $request->validate([
-            'name'           => 'required|string|max:255',
-            'latitude'       => 'required|numeric|between:-90,90',
-            'longitude'      => 'required|numeric|between:-180,180',
-            'hazard_type'    => 'required|in:flood,earthquake,maintenance,debris',
+            'name' => 'required|string|max:255',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'hazard_type' => 'required|in:flood,earthquake,maintenance,debris',
             'severity_level' => 'required|in:low,medium,high',
-            'description'    => 'nullable|string|max:1000',
-            'photo'          => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120', // 5MB max
+            'description' => 'nullable|string|max:1000',
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120', // 5MB max
         ]);
 
         $photoPath = null;
@@ -35,24 +35,24 @@ class IncidentController extends Controller
         }
 
         $incident = PendingIncident::create([
-            'reported_by'    => auth()->id(),
-            'name'           => $validated['name'],
-            'latitude'       => $validated['latitude'],
-            'longitude'      => $validated['longitude'],
-            'hazard_type'    => $validated['hazard_type'],
+            'reported_by' => auth()->id(),
+            'name' => $validated['name'],
+            'latitude' => $validated['latitude'],
+            'longitude' => $validated['longitude'],
+            'hazard_type' => $validated['hazard_type'],
             'severity_level' => $validated['severity_level'],
-            'description'    => $validated['description'] ?? null,
-            'photo_path'     => $photoPath,
-            'status'         => 'pending',
+            'description' => $validated['description'] ?? null,
+            'photo_path' => $photoPath,
+            'status' => 'pending',
         ]);
 
         // Broadcast real-time incident submit to LGU dashboard
         broadcast(new IncidentSubmitted($incident));
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Incident report submitted. Pending LGU review.',
-            'data'    => array_merge($incident->toArray(), [
+            'data' => array_merge($incident->toArray(), [
                 'photo_url' => $incident->photo_url,
             ]),
         ], 201);
@@ -74,12 +74,13 @@ class IncidentController extends Controller
         // Append photo_url to each item
         $incidents->getCollection()->transform(function ($incident) {
             $incident->photo_url = $incident->photo_url;
+
             return $incident;
         });
 
         return response()->json([
             'status' => 'success',
-            'data'   => $incidents,
+            'data' => $incidents,
         ]);
     }
 
@@ -101,24 +102,24 @@ class IncidentController extends Controller
             'radius_meters' => 'nullable|numeric|min:1|max:5000',
         ]);
 
-        $isFixed = (bool)($validated['is_fixed_flood_spot'] ?? false);
+        $isFixed = (bool) ($validated['is_fixed_flood_spot'] ?? false);
 
         // Promote to official hazard
         $hazard = Hazard::create([
-            'name'           => $incident->name,
-            'latitude'       => $incident->latitude,
-            'longitude'      => $incident->longitude,
-            'radius_meters'  => $validated['radius_meters'] ?? 75,
-            'hazard_type'    => $incident->hazard_type,
+            'name' => $incident->name,
+            'latitude' => $incident->latitude,
+            'longitude' => $incident->longitude,
+            'radius_meters' => $validated['radius_meters'] ?? 75,
+            'hazard_type' => $incident->hazard_type,
             'severity_level' => $incident->severity_level,
-            'reported_by'    => $incident->reported_by,
+            'reported_by' => $incident->reported_by,
             'is_fixed_flood_spot' => $isFixed,
-            'is_active'      => !$isFixed,
+            'is_active' => ! $isFixed,
         ]);
 
         // Mark incident as approved
         $incident->update([
-            'status'      => 'approved',
+            'status' => 'approved',
             'reviewed_by' => auth()->id(),
             'reviewed_at' => now(),
             'review_note' => $validated['note'] ?? null,
@@ -128,9 +129,9 @@ class IncidentController extends Controller
         broadcast(new HazardCreated($hazard));
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Incident approved and promoted to hazard.',
-            'hazard'  => $hazard,
+            'hazard' => $hazard,
         ]);
     }
 
@@ -147,14 +148,14 @@ class IncidentController extends Controller
         }
 
         $incident->update([
-            'status'      => 'rejected',
+            'status' => 'rejected',
             'reviewed_by' => auth()->id(),
             'reviewed_at' => now(),
             'review_note' => $request->input('note', 'Insufficient evidence.'),
         ]);
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Incident report rejected.',
         ]);
     }
@@ -167,7 +168,7 @@ class IncidentController extends Controller
     {
         $incident = PendingIncident::findOrFail($id);
 
-        if (!$incident->photo_path || !Storage::disk('public')->exists($incident->photo_path)) {
+        if (! $incident->photo_path || ! Storage::disk('public')->exists($incident->photo_path)) {
             abort(404, 'Photo not found.');
         }
 

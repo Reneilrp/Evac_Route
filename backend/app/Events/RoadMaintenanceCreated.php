@@ -30,14 +30,14 @@ class RoadMaintenanceCreated implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'id'              => $this->roadMaintenance->id,
-            'description'     => $this->roadMaintenance->description,
-            'start_latitude'  => (float) $this->roadMaintenance->start_latitude,
+            'id' => $this->roadMaintenance->id,
+            'description' => $this->roadMaintenance->description,
+            'start_latitude' => (float) $this->roadMaintenance->start_latitude,
             'start_longitude' => (float) $this->roadMaintenance->start_longitude,
-            'end_latitude'    => (float) $this->roadMaintenance->end_latitude,
-            'end_longitude'   => (float) $this->roadMaintenance->end_longitude,
+            'end_latitude' => (float) $this->roadMaintenance->end_latitude,
+            'end_longitude' => (float) $this->roadMaintenance->end_longitude,
             'estimated_duration_hours' => $this->roadMaintenance->estimated_duration_hours ? (int) $this->roadMaintenance->estimated_duration_hours : null,
-            'is_active'       => $this->roadMaintenance->is_active,
+            'is_active' => $this->roadMaintenance->is_active,
         ];
     }
 }

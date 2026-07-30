@@ -12,16 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('shelters', function (Blueprint $table) {
-            if (!Schema::hasColumn('shelters', 'elevation_meters')) {
+            if (! Schema::hasColumn('shelters', 'elevation_meters')) {
                 $table->integer('elevation_meters')->default(10)->after('longitude');
             }
-            if (!Schema::hasColumn('shelters', 'amenities')) {
+            if (! Schema::hasColumn('shelters', 'amenities')) {
                 $table->text('amenities')->nullable()->after('elevation_meters');
             }
-            if (!Schema::hasColumn('shelters', 'transport_schedule')) {
+            if (! Schema::hasColumn('shelters', 'transport_schedule')) {
                 $table->string('transport_schedule')->nullable()->after('amenities');
             }
-            if (!Schema::hasColumn('shelters', 'barangay')) {
+            if (! Schema::hasColumn('shelters', 'barangay')) {
                 $table->string('barangay')->nullable()->after('name');
             }
         });

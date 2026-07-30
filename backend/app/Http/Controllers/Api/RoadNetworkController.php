@@ -19,15 +19,15 @@ class RoadNetworkController extends Controller
     {
         $nodes = RoadNode::all(['id', 'lat', 'lng', 'label', 'elevation_meters']);
         $edges = RoadEdge::all([
-            'id', 'source_node_id', 'target_node_id', 'distance_meters', 'geometry', 
-            'status', 'block_reason', 'slope_degrees', 'flood_susceptibility', 
-            'landslide_susceptibility', 'min_elevation_meters'
+            'id', 'source_node_id', 'target_node_id', 'distance_meters', 'geometry',
+            'status', 'block_reason', 'slope_degrees', 'flood_susceptibility',
+            'landslide_susceptibility', 'min_elevation_meters',
         ]);
 
         return response()->json([
             'status' => 'success',
-            'nodes'  => $nodes,
-            'edges'  => $edges,
+            'nodes' => $nodes,
+            'edges' => $edges,
         ]);
     }
 
@@ -38,7 +38,7 @@ class RoadNetworkController extends Controller
     public function updateEdgeStatus(Request $request, $id)
     {
         $validated = $request->validate([
-            'status'       => 'required|in:open,blocked,danger',
+            'status' => 'required|in:open,blocked,danger',
             'block_reason' => 'nullable|string|max:255',
         ]);
 
@@ -49,7 +49,7 @@ class RoadNetworkController extends Controller
         if ($validated['status'] !== 'open') {
             $node = RoadNode::find($edge->source_node_id);
             if ($node) {
-                $syntheticHazard = new Hazard();
+                $syntheticHazard = new Hazard;
                 $syntheticHazard->id = 0;
                 $syntheticHazard->name = $validated['block_reason'] ?? 'Road Blocked by LGU';
                 $syntheticHazard->latitude = $node->lat;
@@ -63,9 +63,9 @@ class RoadNetworkController extends Controller
         }
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Road segment status updated.',
-            'data'    => $edge,
+            'data' => $edge,
         ]);
     }
 }

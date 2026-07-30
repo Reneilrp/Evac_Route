@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -19,7 +20,7 @@ return new class extends Migration
 
             // Add a true spatial column and index for R-tree geographic bounding box lookups
             // Note: POINT type is required for SPATIAL INDEX in MySQL/PostgreSQL
-            if (\Illuminate\Support\Facades\DB::getDriverName() !== 'sqlite') {
+            if (DB::getDriverName() !== 'sqlite') {
                 $table->geography('location', subtype: 'point', srid: 4326)->spatialIndex();
             }
 

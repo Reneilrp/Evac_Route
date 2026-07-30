@@ -154,10 +154,10 @@ class CheckInController extends Controller
                     ->whereNull('checked_out_at')
                     ->whereHas('familyProfile.user', function ($q) use ($family) {
                         $q->where('email', 'LIKE', 'walkin_%')
-                          ->where(function ($sub) use ($family) {
-                              $sub->where('name', 'LIKE', '%' . $family->family_name . '%')
-                                 ->orWhere('name', 'LIKE', '%' . ($family->user?->name ?? 'N/A') . '%');
-                          });
+                            ->where(function ($sub) use ($family) {
+                                $sub->where('name', 'LIKE', '%'.$family->family_name.'%')
+                                    ->orWhere('name', 'LIKE', '%'.($family->user?->name ?? 'N/A').'%');
+                            });
                     })
                     ->lockForUpdate()
                     ->first();
@@ -185,9 +185,9 @@ class CheckInController extends Controller
 
                 $isOverflow = $shelter->current_occupancy > $shelter->max_capacity;
                 $overflowCount = max(0, $shelter->current_occupancy - $shelter->max_capacity);
-                $msg = $isOverflow 
-                    ? "Check-in recorded under EMERGENCY OVERFLOW (+{$overflowCount} occupants over capacity)." 
-                    : ($mergedWalkIn ? "Official profile verified. Merged temporary walk-in record to prevent duplicate occupancy." : "Check-in successful.");
+                $msg = $isOverflow
+                    ? "Check-in recorded under EMERGENCY OVERFLOW (+{$overflowCount} occupants over capacity)."
+                    : ($mergedWalkIn ? 'Official profile verified. Merged temporary walk-in record to prevent duplicate occupancy.' : 'Check-in successful.');
 
                 // Find the currently active LGU ration template
                 $activeRation = RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
@@ -274,16 +274,16 @@ class CheckInController extends Controller
         try {
             $result = DB::transaction(function () use ($request, $shelter_id) {
                 // 1. Create User & Family Profile on-the-fly
-                $email = 'walkin_' . time() . '_' . rand(1000, 9999) . '@evacroute.local';
+                $email = 'walkin_'.time().'_'.rand(1000, 9999).'@evacroute.local';
                 $user = User::create([
                     'name' => $request->name,
                     'email' => $email,
-                    'password' => bcrypt('walkin_password_' . time()),
+                    'password' => bcrypt('walkin_password_'.time()),
                     'role' => 'resident',
                     'status' => 'active',
                 ]);
 
-                $qrHash = 'WALKIN_' . strtoupper(bin2hex(random_bytes(8)));
+                $qrHash = 'WALKIN_'.strtoupper(bin2hex(random_bytes(8)));
 
                 $family = FamilyProfile::create([
                     'user_id' => $user->id,
@@ -306,9 +306,9 @@ class CheckInController extends Controller
 
                 $isOverflow = $shelter->current_occupancy > $shelter->max_capacity;
                 $overflowCount = max(0, $shelter->current_occupancy - $shelter->max_capacity);
-                $msg = $isOverflow 
-                    ? "Walk-in registered & checked in under EMERGENCY OVERFLOW (+{$overflowCount} occupants)." 
-                    : "Walk-in registered & checked in successfully.";
+                $msg = $isOverflow
+                    ? "Walk-in registered & checked in under EMERGENCY OVERFLOW (+{$overflowCount} occupants)."
+                    : 'Walk-in registered & checked in successfully.';
 
                 // 3. Allocate Rations
                 $activeRation = RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();

@@ -20,7 +20,6 @@ class FamilyProfile extends Model
         return $this->user?->name;
     }
 
-
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -37,23 +36,28 @@ class FamilyProfile extends Model
         if (count($parts) !== 3) {
             // Fallback for old static QR codes during migration
             $query = self::where('qr_code_hash', $payload);
-            if ($lock) $query->lockForUpdate();
+            if ($lock) {
+                $query->lockForUpdate();
+            }
+
             return $query->firstOrFail();
         }
 
         [$familyId, $timestamp, $hmac] = $parts;
 
         $query = self::where('id', $familyId);
-        if ($lock) $query->lockForUpdate();
+        if ($lock) {
+            $query->lockForUpdate();
+        }
         $family = $query->firstOrFail();
 
-        $expectedHmac = hash('sha256', $familyId . ':' . $timestamp . $family->qr_code_hash);
+        $expectedHmac = hash('sha256', $familyId.':'.$timestamp.$family->qr_code_hash);
 
-        if (!hash_equals($expectedHmac, $hmac)) {
+        if (! hash_equals($expectedHmac, $hmac)) {
             throw new \Exception('Invalid QR Signature');
         }
 
-        if (abs(now()->timestamp - (int)$timestamp) > 120) {
+        if (abs(now()->timestamp - (int) $timestamp) > 120) {
             throw new \Exception('QR Code Expired. Please refresh your app.');
         }
 

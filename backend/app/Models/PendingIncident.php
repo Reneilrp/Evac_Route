@@ -32,7 +32,7 @@ class PendingIncident extends Model
     public function getPhotoUrlAttribute(): ?string
     {
         return $this->photo_path
-            ? url('storage/' . $this->photo_path)
+            ? url('storage/'.$this->photo_path)
             : null;
     }
 }

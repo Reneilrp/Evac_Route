@@ -166,7 +166,7 @@ class ShelterController extends Controller
             'data' => [
                 'shelter' => $shelter,
                 'active_logs' => $activeLogs,
-            ]
+            ],
         ], 200);
     }
 }

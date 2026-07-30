@@ -33,12 +33,12 @@ class DispatchOrderCreated implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'id'           => $this->order->id,
+            'id' => $this->order->id,
             'shelter_name' => $this->order->shelter->name,
-            'shelter_id'   => $this->order->shelter_id,
-            'item_count'   => $this->order->items->count(),
-            'notes'        => $this->order->notes,
-            'created_at'   => $this->order->created_at->toIso8601String(),
+            'shelter_id' => $this->order->shelter_id,
+            'item_count' => $this->order->items->count(),
+            'notes' => $this->order->notes,
+            'created_at' => $this->order->created_at->toIso8601String(),
         ];
     }
 }

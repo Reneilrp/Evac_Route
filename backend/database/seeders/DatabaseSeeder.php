@@ -25,17 +25,15 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // 1. Create Admins & LGU Staff
-        $admin = User::create([
+        $admin = User::firstOrCreate(['email' => 'drrm@lgu.gov.ph'], [
             'name' => 'Admin Account',
-            'email' => 'drrm@lgu.gov.ph',
             'password' => bcrypt('password'),
             'role' => 'admin',
             'status' => 'active',
         ]);
 
-        $staff1 = User::create([
+        $staff1 = User::firstOrCreate(['email' => 'scanner1@lgu.gov.ph'], [
             'name' => 'Shelter Scanner 1',
-            'email' => 'scanner1@lgu.gov.ph',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
             'status' => 'active',
@@ -221,7 +219,8 @@ class DatabaseSeeder extends Seeder
             'pinned_by' => $admin->id,
         ]);
 
-        // Seed Active Armed Siege Hazards in Tumaga, Tetuan, and Calarian (REV-07)
+        // Seed Disaster Test Simulation Hazards (Toggleable ON/OFF - REV-07)
+        // 1. Armed Siege Hazards (Tumaga & Tetuan)
         Hazard::create([
             'name' => 'Tumaga Active Conflict & Armed Siege Zone',
             'latitude' => 6.9410,
@@ -229,7 +228,7 @@ class DatabaseSeeder extends Seeder
             'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9410 122.0780)', 4326)") : null,
             'radius_meters' => 500,
             'estimated_duration_hours' => 24,
-            'is_active' => true,
+            'is_active' => false,
             'disaster_category' => 'man_made',
             'hazard_type' => 'siege',
             'severity_level' => 'high',
@@ -243,25 +242,153 @@ class DatabaseSeeder extends Seeder
             'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9160 122.0860)', 4326)") : null,
             'radius_meters' => 450,
             'estimated_duration_hours' => 24,
-            'is_active' => true,
+            'is_active' => false,
             'disaster_category' => 'man_made',
             'hazard_type' => 'siege',
             'severity_level' => 'high',
             'reported_by' => $admin->id,
         ]);
 
-
+        // 2. Flood Simulation Hazards (River Basins & Lowlands)
+        Hazard::create([
+            'name' => 'San Jose Gusu High-Water Flood & Inundation Zone',
+            'latitude' => 6.9230,
+            'longitude' => 122.0450,
+            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9230 122.0450)', 4326)") : null,
+            'radius_meters' => 450,
+            'estimated_duration_hours' => 18,
+            'is_active' => false,
+            'disaster_category' => 'natural',
+            'hazard_type' => 'flood',
+            'severity_level' => 'high',
+            'reported_by' => $admin->id,
+        ]);
 
         Hazard::create([
-            'name' => 'Industrial Park Chemical & Gas Leak',
+            'name' => 'Tumaga River Overflow & Inundation Hazard Zone',
+            'latitude' => 6.9380,
+            'longitude' => 122.0740,
+            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9380 122.0740)', 4326)") : null,
+            'radius_meters' => 400,
+            'estimated_duration_hours' => 24,
+            'is_active' => false,
+            'disaster_category' => 'natural',
+            'hazard_type' => 'flood',
+            'severity_level' => 'high',
+            'reported_by' => $admin->id,
+        ]);
+
+        Hazard::create([
+            'name' => 'Tetuan - Tugbungan Riverway Spill & Flood Zone',
+            'latitude' => 6.9200,
+            'longitude' => 122.0910,
+            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9200 122.0910)', 4326)") : null,
+            'radius_meters' => 350,
+            'estimated_duration_hours' => 18,
+            'is_active' => false,
+            'disaster_category' => 'natural',
+            'hazard_type' => 'flood',
+            'severity_level' => 'high',
+            'reported_by' => $admin->id,
+        ]);
+
+        Hazard::create([
+            'name' => 'Saac - Talon-Talon River Flood Basin',
+            'latitude' => 6.9040,
+            'longitude' => 122.1030,
+            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9040 122.1030)', 4326)") : null,
+            'radius_meters' => 300,
+            'estimated_duration_hours' => 12,
+            'is_active' => false,
+            'disaster_category' => 'natural',
+            'hazard_type' => 'flood',
+            'severity_level' => 'medium',
+            'reported_by' => $admin->id,
+        ]);
+
+        Hazard::create([
+            'name' => 'Manicahan River Overflow Zone',
+            'latitude' => 6.9850,
+            'longitude' => 122.1800,
+            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9850 122.1800)', 4326)") : null,
+            'radius_meters' => 450,
+            'estimated_duration_hours' => 24,
+            'is_active' => false,
+            'disaster_category' => 'natural',
+            'hazard_type' => 'flood',
+            'severity_level' => 'high',
+            'reported_by' => $admin->id,
+        ]);
+
+        Hazard::create([
+            'name' => 'Labuan River Basin Inundation Zone',
+            'latitude' => 7.0850,
+            'longitude' => 121.9050,
+            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(7.0850 121.9050)', 4326)") : null,
+            'radius_meters' => 350,
+            'estimated_duration_hours' => 18,
+            'is_active' => false,
+            'disaster_category' => 'natural',
+            'hazard_type' => 'flood',
+            'severity_level' => 'medium',
+            'reported_by' => $admin->id,
+        ]);
+
+        Hazard::create([
+            'name' => 'Ayala River Overflow & High-Water Zone',
+            'latitude' => 6.9600,
+            'longitude' => 121.9500,
+            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9600 121.9500)', 4326)") : null,
+            'radius_meters' => 400,
+            'estimated_duration_hours' => 24,
+            'is_active' => false,
+            'disaster_category' => 'natural',
+            'hazard_type' => 'flood',
+            'severity_level' => 'high',
+            'reported_by' => $admin->id,
+        ]);
+
+        // 3. Fire Simulation Hazard (Baliwasan Market)
+        Hazard::create([
+            'name' => 'Baliwasan Commercial Market Fire Hazard Zone',
+            'latitude' => 6.9126,
+            'longitude' => 122.0573,
+            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9126 122.0573)', 4326)") : null,
+            'radius_meters' => 400,
+            'estimated_duration_hours' => 12,
+            'is_active' => false,
+            'disaster_category' => 'man_made',
+            'hazard_type' => 'fire',
+            'severity_level' => 'high',
+            'reported_by' => $admin->id,
+        ]);
+
+        // 4. Chemical Spill Simulation Hazard (Industrial Park)
+        Hazard::create([
+            'name' => 'Industrial Park Chemical & Gas Leak Zone',
             'latitude' => 6.9280,
             'longitude' => 122.0880,
             'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9280 122.0880)', 4326)") : null,
             'radius_meters' => 350,
             'estimated_duration_hours' => 12,
-            'is_active' => true,
+            'is_active' => false,
             'disaster_category' => 'man_made',
             'hazard_type' => 'chemical_spill',
+            'severity_level' => 'high',
+            'reported_by' => $admin->id,
+        ]);
+
+        // 5. Earthquake Simulation Hazard (Magnitude 6.8 Epicenter Zone)
+        Hazard::create([
+            'name' => 'Magnitude 6.8 Earthquake Epicenter Zone',
+            'latitude' => 6.9380,
+            'longitude' => 122.0740,
+            'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9380 122.0740)', 4326)") : null,
+            'radius_meters' => 500,
+            'estimated_duration_hours' => 24,
+            'is_active' => false,
+            'disaster_category' => 'natural',
+            'hazard_type' => 'earthquake',
             'severity_level' => 'high',
             'reported_by' => $admin->id,
         ]);
@@ -333,15 +460,15 @@ class DatabaseSeeder extends Seeder
             'email' => 'pheinz@evacroute.local',
             'password' => bcrypt('password'),
             'role' => 'resident',
-            'last_latitude' => 6.9185,
-            'last_longitude' => 122.0882,
+            'last_latitude' => 6.9050,
+            'last_longitude' => 122.0720,
         ]);
 
         FamilyProfile::create([
             'user_id' => $pheinzUser->id,
             'headcount' => 4,
             'contact_number' => '09171234567',
-            'barangay' => 'Tetuan',
+            'barangay' => 'Sto. Niño',
             'qr_code_hash' => 'hash_test_code_pheinz',
         ]);
 

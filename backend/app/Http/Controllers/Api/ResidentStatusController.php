@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BroadcastAlert;
 use App\Models\EvacuationLog;
 use App\Models\FamilyProfile;
 use App\Models\RationTemplate;
@@ -32,11 +33,11 @@ class ResidentStatusController extends Controller
 
         // Fetch active alerts targeted to this resident's barangay or all residents
         $barangay = $family->barangay;
-        $alertsQuery = \App\Models\BroadcastAlert::where('scope', 'all');
+        $alertsQuery = BroadcastAlert::where('scope', 'all');
         if ($barangay) {
             $alertsQuery->orWhere(function ($q) use ($barangay) {
                 $q->where('scope', 'barangay')
-                  ->where('barangay', $barangay);
+                    ->where('barangay', $barangay);
             });
         }
         $activeAlerts = $alertsQuery->orderBy('created_at', 'desc')->get();

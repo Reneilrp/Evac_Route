@@ -1,14 +1,12 @@
 <?php
 
-use App\Models\User;
-use App\Models\Shelter;
-use App\Models\Hazard;
 use App\Models\FamilyProfile;
 use App\Models\InventoryItem;
 use App\Models\RationTemplate;
 use App\Models\RationTemplateItem;
+use App\Models\Shelter;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -33,7 +31,7 @@ test('hazard creation requires hazard_type and severity_level', function () {
         'longitude' => 122.0729,
         'hazard_type' => 'flood',
         'severity_level' => 'high',
-        'radius_meters' => 100
+        'radius_meters' => 100,
     ];
 
     $response = $this->actingAs($admin)
@@ -42,11 +40,11 @@ test('hazard creation requires hazard_type and severity_level', function () {
     // Assert: Success with 201
     $response->assertStatus(201)
         ->assertJsonPath('status', 'success');
-    
+
     $this->assertDatabaseHas('hazards', [
         'name' => 'Flooded Main St',
         'hazard_type' => 'flood',
-        'severity_level' => 'high'
+        'severity_level' => 'high',
     ]);
 });
 
@@ -59,7 +57,7 @@ test('family registration requires and saves transportation_mode', function () {
         'headcount' => 4,
         'contact_number' => '09123456789',
         'barangay' => 'Tetuan',
-        'transportation_mode' => '4_wheel'
+        'transportation_mode' => '4_wheel',
     ];
 
     // Act
@@ -71,7 +69,7 @@ test('family registration requires and saves transportation_mode', function () {
 
     $this->assertDatabaseHas('family_profiles', [
         'barangay' => 'Tetuan',
-        'transportation_mode' => '4_wheel'
+        'transportation_mode' => '4_wheel',
     ]);
 });
 
@@ -87,7 +85,7 @@ test('check-in processes ration template and decrements inventory stock accurate
         'longitude' => 122.0,
         'max_capacity' => 100,
         'current_occupancy' => 0,
-        'status' => 'open'
+        'status' => 'open',
     ]);
 
     $user = User::factory()->create(['role' => 'resident']);
@@ -97,25 +95,25 @@ test('check-in processes ration template and decrements inventory stock accurate
         'contact_number' => '09123',
         'barangay' => 'Tetuan',
         'transportation_mode' => 'pedestrian',
-        'qr_code_hash' => 'test_qr_123'
+        'qr_code_hash' => 'test_qr_123',
     ]);
 
     // Setup: Inventory and Ration Template
     $rice = InventoryItem::create([
         'item_name' => 'Rice',
         'total_stock' => 1000,
-        'unit_type' => 'kg'
+        'unit_type' => 'kg',
     ]);
 
     $template = RationTemplate::create([
         'name' => 'Standard Disaster Kit',
-        'is_active' => true
+        'is_active' => true,
     ]);
 
     RationTemplateItem::create([
         'ration_template_id' => $template->id,
         'inventory_item_id' => $rice->id,
-        'quantity_per_head' => 2 // 2kg per person
+        'quantity_per_head' => 2, // 2kg per person
     ]);
 
     // Expected deduction: 5 people * 2kg = 10kg
@@ -129,7 +127,7 @@ test('check-in processes ration template and decrements inventory stock accurate
     // Act: Execute Check-in
     $response = $this->actingAs($admin, 'sanctum')
         ->postJson("/api/shelters/{$shelter->id}/check-in", [
-            'qr_code_hash' => 'test_qr_123'
+            'qr_code_hash' => 'test_qr_123',
         ]);
 
     // Assert
@@ -138,7 +136,7 @@ test('check-in processes ration template and decrements inventory stock accurate
 
     // Verify Inventory accurately decremented
     expect(InventoryItem::find($rice->id)->total_stock)->toBe(990);
-    
+
     // Verify Shelter Occupancy updated
     expect(Shelter::find($shelter->id)->current_occupancy)->toBe(5);
 
@@ -147,6 +145,6 @@ test('check-in processes ration template and decrements inventory stock accurate
         'family_profile_id' => $family->id,
         'shelter_id' => $shelter->id,
         'recorded_headcount' => 5,
-        'ration_claimed' => true
+        'ration_claimed' => true,
     ]);
 });

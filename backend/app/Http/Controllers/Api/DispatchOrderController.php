@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\DispatchOrder;
 use App\Models\DispatchOrderItem;
-use App\Models\InventoryItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -40,28 +39,28 @@ class DispatchOrderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'shelter_id'             => 'required|exists:shelters,id',
-            'notes'                  => 'nullable|string|max:1000',
-            'assigned_to'            => 'nullable|exists:users,id',
-            'items'                  => 'required|array|min:1',
+            'shelter_id' => 'required|exists:shelters,id',
+            'notes' => 'nullable|string|max:1000',
+            'assigned_to' => 'nullable|exists:users,id',
+            'items' => 'required|array|min:1',
             'items.*.inventory_item_id' => 'required|exists:inventory_items,id',
-            'items.*.quantity'       => 'required|integer|min:1',
+            'items.*.quantity' => 'required|integer|min:1',
         ]);
 
         $order = DB::transaction(function () use ($validated, $request) {
             $order = DispatchOrder::create([
-                'created_by'  => $request->user()->id,
+                'created_by' => $request->user()->id,
                 'assigned_to' => $validated['assigned_to'] ?? null,
-                'shelter_id'  => $validated['shelter_id'],
-                'notes'       => $validated['notes'] ?? null,
-                'status'      => 'pending',
+                'shelter_id' => $validated['shelter_id'],
+                'notes' => $validated['notes'] ?? null,
+                'status' => 'pending',
             ]);
 
             foreach ($validated['items'] as $item) {
                 DispatchOrderItem::create([
                     'dispatch_order_id' => $order->id,
                     'inventory_item_id' => $item['inventory_item_id'],
-                    'quantity'          => $item['quantity'],
+                    'quantity' => $item['quantity'],
                 ]);
             }
 
@@ -76,21 +75,21 @@ class DispatchOrderController extends Controller
         event(new DispatchOrderCreated($order));
 
         AuditLog::create([
-            'user_id'    => $request->user()->id,
-            'action'     => 'dispatch_order_created',
+            'user_id' => $request->user()->id,
+            'action' => 'dispatch_order_created',
             'ip_address' => $request->ip(),
             'old_values' => null,
             'new_values' => [
-                'id'         => $order->id,
+                'id' => $order->id,
                 'shelter_id' => $order->shelter_id,
                 'item_count' => $order->items->count(),
             ],
         ]);
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Dispatch order created and staff notified.',
-            'data'    => $order,
+            'data' => $order,
         ], 201);
     }
 
@@ -104,29 +103,29 @@ class DispatchOrderController extends Controller
 
         if ($order->status !== 'pending') {
             return response()->json([
-                'status'  => 'error',
+                'status' => 'error',
                 'message' => 'Only pending orders can be departed.',
             ], 422);
         }
 
         $order->update([
-            'status'      => 'in_transit',
+            'status' => 'in_transit',
             'assigned_to' => $request->user()->id,
             'departed_at' => now(),
         ]);
 
         AuditLog::create([
-            'user_id'    => $request->user()->id,
-            'action'     => 'dispatch_order_departed',
+            'user_id' => $request->user()->id,
+            'action' => 'dispatch_order_departed',
             'ip_address' => $request->ip(),
             'old_values' => ['status' => 'pending'],
             'new_values' => ['status' => 'in_transit', 'order_id' => $order->id],
         ]);
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Order marked as in transit.',
-            'data'    => $order->fresh(['shelter:id,name', 'items.inventoryItem:id,item_name,unit_type']),
+            'data' => $order->fresh(['shelter:id,name', 'items.inventoryItem:id,item_name,unit_type']),
         ]);
     }
 
@@ -141,7 +140,7 @@ class DispatchOrderController extends Controller
 
         if ($order->status !== 'in_transit') {
             return response()->json([
-                'status'  => 'error',
+                'status' => 'error',
                 'message' => 'Only in-transit orders can be confirmed as delivered.',
             ], 422);
         }
@@ -155,8 +154,8 @@ class DispatchOrderController extends Controller
                 $inv->update(['total_stock' => $newStock]);
 
                 AuditLog::create([
-                    'user_id'    => $request->user()->id,
-                    'action'     => 'dispatch_stock_deducted',
+                    'user_id' => $request->user()->id,
+                    'action' => 'dispatch_stock_deducted',
                     'ip_address' => $request->ip(),
                     'old_values' => ['item' => $inv->item_name, 'stock' => $inv->getOriginal('total_stock')],
                     'new_values' => ['item' => $inv->item_name, 'stock' => $newStock, 'dispatch_order_id' => $order->id],
@@ -165,7 +164,7 @@ class DispatchOrderController extends Controller
 
             // 2. Mark the order delivered
             $order->update([
-                'status'       => 'delivered',
+                'status' => 'delivered',
                 'delivered_at' => now(),
             ]);
 
@@ -173,8 +172,8 @@ class DispatchOrderController extends Controller
             event(new DispatchOrderDelivered($order->fresh(['shelter', 'items.inventoryItem'])));
 
             AuditLog::create([
-                'user_id'    => $request->user()->id,
-                'action'     => 'dispatch_order_delivered',
+                'user_id' => $request->user()->id,
+                'action' => 'dispatch_order_delivered',
                 'ip_address' => $request->ip(),
                 'old_values' => ['status' => 'in_transit'],
                 'new_values' => ['status' => 'delivered', 'order_id' => $order->id],
@@ -182,9 +181,9 @@ class DispatchOrderController extends Controller
         });
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Delivery confirmed. Warehouse stock updated.',
-            'data'    => $order->fresh(['shelter:id,name', 'items.inventoryItem:id,item_name,unit_type']),
+            'data' => $order->fresh(['shelter:id,name', 'items.inventoryItem:id,item_name,unit_type']),
         ]);
     }
 
@@ -197,7 +196,7 @@ class DispatchOrderController extends Controller
 
         if ($order->status !== 'pending') {
             return response()->json([
-                'status'  => 'error',
+                'status' => 'error',
                 'message' => 'Only pending orders can be cancelled.',
             ], 422);
         }
@@ -205,15 +204,15 @@ class DispatchOrderController extends Controller
         $order->update(['status' => 'cancelled']);
 
         AuditLog::create([
-            'user_id'    => $request->user()->id,
-            'action'     => 'dispatch_order_cancelled',
+            'user_id' => $request->user()->id,
+            'action' => 'dispatch_order_cancelled',
             'ip_address' => $request->ip(),
             'old_values' => ['status' => 'pending'],
             'new_values' => ['status' => 'cancelled', 'order_id' => $order->id],
         ]);
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Dispatch order cancelled.',
         ]);
     }

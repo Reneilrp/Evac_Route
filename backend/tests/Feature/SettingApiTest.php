@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\User;
-use App\Models\Setting;
 use App\Models\AuditLog;
+use App\Models\Setting;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -44,7 +44,7 @@ test('admin can retrieve settings with default fallbacks merged', function () {
                 'audio_alerts_enabled',
                 'siren_volume',
                 'audit_log_retention_days',
-            ]
+            ],
         ]);
 
     $data = $response->json('data');
@@ -90,7 +90,7 @@ test('admin can download database backup sql script', function () {
 
     $response->assertStatus(200)
         ->assertHeader('Content-Type', 'application/sql')
-        ->assertHeader('Content-Disposition', 'attachment; filename="evac_route_backup_' . now()->format('Y_m_d_His') . '.sql"');
+        ->assertHeader('Content-Disposition', 'attachment; filename="evac_route_backup_'.now()->format('Y_m_d_His').'.sql"');
 
     $content = $response->getContent();
     expect($content)->toContain('-- Evac_Route Automated Database Backup');

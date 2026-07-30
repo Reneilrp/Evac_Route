@@ -1,20 +1,22 @@
 <?php
 
 use App\Models\Hazard;
+use App\Models\PendingIncident;
 use App\Models\User;
 use App\Services\WeatherService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Artisan;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Http::fake([
         'exp.host/*' => Http::response(['status' => 'ok']),
         'api.openweathermap.org/*' => Http::response([
-            'weather' => [['main' => 'Rain', 'id' => 501]]
-        ])
+            'weather' => [['main' => 'Rain', 'id' => 501]],
+        ]),
     ]);
 });
 
@@ -24,13 +26,13 @@ test('user can update last coordinates', function () {
     $response = $this->actingAs($user)
         ->postJson('/api/user/location', [
             'latitude' => 6.9126,
-            'longitude' => 122.0729
+            'longitude' => 122.0729,
         ]);
 
     $response->assertStatus(200)
         ->assertJson([
             'status' => 'success',
-            'message' => 'Location updated successfully.'
+            'message' => 'Location updated successfully.',
         ]);
 
     $user->refresh();
@@ -41,7 +43,7 @@ test('user can update last coordinates', function () {
 test('rain started alert triggers city wide notification and sets cache', function () {
     $resident = User::factory()->create([
         'role' => 'resident',
-        'push_token' => 'ExponentPushToken[1111111111111111111111]'
+        'push_token' => 'ExponentPushToken[1111111111111111111111]',
     ]);
 
     // Mock weather service directly in container
@@ -70,7 +72,7 @@ test('prolonged rain triggers fixed flood spot activation and geofenced alerts',
         'push_token' => 'ExponentPushToken[nearUser]',
         'last_latitude' => 6.9120, // close to 6.9126
         'last_longitude' => 122.0720, // close to 122.0729
-        'alert_radius_meters' => 200 // choice allows it (dist ~120m)
+        'alert_radius_meters' => 200, // choice allows it (dist ~120m)
     ]);
 
     // 2. Create a resident close to the flood spot but with a small alert radius preference
@@ -79,7 +81,7 @@ test('prolonged rain triggers fixed flood spot activation and geofenced alerts',
         'push_token' => 'ExponentPushToken[optedOutUser]',
         'last_latitude' => 6.9120, // close to 6.9126
         'last_longitude' => 122.0720, // close to 122.0729
-        'alert_radius_meters' => 50 // choice is smaller than distance (~120m)
+        'alert_radius_meters' => 50, // choice is smaller than distance (~120m)
     ]);
 
     // 3. Create a resident far away from the flood spot
@@ -87,7 +89,7 @@ test('prolonged rain triggers fixed flood spot activation and geofenced alerts',
         'role' => 'resident',
         'push_token' => 'ExponentPushToken[farUser]',
         'last_latitude' => 7.0500, // far
-        'last_longitude' => 122.2000 // far
+        'last_longitude' => 122.2000, // far
     ]);
 
     // 4. Create a fixed flood spot hazard
@@ -101,7 +103,7 @@ test('prolonged rain triggers fixed flood spot activation and geofenced alerts',
         'is_fixed_flood_spot' => true,
         'is_active' => false,
         'estimated_duration_hours' => 2,
-        'reported_by' => $nearbyUser->id
+        'reported_by' => $nearbyUser->id,
     ]);
 
     // 5. Set rain started cache back 2 hours ago (120 minutes)
@@ -115,14 +117,14 @@ test('prolonged rain triggers fixed flood spot activation and geofenced alerts',
 
     // Assert hazard is now active
     $hazard->refresh();
-    expect((bool)$hazard->is_active)->toBeTrue();
+    expect((bool) $hazard->is_active)->toBeTrue();
 
     // Verify Expo push alert was sent to nearbyUser but NOT farUser or optedOutUser
     Http::assertSent(function ($request) {
         return str_contains($request->url(), 'exp.host/--/api/v2/push/send')
             && str_contains($request->body(), 'ExponentPushToken[nearUser]')
-            && !str_contains($request->body(), 'ExponentPushToken[farUser]')
-            && !str_contains($request->body(), 'ExponentPushToken[optedOutUser]')
+            && ! str_contains($request->body(), 'ExponentPushToken[farUser]')
+            && ! str_contains($request->body(), 'ExponentPushToken[optedOutUser]')
             && str_contains($request->body(), 'Street Flooding Alert');
     });
 });
@@ -139,7 +141,7 @@ test('stopping rain clears cache and deactivates fixed flood spots', function ()
         'is_fixed_flood_spot' => true,
         'is_active' => true,
         'estimated_duration_hours' => 2,
-        'reported_by' => $user->id
+        'reported_by' => $user->id,
     ]);
 
     Cache::forever('rain_started_at', now()->toIso8601String());
@@ -155,27 +157,27 @@ test('stopping rain clears cache and deactivates fixed flood spots', function ()
         ->and(Cache::has('fixed_flood_spots_triggered'))->toBeFalse();
 
     $hazard->refresh();
-    expect((bool)$hazard->is_active)->toBeFalse();
+    expect((bool) $hazard->is_active)->toBeFalse();
 });
 
 test('lgu can promote pending incident to fixed flood spot', function () {
     $resident = User::factory()->create(['role' => 'resident']);
     $lguStaff = User::factory()->create(['role' => 'lgu_staff']);
 
-    $incident = \App\Models\PendingIncident::create([
-        'reported_by'    => $resident->id,
-        'name'           => 'Bad Drainage Bottleneck',
-        'latitude'       => 6.9126,
-        'longitude'      => 122.0729,
-        'hazard_type'    => 'flood',
+    $incident = PendingIncident::create([
+        'reported_by' => $resident->id,
+        'name' => 'Bad Drainage Bottleneck',
+        'latitude' => 6.9126,
+        'longitude' => 122.0729,
+        'hazard_type' => 'flood',
         'severity_level' => 'high',
-        'status'         => 'pending'
+        'status' => 'pending',
     ]);
 
     $response = $this->actingAs($lguStaff)
         ->postJson("/api/incidents/{$incident->id}/approve", [
             'is_fixed_flood_spot' => true,
-            'note' => 'Resident report verified. Bad drainage area.'
+            'note' => 'Resident report verified. Bad drainage area.',
         ]);
 
     $response->assertStatus(200);
@@ -183,8 +185,8 @@ test('lgu can promote pending incident to fixed flood spot', function () {
     // Assert that a Hazard was created with is_fixed_flood_spot = true, and is_active = false
     $hazard = Hazard::where('name', 'Bad Drainage Bottleneck')->first();
     expect($hazard)->not->toBeNull();
-    expect((bool)$hazard->is_fixed_flood_spot)->toBeTrue();
-    expect((bool)$hazard->is_active)->toBeFalse(); // Fixed flood spots start inactive until rain triggers them
+    expect((bool) $hazard->is_fixed_flood_spot)->toBeTrue();
+    expect((bool) $hazard->is_active)->toBeFalse(); // Fixed flood spots start inactive until rain triggers them
 });
 
 test('fixed flood spot alert triggers at 60 minutes but not 45 minutes', function () {
@@ -194,7 +196,7 @@ test('fixed flood spot alert triggers at 60 minutes but not 45 minutes', functio
         'push_token' => 'ExponentPushToken[timeTest]',
         'last_latitude' => 6.9120,
         'last_longitude' => 122.0720,
-        'alert_radius_meters' => 200
+        'alert_radius_meters' => 200,
     ]);
 
     // 2. Create a fixed flood spot hazard
@@ -207,7 +209,7 @@ test('fixed flood spot alert triggers at 60 minutes but not 45 minutes', functio
         'severity_level' => 'high',
         'is_fixed_flood_spot' => true,
         'is_active' => false,
-        'reported_by' => $nearbyUser->id
+        'reported_by' => $nearbyUser->id,
     ]);
 
     // 3. Setup mock weather service
@@ -221,7 +223,7 @@ test('fixed flood spot alert triggers at 60 minutes but not 45 minutes', functio
     Artisan::call('app:check-rain-and-alert');
 
     $hazard->refresh();
-    expect((bool)$hazard->is_active)->toBeFalse();
+    expect((bool) $hazard->is_active)->toBeFalse();
 
     // 5. Test at 60 minutes (should trigger)
     Cache::forever('rain_started_at', now()->subMinutes(60)->toIso8601String());
@@ -229,7 +231,7 @@ test('fixed flood spot alert triggers at 60 minutes but not 45 minutes', functio
     Artisan::call('app:check-rain-and-alert');
 
     $hazard->refresh();
-    expect((bool)$hazard->is_active)->toBeTrue();
+    expect((bool) $hazard->is_active)->toBeTrue();
 
     // Verify Expo push alert was sent
     Http::assertSent(function ($request) {

@@ -230,7 +230,7 @@ class AuthController extends Controller
         $request->user()->update(['push_token' => $validated['push_token']]);
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Push token registered successfully.',
         ]);
     }
@@ -248,7 +248,7 @@ class AuthController extends Controller
         ]);
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Location updated successfully.',
         ]);
     }

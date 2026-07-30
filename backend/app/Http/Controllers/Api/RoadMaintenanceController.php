@@ -19,7 +19,7 @@ class RoadMaintenanceController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data'   => $maintenances,
+            'data' => $maintenances,
         ]);
     }
 
@@ -30,11 +30,11 @@ class RoadMaintenanceController extends Controller
     {
         if ($request->has('coordinates')) {
             $validated = $request->validate([
-                'description'              => 'required|string|max:255',
-                'coordinates'              => 'required|array|min:2',
-                'coordinates.*'            => 'required|array|min:2',
-                'coordinates.*.0'          => 'required|numeric|between:-180,180', // longitude
-                'coordinates.*.1'          => 'required|numeric|between:-90,90',   // latitude
+                'description' => 'required|string|max:255',
+                'coordinates' => 'required|array|min:2',
+                'coordinates.*' => 'required|array|min:2',
+                'coordinates.*.0' => 'required|numeric|between:-180,180', // longitude
+                'coordinates.*.1' => 'required|numeric|between:-90,90',   // latitude
                 'estimated_duration_hours' => 'nullable|integer|min:1',
             ]);
 
@@ -44,18 +44,18 @@ class RoadMaintenanceController extends Controller
             $coordinates = $validated['coordinates'];
 
             $firstRoadMaintenance = null;
-            
+
             \DB::transaction(function () use ($coordinates, $description, $duration, $reportedBy, &$firstRoadMaintenance) {
                 for ($i = 0; $i < count($coordinates) - 1; $i++) {
                     $rm = RoadMaintenance::create([
-                        'description'              => $description,
-                        'start_longitude'          => $coordinates[$i][0],
-                        'start_latitude'           => $coordinates[$i][1],
-                        'end_longitude'            => $coordinates[$i+1][0],
-                        'end_latitude'             => $coordinates[$i+1][1],
+                        'description' => $description,
+                        'start_longitude' => $coordinates[$i][0],
+                        'start_latitude' => $coordinates[$i][1],
+                        'end_longitude' => $coordinates[$i + 1][0],
+                        'end_latitude' => $coordinates[$i + 1][1],
                         'estimated_duration_hours' => $duration,
-                        'reported_by'              => $reportedBy,
-                        'is_active'                => true,
+                        'reported_by' => $reportedBy,
+                        'is_active' => true,
                     ]);
                     if ($i === 0) {
                         $firstRoadMaintenance = $rm;
@@ -68,18 +68,18 @@ class RoadMaintenanceController extends Controller
             }
 
             return response()->json([
-                'status'  => 'success',
+                'status' => 'success',
                 'message' => 'Road maintenance block reported successfully.',
-                'data'    => $firstRoadMaintenance,
+                'data' => $firstRoadMaintenance,
             ], 201);
         }
 
         $validated = $request->validate([
-            'description'     => 'required|string|max:255',
-            'start_latitude'  => 'required|numeric|between:-90,90',
+            'description' => 'required|string|max:255',
+            'start_latitude' => 'required|numeric|between:-90,90',
             'start_longitude' => 'required|numeric|between:-180,180',
-            'end_latitude'    => 'required|numeric|between:-90,90',
-            'end_longitude'   => 'required|numeric|between:-180,180',
+            'end_latitude' => 'required|numeric|between:-90,90',
+            'end_longitude' => 'required|numeric|between:-180,180',
             'estimated_duration_hours' => 'nullable|integer|min:1',
         ]);
 
@@ -91,9 +91,9 @@ class RoadMaintenanceController extends Controller
         broadcast(new RoadMaintenanceCreated($roadMaintenance));
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Road maintenance block reported successfully.',
-            'data'    => $roadMaintenance,
+            'data' => $roadMaintenance,
         ], 201);
     }
 
@@ -108,9 +108,9 @@ class RoadMaintenanceController extends Controller
         broadcast(new RoadMaintenanceResolved($roadMaintenance->id));
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Road maintenance block resolved.',
-            'data'    => $roadMaintenance,
+            'data' => $roadMaintenance,
         ]);
     }
 }

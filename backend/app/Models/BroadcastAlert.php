@@ -13,7 +13,7 @@ class BroadcastAlert extends Model
         'severity',
         'scope',
         'barangay',
-        'created_by'
+        'created_by',
     ];
 
     /**

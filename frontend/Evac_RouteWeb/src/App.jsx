@@ -200,15 +200,22 @@ function DashboardLayout({ children }) {
               </div>
             </div>
           </div>
-          <div className="flex border-l border-slate-700/50">
+          <div className="flex border-l border-slate-700/50 items-center divide-x divide-slate-700/50">
             <button
               onClick={() => {
                 toast.dismiss(t.id);
                 window.location.href = '/admin/alerts';
               }}
-              className="w-full border border-transparent rounded-none rounded-r-2xl p-4 flex items-center justify-center text-xs font-black text-red-500 hover:text-red-400 focus:outline-none"
+              className="px-3.5 py-3 text-xs font-black text-red-500 hover:text-red-400 focus:outline-none cursor-pointer"
             >
               VIEW
+            </button>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-3 py-3 text-xs font-black text-slate-400 hover:text-white focus:outline-none cursor-pointer"
+              title="Close Notification"
+            >
+              ✕
             </button>
           </div>
         </div>
@@ -246,15 +253,22 @@ function DashboardLayout({ children }) {
               </div>
             </div>
           </div>
-          <div className="flex border-l border-slate-700/50">
+          <div className="flex border-l border-slate-700/50 items-center divide-x divide-slate-700/50">
             <button
               onClick={() => {
                 toast.dismiss(t.id);
                 window.location.href = '/admin/incidents';
               }}
-              className="w-full border border-transparent rounded-none rounded-r-2xl p-4 flex items-center justify-center text-xs font-black text-blue-500 hover:text-blue-400 focus:outline-none"
+              className="px-3.5 py-3 text-xs font-black text-blue-500 hover:text-blue-400 focus:outline-none cursor-pointer"
             >
               REVIEW
+            </button>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-3 py-3 text-xs font-black text-slate-400 hover:text-white focus:outline-none cursor-pointer"
+              title="Close Notification"
+            >
+              ✕
             </button>
           </div>
         </div>
@@ -287,15 +301,22 @@ function DashboardLayout({ children }) {
               </div>
             </div>
           </div>
-          <div className="flex border-l border-red-800/50">
+          <div className="flex border-l border-red-800/50 items-center divide-x divide-red-800/50">
             <button
               onClick={() => {
                 toast.dismiss(t.id);
                 window.location.href = '/admin/map';
               }}
-              className="w-full border border-transparent rounded-none rounded-r-2xl p-4 flex items-center justify-center text-xs font-black text-red-400 hover:text-red-300 focus:outline-none"
+              className="px-3.5 py-3 text-xs font-black text-red-400 hover:text-red-300 focus:outline-none cursor-pointer"
             >
               VIEW MAP
+            </button>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-3 py-3 text-xs font-black text-red-400/70 hover:text-white focus:outline-none cursor-pointer"
+              title="Close Notification"
+            >
+              ✕
             </button>
           </div>
         </div>
@@ -316,7 +337,7 @@ function DashboardLayout({ children }) {
       setUnreadCount(prev => prev + 1);
 
       toast.custom((t) => (
-        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-green-950 text-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-black ring-opacity-5 border border-green-800/50 backdrop-blur-md`}>
+        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-green-950 text-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-black ring-opacity-5 border border-green-800/50 backdrop-blur-md items-center justify-between`}>
           <div className="flex-1 w-0 p-4">
             <div className="flex items-start">
               <div className="flex-shrink-0 pt-0.5">
@@ -327,6 +348,15 @@ function DashboardLayout({ children }) {
                 <p className="mt-1 text-xs text-green-100">Hazard ID #${data.hazard_id} is resolved.</p>
               </div>
             </div>
+          </div>
+          <div className="border-l border-green-800/50 flex items-center px-3 py-4">
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="text-xs font-black text-green-400/70 hover:text-white focus:outline-none cursor-pointer"
+              title="Close Notification"
+            >
+              ✕
+            </button>
           </div>
         </div>
       ), { duration: 5000 });
@@ -391,15 +421,22 @@ function DashboardLayout({ children }) {
               </div>
             </div>
           </div>
-          <div className="flex border-l border-amber-800/50">
+          <div className="flex border-l border-amber-800/50 items-center divide-x divide-amber-800/50">
             <button
               onClick={() => {
                 toast.dismiss(t.id);
                 window.location.href = '/admin/map';
               }}
-              className="w-full border border-transparent rounded-none rounded-r-2xl p-4 flex items-center justify-center text-xs font-black text-amber-400 hover:text-amber-300 focus:outline-none"
+              className="px-3.5 py-3 text-xs font-black text-amber-400 hover:text-amber-300 focus:outline-none cursor-pointer"
             >
               VIEW MAP
+            </button>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-3 py-3 text-xs font-black text-amber-400/70 hover:text-white focus:outline-none cursor-pointer"
+              title="Close Notification"
+            >
+              ✕
             </button>
           </div>
         </div>
@@ -718,7 +755,7 @@ function App() {
   return (
     <AuthProvider>
       <Toaster 
-        position="top-center" 
+        position="top-right" 
         reverseOrder={false}
         containerStyle={{ zIndex: 2147483647 }}
         toastOptions={{

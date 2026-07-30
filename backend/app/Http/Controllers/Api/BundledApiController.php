@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\EvacuationLog;
+use App\Models\FamilyProfile;
 use App\Models\Hazard;
 use App\Models\InventoryItem;
 use App\Models\RationTemplate;
@@ -62,14 +63,14 @@ class BundledApiController extends Controller
         $hazards = Hazard::where('is_active', true)->get();
 
         // 3. Active evacuee demographics by barangay (for GIS Heatmap)
-        $demographics = \App\Models\EvacuationLog::whereNull('checked_out_at')
+        $demographics = EvacuationLog::whereNull('checked_out_at')
             ->join('family_profiles', 'evacuation_logs.family_profile_id', '=', 'family_profiles.id')
             ->select('family_profiles.barangay', \DB::raw('SUM(evacuation_logs.recorded_headcount) as total_evacuees'))
             ->groupBy('family_profiles.barangay')
             ->get();
 
         // 4. Active road maintenance blocks
-        $roadMaintenances = \App\Models\RoadMaintenance::where('is_active', true)->get();
+        $roadMaintenances = RoadMaintenance::where('is_active', true)->get();
 
         return response()->json([
             'status' => 'success',
@@ -103,9 +104,9 @@ class BundledApiController extends Controller
             ->get();
 
         return response()->json([
-            'status'            => 'success',
-            'shelters'          => $shelters,
-            'hazards'           => $hazards,
+            'status' => 'success',
+            'shelters' => $shelters,
+            'hazards' => $hazards,
             'road_maintenances' => $roadMaintenances,
         ], 200);
     }
@@ -159,7 +160,7 @@ class BundledApiController extends Controller
      */
     public function getBarangayReliefSummary(Request $request, $barangay)
     {
-        $families = \App\Models\FamilyProfile::where('barangay', 'like', "%{$barangay}%")->get();
+        $families = FamilyProfile::where('barangay', 'like', "%{$barangay}%")->get();
         $totalFamilies = $families->count();
         $totalHeadcount = $families->sum('headcount');
 

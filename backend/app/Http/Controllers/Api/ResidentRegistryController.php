@@ -24,9 +24,9 @@ class ResidentRegistryController extends Controller
                 $q->whereHas('user', function ($uq) use ($search) {
                     $uq->where('name', 'like', "%{$search}%");
                 })
-                ->orWhere('barangay', 'like', "%{$search}%")
-                ->orWhere('contact_number', 'like', "%{$search}%")
-                ->orWhere('qr_code_hash', 'like', "%{$search}%");
+                    ->orWhere('barangay', 'like', "%{$search}%")
+                    ->orWhere('contact_number', 'like', "%{$search}%")
+                    ->orWhere('qr_code_hash', 'like', "%{$search}%");
             });
         }
 
@@ -36,7 +36,7 @@ class ResidentRegistryController extends Controller
         // Transform collection to aggregate stats and details
         $residents->getCollection()->transform(function ($profile) {
             $history = $profile->evacuationLogs->sortByDesc('checked_in_at')->values();
-            
+
             $activeLog = $history->first(function ($log) {
                 return is_null($log->checked_out_at);
             });

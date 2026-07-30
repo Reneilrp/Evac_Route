@@ -30,13 +30,13 @@ class IncidentSubmitted implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'id'             => $this->incident->id,
-            'name'           => $this->incident->name,
-            'latitude'       => (float) $this->incident->latitude,
-            'longitude'      => (float) $this->incident->longitude,
-            'hazard_type'    => $this->incident->hazard_type,
+            'id' => $this->incident->id,
+            'name' => $this->incident->name,
+            'latitude' => (float) $this->incident->latitude,
+            'longitude' => (float) $this->incident->longitude,
+            'hazard_type' => $this->incident->hazard_type,
             'severity_level' => $this->incident->severity_level,
-            'description'    => $this->incident->description,
+            'description' => $this->incident->description,
         ];
     }
 }

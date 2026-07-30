@@ -6,7 +6,7 @@ import {
   MapPin, AlertTriangle, X, Cloud, Flame, Zap,
   ChevronRight, ChevronLeft, Moon, Satellite, Mountain,
   TriangleAlert, Droplets, Waves, Shield, SlidersHorizontal, Layers,
-  Eye, Wrench, Users
+  Eye, Wrench, Users, Navigation
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
@@ -1300,6 +1300,14 @@ const MapViewer = React.memo(({
   placementCoords = null,
   selectedRadiusMeters = 2000,
   simOverlayMode = 'flow',
+  viewAsResident = false,
+  activeDisasterSim = 'none',
+  filteredSheltersForView = [],
+  simulatedResidentCoords = null,
+  nearestShelterToResident = null,
+  residentDistanceKm = '0.00',
+  isResidentNearShelter = false,
+  setPinMode = null,
 }) => {
   const [viewState, setViewState] = useState({
     longitude: 122.0729,
@@ -1747,50 +1755,7 @@ const MapViewer = React.memo(({
           </Source>
         )}
 
-        {/* Simulated Resident GPS Device Marker & Proximity Distance Radar Line */}
-        {activeDisasterSim !== 'none' && simulatedResidentCoords && (
-          <Marker longitude={simulatedResidentCoords[0]} latitude={simulatedResidentCoords[1]} anchor="center">
-            <div 
-              onClick={e => { e.stopPropagation(); setPinMode('resident'); }}
-              className="group relative cursor-pointer hover:scale-110 active:scale-95 transition-transform"
-              title="Click map or tap pin to relocate simulated resident"
-            >
-              <div className={`w-11 h-11 ${isResidentNearShelter ? 'bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.9)]' : 'bg-red-600 shadow-[0_0_20px_rgba(239,68,68,0.9)]'} border-2 border-white rounded-full flex items-center justify-center animate-pulse`}>
-                <span className="text-xl select-none">📱</span>
-              </div>
-              <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-slate-950/95 border border-white/20 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xl whitespace-nowrap">
-                Resident GPS ({residentDistanceKm} km)
-              </div>
-            </div>
-          </Marker>
-        )}
 
-        {activeDisasterSim !== 'none' && simulatedResidentCoords && nearestShelterToResident && (
-          <Source
-            id="resident-shelter-radar-line"
-            type="geojson"
-            data={{
-              type: 'Feature',
-              geometry: {
-                type: 'LineString',
-                coordinates: [
-                  simulatedResidentCoords,
-                  [parseFloat(nearestShelterToResident.longitude), parseFloat(nearestShelterToResident.latitude)]
-                ]
-              }
-            }}
-          >
-            <Layer
-              id="resident-shelter-radar-layer"
-              type="line"
-              paint={{
-                'line-color': isResidentNearShelter ? '#10b981' : '#ef4444',
-                'line-width': 4,
-                'line-dasharray': [3, 2]
-              }}
-            />
-          </Source>
-        )}
 
         {/* Active Road Maintenance Lines */}
         {showRoadMaintenances && roadMaintenancesGeoJSON.features.length > 0 && (
@@ -2264,10 +2229,9 @@ export default function MapDashboard() {
   const [placementCoords, setPlacementCoords] = useState(null);
   const [simOverlayMode, setSimOverlayMode] = useState('flow'); // 'flow' | 'gradient'
 
-  // Disaster Scenario Simulation & View as Resident States (Revisions Defense Feature)
+  // Disaster Scenario Simulation States
   const [activeDisasterSim, setActiveDisasterSim] = useState('none'); // 'none' | 'flood' | 'siege' | 'fire' | 'chemical'
   const [siegeTestMode, setSiegeTestMode] = useState('none'); // 'none' | 'siege_near' | 'siege_far'
-  const [viewAsResident, setViewAsResident] = useState(false);
 
   // Dynamic Resident GPS Device Simulation for Siege & Disaster Proximity Protocol
   const [simulatedResidentCoords, setSimulatedResidentCoords] = useState([122.084, 6.918]); // Default Tetuan [lng, lat]
@@ -2446,25 +2410,26 @@ export default function MapDashboard() {
   const isResidentNearShelter = nearestShelterToResident && nearestShelterToResident.distanceMeters <= 1500;
 
   const filteredSheltersForView = useMemo(() => {
-    if (!viewAsResident && activeDisasterSim === 'none') return shelters;
+    if (activeDisasterSim === 'none') return shelters;
 
-    const targetSim = activeDisasterSim !== 'none' ? activeDisasterSim : 'flood';
-
-    if (targetSim === 'flood') {
+    if (activeDisasterSim === 'flood') {
       return shelters.filter(s => s.facility_type === 'safe_zone' || s.facility_type === 'evacuation_center' || !s.facility_type);
     }
-    if (targetSim === 'siege') {
+    if (activeDisasterSim === 'siege') {
       return shelters.filter(s => s.facility_type === 'police_station' || s.facility_type === 'military_base');
     }
-    if (targetSim === 'fire') {
+    if (activeDisasterSim === 'fire') {
       return shelters.filter(s => s.facility_type === 'fire_station' || s.facility_type === 'assembly_point' || s.facility_type === 'evacuation_center');
     }
-    if (targetSim === 'chemical') {
+    if (activeDisasterSim === 'chemical') {
       return shelters.filter(s => s.facility_type === 'hospital' || s.facility_type === 'safe_zone');
+    }
+    if (activeDisasterSim === 'earthquake') {
+      return shelters.filter(s => s.facility_type === 'safe_zone' || s.facility_type === 'assembly_point' || s.facility_type === 'evacuation_center');
     }
 
     return shelters;
-  }, [shelters, viewAsResident, activeDisasterSim]);
+  }, [shelters, activeDisasterSim]);
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
@@ -2783,46 +2748,23 @@ export default function MapDashboard() {
         <div className="flex flex-col items-center">
           <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-1 select-none">Disaster Test Sim</span>
           <select
-            value={activeDisasterSim === 'siege' ? (siegeTestMode !== 'none' ? siegeTestMode : 'siege') : activeDisasterSim}
+            value={activeDisasterSim}
             onChange={(e) => {
               const val = e.target.value;
-              if (val === 'siege_near') {
-                setActiveDisasterSim('siege');
-                setSiegeTestMode('siege_near');
-              } else if (val === 'siege_far') {
-                setActiveDisasterSim('siege');
-                setSiegeTestMode('siege_far');
-              } else {
-                setActiveDisasterSim(val);
-                setSiegeTestMode('none');
-              }
+              setActiveDisasterSim(val);
+              api.post('/simulation/toggle', { simulation_type: val })
+                .then(() => queryClient.invalidateQueries(['mapDashboard']))
+                .catch(err => console.warn('Sim toggle warning:', err));
             }}
             className="bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-extrabold rounded-lg px-2 py-1 focus:ring-2 focus:ring-amber-400 outline-none cursor-pointer shadow-md"
           >
             <option value="none">⚪ Command Mode (Off)</option>
-            <option value="siege_near">👮 Siege — Near (0.6 km Evacuate)</option>
-            <option value="siege_far">🔒 Siege — Far (3.2 km Lock Doors)</option>
-            <option value="flood">🌊 Flood & Safe Zones</option>
-            <option value="fire">🚒 Fire & Assembly Points</option>
-            <option value="chemical">🧪 Chem & Decontamination</option>
+            <option value="siege">⚔️ Armed Siege Simulation</option>
+            <option value="flood">🌊 Flood &amp; Safe Zones</option>
+            <option value="earthquake">🌋 Earthquake Tremors</option>
+            <option value="fire">🚒 Fire &amp; Assembly Points</option>
+            <option value="chemical">🧪 Chem &amp; Decontamination</option>
           </select>
-        </div>
-
-        <div className="w-px bg-white/10 self-stretch my-1" />
-
-        {/* View as Resident Mode Toggle */}
-        <div className="flex flex-col items-center justify-center">
-          <button
-            onClick={() => setViewAsResident(prev => !prev)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-1.5 border ${
-              viewAsResident 
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-emerald-400 shadow-lg shadow-emerald-500/30 animate-pulse' 
-                : 'bg-white/10 text-white/80 hover:bg-white/20 border-white/20'
-            }`}
-          >
-            <Eye size={14} />
-            <span>{viewAsResident ? '👁️ Resident View Active' : '👁️ View as Resident'}</span>
-          </button>
         </div>
 
         <div className="w-px bg-white/10 self-stretch my-1" />
@@ -2857,7 +2799,7 @@ export default function MapDashboard() {
 
       <div className="flex-1 relative overflow-hidden">
         {/* Resident Perspective Simulation Banner Overlay */}
-        {(viewAsResident || activeDisasterSim !== 'none') && (
+        {activeDisasterSim !== 'none' && (
           <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md border-2 border-emerald-500 text-white rounded-2xl px-5 py-2.5 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
             <span className="flex h-3 w-3 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -2870,14 +2812,19 @@ export default function MapDashboard() {
                 <span>👮 <strong className="text-indigo-400 font-black">HOSTILE SIEGE SIMULATION MODE ACTIVE:</strong> Re-routing to Police Stations 👮 &amp; Military Security Points 🪖.</span>
               ) : activeDisasterSim === 'fire' ? (
                 <span>🚒 <strong className="text-orange-400 font-black">FIRE DISASTER SIMULATION MODE ACTIVE:</strong> Showing Fire Stations 🚒 &amp; Safe Assembly Points 🚩.</span>
-              ) : activeDisasterSim === 'chemical' ? (
-                <span>🧪 <strong className="text-rose-400 font-black">CHEMICAL SPILL SIMULATION MODE ACTIVE:</strong> Showing Medical Hospitals 🏥 &amp; Decontamination Zones.</span>
+              ) : activeDisasterSim === 'earthquake' ? (
+                <span>🌋 <strong className="text-amber-400 font-black">EARTHQUAKE TREMORS SIMULATION ACTIVE:</strong> Broadcast Alert Dispatched (Epicenter Lat: 6.9380° N, Lng: 122.0740° E).</span>
               ) : (
-                <span>👁️ <strong className="text-emerald-400 font-black">RESIDENT MOBILE PERSPECTIVE PREVIEW:</strong> Map filters pins to show active evac locations.</span>
+                <span>🧪 <strong className="text-rose-400 font-black">CHEMICAL SPILL SIMULATION MODE ACTIVE:</strong> Showing Medical Hospitals 🏥 &amp; Decontamination Zones.</span>
               )}
             </div>
             <button
-              onClick={() => { setViewAsResident(false); setActiveDisasterSim('none'); }}
+              onClick={() => {
+                setActiveDisasterSim('none');
+                api.post('/simulation/toggle', { simulation_type: 'none' })
+                  .then(() => queryClient.invalidateQueries(['mapDashboard']))
+                  .catch(err => console.warn('Sim reset warning:', err));
+              }}
               className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-2.5 py-1 rounded-lg font-black uppercase transition ml-2 cursor-pointer"
             >
               Reset View
@@ -2885,85 +2832,7 @@ export default function MapDashboard() {
           </div>
         )}
 
-        {/* Live Resident Mobile Phone Mirror Simulation Card */}
-        {activeDisasterSim === 'siege' && (
-          <div className="absolute top-24 right-6 z-40 w-96 bg-slate-950/95 backdrop-blur-xl border-2 border-indigo-500/80 rounded-3xl p-5 shadow-[0_12px_40px_rgba(0,0,0,0.8)] text-white animate-in slide-in-from-right duration-300">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">👮</span>
-                <div>
-                  <h4 className="text-xs font-black text-indigo-400 uppercase tracking-wider">Armed Siege Safety Protocol</h4>
-                  <p className="text-[10px] text-white/50 font-semibold">Live Resident Phone Mirror (GPS Proximity Calc)</p>
-                </div>
-              </div>
-              <button onClick={() => { setActiveDisasterSim('none'); setSiegeTestMode('none'); }} className="text-white/40 hover:text-white transition">
-                <X size={16} />
-              </button>
-            </div>
 
-            {/* Quick Location Test Presets & Pin Tool */}
-            <div className="flex items-center gap-1.5 mb-3.5">
-              <button
-                onClick={() => setPinMode('resident')}
-                className={`flex-1 py-1.5 rounded-xl text-[10px] font-black uppercase transition border flex items-center justify-center gap-1 ${
-                  pinMode === 'resident' ? 'bg-amber-500 text-slate-950 border-amber-400 animate-pulse' : 'bg-white/10 text-white/80 hover:bg-white/20 border-white/10'
-                }`}
-              >
-                <span>📍 Move Resident Pin</span>
-              </button>
-              <button
-                onClick={() => setSimulatedResidentCoords([122.084, 6.918])}
-                className="px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/50 transition"
-                title="Position near Tetuan Gym"
-              >
-                0.5 km (Near)
-              </button>
-              <button
-                onClick={() => setSimulatedResidentCoords([122.040, 6.960])}
-                className="px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold bg-red-600/30 text-red-300 border border-red-500/40 hover:bg-red-600/50 transition"
-                title="Position far in conflict zone"
-              >
-                3.8 km (Far)
-              </button>
-            </div>
-
-            {isResidentNearShelter ? (
-              <div className="bg-emerald-950/90 border border-emerald-500/50 rounded-2xl p-4 flex flex-col gap-2 shadow-inner">
-                <div className="flex items-center gap-2 text-emerald-400 font-black text-xs">
-                  <span>🛡️ NEARBY SECURE SHELTER AVAILABLE</span>
-                  <span className="ml-auto text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30 font-extrabold">{residentDistanceKm} km</span>
-                </div>
-                <p className="text-xs text-emerald-100/90 leading-relaxed font-medium">
-                  A secured evacuation center (<strong className="text-white font-bold">{nearestShelterToResident?.name || 'Tetuan Gym'}</strong>) is nearby ({residentDistanceKm} km). Proceed immediately along the safe A* route.
-                </p>
-                <div 
-                  onClick={() => inspectLocation(simulatedResidentCoords[0], simulatedResidentCoords[1])}
-                  className="mt-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 shadow-lg transition cursor-pointer active:scale-95"
-                >
-                  <Navigation size={14} />
-                  <span>⚡ ONE-CLICK NAVIGATE ({residentDistanceKm} km)</span>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-red-950/90 border border-red-500/50 rounded-2xl p-4 flex flex-col gap-2 shadow-inner">
-                <div className="flex items-center gap-2 text-red-400 font-black text-xs">
-                  <span>🔒 ARMED THREAT: SHELTER IN PLACE</span>
-                  <span className="ml-auto text-[10px] bg-red-500/20 px-2 py-0.5 rounded-full border border-red-500/30 font-extrabold">{residentDistanceKm} km</span>
-                </div>
-                <p className="text-xs text-red-100/90 leading-relaxed font-medium">
-                  ⚠️ Nearest shelter (<strong className="text-white font-bold">{nearestShelterToResident?.name || 'Shelter'}</strong>) is <strong className="text-white font-bold">TOO FAR ({residentDistanceKm} km)</strong> during active siege. <strong className="text-yellow-300 font-bold">Lock all doors &amp; windows</strong>, turn off lights, stay away from exterior glass/windows, and remain low indoors until security forces arrive.
-                </p>
-                <div 
-                  onClick={() => inspectLocation(simulatedResidentCoords[0], simulatedResidentCoords[1])}
-                  className="mt-2 bg-red-600 hover:bg-red-500 text-white font-black text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 shadow-lg transition cursor-pointer active:scale-95"
-                >
-                  <Navigation size={14} />
-                  <span>⚡ ONE-CLICK EVACUATE PATH ({residentDistanceKm} km)</span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
         {pinMode && (
           <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-blue-600/95 backdrop-blur-md border border-blue-500/50 text-white rounded-2xl px-5 py-3.5 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
             <span className="flex h-2.5 w-2.5 relative">
@@ -3199,6 +3068,13 @@ export default function MapDashboard() {
           placementCoords={placementCoords}
           selectedRadiusMeters={selectedRadiusMeters}
           simOverlayMode={simOverlayMode}
+          activeDisasterSim={activeDisasterSim}
+          filteredSheltersForView={filteredSheltersForView}
+          simulatedResidentCoords={simulatedResidentCoords}
+          nearestShelterToResident={nearestShelterToResident}
+          residentDistanceKm={residentDistanceKm}
+          isResidentNearShelter={isResidentNearShelter}
+          setPinMode={setPinMode}
         />
         <RiskAlertsDrawer
           hazards={hazards}

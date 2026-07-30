@@ -1,9 +1,9 @@
 <?php
 
-use App\Models\User;
-use App\Models\Shelter;
-use App\Models\FamilyProfile;
 use App\Models\EvacuationLog;
+use App\Models\FamilyProfile;
+use App\Models\Shelter;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -15,16 +15,16 @@ test('guest cannot access residents registry', function () {
 
 test('resident cannot access residents registry', function () {
     $resident = User::factory()->create(['role' => 'resident', 'status' => 'active']);
-    
+
     $response = $this->actingAs($resident, 'sanctum')
         ->getJson('/api/residents');
-        
+
     $response->assertStatus(403);
 });
 
 test('admin can access residents registry and get paginated list with correct stay history & statistics', function () {
     $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-    
+
     // Create shelter
     $shelter1 = Shelter::create([
         'name' => 'North Gym',
@@ -32,7 +32,7 @@ test('admin can access residents registry and get paginated list with correct st
         'longitude' => 122.0,
         'max_capacity' => 100,
         'current_occupancy' => 0,
-        'status' => 'open'
+        'status' => 'open',
     ]);
 
     $shelter2 = Shelter::create([
@@ -41,7 +41,7 @@ test('admin can access residents registry and get paginated list with correct st
         'longitude' => 122.05,
         'max_capacity' => 100,
         'current_occupancy' => 0,
-        'status' => 'open'
+        'status' => 'open',
     ]);
 
     // Create resident user and family profile
@@ -52,7 +52,7 @@ test('admin can access residents registry and get paginated list with correct st
         'contact_number' => '09112233445',
         'barangay' => 'San Jose',
         'transportation_mode' => 'pedestrian',
-        'qr_code_hash' => 'family_hash_abc'
+        'qr_code_hash' => 'family_hash_abc',
     ]);
 
     // Create a past check-in that was resolved (checked out)
@@ -105,17 +105,17 @@ test('admin can access residents registry and get paginated list with correct st
                                 'recorded_headcount',
                                 'ration_claimed',
                                 'ration_claimed_at',
-                                'claimed_ration_items'
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+                                'claimed_ration_items',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ]);
 
     $data = $response->json('data.data');
     expect($data)->toHaveCount(1);
-    
+
     $residentData = $data[0];
     expect($residentData['name'])->toBe('John Doe');
     expect($residentData['barangay'])->toBe('San Jose');
@@ -128,7 +128,7 @@ test('admin can access residents registry and get paginated list with correct st
 
 test('residents registry search filter works correctly', function () {
     $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-    
+
     // Create resident 1
     $user1 = User::factory()->create(['name' => 'Alice Miller', 'role' => 'resident']);
     FamilyProfile::create([
@@ -136,7 +136,7 @@ test('residents registry search filter works correctly', function () {
         'headcount' => 3,
         'contact_number' => '09999999999',
         'barangay' => 'Guiwan',
-        'qr_code_hash' => 'hash_alice'
+        'qr_code_hash' => 'hash_alice',
     ]);
 
     // Create resident 2
@@ -146,13 +146,13 @@ test('residents registry search filter works correctly', function () {
         'headcount' => 5,
         'contact_number' => '09888888888',
         'barangay' => 'Talon-Talon',
-        'qr_code_hash' => 'hash_bob'
+        'qr_code_hash' => 'hash_bob',
     ]);
 
     // Search by name "Alice"
     $response = $this->actingAs($admin, 'sanctum')
         ->getJson('/api/residents?search=Alice');
-    
+
     $response->assertStatus(200);
     $data = $response->json('data.data');
     expect($data)->toHaveCount(1);
@@ -161,7 +161,7 @@ test('residents registry search filter works correctly', function () {
     // Search by barangay "Talon"
     $response = $this->actingAs($admin, 'sanctum')
         ->getJson('/api/residents?search=Talon');
-    
+
     $response->assertStatus(200);
     $data = $response->json('data.data');
     expect($data)->toHaveCount(1);

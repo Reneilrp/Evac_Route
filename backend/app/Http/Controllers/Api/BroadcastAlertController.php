@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
-use App\Models\BroadcastAlert;
-use App\Models\AuditLog;
 use App\Events\EmergencyAlertBroadcasted;
+use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
+use App\Models\BroadcastAlert;
 use Illuminate\Http\Request;
 
 class BroadcastAlertController extends Controller
@@ -30,7 +30,7 @@ class BroadcastAlertController extends Controller
             if ($barangay) {
                 $query->orWhere(function ($q) use ($barangay) {
                     $q->where('scope', 'barangay')
-                      ->where('barangay', $barangay);
+                        ->where('barangay', $barangay);
                 });
             }
 
@@ -39,7 +39,7 @@ class BroadcastAlertController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $alerts
+            'data' => $alerts,
         ], 200);
     }
 
@@ -86,7 +86,7 @@ class BroadcastAlertController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Emergency warning broadcasted successfully.',
-            'data' => $alert->load('creator')
+            'data' => $alert->load('creator'),
         ], 201);
     }
 
@@ -116,7 +116,7 @@ class BroadcastAlertController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Emergency warning revoked/deleted successfully.'
+            'message' => 'Emergency warning revoked/deleted successfully.',
         ], 200);
     }
 }

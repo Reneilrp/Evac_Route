@@ -32,12 +32,12 @@ class DispatchOrderDelivered implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'id'           => $this->order->id,
+            'id' => $this->order->id,
             'shelter_name' => $this->order->shelter->name,
             'delivered_at' => $this->order->delivered_at->toIso8601String(),
-            'items'        => $this->order->items->map(fn ($i) => [
+            'items' => $this->order->items->map(fn ($i) => [
                 'item_name' => $i->inventoryItem->item_name,
-                'quantity'  => $i->quantity,
+                'quantity' => $i->quantity,
                 'unit_type' => $i->inventoryItem->unit_type,
             ]),
         ];

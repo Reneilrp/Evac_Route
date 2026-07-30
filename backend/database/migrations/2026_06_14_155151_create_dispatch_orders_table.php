@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('assigned_to')->nullable()->constrained('users');
             $table->foreignId('shelter_id')->constrained('shelters');
             $table->enum('status', ['pending', 'in_transit', 'delivered', 'cancelled'])
-                  ->default('pending');
+                ->default('pending');
             $table->text('notes')->nullable();
             $table->timestamp('departed_at')->nullable();
             $table->timestamp('delivered_at')->nullable();

@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\DispatchOrderCreated;
 use App\Http\Controllers\Controller;
+use App\Models\DispatchOrder;
+use App\Models\DispatchOrderItem;
 use App\Models\EvacuationLog;
 use App\Models\FamilyProfile;
+use App\Models\InventoryItem;
+use App\Models\RationTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -29,9 +34,9 @@ class ReliefClaimController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$activeLog) {
+            if (! $activeLog) {
                 return response()->json([
-                    'status'  => 'error',
+                    'status' => 'error',
                     'message' => 'Family is not currently checked into any shelter.',
                 ], 422);
             }
@@ -39,22 +44,22 @@ class ReliefClaimController extends Controller
             // Prevent double-claiming on the same evacuation log
             if ($activeLog->ration_claimed) {
                 return response()->json([
-                    'status'       => 'error',
-                    'message'      => 'Ration already claimed for this evacuation period.',
-                    'claimed_at'   => $activeLog->ration_claimed_at?->toIso8601String(),
-                    'family_name'  => $family->family_name,
-                    'headcount'    => $activeLog->recorded_headcount,
+                    'status' => 'error',
+                    'message' => 'Ration already claimed for this evacuation period.',
+                    'claimed_at' => $activeLog->ration_claimed_at?->toIso8601String(),
+                    'family_name' => $family->family_name,
+                    'headcount' => $activeLog->recorded_headcount,
                 ], 409);
             }
 
-            $activeRation = \App\Models\RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
+            $activeRation = RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
             $claimedItems = [];
             $hasShortage = false;
 
             if ($activeRation && $activeRation->items->isNotEmpty()) {
                 // Deadlock Elimination: Sort inventory IDs numerically before locking
                 $inventoryItemIds = $activeRation->items->pluck('inventory_item_id')->unique()->sort()->toArray();
-                $inventoryItems = \App\Models\InventoryItem::lockForUpdate()
+                $inventoryItems = InventoryItem::lockForUpdate()
                     ->whereIn('id', $inventoryItemIds)
                     ->get()
                     ->keyBy('id');
@@ -93,47 +98,47 @@ class ReliefClaimController extends Controller
                 }
 
                 // Partial Stock Fulfillment: Auto-generate dispatch order for replenishment
-                if ($hasShortage && !empty($shortageItems)) {
-                    $orderNumber = 'DSP-AUTO-' . strtoupper(bin2hex(random_bytes(3)));
-                    $dispatchOrder = \App\Models\DispatchOrder::create([
+                if ($hasShortage && ! empty($shortageItems)) {
+                    $orderNumber = 'DSP-AUTO-'.strtoupper(bin2hex(random_bytes(3)));
+                    $dispatchOrder = DispatchOrder::create([
                         'order_number' => $orderNumber,
                         'shelter_id' => $activeLog->shelter_id,
                         'requested_by' => auth()->id() ?? 1,
                         'status' => 'pending',
                         'priority' => 'high',
-                        'notes' => 'Urgent auto-generated replenishment for partial ration fulfillment at Shelter #' . $activeLog->shelter_id,
+                        'notes' => 'Urgent auto-generated replenishment for partial ration fulfillment at Shelter #'.$activeLog->shelter_id,
                     ]);
 
                     foreach ($shortageItems as $sItem) {
-                        \App\Models\DispatchOrderItem::create([
+                        DispatchOrderItem::create([
                             'dispatch_order_id' => $dispatchOrder->id,
                             'inventory_item_id' => $sItem['inventory_item_id'],
                             'requested_quantity' => $sItem['shortage_quantity'],
                         ]);
                     }
 
-                    event(new \App\Events\DispatchOrderCreated($dispatchOrder));
+                    event(new DispatchOrderCreated($dispatchOrder));
                 }
             }
 
             $activeLog->update([
-                'ration_claimed'       => true,
-                'ration_claimed_at'    => now(),
+                'ration_claimed' => true,
+                'ration_claimed_at' => now(),
                 'claimed_ration_items' => $claimedItems,
             ]);
 
-            $message = $hasShortage 
-                ? 'Ration claim partially fulfilled. Auto-generated logistics replenishment dispatch order sent to central warehouse.' 
+            $message = $hasShortage
+                ? 'Ration claim partially fulfilled. Auto-generated logistics replenishment dispatch order sent to central warehouse.'
                 : 'Ration claim recorded successfully.';
 
             return response()->json([
-                'status'       => 'success',
-                'message'      => $message,
+                'status' => 'success',
+                'message' => $message,
                 'has_shortage' => $hasShortage,
-                'family_name'  => $family->family_name,
-                'headcount'    => $activeLog->recorded_headcount,
-                'shelter_id'   => $activeLog->shelter_id,
-                'claimed_at'   => $activeLog->ration_claimed_at->toIso8601String(),
+                'family_name' => $family->family_name,
+                'headcount' => $activeLog->recorded_headcount,
+                'shelter_id' => $activeLog->shelter_id,
+                'claimed_at' => $activeLog->ration_claimed_at->toIso8601String(),
             ]);
         });
     }
@@ -157,13 +162,13 @@ class ReliefClaimController extends Controller
             ->first();
 
         return response()->json([
-            'status'         => 'success',
-            'family_name'    => $family->family_name,
-            'headcount'      => $family->headcount,
-            'checked_in'     => (bool) $activeLog,
-            'shelter'        => $activeLog?->shelter?->name,
+            'status' => 'success',
+            'family_name' => $family->family_name,
+            'headcount' => $family->headcount,
+            'checked_in' => (bool) $activeLog,
+            'shelter' => $activeLog?->shelter?->name,
             'ration_claimed' => $activeLog?->ration_claimed ?? false,
-            'claimed_at'     => $activeLog?->ration_claimed_at?->toIso8601String(),
+            'claimed_at' => $activeLog?->ration_claimed_at?->toIso8601String(),
         ]);
     }
 }

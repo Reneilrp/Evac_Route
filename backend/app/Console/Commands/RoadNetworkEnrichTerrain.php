@@ -42,6 +42,7 @@ class RoadNetworkEnrichTerrain extends Command
 
         if ($totalNodes === 0) {
             $this->error('No road nodes found in the database. Please seed the database first.');
+
             return 1;
         }
 
@@ -59,10 +60,12 @@ class RoadNetworkEnrichTerrain extends Command
                 // We use lat/lng mapping to generate a natural slope
                 $latFactor = ($node->lat - 6.90) * 100; // e.g. 6.9185 -> 1.85
                 $lngFactor = ($node->lng - 122.00) * 10; // e.g. 122.0882 -> 0.882
-                
+
                 // Base elevation of 3 meters, plus altitude gain towards the north-west, plus some noise
                 $elevation = 3.0 + ($latFactor * 4.5) + (5.0 / max(0.1, $lngFactor)) + sin($node->lat * 1000) * 2;
-                if ($elevation < 1.0) $elevation = 1.0;
+                if ($elevation < 1.0) {
+                    $elevation = 1.0;
+                }
             } else {
                 try {
                     // Call Mapbox Tilequery API (contour layer) to fetch elevation
@@ -75,7 +78,7 @@ class RoadNetworkEnrichTerrain extends Command
                     if ($response->successful()) {
                         $geojson = $response->json();
                         $features = $geojson['features'] ?? [];
-                        
+
                         if (count($features) > 0) {
                             $maxEle = 0;
                             foreach ($features as $feature) {
@@ -120,8 +123,9 @@ class RoadNetworkEnrichTerrain extends Command
             $source = RoadNode::find($edge->source_node_id);
             $target = RoadNode::find($edge->target_node_id);
 
-            if (!$source || !$target) {
+            if (! $source || ! $target) {
                 $progressBarEdges->advance();
+
                 continue;
             }
 
@@ -132,8 +136,10 @@ class RoadNetworkEnrichTerrain extends Command
             $slopeDeg = 0.00;
             if ($distance > 0) {
                 $ratio = $heightDiff / $distance;
-                if ($ratio > 1) $ratio = 1.0; // clamp to prevent asin error
-                
+                if ($ratio > 1) {
+                    $ratio = 1.0;
+                } // clamp to prevent asin error
+
                 $slopeRad = asin($ratio);
                 $slopeDeg = rad2deg($slopeRad);
             }
@@ -172,6 +178,7 @@ class RoadNetworkEnrichTerrain extends Command
 
         $progressBarEdges->finish();
         $this->info("\nRoad network terrain enrichment complete!");
+
         return 0;
     }
 }

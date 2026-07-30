@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../services/api';
 
 export const useResidentStore = create(
   persist(
@@ -9,18 +10,23 @@ export const useResidentStore = create(
       qrHash: null,
       status: 'danger', // 'danger' | 'safe'
       allocation: null, // details about what they receive
-      transportationMode: 'pedestrian', // Global specific state for routing overrides if needed later, but mainly fetched via profile.
-      
-      // Global offline state (shared across screens)
-      isOffline: false,
-
-      // Alert history log
-      alertHistory: [],
-
-      // Onboarding flag
-      hasOnboarded: false,
+      // Home pinpoint location coordinates [lng, lat] for testing & evacuation routing
+      homeLocation: null,
 
       // ─── Actions ───
+      setHomeLocation: (coords) => {
+        set({ homeLocation: coords });
+        if (coords && coords.length >= 2) {
+          api.post('/user/location', { latitude: coords[1], longitude: coords[0] })
+            .then(() => {
+              const state = get();
+              if (state.user) {
+                set({ user: { ...state.user, last_latitude: coords[1], last_longitude: coords[0] } });
+              }
+            })
+            .catch(err => console.warn('Failed to update DB location:', err));
+        }
+      },
       setProfileData: (profile, qrHash) => set({ profile, qrHash, transportationMode: profile.transportation_mode }),
       setTransportationMode: (mode) => set({ transportationMode: mode }),
       setSafeStatus: (allocation) => {

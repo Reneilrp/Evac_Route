@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BroadcastAlertController;
 use App\Http\Controllers\Api\BundledApiController;
 use App\Http\Controllers\Api\CheckInController;
 use App\Http\Controllers\Api\DispatchOrderController;
@@ -8,14 +9,12 @@ use App\Http\Controllers\Api\HazardController;
 use App\Http\Controllers\Api\IncidentController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\ReliefClaimController;
-use App\Http\Controllers\Api\ResidentStatusController;
-use App\Http\Controllers\Api\RoadNetworkController;
-use App\Http\Controllers\Api\RoadMaintenanceController;
-use App\Http\Controllers\Api\ShelterController;
 use App\Http\Controllers\Api\ResidentRegistryController;
+use App\Http\Controllers\Api\ResidentStatusController;
+use App\Http\Controllers\Api\RoadMaintenanceController;
+use App\Http\Controllers\Api\RoadNetworkController;
 use App\Http\Controllers\Api\SettingController;
-use App\Http\Controllers\Api\BroadcastAlertController;
-
+use App\Http\Controllers\Api\ShelterController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -40,6 +39,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
     Route::post('/logout', function (Request $request) {
         $request->user()->currentAccessToken()->delete();
+
         return response()->json(['message' => 'Logged out successfully.']);
     });
 
@@ -76,9 +76,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/shelters/{shelter_id}/check-out', [CheckInController::class, 'processCheckOut']);
         Route::post('/evacuation-logs/{id}/check-out', [CheckInController::class, 'manualCheckOut']);
 
-        // 3. Hazard Management
+        // 3. Hazard Management & Disaster Simulation Toggle
         Route::post('/hazards', [HazardController::class, 'reportHazard']);
         Route::put('/hazards/{id}/resolve', [HazardController::class, 'resolveHazard']);
+        Route::post('/simulation/toggle', [HazardController::class, 'toggleSimulation']);
 
         // 4. Incident Review Queue (residents' field reports)
         Route::get('/incidents', [IncidentController::class, 'index']);
@@ -104,7 +105,6 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         // 8. Evacuation Logs
         Route::get('/evacuation-logs', [CheckInController::class, 'getLogs']);
         Route::get('/residents', [ResidentRegistryController::class, 'index']);
-
 
         // 9. Road Maintenance
         Route::get('/road-maintenance', [RoadMaintenanceController::class, 'index']);

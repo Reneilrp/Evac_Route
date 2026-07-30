@@ -28,11 +28,11 @@ class ShelterStatusUpdated implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'id'                => $this->shelter->id,
-            'name'              => $this->shelter->name,
-            'status'            => $this->shelter->status,
+            'id' => $this->shelter->id,
+            'name' => $this->shelter->name,
+            'status' => $this->shelter->status,
             'current_occupancy' => $this->shelter->current_occupancy,
-            'max_capacity'      => $this->shelter->max_capacity,
+            'max_capacity' => $this->shelter->max_capacity,
         ];
     }
 }

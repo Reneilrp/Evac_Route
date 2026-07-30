@@ -88,39 +88,75 @@ export default function PrimaryButton({
 
 const VARIANT_STYLES = {
   primary: {
-    container: { backgroundColor: colors.primaryDark, ...shadows.md, shadowColor: colors.primaryDark },
-    text: { color: colors.white },
-    spinnerColor: colors.white,
+    container: { 
+      backgroundColor: '#0284c7', 
+      borderWidth: 1, 
+      borderColor: 'rgba(56, 189, 248, 0.4)',
+      shadowColor: '#0284c7',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.45,
+      shadowRadius: 10,
+      elevation: 8,
+    },
+    text: { color: '#ffffff', fontWeight: '900', letterSpacing: 0.8 },
+    spinnerColor: '#ffffff',
   },
   danger: {
-    container: { backgroundColor: colors.danger, ...shadows.md, shadowColor: colors.danger },
-    text: { color: colors.white },
-    spinnerColor: colors.white,
+    container: { 
+      backgroundColor: '#dc2626', 
+      borderWidth: 1, 
+      borderColor: 'rgba(248, 113, 113, 0.4)',
+      shadowColor: '#dc2626',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.45,
+      shadowRadius: 10,
+      elevation: 8,
+    },
+    text: { color: '#ffffff', fontWeight: '900', letterSpacing: 0.8 },
+    spinnerColor: '#ffffff',
   },
   success: {
-    container: { backgroundColor: colors.success, ...shadows.md, shadowColor: colors.success },
-    text: { color: colors.white },
-    spinnerColor: colors.white,
+    container: { 
+      backgroundColor: '#16a34a', 
+      borderWidth: 1, 
+      borderColor: 'rgba(74, 222, 128, 0.4)',
+      shadowColor: '#16a34a',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.45,
+      shadowRadius: 10,
+      elevation: 8,
+    },
+    text: { color: '#ffffff', fontWeight: '900', letterSpacing: 0.8 },
+    spinnerColor: '#ffffff',
   },
   outline: {
-    container: { backgroundColor: colors.transparent, borderWidth: 2, borderColor: colors.border },
-    text: { color: colors.textSecondary },
-    spinnerColor: colors.textSecondary,
+    container: { 
+      backgroundColor: 'rgba(15, 23, 42, 0.6)', 
+      borderWidth: 1.5, 
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    text: { color: '#e2e8f0', fontWeight: '800', letterSpacing: 0.5 },
+    spinnerColor: '#e2e8f0',
   },
 };
 
 const SIZE_STYLES = {
   large: {
-    container: { paddingVertical: 18, borderRadius: radii.xl },
-    text: { ...typography.buttonLarge },
+    container: { paddingVertical: 16, borderRadius: radii.xl },
+    text: { fontSize: 15, fontWeight: '900' },
   },
   medium: {
-    container: { paddingVertical: 14, borderRadius: radii.lg },
-    text: { ...typography.buttonMedium },
+    container: { paddingVertical: 12, borderRadius: radii.lg },
+    text: { fontSize: 13, fontWeight: '800' },
   },
   small: {
-    container: { paddingVertical: 10, borderRadius: radii.md },
-    text: { ...typography.label },
+    container: { paddingVertical: 8, borderRadius: radii.md },
+    text: { fontSize: 11, fontWeight: '700' },
   },
 };
 

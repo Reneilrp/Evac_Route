@@ -79,4 +79,61 @@ class HazardController extends Controller
             'data' => $hazard,
         ]);
     }
+
+    public function toggleSimulation(Request $request)
+    {
+        $validated = $request->validate([
+            'simulation_type' => 'required|in:none,siege,flood,fire,chemical,earthquake',
+        ]);
+
+        $simType = $validated['simulation_type'];
+
+        // Deactivate all existing hazards first for clean simulation switching
+        Hazard::query()->update(['is_active' => false]);
+
+        if ($simType === 'none') {
+            try {
+                broadcast(new HazardResolved(0));
+            } catch (\Throwable $e) {}
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Disaster test simulation toggled OFF. Normal operational view active.',
+                'active_simulation' => 'none',
+            ]);
+        }
+
+        // Activate specific disaster simulation hazards
+        $targetType = $simType === 'chemical' ? 'chemical_spill' : $simType;
+        Hazard::where('hazard_type', $targetType)->update(['is_active' => true]);
+
+        $activeHazard = Hazard::where('is_active', true)
+            ->where('hazard_type', $targetType)
+            ->first();
+
+        if ($activeHazard) {
+            if ($simType === 'earthquake') {
+                try {
+                    \App\Models\BroadcastAlert::create([
+                        'title' => '🚨 EARTHQUAKE WARNING: MAGNITUDE 6.8 TREMORS DETECTED',
+                        'message' => "An Earthquake tremor has been detected at Epicenter Latitude: {$activeHazard->latitude}° N, Longitude: {$activeHazard->longitude}° E. Duck, Cover & Hold! Proceed to open area safe zones.",
+                        'severity' => 'critical',
+                        'scope' => 'all',
+                        'created_by' => auth()->id() ?? 1,
+                    ]);
+                } catch (\Throwable $e) {}
+            }
+
+            try {
+                broadcast(new HazardCreated($activeHazard));
+            } catch (\Throwable $e) {}
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Disaster test simulation '{$simType}' toggled ON.",
+            'active_simulation' => $simType,
+            'data' => $activeHazard,
+        ]);
+    }
 }

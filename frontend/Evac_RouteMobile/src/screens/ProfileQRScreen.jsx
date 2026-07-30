@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
-import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight } from 'lucide-react-native';
+import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X } from 'lucide-react-native';
 import { useResidentStore } from '../context/useResidentStore';
 import { useAuth } from '../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +17,14 @@ export default function ProfileQRScreen({ navigation }) {
   const profile = useResidentStore(state => state.profile);
   const qrHash = useResidentStore(state => state.qrHash);
   const setSafeStatus = useResidentStore(state => state.setSafeStatus);
+  const homeLocation = useResidentStore(state => state.homeLocation);
+  const setHomeLocation = useResidentStore(state => state.setHomeLocation);
+  const setProfileData = useResidentStore(state => state.setProfileData);
   const { user, logout } = useAuth();
+
+  const [isHomeModalOpen, setIsHomeModalOpen] = useState(false);
+  const [customLat, setCustomLat] = useState(homeLocation ? homeLocation[1].toString() : '6.9185');
+  const [customLng, setCustomLng] = useState(homeLocation ? homeLocation[0].toString() : '122.0882');
 
   const effectiveId = profile?.id || user?.id || 1;
   const effectiveName = profile?.name || user?.name || 'Resident';
@@ -190,13 +197,21 @@ export default function ProfileQRScreen({ navigation }) {
 
           {/* Details */}
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '900', marginBottom: 2 }}>
-              {effectiveName}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '900', marginBottom: 2 }}>
+                {effectiveName}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setIsHomeModalOpen(true)}
+                style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.3)' }}
+              >
+                <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: 'bold' }}>✏️ Edit</Text>
+              </TouchableOpacity>
+            </View>
             <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '600', marginBottom: 6 }}>
               ID: RES-{effectiveId.toString().padStart(6, '0')}
             </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <Text style={{ backgroundColor: '#1e293b', color: '#38bdf8', fontSize: 10, fontWeight: 'bold', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
                 📍 Brgy. {effectiveBarangay}
               </Text>
@@ -217,6 +232,13 @@ export default function ProfileQRScreen({ navigation }) {
           marginBottom: 20,
         }}>
           {[
+            {
+              title: 'Pinpoint Home Address',
+              subtitle: homeLocation ? `📍 Home set: ${homeLocation[1].toFixed(4)}, ${homeLocation[0].toFixed(4)}` : 'Tap to pinpoint home GPS coordinates for A* routing',
+              icon: <MapPin size={20} color="#38bdf8" />,
+              iconBg: 'rgba(56, 189, 248, 0.15)',
+              onPress: () => setIsHomeModalOpen(true),
+            },
             {
               title: 'Emergency Contacts',
               subtitle: 'Tap to view emergency hotlines & medical numbers',
@@ -286,6 +308,183 @@ export default function ProfileQRScreen({ navigation }) {
         </View>
 
       </ScrollView>
+
+      {/* ─── CUSTOM PINPOINT HOME LOCATION MODAL ─── */}
+      <Modal
+        visible={isHomeModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsHomeModalOpen(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(2, 6, 23, 0.85)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 20,
+        }}>
+          <View style={{
+            width: '100%',
+            maxWidth: 380,
+            backgroundColor: '#0f172a',
+            borderRadius: 24,
+            borderWidth: 2,
+            borderColor: '#38bdf8',
+            padding: 22,
+            elevation: 15,
+          }}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(56, 189, 248, 0.15)', borderWidth: 1, borderColor: '#38bdf8', alignItems: 'center', justifyContent: 'center' }}>
+                  <MapPin size={22} color="#38bdf8" />
+                </View>
+                <View>
+                  <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '900' }}>Pinpoint Home Address</Text>
+                  <Text style={{ color: '#94a3b8', fontSize: 11 }}>A* System Evacuation Starting Point</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setIsHomeModalOpen(false)}>
+                <X size={20} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Current Coordinates Badge */}
+            <View style={{ backgroundColor: 'rgba(30, 41, 59, 0.8)', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', marginBottom: 16 }}>
+              <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '900', letterSpacing: 1, marginBottom: 4 }}>CURRENT PINPOINT COORDINATES:</Text>
+              <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '800', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                Lat: {customLat} | Lng: {customLng}
+              </Text>
+            </View>
+
+            {/* Barangay Preset Buttons */}
+            <Text style={{ color: '#cbd5e1', fontSize: 11, fontWeight: '800', marginBottom: 8 }}>QUICK BARANGAY PRESET ANCHORS:</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {[
+                { name: 'Sto. Niño (Triplet)', lat: 6.9050, lng: 122.0720 },
+                { name: 'Tetuan', lat: 6.9185, lng: 122.0882 },
+                { name: 'Tumaga', lat: 6.9410, lng: 122.0780 },
+                { name: 'Baliwasan', lat: 6.9126, lng: 122.0573 },
+                { name: 'San Jose', lat: 6.9230, lng: 122.0450 },
+                { name: 'Putik', lat: 6.9350, lng: 122.0950 },
+              ].map((b, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  onPress={() => {
+                    setCustomLat(b.lat.toString());
+                    setCustomLng(b.lng.toString());
+                    setHomeLocation([b.lng, b.lat]);
+                    setProfileData({
+                      ...(profile || {}),
+                      name: effectiveName,
+                      barangay: b.name.replace(' (Triplet)', ''),
+                      headcount: effectiveHeadcount
+                    }, effectiveQrHash);
+                  }}
+                  style={{
+                    backgroundColor: customLat === b.lat.toString() ? '#0284c7' : 'rgba(30, 41, 59, 0.6)',
+                    paddingHorizontal: 12,
+                    paddingVertical: 7,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor: customLat === b.lat.toString() ? '#38bdf8' : 'rgba(255, 255, 255, 0.1)',
+                  }}
+                >
+                  <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '800' }}>📍 {b.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Custom Inputs */}
+            <View style={{ gap: 10, marginBottom: 20 }}>
+              <View>
+                <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4 }}>Latitude (e.g. 6.9185)</Text>
+                <TextInput
+                  value={customLat}
+                  onChangeText={setCustomLat}
+                  keyboardType="numeric"
+                  placeholderTextColor="#64748b"
+                  style={{ backgroundColor: '#1e293b', color: '#ffffff', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, borderWidth: 1, borderColor: '#334155' }}
+                />
+              </View>
+              <View>
+                <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4 }}>Longitude (e.g. 122.0882)</Text>
+                <TextInput
+                  value={customLng}
+                  onChangeText={setCustomLng}
+                  keyboardType="numeric"
+                  placeholderTextColor="#64748b"
+                  style={{ backgroundColor: '#1e293b', color: '#ffffff', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, borderWidth: 1, borderColor: '#334155' }}
+                />
+              </View>
+            </View>
+
+            {/* Actions */}
+            <View style={{ gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setIsHomeModalOpen(false);
+                  navigation.navigate('Evacuation Map', { pinHome: true });
+                }}
+                style={{
+                  backgroundColor: '#16a34a',
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                  gap: 8,
+                  borderWidth: 1,
+                  borderColor: 'rgba(74, 222, 128, 0.4)',
+                  shadowColor: '#16a34a',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 6,
+                  elevation: 6,
+                }}
+              >
+                <Text style={{ color: '#ffffff', fontSize: 13.5, fontWeight: '900' }}>
+                  🗺️ Tap Map to Select Home Address
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  const latNum = parseFloat(customLat);
+                  const lngNum = parseFloat(customLng);
+                  if (isNaN(latNum) || isNaN(lngNum)) {
+                    Alert.alert('Invalid Coordinates', 'Please enter valid numerical latitude and longitude.');
+                    return;
+                  }
+                  setHomeLocation([lngNum, latNum]);
+                  setIsHomeModalOpen(false);
+                  Alert.alert(
+                    '📍 Home Address Pinpointed!',
+                    `Home location set to [${latNum.toFixed(4)}, ${lngNum.toFixed(4)}]. System A* evacuation routes will now start from this home address!`,
+                    [{ text: 'OK' }]
+                  );
+                }}
+                style={{ backgroundColor: '#0284c7', paddingVertical: 13, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '800' }}>Save Custom Coordinates</Text>
+              </TouchableOpacity>
+
+              {homeLocation && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setHomeLocation(null);
+                    setIsHomeModalOpen(false);
+                    Alert.alert('Reset Home Location', 'Home pinpoint removed. App will default to live GPS signal.');
+                  }}
+                  style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                >
+                  <Text style={{ color: '#f87171', fontSize: 12, fontWeight: '800' }}>Reset to Live GPS Signal</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

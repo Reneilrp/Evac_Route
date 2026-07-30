@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Linking, Alert, Platform, Animated, PanResponder, Vibration } from 'react-native';
-import { AlertTriangle, Navigation, Phone, X, User, ChevronDown, Info, Layers } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Linking, Alert, Platform, Animated, PanResponder, Vibration, Modal } from 'react-native';
+import { AlertTriangle, Navigation, Phone, X, User, ChevronDown, Info, Layers, ShieldAlert, Activity } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
@@ -26,7 +26,7 @@ import {
   saveRoadMaintenances,
   getOfflineRoadMaintenances,
 } from '../services/offlineDb';
-import { calculateOfflineRoute, determineTargetFacility } from '../utils/astarRouter';
+import { calculateOfflineRoute, fetchMapboxDirectionsRoute, determineTargetFacility } from '../utils/astarRouter';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -48,9 +48,16 @@ const SHEET_EXPANDED = SCREEN_HEIGHT * 0.45;
 // Read Mapbox token from app.json extra config or environment
 const MAPBOX_TOKEN = Constants.expoConfig?.extra?.mapboxToken || process.env.EXPO_PUBLIC_MAPBOX_TOKEN || '';
 
-export default function EvacMapScreen({ navigation }) {
+export default function EvacMapScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const [location, setLocation] = useState(null);
+  const [isPinningHomeMode, setIsPinningHomeMode] = useState(false);
+
+  useEffect(() => {
+    if (route?.params?.pinHome) {
+      setIsPinningHomeMode(true);
+    }
+  }, [route?.params?.pinHome]);
 
   useEffect(() => {
     if (MAPBOX_TOKEN) {
@@ -104,7 +111,39 @@ export default function EvacMapScreen({ navigation }) {
   const currentZoomRef = useRef(14);
   const [selectedShelter, setSelectedShelter] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isSiegeModalVisible, setIsSiegeModalVisible] = useState(false);
+  const [pendingNavShelter, setPendingNavShelter] = useState(null);
 
+  // Turn-by-Turn Navigation States (Google Maps Style)
+  const [routeSteps, setRouteSteps] = useState([]);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [isActiveTurnByTurn, setIsActiveTurnByTurn] = useState(false);
+
+  // Destination Proximity Warning Modal State
+  const [showDestinationProximityModal, setShowDestinationProximityModal] = useState(false);
+  const [proximityTargetFacility, setProximityTargetFacility] = useState(null);
+  const [nearSiegeHazardInfo, setNearSiegeHazardInfo] = useState(null);
+
+  const checkDestinationNearHazard = (targetFacility) => {
+    if (!targetFacility || !hazards || hazards.length === 0) return null;
+    const destLat = parseFloat(targetFacility.latitude);
+    const destLng = parseFloat(targetFacility.longitude);
+
+    for (const h of hazards) {
+      if (h.is_active === true || h.is_active === 1 || h.is_active === '1') {
+        const hLat = parseFloat(h.latitude);
+        const hLng = parseFloat(h.longitude);
+        const rad = parseFloat(h.radius_meters || 150);
+        const distToDest = getDistanceMeters(destLat, destLng, hLat, hLng);
+
+        // Destination is within hazard radius + 500m warning buffer zone
+        if (distToDest <= rad + 500) {
+          return { hazard: h, distToDest: Math.round(distToDest), rad };
+        }
+      }
+    }
+    return null;
+  };
 
   // Compass Bearing Calculation Helper
   const getBearing = (lat1, lon1, lat2, lon2) => {
@@ -115,11 +154,28 @@ export default function EvacMapScreen({ navigation }) {
     const x =
       Math.cos(lat1Rad) * Math.sin(lat2Rad) -
       Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
-    const brng = (Math.atan2(y, x) * 180) / Math.PI;
+    let brng = (Math.atan2(y, x) * 180) / Math.PI;
     return (brng + 360) % 360;
   };
 
+  const handleStartActiveNavigation = () => {
+    setIsActiveTurnByTurn(true);
+    if (cameraRef.current && activeUserLocation) {
+      const nextPoint = (cachedRoute && cachedRoute.length > 1) ? cachedRoute[1] : targetShelterCoords;
+      const forwardBearing = (nextPoint && activeUserLocation)
+        ? getBearing(activeUserLocation[1], activeUserLocation[0], nextPoint[1], nextPoint[0])
+        : 0;
 
+      cameraRef.current.setCamera({
+        centerCoordinate: activeUserLocation,
+        zoomLevel: 17.5,
+        pitch: 0, // Eagle View: Top-down vertical perspective directly above user location
+        heading: forwardBearing,
+        animationDuration: 1000,
+      });
+    }
+    Vibration.vibrate([0, 100, 50, 100]);
+  };
 
   // Panic flash state
   const [showPanicFlash, setShowPanicFlash] = useState(false);
@@ -131,6 +187,9 @@ export default function EvacMapScreen({ navigation }) {
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
 
   // Read/write routing mode globally from Zustand store
+  const user = useResidentStore(state => state.user);
+  const homeLocation = useResidentStore(state => state.homeLocation);
+  const setHomeLocation = useResidentStore(state => state.setHomeLocation);
   const transportationMode = useResidentStore(state => state.transportationMode || 'pedestrian');
   const setTransportationMode = useResidentStore(state => state.setTransportationMode);
   const status = useResidentStore(state => state.status);
@@ -353,7 +412,11 @@ export default function EvacMapScreen({ navigation }) {
   }, []);
 
   const shelters = sheltersData && sheltersData.length > 0 ? sheltersData : offlineShelters;
-  const hazards = hazardsData && hazardsData.length > 0 ? hazardsData : offlineHazards;
+  const hazards = useMemo(() => {
+    const rawList = (hazardsData && hazardsData.length > 0) ? hazardsData : offlineHazards;
+    return (rawList || []).filter(h => h.is_active === true || h.is_active === 1 || h.is_active === '1');
+  }, [hazardsData, offlineHazards]);
+
   // P3: Use live data when available, fall back to SQLite cache offline
   const maintenances = (maintenanceData && maintenanceData.length > 0)
     ? maintenanceData
@@ -367,7 +430,39 @@ export default function EvacMapScreen({ navigation }) {
     const lat = pos[1];
     return lng >= 121.5 && lng <= 122.5 && lat >= 6.5 && lat <= 7.5;
   };
-  const activeUserLocation = isValidZamboangaLocation(location) ? location : defaultZamboangaPos;
+
+  // Dynamic User Location Determination:
+  // 1. If resident pinpointed custom Home Location in Profile, prioritize Home Location for system routing.
+  // 2. If physical device GPS is inside Zamboanga bounds, use real-time GPS coordinates.
+  // 3. If physical device GPS is outside Zamboanga bounds (e.g. laptop/emulator), use registered profile/barangay coordinates.
+  // 4. Fallback to Tetuan Barangay Center [122.084, 6.918].
+  const activeUserLocation = useMemo(() => {
+    if (homeLocation && isValidZamboangaLocation(homeLocation)) {
+      return homeLocation;
+    }
+    if (isValidZamboangaLocation(location)) return location;
+    
+    const userLat = parseFloat(user?.last_latitude || user?.latitude);
+    const userLng = parseFloat(user?.last_longitude || user?.longitude);
+    if (!isNaN(userLat) && !isNaN(userLng) && isValidZamboangaLocation([userLng, userLat])) {
+      return [userLng, userLat];
+    }
+    
+    const barangayName = user?.family_profile?.barangay || user?.barangay;
+    if (barangayName) {
+      const barangayCoords = {
+        'Tetuan': [122.0882, 6.9185],
+        'Tumaga': [122.0780, 6.9410],
+        'Baliwasan': [122.0573, 6.9126],
+        'San Jose': [122.0450, 6.9230],
+        'Putik': [122.0950, 6.9350],
+      };
+      const bCoords = barangayCoords[barangayName];
+      if (bCoords) return bCoords;
+    }
+
+    return defaultZamboangaPos;
+  }, [location, user]);
 
   // ─── Proximity Hazard & Threat Protocol Analysis ───
   const activeThreatsNearUser = useMemo(() => {
@@ -385,8 +480,8 @@ export default function EvacMapScreen({ navigation }) {
     return activeThreatsNearUser.find(h =>
       ['siege', 'war', 'active_shooter', 'civil_unrest'].includes(h.hazard_type) ||
       (h.disaster_category === 'man_made' && h.severity_level === 'high')
-    ) || (hazards || []).find(h => ['siege', 'war', 'active_shooter'].includes(h.hazard_type));
-  }, [activeThreatsNearUser, hazards]);
+    );
+  }, [activeThreatsNearUser]);
 
   const isResidentInsideSiege = useMemo(() => {
     if (!activeUserLocation || !hazards || hazards.length === 0) return false;
@@ -410,8 +505,38 @@ export default function EvacMapScreen({ navigation }) {
     );
   }, [activeThreatsNearUser]);
 
+  // Earthquake Broadcast Warning Detector
+  const activeEarthquakeHazard = useMemo(() => {
+    if (!hazards || hazards.length === 0) return null;
+    return hazards.find(h =>
+      (h.is_active === true || h.is_active === 1 || h.is_active === '1') &&
+      (h.hazard_type === 'earthquake' || h.name?.toLowerCase().includes('earthquake') || h.name?.toLowerCase().includes('tremor'))
+    );
+  }, [hazards]);
+
+  const [hasDismissedEarthquakeModal, setHasDismissedEarthquakeModal] = useState(false);
+
+  useEffect(() => {
+    if (activeEarthquakeHazard && !hasDismissedEarthquakeModal) {
+      Vibration.vibrate([0, 400, 200, 400, 200, 400]);
+    }
+  }, [activeEarthquakeHazard, hasDismissedEarthquakeModal]);
+
   const activeAlertKey = activeSiegeThreat?.id || activeDisasterNearUser?.id || null;
   const [dismissedAlertKey, setDismissedAlertKey] = useState(null);
+
+  // Auto-launch custom Siege Safety Modal once on app open ONLY if resident is actually inside a siege hazard zone
+  const hasAutoPromptedSiegeRef = useRef(false);
+  useEffect(() => {
+    if ((isResidentInsideSiege || activeSiegeThreat) && !hasAutoPromptedSiegeRef.current) {
+      hasAutoPromptedSiegeRef.current = true;
+      const timer = setTimeout(() => {
+        setIsSiegeModalVisible(true);
+        Vibration.vibrate([0, 150, 100, 150]);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isResidentInsideSiege, activeSiegeThreat]);
 
   // Auto-dismiss disaster alert banners after 8 seconds, but keep Siege Threat banners ALWAYS VISIBLE
   useEffect(() => {
@@ -423,7 +548,7 @@ export default function EvacMapScreen({ navigation }) {
     }
   }, [activeAlertKey, activeSiegeThreat]);
 
-  const showAlertBanner = Boolean(activeSiegeThreat || (activeAlertKey && dismissedAlertKey !== activeAlertKey));
+  const showAlertBanner = Boolean(activeAlertKey && dismissedAlertKey !== activeAlertKey);
 
   let nearestShelter = null;
   let smartRoutingReason = null;
@@ -470,47 +595,59 @@ export default function EvacMapScreen({ navigation }) {
     return prevSiegeStateRef.current;
   }, [distanceMeters, nearestShelter]);
 
-  const handleOneClickEvacuate = (targetFacility) => {
-    const dest = targetFacility || activeTargetShelter || nearestShelter;
-
-    // Siege Hazard Safety Check: If user is inside siege zone OR active siege threat exists and shelter is NOT nearby
-    if (isResidentInsideSiege || (activeSiegeThreat && !isShelterNearbyForSiege)) {
-      Alert.alert(
-        '🔒 ARMED THREAT: SHELTER IN PLACE',
-        `⚠️ DANGEROUS OUTDOOR MOVEMENT!\n\nYour current location is INSIDE an active Armed Siege & Crossfire Zone (${activeSiegeThreat?.name || 'Armed Siege Zone'}).\n\nWE ADVISE YOU TO STAY INSIDE:\n• Do NOT attempt to go outdoors.\n• Close and lock all doors, windows, and open areas.\n• Turn off lights and stay away from exterior glass/windows.\n• Remain low indoors until security forces secure the perimeter.`,
-        [
-          { text: 'Understand & Stay Inside', style: 'cancel' },
-          {
-            text: 'Override & Force Navigate',
-            style: 'destructive',
-            onPress: () => {
-              if (dest) {
-                setSelectedShelter(dest);
-                setIsNavigating(true);
-              }
-            }
-          }
-        ]
-      );
-      return;
-    }
-
-    if (!dest) return;
-
+  const proceedWithNavigation = (dest) => {
     setSelectedShelter(dest);
     setIsNavigating(true);
-    if (cameraRef.current && activeUserLocation) {
+
+    const targetCoords = [parseFloat(dest.longitude), parseFloat(dest.latitude)];
+    if (cameraRef.current && activeUserLocation && targetCoords) {
+      const minLng = Math.min(activeUserLocation[0], targetCoords[0]);
+      const maxLng = Math.max(activeUserLocation[0], targetCoords[0]);
+      const minLat = Math.min(activeUserLocation[1], targetCoords[1]);
+      const maxLat = Math.max(activeUserLocation[1], targetCoords[1]);
+
       cameraRef.current.setCamera({
-        centerCoordinate: activeUserLocation,
-        zoomLevel: 16,
-        animationDuration: 800,
+        bounds: {
+          ne: [maxLng, maxLat],
+          sw: [minLng, minLat],
+          paddingBottom: 180,
+          paddingTop: 100,
+          paddingLeft: 60,
+          paddingRight: 60,
+        },
+        animationDuration: 1000,
       });
     }
     Vibration.vibrate([0, 100, 50, 100]);
   };
 
+  const handleOneClickEvacuate = (targetFacility) => {
+    const dest = targetFacility || activeTargetShelter || nearestShelter;
+    if (!dest) return;
+
+    // Siege Hazard Safety Protocol: Trigger custom dark glassmorphic Armed Threat Modal on any navigation attempt if inside siege zone
+    if (isResidentInsideSiege || activeSiegeThreat) {
+      setPendingNavShelter(dest);
+      setIsSiegeModalVisible(true);
+      Vibration.vibrate([0, 100, 50, 100]);
+      return;
+    }
+
+    // Proximity Warning Protocol: Trigger Warning Modal if resident is far, but chosen destination is near/inside active hazard circle
+    const hazardNearDestInfo = checkDestinationNearHazard(dest);
+    if (hazardNearDestInfo) {
+      setProximityTargetFacility(dest);
+      setNearSiegeHazardInfo(hazardNearDestInfo);
+      setShowDestinationProximityModal(true);
+      Vibration.vibrate([0, 150, 100, 150]);
+      return;
+    }
+
+    proceedWithNavigation(dest);
+  };
+
   useEffect(() => {
-    if (!isNavigating || !activeUserLocation || !targetShelterCoords || !preloadedGraph) {
+    if (!isNavigating || !activeUserLocation || !targetShelterCoords) {
       setTimeout(() => {
         setCachedRoute(null);
         setLastRoutingLocation(null);
@@ -541,47 +678,69 @@ export default function EvacMapScreen({ navigation }) {
     }
 
     if (shouldRecalculate) {
-      const data = {
-        nodesMap: preloadedGraph.nodesMap,
-        edgesBySource: preloadedGraph.edgesBySource,
-        hazards: hazards
-      };
+      (async () => {
+        // 1. Try Mapbox Directions API with hazard exclusion
+        let result = await fetchMapboxDirectionsRoute(activeUserLocation, targetShelterCoords, MAPBOX_TOKEN, transportationMode, hazards);
 
-      const result = calculateOfflineRoute(activeUserLocation, targetShelterCoords, data, transportationMode);
-      
-      setTimeout(() => {
-        if (result && result.status === 'success') {
-          setCachedRoute(result.path);
-          setRouteWarnings(result.warnings || []);
-          setIsRouteBlocked(false);
-          Vibration.vibrate([0, 80, 100, 80]);
-        } else if (result && (result.status === 'isolated_target' || result.status === 'no_safe_route')) {
-          setCachedRoute(null);
-          setRouteWarnings([]);
-          setIsRouteBlocked(true);
-
-          // Fallback Reroute to High-Ground Safe Zone / Assembly Point if distant shelter is graph-isolated
-          const fallbackFacility = (shelters || []).find(f => 
-            (f.facility_type === 'safe_zone' || f.facility_type === 'assembly_point') &&
-            f.id !== activeTargetShelter?.id
-          );
-          if (fallbackFacility) {
-            setSelectedShelter(fallbackFacility);
-            Alert.alert(
-              '⚠️ Shelter Isolated by Hazard Closures',
-              `Target shelter is completely isolated by road closures/floods. Rerouting to local ${fallbackFacility.name || 'Safe Zone'}!`,
-              [{ text: 'OK' }]
-            );
+        // 2. If Mapbox with hazard exclusion returns no path, fetch direct Mapbox route to destination
+        let isHazardIntersected = false;
+        if (!result || !result.path || result.path.length === 0) {
+          result = await fetchMapboxDirectionsRoute(activeUserLocation, targetShelterCoords, MAPBOX_TOKEN, transportationMode, []);
+          if (result && result.path && result.path.length > 0) {
+            isHazardIntersected = true;
           }
-          Vibration.vibrate([0, 500, 200, 500]);
+        }
+
+        // 3. Fall back to offline A* algorithm if offline or Mapbox API unavailable
+        if (!result || !result.path || result.path.length === 0) {
+          const data = preloadedGraph ? {
+            nodesMap: preloadedGraph.nodesMap,
+            edgesBySource: preloadedGraph.edgesBySource,
+            hazards: hazards
+          } : { hazards };
+          result = calculateOfflineRoute(activeUserLocation, targetShelterCoords, data, transportationMode);
+        }
+
+        if (result && (result.status === 'success' || (result.path && result.path.length > 0))) {
+          setCachedRoute(result.path);
+          setRouteSteps(result.steps || []);
+          setCurrentStepIndex(0);
+
+          if (isHazardIntersected) {
+            setRouteWarnings([`⚠️ WARNING: Your route to ${activeTargetShelter?.name || 'Destination'} passes near an active hazard zone. Proceed with extreme caution.`]);
+          } else {
+            setRouteWarnings(result.warnings || []);
+          }
+          setIsRouteBlocked(false);
+
+          if (cameraRef.current && activeUserLocation && targetShelterCoords) {
+            const minLng = Math.min(activeUserLocation[0], targetShelterCoords[0]);
+            const maxLng = Math.max(activeUserLocation[0], targetShelterCoords[0]);
+            const minLat = Math.min(activeUserLocation[1], targetShelterCoords[1]);
+            const maxLat = Math.max(activeUserLocation[1], targetShelterCoords[1]);
+
+            cameraRef.current.setCamera({
+              bounds: {
+                ne: [maxLng, maxLat],
+                sw: [minLng, minLat],
+                paddingBottom: 180,
+                paddingTop: 100,
+                paddingLeft: 60,
+                paddingRight: 60,
+              },
+              animationDuration: 1000,
+            });
+          }
+
+          Vibration.vibrate([0, 80, 100, 80]);
         } else {
           setCachedRoute(null);
-          setRouteWarnings([]);
+          setRouteWarnings(['No safe route available to target facility']);
           setIsRouteBlocked(true);
           Vibration.vibrate([0, 500, 200, 500]);
         }
         setLastRoutingLocation(activeUserLocation);
-      }, 0);
+      })();
       
       lastHazardsRef.current = hazards;
       lastShelterCoordsRef.current = targetShelterCoords;
@@ -602,21 +761,47 @@ export default function EvacMapScreen({ navigation }) {
     features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: cachedRoute } }]
   } : null;
 
+function createCirclePolygon(center, radiusInMeters, points = 64) {
+  const [lng, lat] = center;
+  const coords = [];
+  const distanceX = radiusInMeters / (111320 * Math.cos((lat * Math.PI) / 180));
+  const distanceY = radiusInMeters / 110540;
+
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * (2 * Math.PI);
+    const x = distanceX * Math.cos(theta);
+    const y = distanceY * Math.sin(theta);
+    coords.push([lng + x, lat + y]);
+  }
+  coords.push(coords[0]);
+
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [coords],
+    },
+  };
+}
+
   const hazardsGeoJSON = {
     type: 'FeatureCollection',
-    features: hazards.map(hazard => ({
-      type: 'Feature',
-      properties: {
-        id: hazard.id,
-        radius: parseFloat(hazard.radius_meters ?? 0),
-        hazard_type: hazard.hazard_type ?? 'hazard',
-        severity: hazard.severity_level ?? 'medium',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [parseFloat(hazard.longitude), parseFloat(hazard.latitude)]
-      }
-    }))
+    features: hazards.map(hazard => {
+      const polygon = createCirclePolygon(
+        [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
+        parseFloat(hazard.radius_meters || 50)
+      );
+      return {
+        ...polygon,
+        properties: {
+          id: hazard.id,
+          name: hazard.name,
+          radius: parseFloat(hazard.radius_meters ?? 0),
+          hazard_type: hazard.hazard_type ?? 'hazard',
+          severity: hazard.severity_level ?? 'medium',
+        },
+      };
+    })
   };
 
   const openExternalNavigation = () => {
@@ -682,6 +867,21 @@ export default function EvacMapScreen({ navigation }) {
           scrollEnabled={true}
           pitchEnabled={true}
           rotateEnabled={true}
+          onPress={(feature) => {
+            if (isPinningHomeMode) {
+              const coords = feature?.geometry?.coordinates;
+              if (coords && coords.length >= 2) {
+                setHomeLocation([coords[0], coords[1]]);
+                setIsPinningHomeMode(false);
+                Vibration.vibrate([0, 100, 50, 100]);
+                Alert.alert(
+                  '📍 Home Address Pinpointed!',
+                  `Home location set to [${coords[1].toFixed(4)}, ${coords[0].toFixed(4)}]. System A* evacuation routes will now start from this home address!`,
+                  [{ text: 'OK' }]
+                );
+              }
+            }
+          }}
         >
         <Mapbox.Camera
           ref={cameraRef}
@@ -720,8 +920,9 @@ export default function EvacMapScreen({ navigation }) {
                 id={`s-${shelter.id}`}
                 coordinate={[sLng, sLat]}
                 onSelected={() => {
-                  handleOneClickEvacuate(shelter);
+                  setSelectedShelter(shelter);
                   setSelectedFacilityDetails(shelter);
+                  Vibration.vibrate(40);
                 }}
               >
                 <View 
@@ -740,47 +941,30 @@ export default function EvacMapScreen({ navigation }) {
             );
           })}
 
-        {/* Hazards: Circle + Label Layers */}
+        {/* Hazards: Real Geographical Meter Polygon Fill & Crisp Red Line Outline */}
         <Mapbox.ShapeSource id="hazardsSource" shape={hazardsGeoJSON}>
-          <Mapbox.CircleLayer
-            id="hazardsLayer"
+          <Mapbox.FillLayer
+            id="hazardsFillLayer"
             style={{
-              circleRadius: [
-                'interpolate',
-                ['exponential', 2],
-                ['zoom'],
-                1, 1,
-                15, ['/', ['get', 'radius'], 1.2],
-                22, ['/', ['get', 'radius'], 0.01]
-              ],
-              circleColor: [
+              fillColor: [
                 'match', ['get', 'severity'],
-                'high', isHighContrast ? 'rgba(255,0,0,0.6)' : 'rgba(220,38,38,0.45)',
-                'medium', isHighContrast ? 'rgba(255,140,0,0.5)' : 'rgba(249,115,22,0.40)',
-                isHighContrast ? 'rgba(255,255,0,0.4)' : 'rgba(234,179,8,0.35)'
+                'high', isHighContrast ? 'rgba(255,0,0,0.55)' : 'rgba(239,68,68,0.35)',
+                'medium', isHighContrast ? 'rgba(255,140,0,0.45)' : 'rgba(249,115,22,0.30)',
+                isHighContrast ? 'rgba(255,255,0,0.35)' : 'rgba(234,179,8,0.25)'
               ],
-              circleStrokeColor: [
-                'match', ['get', 'severity'],
-                'high', isHighContrast ? '#FF0000' : 'rgba(220,38,38,0.9)',
-                'medium', isHighContrast ? '#FF8C00' : 'rgba(249,115,22,0.85)',
-                isHighContrast ? '#FFFF00' : 'rgba(234,179,8,0.8)'
-              ],
-              circleStrokeWidth: isHighContrast ? 4 : 2,
             }}
           />
-          {/* Core epicenter dot for high visibility at all zoom levels */}
-          <Mapbox.CircleLayer
-            id="hazardCenters"
+          <Mapbox.LineLayer
+            id="hazardsOutlineLayer"
             style={{
-              circleRadius: isHighContrast ? 8 : 6,
-              circleColor: [
+              lineColor: [
                 'match', ['get', 'severity'],
-                'high', '#dc2626', // Solid Red
-                'medium', '#f97316', // Solid Orange
-                '#eab308' // Solid Yellow
+                'high', '#ef4444',
+                'medium', '#f97316',
+                '#eab308'
               ],
-              circleStrokeColor: isHighContrast ? '#000000' : '#ffffff',
-              circleStrokeWidth: isHighContrast ? 2.5 : 1.5,
+              lineWidth: isHighContrast ? 4.5 : 3.5,
+              lineDasharray: [3, 2],
             }}
           />
           {/* Hazard type label above each circle */}
@@ -915,7 +1099,247 @@ export default function EvacMapScreen({ navigation }) {
             </View>
           </Mapbox.PointAnnotation>
         )}
+
+        {/* Pinpointed Home Address Marker */}
+        {homeLocation && (
+          <Mapbox.PointAnnotation
+            key="home-location-pin"
+            id="home-location-pin"
+            coordinate={homeLocation}
+          >
+            <View style={{ alignItems: 'center' }}>
+              <View style={{
+                backgroundColor: '#0284c7',
+                padding: 7,
+                borderRadius: 18,
+                borderWidth: 2.5,
+                borderColor: '#ffffff',
+                elevation: 10,
+                shadowColor: '#0284c7',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.6,
+                shadowRadius: 8,
+              }}>
+                <Text style={{ fontSize: 16 }}>🏠</Text>
+              </View>
+              <View style={{
+                backgroundColor: '#0f172a',
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                borderRadius: 8,
+                marginTop: -4,
+                borderWidth: 1,
+                borderColor: '#38bdf8',
+              }}>
+                <Text style={{ color: '#38bdf8', fontSize: 9, fontWeight: '900' }}>HOME</Text>
+              </View>
+            </View>
+          </Mapbox.PointAnnotation>
+        )}
       </Mapbox.MapView>
+      )}
+
+      {/* ─── Top Floating Pinpoint Home Location Banner ─── */}
+      {isPinningHomeMode && (
+        <View style={{
+          position: 'absolute',
+          top: 60,
+          left: 16,
+          right: 16,
+          backgroundColor: '#0284c7',
+          borderRadius: 20,
+          padding: 16,
+          borderWidth: 2,
+          borderColor: '#38bdf8',
+          zIndex: 100,
+          alignItems: 'center',
+          shadowColor: '#0284c7',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.6,
+          shadowRadius: 12,
+          elevation: 12,
+        }}>
+          <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 13.5, textAlign: 'center', letterSpacing: 0.5 }}>
+            📍 TAP ANYWHERE ON THE MAP TO PINPOINT YOUR HOME ADDRESS
+          </Text>
+          <Text style={{ color: '#e0f2fe', fontSize: 11.5, textAlign: 'center', marginTop: 4, fontWeight: '600' }}>
+            Tap your house, building, or street in Zamboanga City to set your evacuation starting point.
+          </Text>
+          <TouchableOpacity
+            onPress={() => setIsPinningHomeMode(false)}
+            style={{ marginTop: 10, backgroundColor: 'rgba(15, 23, 42, 0.7)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)' }}
+          >
+            <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: 'bold' }}>Cancel Pinning</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ─── GOOGLE MAPS STYLE TURN-BY-TURN TOP NAVIGATION BANNER ─── */}
+      {isActiveTurnByTurn && (
+        <View style={{
+          position: 'absolute',
+          top: Math.max(insets.top + 10, 50),
+          left: 16,
+          right: 16,
+          backgroundColor: '#0f172a',
+          borderRadius: 20,
+          padding: 16,
+          borderWidth: 2,
+          borderColor: '#16a34a',
+          zIndex: 100,
+          elevation: 15,
+          shadowColor: '#16a34a',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.5,
+          shadowRadius: 10,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+              <View style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: '#16a34a',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 2,
+                borderColor: '#4ade80',
+              }}>
+                <Text style={{ fontSize: 24, color: '#ffffff' }}>
+                  {routeSteps[currentStepIndex]?.type?.includes('right') || routeSteps[currentStepIndex]?.modifier?.includes('right') ? '↱' :
+                   routeSteps[currentStepIndex]?.type?.includes('left') || routeSteps[currentStepIndex]?.modifier?.includes('left') ? '↰' :
+                   routeSteps[currentStepIndex]?.type?.includes('arrive') ? '🏁' : '⬆️'}
+                </Text>
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#4ade80', fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>
+                  {routeSteps[currentStepIndex]?.distanceMeters ? `IN ${routeSteps[currentStepIndex].distanceMeters} METERS` : 'TURN INSTRUCTION'}
+                </Text>
+                <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: 'bold', marginTop: 2 }} numberOfLines={2}>
+                  {(routeSteps[currentStepIndex]?.instruction || `Proceed Forward towards ${activeTargetShelter?.name || 'Destination'}`)
+                    .replace(/head\s+(north|south|east|west|northwest|northeast|southwest|southeast)/gi, 'Proceed Forward')
+                    .replace(/\b(north|south|east|west|northwest|northeast|southwest|southeast)\b/gi, 'Forward')}
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => {
+                setIsActiveTurnByTurn(false);
+                setIsNavigating(false);
+                setCachedRoute(null);
+                Vibration.vibrate(50);
+              }}
+              style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', padding: 8, borderRadius: 20, borderWidth: 1, borderColor: '#ef4444' }}
+            >
+              <X size={18} color="#f87171" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Bottom stats pill inside turn banner */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.1)' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Navigation size={14} color="#38bdf8" />
+              <Text style={{ color: '#38bdf8', fontSize: 12, fontWeight: '800' }}>
+                {distanceKm} km ({getETAMinutes(distanceMeters, transportationMode)})
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => {
+                if (cameraRef.current && activeUserLocation) {
+                  const nextPoint = (cachedRoute && cachedRoute.length > 1) ? cachedRoute[1] : targetShelterCoords;
+                  const forwardBearing = (nextPoint && activeUserLocation)
+                    ? getBearing(activeUserLocation[1], activeUserLocation[0], nextPoint[1], nextPoint[0])
+                    : 0;
+
+                  cameraRef.current.setCamera({
+                    centerCoordinate: activeUserLocation,
+                    zoomLevel: 17.5,
+                    pitch: 0, // Eagle View: Top-down vertical perspective directly above user location
+                    heading: forwardBearing,
+                    animationDuration: 600,
+                  });
+                  Vibration.vibrate(40);
+                }
+              }}
+              style={{ backgroundColor: '#0284c7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 10, fontWeight: '900' }}>🎯 RECENTER</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* ─── Active Route Overview Floating Bar with ▶ START NAVIGATION ─── */}
+      {isNavigating && !isActiveTurnByTurn && (
+        <View style={{
+          position: 'absolute',
+          bottom: 175,
+          left: 16,
+          right: 16,
+          backgroundColor: '#0f172a',
+          borderRadius: 20,
+          padding: 14,
+          borderWidth: 2,
+          borderColor: '#38bdf8',
+          zIndex: 90,
+          elevation: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <Text style={{ color: '#38bdf8', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
+              ROUTE CALCULATED ({distanceKm} km)
+            </Text>
+            <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: 'bold' }} numberOfLines={1}>
+              To: {activeTargetShelter?.name || 'Destination'}
+            </Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              onPress={handleStartActiveNavigation}
+              style={{
+                backgroundColor: '#16a34a',
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                borderRadius: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                borderWidth: 1,
+                borderColor: '#4ade80',
+                elevation: 6,
+              }}
+            >
+              <Navigation size={15} color="#ffffff" />
+              <Text style={{ color: '#ffffff', fontSize: 12.5, fontWeight: '900' }}>
+                ▶ START NAVIGATION
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setIsNavigating(false);
+                setCachedRoute(null);
+                setSelectedShelter(null);
+                Vibration.vibrate(30);
+              }}
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                padding: 9,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+              }}
+            >
+              <X size={18} color="#94a3b8" />
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
 
       {/* ─── Critical Overlay ─── */}
@@ -975,22 +1399,28 @@ export default function EvacMapScreen({ navigation }) {
               <TouchableOpacity
                 onPress={() => handleOneClickEvacuate(nearestShelter)}
                 style={{
-                  backgroundColor: isShelterNearbyForSiege ? '#10b981' : '#dc2626',
-                  paddingVertical: 9,
-                  paddingHorizontal: 12,
-                  borderRadius: 10,
+                  backgroundColor: isShelterNearbyForSiege ? '#059669' : '#b91c1c',
+                  paddingVertical: 11,
+                  paddingHorizontal: 14,
+                  borderRadius: 12,
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 6,
-                  elevation: 2,
+                  gap: 8,
+                  borderWidth: 1,
+                  borderColor: isShelterNearbyForSiege ? 'rgba(52, 211, 153, 0.5)' : 'rgba(248, 113, 113, 0.5)',
+                  shadowColor: isShelterNearbyForSiege ? '#059669' : '#b91c1c',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 6,
+                  elevation: 6,
                 }}
               >
-                <Navigation color="#ffffff" size={15} />
-                <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 12 }}>
+                <ShieldAlert color="#ffffff" size={16} />
+                <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 12, letterSpacing: 0.5 }}>
                   {isShelterNearbyForSiege
-                    ? `⚡ ONE-CLICK NAVIGATE TO ${nearestShelter?.name?.toUpperCase() || 'NEAREST SHELTER'}`
-                    : `⚡ ONE-CLICK EVACUATE PATH (${distanceKm} km)`}
+                    ? `⚡ ONE-CLICK SAFE NAVIGATE (${distanceKm} km)`
+                    : `🔒 VIEW STAY INSIDE SAFETY ADVICE (${distanceKm} km)`}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1667,16 +2097,23 @@ export default function EvacMapScreen({ navigation }) {
 
           <TouchableOpacity
             onPress={() => {
-              setSelectedCategoryFilter(selectedFacilityDetails.facility_type === 'safe_zone' ? 'safe_zone' : selectedFacilityDetails.facility_type === 'assembly_point' ? 'assembly_point' : 'all');
+              const target = selectedFacilityDetails;
               setSelectedFacilityDetails(null);
+              if (target) {
+                handleOneClickEvacuate(target);
+              }
             }}
             style={{
               backgroundColor: colors.primary,
-              paddingVertical: 10,
-              borderRadius: 10,
+              paddingVertical: 12,
+              borderRadius: 12,
               alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'row',
+              gap: 8,
             }}
           >
+            <Navigation color="#ffffff" size={16} />
             <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}>
               Route to this Destination
             </Text>
@@ -1750,6 +2187,428 @@ export default function EvacMapScreen({ navigation }) {
           </View>
         </View>
       )}
+
+      {/* ─── CUSTOM STYLED ARMED THREAT: SHELTER IN PLACE MODAL ─── */}
+      <Modal
+        visible={isSiegeModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsSiegeModalVisible(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(2, 6, 23, 0.88)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 20,
+        }}>
+          <View style={{
+            width: '100%',
+            maxWidth: 380,
+            backgroundColor: '#0f172a',
+            borderRadius: 24,
+            borderWidth: 2,
+            borderColor: '#ef4444',
+            padding: 22,
+            shadowColor: '#ef4444',
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.6,
+            shadowRadius: 20,
+            elevation: 15,
+          }}>
+            {/* Header Icon + Title */}
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <View style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                borderWidth: 2,
+                borderColor: '#ef4444',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 10,
+              }}>
+                <ShieldAlert size={34} color="#f87171" />
+              </View>
+              <Text style={{ color: '#ef4444', fontSize: 11, fontWeight: '900', letterSpacing: 2 }}>
+                ARMED THREAT SAFETY PROTOCOL
+              </Text>
+              <Text style={{ color: '#ffffff', fontSize: 20, fontWeight: '900', textAlign: 'center', marginTop: 4 }}>
+                SHELTER IN PLACE
+              </Text>
+            </View>
+
+            {/* Warning Message Card */}
+            <View style={{
+              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+              borderRadius: 16,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: 'rgba(239, 68, 68, 0.3)',
+              marginBottom: 16,
+            }}>
+              <Text style={{ color: '#fca5a5', fontSize: 12, fontWeight: '800', marginBottom: 6, textAlign: 'center' }}>
+                ⚠️ DANGEROUS OUTDOOR MOVEMENT DETECTED
+              </Text>
+              <Text style={{ color: '#e2e8f0', fontSize: 12.5, lineHeight: 18, fontWeight: '600' }}>
+                Your current location is <Text style={{ color: '#ffffff', fontWeight: '900' }}>INSIDE an active Siege & Crossfire Zone</Text> ({activeSiegeThreat?.name || 'Armed Siege Zone'}). Moving outdoors to reach a shelter exposes you to extreme risk.
+              </Text>
+            </View>
+
+            {/* Checklist Recommendations */}
+            <View style={{ gap: 10, marginBottom: 22 }}>
+              <Text style={{ color: '#38bdf8', fontSize: 11, fontWeight: '900', letterSpacing: 1, marginBottom: 2 }}>
+                WE ADVISE YOU TO STAY INSIDE:
+              </Text>
+              
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontSize: 16 }}>🚫</Text>
+                <Text style={{ color: '#ffffff', fontSize: 12.5, fontWeight: '700', flex: 1 }}>
+                  Do NOT attempt to go outdoors or evacuate.
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontSize: 16 }}>🔒</Text>
+                <Text style={{ color: '#ffffff', fontSize: 12.5, fontWeight: '700', flex: 1 }}>
+                  Close and lock all doors, windows, and open areas.
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontSize: 16 }}>💡</Text>
+                <Text style={{ color: '#ffffff', fontSize: 12.5, fontWeight: '700', flex: 1 }}>
+                  Turn off lights and stay away from exterior glass.
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontSize: 16 }}>🛡️</Text>
+                <Text style={{ color: '#ffffff', fontSize: 12.5, fontWeight: '700', flex: 1 }}>
+                  Remain low indoors until security forces arrive.
+                </Text>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={{ gap: 10 }}>
+              {/* Primary Green Action Button: Understand & Stay Inside */}
+              <TouchableOpacity
+                onPress={() => setIsSiegeModalVisible(false)}
+                style={{
+                  backgroundColor: '#16a34a',
+                  paddingVertical: 15,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                  gap: 8,
+                  borderWidth: 1,
+                  borderColor: 'rgba(74, 222, 128, 0.4)',
+                  shadowColor: '#16a34a',
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.5,
+                  shadowRadius: 10,
+                  elevation: 8,
+                }}
+              >
+                <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '900', letterSpacing: 0.5 }}>
+                  ✓ Understand & Stay Inside
+                </Text>
+              </TouchableOpacity>
+
+              {/* Secondary Red Outline Override Button: Override & Force Navigate */}
+              <TouchableOpacity
+                onPress={() => {
+                  setIsSiegeModalVisible(false);
+                  if (pendingNavShelter) {
+                    setSelectedShelter(pendingNavShelter);
+                    setIsNavigating(true);
+                  }
+                }}
+                style={{
+                  backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                  paddingVertical: 12,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1.5,
+                  borderColor: 'rgba(239, 68, 68, 0.4)',
+                }}
+              >
+                <Text style={{ color: '#f87171', fontSize: 12, fontWeight: '800', letterSpacing: 0.5 }}>
+                  ⚠️ Override & Force Navigate
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─── Destination Near Siege/Disaster Warning Modal ─── */}
+      <Modal
+        visible={showDestinationProximityModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDestinationProximityModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 20,
+        }}>
+          <View style={{
+            width: '100%',
+            maxWidth: 380,
+            backgroundColor: '#0f172a',
+            borderRadius: 24,
+            padding: 24,
+            borderWidth: 2,
+            borderColor: '#ef4444',
+            elevation: 20,
+            shadowColor: '#ef4444',
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.5,
+            shadowRadius: 15,
+          }}>
+            {/* Header Icon */}
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <View style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 2,
+                borderColor: '#ef4444',
+              }}>
+                <AlertTriangle size={36} color="#ef4444" />
+              </View>
+            </View>
+
+            {/* Title */}
+            <Text style={{
+              color: '#ffffff',
+              fontSize: 17,
+              fontWeight: '900',
+              textAlign: 'center',
+              marginBottom: 8,
+              letterSpacing: 0.5,
+            }}>
+              ⚠️ DESTINATION NEAR DISASTER ZONE
+            </Text>
+
+            {/* Warning Text */}
+            <Text style={{
+              color: '#cbd5e1',
+              fontSize: 13.5,
+              lineHeight: 20,
+              textAlign: 'center',
+              marginBottom: 16,
+            }}>
+              You are currently in a safe area, but your target{' '}
+              <Text style={{ color: '#f87171', fontWeight: 'bold' }}>
+                {proximityTargetFacility?.name || 'Destination'}
+              </Text>{' '}
+              is located within{' '}
+              <Text style={{ color: '#f87171', fontWeight: 'bold' }}>
+                {nearSiegeHazardInfo?.distToDest || 0}m
+              </Text>{' '}
+              of an active{' '}
+              <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>
+                {nearSiegeHazardInfo?.hazard?.name || nearSiegeHazardInfo?.hazard?.hazard_type || 'Disaster Zone'}
+              </Text>{' '}
+              (radius: {nearSiegeHazardInfo?.rad || 150}m).
+            </Text>
+
+            {/* Recommendations */}
+            <View style={{
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              borderRadius: 14,
+              padding: 12,
+              borderWidth: 1,
+              borderColor: 'rgba(239, 68, 68, 0.3)',
+              marginBottom: 20,
+            }}>
+              <Text style={{ color: '#fca5a5', fontSize: 11.5, fontWeight: '700', marginBottom: 4 }}>
+                RECOMMENDED SAFETY ACTIONS:
+              </Text>
+              <Text style={{ color: '#e2e8f0', fontSize: 11.5, lineHeight: 16 }}>
+                • Reroute to a safe shelter located further away from the threat zone.{'\n'}
+                • Follow official LGU DRRM emergency directives.
+              </Text>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={{ gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowDestinationProximityModal(false);
+                  Vibration.vibrate(40);
+                }}
+                style={{
+                  backgroundColor: '#334155',
+                  paddingVertical: 14,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: '#475569',
+                }}
+              >
+                <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '900', letterSpacing: 0.5 }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setShowDestinationProximityModal(false);
+                  if (proximityTargetFacility) {
+                    proceedWithNavigation(proximityTargetFacility);
+                  }
+                  Vibration.vibrate(60);
+                }}
+                style={{
+                  backgroundColor: 'transparent',
+                  paddingVertical: 12,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  borderWidth: 1.5,
+                  borderColor: '#ef4444',
+                }}
+              >
+                <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '800' }}>
+                  ⚠️ Proceed Anyway
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─── Earthquake Warning Broadcast & Epicenter Modal ─── */}
+      <Modal
+        visible={Boolean(activeEarthquakeHazard && !hasDismissedEarthquakeModal)}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setHasDismissedEarthquakeModal(true)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(2, 6, 23, 0.90)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 20,
+        }}>
+          <View style={{
+            width: '100%',
+            maxWidth: 380,
+            backgroundColor: '#0f172a',
+            borderRadius: 24,
+            borderWidth: 2,
+            borderColor: '#eab308',
+            padding: 22,
+            shadowColor: '#eab308',
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.6,
+            shadowRadius: 20,
+            elevation: 15,
+          }}>
+            {/* Header Icon + Title */}
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <View style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: 'rgba(234, 179, 8, 0.15)',
+                borderWidth: 2,
+                borderColor: '#eab308',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 10,
+              }}>
+                <Activity size={36} color="#eab308" />
+              </View>
+              <Text style={{ color: '#eab308', fontSize: 11, fontWeight: '900', letterSpacing: 2 }}>
+                EMERGENCY BROADCAST ALERT
+              </Text>
+              <Text style={{ color: '#ffffff', fontSize: 19, fontWeight: '900', textAlign: 'center', marginTop: 4 }}>
+                🚨 EARTHQUAKE DETECTED
+              </Text>
+            </View>
+
+            {/* Epicenter Coordinates Card */}
+            <View style={{
+              backgroundColor: 'rgba(234, 179, 8, 0.12)',
+              borderRadius: 16,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: 'rgba(234, 179, 8, 0.35)',
+              marginBottom: 16,
+            }}>
+              <Text style={{ color: '#fef08a', fontSize: 12, fontWeight: '900', marginBottom: 4, letterSpacing: 0.5 }}>
+                📍 EPICENTER LOCATION COORDINATES
+              </Text>
+              <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: 'bold' }}>
+                Latitude: {parseFloat(activeEarthquakeHazard?.latitude || 0).toFixed(4)}° N
+              </Text>
+              <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: 'bold', marginTop: 2 }}>
+                Longitude: {parseFloat(activeEarthquakeHazard?.longitude || 0).toFixed(4)}° E
+              </Text>
+              <Text style={{ color: '#cbd5e1', fontSize: 11.5, marginTop: 4 }}>
+                Zone: {activeEarthquakeHazard?.name || 'Zamboanga Fault Line'} (Radius: {activeEarthquakeHazard?.radius_meters || 450}m)
+              </Text>
+            </View>
+
+            {/* Safety Directives */}
+            <View style={{
+              backgroundColor: 'rgba(15, 23, 42, 0.8)',
+              borderRadius: 14,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              marginBottom: 20,
+            }}>
+              <Text style={{ color: '#eab308', fontSize: 11.5, fontWeight: '900', marginBottom: 6, letterSpacing: 0.5 }}>
+                IMMEDIATE LIFE-SAFETY DIRECTIVES:
+              </Text>
+              <Text style={{ color: '#e2e8f0', fontSize: 11.5, lineHeight: 17 }}>
+                • <Text style={{ color: '#ffffff', fontWeight: 'bold' }}>DUCK, COVER & HOLD</Text> under a sturdy desk or table.{'\n'}
+                • Stay away from tall buildings, power lines, and falling glass.{'\n'}
+                • If indoors, do NOT use elevators. Evacuate to open assembly points once tremors stop.
+              </Text>
+            </View>
+
+            {/* Action Button */}
+            <TouchableOpacity
+              onPress={() => {
+                setHasDismissedEarthquakeModal(true);
+                Vibration.vibrate(40);
+              }}
+              style={{
+                backgroundColor: '#eab308',
+                paddingVertical: 14,
+                borderRadius: 14,
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: '#eab308',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.5,
+                shadowRadius: 10,
+                elevation: 8,
+              }}
+            >
+              <Text style={{ color: '#0f172a', fontSize: 14, fontWeight: '900', letterSpacing: 0.5 }}>
+                ✓ Acknowledge & Stay Safe
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

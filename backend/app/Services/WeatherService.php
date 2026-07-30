@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Http;
 class WeatherService
 {
     protected string $apiKey;
+
     protected float $lat = 6.9126;
+
     protected float $lon = 122.0729;
 
     public function __construct()
@@ -22,6 +24,7 @@ class WeatherService
     {
         if (empty($this->apiKey)) {
             \Log::warning('OpenWeatherMap API key is not configured.');
+
             return false;
         }
 
@@ -33,13 +36,14 @@ class WeatherService
             ]);
 
             if ($response->failed()) {
-                \Log::error('OpenWeatherMap API call failed: ' . $response->body());
+                \Log::error('OpenWeatherMap API call failed: '.$response->body());
+
                 return false;
             }
 
             $weather = $response->json('weather');
 
-            if (!empty($weather) && is_array($weather)) {
+            if (! empty($weather) && is_array($weather)) {
                 $mainCondition = $weather[0]['main'] ?? '';
                 $conditionId = $weather[0]['id'] ?? 0;
 
@@ -50,7 +54,7 @@ class WeatherService
                 return $isRain;
             }
         } catch (\Exception $e) {
-            \Log::error('WeatherService error: ' . $e->getMessage());
+            \Log::error('WeatherService error: '.$e->getMessage());
         }
 
         return false;

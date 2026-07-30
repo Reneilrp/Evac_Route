@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Setting;
 use App\Models\AuditLog;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -95,22 +95,22 @@ class SettingController extends Controller
         try {
             $driver = DB::connection()->getDriverName();
             $sqlDump = "-- Evac_Route Automated Database Backup\n";
-            $sqlDump .= "-- Generated: " . now()->toDateTimeString() . "\n";
-            $sqlDump .= "-- Driver: " . $driver . "\n";
-            
+            $sqlDump .= '-- Generated: '.now()->toDateTimeString()."\n";
+            $sqlDump .= '-- Driver: '.$driver."\n";
+
             if ($driver === 'sqlite') {
                 $tables = DB::select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
-                
+
                 foreach ($tables as $tableRow) {
                     $tableName = $tableRow->name;
-                    
+
                     // Schema structure
                     $schemaRow = DB::select("SELECT sql FROM sqlite_master WHERE type='table' AND name = ?", [$tableName]);
                     $createSql = $schemaRow[0]->sql;
-                    
+
                     $sqlDump .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
-                    $sqlDump .= $createSql . ";\n\n";
-                    
+                    $sqlDump .= $createSql.";\n\n";
+
                     // Table data
                     $rows = DB::table($tableName)->get()->toArray();
                     if (count($rows) > 0) {
@@ -118,12 +118,15 @@ class SettingController extends Controller
                         $insertValues = [];
                         foreach ($rows as $row) {
                             $values = array_map(function ($val) {
-                                if (is_null($val)) return 'NULL';
+                                if (is_null($val)) {
+                                    return 'NULL';
+                                }
+
                                 return DB::getPdo()->quote($val);
-                            }, (array)$row);
-                            $insertValues[] = "\n(" . implode(', ', $values) . ")";
+                            }, (array) $row);
+                            $insertValues[] = "\n(".implode(', ', $values).')';
                         }
-                        $sqlDump .= implode(', ', $insertValues) . ";\n\n";
+                        $sqlDump .= implode(', ', $insertValues).";\n\n";
                     }
                     $sqlDump .= "\n";
                 }
@@ -131,20 +134,20 @@ class SettingController extends Controller
                 // MySQL
                 $tables = DB::select('SHOW TABLES');
                 $dbName = config('database.connections.mysql.database');
-                $tablesKey = "Tables_in_" . $dbName;
-                
+                $tablesKey = 'Tables_in_'.$dbName;
+
                 $sqlDump .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
 
                 foreach ($tables as $tableRow) {
                     $tableName = $tableRow->$tablesKey;
-                    
+
                     // Show Create Table
                     $createTable = DB::select("SHOW CREATE TABLE `{$tableName}`");
                     $createSql = $createTable[0]->{'Create Table'};
-                    
+
                     $sqlDump .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
-                    $sqlDump .= $createSql . ";\n\n";
-                    
+                    $sqlDump .= $createSql.";\n\n";
+
                     // Show Rows
                     $rows = DB::table($tableName)->get()->toArray();
                     if (count($rows) > 0) {
@@ -152,20 +155,23 @@ class SettingController extends Controller
                         $insertValues = [];
                         foreach ($rows as $row) {
                             $values = array_map(function ($val) {
-                                if (is_null($val)) return 'NULL';
+                                if (is_null($val)) {
+                                    return 'NULL';
+                                }
+
                                 return DB::getPdo()->quote($val);
-                            }, (array)$row);
-                            $insertValues[] = "\n(" . implode(', ', $values) . ")";
+                            }, (array) $row);
+                            $insertValues[] = "\n(".implode(', ', $values).')';
                         }
-                        $sqlDump .= implode(', ', $insertValues) . ";\n\n";
+                        $sqlDump .= implode(', ', $insertValues).";\n\n";
                     }
                     $sqlDump .= "\n";
                 }
-                
+
                 $sqlDump .= "SET FOREIGN_KEY_CHECKS=1;\n";
             }
 
-            $filename = "evac_route_backup_" . now()->format('Y_m_d_His') . ".sql";
+            $filename = 'evac_route_backup_'.now()->format('Y_m_d_His').'.sql';
 
             return response($sqlDump, 200, [
                 'Content-Type' => 'application/sql',
@@ -174,7 +180,7 @@ class SettingController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Backup failed: ' . $e->getMessage(),
+                'message' => 'Backup failed: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -187,7 +193,7 @@ class SettingController extends Controller
     {
         try {
             $retentionDays = Setting::get('audit_log_retention_days', 90);
-            $cutoff = now()->subDays((int)$retentionDays);
+            $cutoff = now()->subDays((int) $retentionDays);
 
             $deletedLogs = AuditLog::where('created_at', '<', $cutoff)->delete();
 
@@ -207,7 +213,7 @@ class SettingController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Housekeeping failed: ' . $e->getMessage(),
+                'message' => 'Housekeeping failed: '.$e->getMessage(),
             ], 500);
         }
     }

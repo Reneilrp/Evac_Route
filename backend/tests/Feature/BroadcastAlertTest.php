@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\User;
-use App\Models\FamilyProfile;
 use App\Models\BroadcastAlert;
+use App\Models\FamilyProfile;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -56,7 +56,7 @@ test('authorized users can broadcast and revoke emergency warnings', function ()
 
 test('residents only receive emergency warnings matching their target area', function () {
     $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-    
+
     // Create residents with profiles in different barangays
     $tumagaResidentUser = User::factory()->create(['role' => 'resident', 'status' => 'active']);
     $tumagaProfile = FamilyProfile::create([
@@ -65,7 +65,7 @@ test('residents only receive emergency warnings matching their target area', fun
         'contact_number' => '09123456789',
         'barangay' => 'Tumaga',
         'qr_code_hash' => 'hash_tumaga',
-        'transportation_mode' => 'pedestrian'
+        'transportation_mode' => 'pedestrian',
     ]);
 
     $tetuanResidentUser = User::factory()->create(['role' => 'resident', 'status' => 'active']);
@@ -75,7 +75,7 @@ test('residents only receive emergency warnings matching their target area', fun
         'contact_number' => '09987654321',
         'barangay' => 'Tetuan',
         'qr_code_hash' => 'hash_tetuan',
-        'transportation_mode' => '4_wheel'
+        'transportation_mode' => '4_wheel',
     ]);
 
     // Create 3 alerts:
@@ -115,7 +115,7 @@ test('residents only receive emergency warnings matching their target area', fun
     $response->assertStatus(200);
     $alerts = $response->json('data');
     expect(count($alerts))->toBe(2);
-    
+
     $titles = collect($alerts)->pluck('title')->toArray();
     expect($titles)->toContain('General Weather Update');
     expect($titles)->toContain('Tumaga Bridge Overflow');
@@ -128,7 +128,7 @@ test('residents only receive emergency warnings matching their target area', fun
     $response->assertStatus(200);
     $alerts = $response->json('data');
     expect(count($alerts))->toBe(2);
-    
+
     $titles = collect($alerts)->pluck('title')->toArray();
     expect($titles)->toContain('General Weather Update');
     expect($titles)->toContain('Tetuan Power Outage');

@@ -1,14 +1,14 @@
 <?php
 
-use App\Models\User;
-use App\Models\Shelter;
-use App\Models\InventoryItem;
-use App\Models\DispatchOrder;
-use App\Models\DispatchOrderItem;
 use App\Events\DispatchOrderCreated;
 use App\Events\DispatchOrderDelivered;
-use Illuminate\Support\Facades\Event;
+use App\Models\DispatchOrder;
+use App\Models\DispatchOrderItem;
+use App\Models\InventoryItem;
+use App\Models\Shelter;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 
 uses(RefreshDatabase::class);
 
@@ -30,13 +30,13 @@ beforeEach(function () {
     $this->item1 = InventoryItem::create([
         'item_name' => 'Sacks of Rice',
         'total_stock' => 100,
-        'unit_type' => 'sacks'
+        'unit_type' => 'sacks',
     ]);
 
     $this->item2 = InventoryItem::create([
         'item_name' => 'Water Boxes',
         'total_stock' => 50,
-        'unit_type' => 'boxes'
+        'unit_type' => 'boxes',
     ]);
 });
 
@@ -71,7 +71,7 @@ test('authorized users can list dispatch orders', function () {
     $response = $this->actingAs($this->staff, 'sanctum')->getJson('/api/dispatch-orders');
 
     $response->assertStatus(200)
-             ->assertJsonPath('status', 'success');
+        ->assertJsonPath('status', 'success');
 
     // Should return pending first then delivered (status ordering is: pending, in_transit, delivered, cancelled)
     $data = $response->json('data');
@@ -89,14 +89,14 @@ test('admin can create a new dispatch order with items', function () {
         'items' => [
             ['inventory_item_id' => $this->item1->id, 'quantity' => 10],
             ['inventory_item_id' => $this->item2->id, 'quantity' => 5],
-        ]
+        ],
     ];
 
     $response = $this->actingAs($this->admin, 'sanctum')->postJson('/api/dispatch-orders', $payload);
 
     $response->assertStatus(201)
-             ->assertJsonPath('status', 'success')
-             ->assertJsonPath('message', 'Dispatch order created and staff notified.');
+        ->assertJsonPath('status', 'success')
+        ->assertJsonPath('message', 'Dispatch order created and staff notified.');
 
     $orderId = $response->json('data.id');
 
@@ -132,7 +132,7 @@ test('admin can create a new dispatch order with items', function () {
 test('store validation handles missing and invalid inputs', function () {
     $payload = [
         'shelter_id' => 99999, // invalid shelter
-        'items' => [] // empty manifest
+        'items' => [], // empty manifest
     ];
 
     $response = $this->actingAs($this->admin, 'sanctum')->postJson('/api/dispatch-orders', $payload);
@@ -149,7 +149,7 @@ test('staff can depart a pending dispatch order', function () {
     $response = $this->actingAs($this->staff, 'sanctum')->postJson("/api/dispatch-orders/{$order->id}/depart");
 
     $response->assertStatus(200)
-             ->assertJsonPath('status', 'success');
+        ->assertJsonPath('status', 'success');
 
     $this->assertDatabaseHas('dispatch_orders', [
         'id' => $order->id,
@@ -172,8 +172,8 @@ test('cannot depart a non-pending dispatch order', function () {
 
     $response = $this->actingAs($this->staff, 'sanctum')->postJson("/api/dispatch-orders/{$order->id}/depart");
     $response->assertStatus(422)
-             ->assertJsonPath('status', 'error')
-             ->assertJsonPath('message', 'Only pending orders can be departed.');
+        ->assertJsonPath('status', 'error')
+        ->assertJsonPath('message', 'Only pending orders can be departed.');
 });
 
 test('staff can confirm delivery, which deducts stock', function () {
@@ -200,7 +200,7 @@ test('staff can confirm delivery, which deducts stock', function () {
     $response = $this->actingAs($this->staff, 'sanctum')->postJson("/api/dispatch-orders/{$order->id}/deliver");
 
     $response->assertStatus(200)
-             ->assertJsonPath('status', 'success');
+        ->assertJsonPath('status', 'success');
 
     $this->assertDatabaseHas('dispatch_orders', [
         'id' => $order->id,
@@ -268,8 +268,8 @@ test('cannot deliver a non-in-transit dispatch order', function () {
 
     $response = $this->actingAs($this->staff, 'sanctum')->postJson("/api/dispatch-orders/{$order->id}/deliver");
     $response->assertStatus(422)
-             ->assertJsonPath('status', 'error')
-             ->assertJsonPath('message', 'Only in-transit orders can be confirmed as delivered.');
+        ->assertJsonPath('status', 'error')
+        ->assertJsonPath('message', 'Only in-transit orders can be confirmed as delivered.');
 });
 
 test('admin can cancel a pending dispatch order', function () {
@@ -282,7 +282,7 @@ test('admin can cancel a pending dispatch order', function () {
     $response = $this->actingAs($this->admin, 'sanctum')->postJson("/api/dispatch-orders/{$order->id}/cancel");
 
     $response->assertStatus(200)
-             ->assertJsonPath('status', 'success');
+        ->assertJsonPath('status', 'success');
 
     $this->assertDatabaseHas('dispatch_orders', [
         'id' => $order->id,
@@ -304,6 +304,6 @@ test('cannot cancel a non-pending dispatch order', function () {
 
     $response = $this->actingAs($this->admin, 'sanctum')->postJson("/api/dispatch-orders/{$order->id}/cancel");
     $response->assertStatus(422)
-             ->assertJsonPath('status', 'error')
-             ->assertJsonPath('message', 'Only pending orders can be cancelled.');
+        ->assertJsonPath('status', 'error')
+        ->assertJsonPath('message', 'Only pending orders can be cancelled.');
 });

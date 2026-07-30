@@ -6,6 +6,7 @@ use App\Models\Hazard;
 use App\Models\User;
 use App\Services\PushNotificationService;
 use App\Services\WeatherService;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -40,12 +41,12 @@ class CheckRainAndAlert extends Command
     public function handle()
     {
         $isRaining = $this->weatherService->isCurrentlyRaining();
-        
+
         if ($isRaining) {
             $this->info('Rain detected in Zamboanga City.');
             $rainStartedAt = Cache::get('rain_started_at');
 
-            if (!$rainStartedAt) {
+            if (! $rainStartedAt) {
                 // Rain just started
                 $rainStartedAt = now()->toIso8601String();
                 Cache::forever('rain_started_at', $rainStartedAt);
@@ -54,7 +55,7 @@ class CheckRainAndAlert extends Command
                 $this->sendGeneralRainAlert();
             } else {
                 // Rain has been continuous
-                $started = \Carbon\Carbon::parse($rainStartedAt);
+                $started = Carbon::parse($rainStartedAt);
                 $durationMinutes = abs(now()->diffInMinutes($started));
                 $this->info("Rain has been continuous for {$durationMinutes} minutes.");
 
@@ -75,7 +76,9 @@ class CheckRainAndAlert extends Command
     private function sendGeneralRainAlert()
     {
         $tokens = User::whereNotNull('push_token')->pluck('push_token')->toArray();
-        if (empty($tokens)) return;
+        if (empty($tokens)) {
+            return;
+        }
 
         PushNotificationService::send(
             $tokens,
@@ -92,6 +95,7 @@ class CheckRainAndAlert extends Command
         $triggered = Cache::get('fixed_flood_spots_triggered', false);
         if ($triggered) {
             $this->info('Flood alerts already triggered for this rain session.');
+
             return;
         }
 
@@ -102,6 +106,7 @@ class CheckRainAndAlert extends Command
 
         if ($fixedSpots->isEmpty()) {
             $this->info('No pre-configured fixed flood spots found.');
+
             return;
         }
 
@@ -120,24 +125,25 @@ class CheckRainAndAlert extends Command
 
                 $residents = $users->filter(function ($user) use ($hazard) {
                     $dist = $this->haversine(
-                        (float)$user->last_latitude, (float)$user->last_longitude,
-                        (float)$hazard->latitude, (float)$hazard->longitude
+                        (float) $user->last_latitude, (float) $user->last_longitude,
+                        (float) $hazard->latitude, (float) $hazard->longitude
                     );
+
                     return $dist <= ($user->alert_radius_meters ?? 500);
                 });
             } else {
                 $residents = User::whereNotNull('push_token')
                     ->whereNotNull('last_latitude')
                     ->whereNotNull('last_longitude')
-                    ->whereRaw("ST_Distance_Sphere(POINT(last_latitude, last_longitude), POINT(?, ?)) <= alert_radius_meters", [
-                        $hazard->latitude, $hazard->longitude
+                    ->whereRaw('ST_Distance_Sphere(POINT(last_latitude, last_longitude), POINT(?, ?)) <= alert_radius_meters', [
+                        $hazard->latitude, $hazard->longitude,
                     ])->get();
             }
 
             $tokens = $residents->pluck('push_token')->toArray();
-            
-            if (!empty($tokens)) {
-                $this->info("Sending targeted push alert to " . count($tokens) . " residents near {$hazard->name}");
+
+            if (! empty($tokens)) {
+                $this->info('Sending targeted push alert to '.count($tokens)." residents near {$hazard->name}");
                 PushNotificationService::send(
                     $tokens,
                     '⚠️ Street Flooding Alert',

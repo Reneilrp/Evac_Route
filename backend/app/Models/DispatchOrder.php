@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class DispatchOrder extends Model
 {
     protected $casts = [
-        'departed_at'  => 'datetime',
+        'departed_at' => 'datetime',
         'delivered_at' => 'datetime',
     ];
 
