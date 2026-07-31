@@ -14,17 +14,46 @@ To test on a physical mobile device over Wi-Fi, you need your computer's local I
   ```
   *(Example output: `192.168.1.100`)*
 
-### 2. Configure Environment Files
-Make sure your local IP is updated in these files:
-* **Backend:** `backend/.env`
+### 2. Configure Environment Files & Required Keys
+Before starting the servers, copy `.env.example` to `.env` in each module:
+```bash
+cp backend/.env.example backend/.env
+cp frontend/Evac_RouteMobile/.env.example frontend/Evac_RouteMobile/.env
+cp frontend/Evac_RouteWeb/.env.example frontend/Evac_RouteWeb/.env
+```
+
+#### A. Generate Backend Application Key (`APP_KEY`)
+Run key generation inside the `backend` directory:
+```bash
+cd backend
+php artisan key:generate
+```
+
+#### B. Obtain & Configure Mapbox API Keys
+1. Sign up / log in to [Mapbox Account](https://account.mapbox.com/).
+2. **Public Token (`pk.***`):** Copy Default Public Token and paste into:
+   - `backend/.env` -> `MAPBOX_TOKEN=pk.YOUR_MAPBOX_PUBLIC_TOKEN_HERE`
+   - `frontend/Evac_RouteMobile/.env` -> `MAPBOX_TOKEN=pk.YOUR_MAPBOX_PUBLIC_TOKEN_HERE`
+   - `frontend/Evac_RouteWeb/.env` -> `VITE_MAPBOX_TOKEN=pk.YOUR_MAPBOX_PUBLIC_TOKEN_HERE`
+3. **Secret Downloads Token (`sk.***`):** Create a token with `downloads:read` scope and paste into:
+   - `frontend/Evac_RouteMobile/.env` -> `MAPBOX_DOWNLOADS_TOKEN=sk.YOUR_SECRET_TOKEN` and `RNMAPBOX_MAPS_DOWNLOAD_TOKEN=sk.YOUR_SECRET_TOKEN`
+
+#### C. Network & IP Settings
+Update your local IP address in the environment files:
+* **Backend (`backend/.env`):**
   ```env
   APP_URL=http://<YOUR_LOCAL_IP>:8000
   VITE_REVERB_HOST=<YOUR_LOCAL_IP>
   ```
-* **Mobile Frontend:** `frontend/Evac_RouteMobile/.env`
+* **Mobile Frontend (`frontend/Evac_RouteMobile/.env`):**
   ```env
   API_BASE_URL=http://<YOUR_LOCAL_IP>:8000/api
   REVERB_HOST=<YOUR_LOCAL_IP>
+  ```
+* **Web Frontend (`frontend/Evac_RouteWeb/.env`):**
+  ```env
+  VITE_API_BASE_URL=http://localhost:8000/api
+  VITE_REVERB_HOST=localhost
   ```
 
 ---

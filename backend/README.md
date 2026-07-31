@@ -1,13 +1,42 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Evac_Route Backend API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This is the Laravel 11 backend service providing RESTful APIs, database migrations, real-time WebSocket broadcasting (Laravel Reverb), and offline graph dataset endpoints.
+
+## ⚙️ Environment Setup & Configuration
+
+1. **Copy Environment Template:**
+   ```bash
+   cp .env.example .env
+   ```
+2. **Generate Application Key:**
+   ```bash
+   php artisan key:generate
+   ```
+3. **Configure Environment Variables in `.env`:**
+   - **Database:** Configure `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD`.
+   - **Mapbox Public Token:** Get your default public token (`pk.***`) at [https://account.mapbox.com/](https://account.mapbox.com/) and set `MAPBOX_TOKEN=pk.YOUR_MAPBOX_PUBLIC_TOKEN_HERE` for route elevation & terrain processing.
+   - **Laravel Reverb (WebSockets):** Set `REVERB_APP_ID`, `REVERB_APP_KEY`, `REVERB_APP_SECRET`, `REVERB_HOST`, and `REVERB_PORT`.
+   - **OpenWeather API:** Set `OPENWEATHER_API_KEY` for live weather monitoring.
+
+4. **Run Migrations & Seed Data:**
+   ```bash
+   php artisan migrate --seed
+   ```
+
+5. **Start HTTP Server:**
+   ```bash
+   php artisan serve --host 0.0.0.0 --port 8000
+   ```
+
+6. **Start Reverb WebSockets:**
+   ```bash
+   php artisan reverb:start
+   ```
+
+---
 
 ## About Laravel
+
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
