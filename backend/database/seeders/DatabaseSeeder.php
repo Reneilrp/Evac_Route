@@ -444,11 +444,11 @@ class DatabaseSeeder extends Seeder
 
         // 5. Create 10 Family Resident Profiles per Barangay (50 Total Residents - REV-07)
         $targetBarangays = [
-            'Baliwasan'    => [6.9126, 122.0573],
-            'San Jose'     => [6.9230, 122.0450],
-            'Tetuan'       => [6.9185, 122.0882],
-            'Putik'        => [6.9380, 122.0980],
-            'Tumaga'       => [6.9410, 122.0780],
+            'Baliwasan' => [6.9126, 122.0573],
+            'San Jose' => [6.9230, 122.0450],
+            'Tetuan' => [6.9185, 122.0882],
+            'Putik' => [6.9380, 122.0980],
+            'Tumaga' => [6.9410, 122.0780],
         ];
 
         $families = [];
@@ -488,9 +488,9 @@ class DatabaseSeeder extends Seeder
                 $families[] = FamilyProfile::create([
                     'user_id' => $user->id,
                     'headcount' => rand(2, 6),
-                    'contact_number' => '0917' . str_pad($resCount, 7, '0', STR_PAD_LEFT),
+                    'contact_number' => '0917'.str_pad($resCount, 7, '0', STR_PAD_LEFT),
                     'barangay' => $bgyName,
-                    'qr_code_hash' => 'hash_test_code_' . $slugName . '_' . $k,
+                    'qr_code_hash' => 'hash_test_code_'.$slugName.'_'.$k,
                 ]);
             }
         }

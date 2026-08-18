@@ -55,7 +55,7 @@ export default function EvacMapScreen({ navigation, route }) {
 
   useEffect(() => {
     if (route?.params?.pinHome) {
-      setIsPinningHomeMode(true);
+      setTimeout(() => setIsPinningHomeMode(true), 0);
     }
   }, [route?.params?.pinHome]);
 
@@ -101,8 +101,10 @@ export default function EvacMapScreen({ navigation, route }) {
 
   // REV-03: Layer filter and facility details modal states
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
+  const [selectedDisasterFilter, setSelectedDisasterFilter] = useState('all'); // 'all' | 'flood' | 'fire' | 'earthquake' | 'siege' | 'chemical'
   const [selectedFacilityDetails, setSelectedFacilityDetails] = useState(null);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [isDisasterFilterExpanded, setIsDisasterFilterExpanded] = useState(false);
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
   const [showSituationBrief, setShowSituationBrief] = useState(false);
   
@@ -245,10 +247,11 @@ export default function EvacMapScreen({ navigation, route }) {
       const cachedS = getOfflineShelters();
       const cachedH = getOfflineHazardsExtended(); // P4: use extended schema so offline hazards have type+severity
       const cachedM = getOfflineRoadMaintenances(); // P3: load cached maintenance zones
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOfflineShelters(cachedS);
-      setOfflineHazards(cachedH);
-      setOfflineMaintenances(cachedM);
+      setTimeout(() => {
+        setOfflineShelters(cachedS);
+        setOfflineHazards(cachedH);
+        setOfflineMaintenances(cachedM);
+      }, 0);
 
       // Load road graph data from database
       const dbNodes = getOfflineNodes();
@@ -273,7 +276,9 @@ export default function EvacMapScreen({ navigation, route }) {
         });
       }
 
-      setPreloadedGraph({ nodesMap, edgesBySource });
+      setTimeout(() => {
+        setPreloadedGraph({ nodesMap, edgesBySource });
+      }, 0);
     } catch (e) {
       console.warn('Could not read SQLite database cache on startup:', e);
     }
@@ -362,7 +367,7 @@ export default function EvacMapScreen({ navigation, route }) {
 
   useEffect(() => {
     if (sheltersData || mapData) {
-      setIsOffline(false);
+      setTimeout(() => setIsOffline(false), 0);
     }
   }, [sheltersData, mapData]);
 
@@ -411,19 +416,56 @@ export default function EvacMapScreen({ navigation, route }) {
     };
   }, []);
 
-  const shelters = sheltersData && sheltersData.length > 0 ? sheltersData : offlineShelters;
-  const hazards = useMemo(() => {
-    const rawList = (hazardsData && hazardsData.length > 0) ? hazardsData : offlineHazards;
-    return (rawList || []).filter(h => h.is_active === true || h.is_active === 1 || h.is_active === '1');
-  }, [hazardsData, offlineHazards]);
+  const shelters = (Array.isArray(sheltersData) && sheltersData.length > 0)
+    ? sheltersData
+    : (Array.isArray(sheltersData?.data) ? sheltersData.data : (Array.isArray(offlineShelters) ? offlineShelters : []));
+
+  const rawHazardsList = (Array.isArray(hazardsData) && hazardsData.length > 0)
+    ? hazardsData
+    : (Array.isArray(hazardsData?.data) ? hazardsData.data : (Array.isArray(offlineHazards) ? offlineHazards : []));
+  const hazards = (Array.isArray(rawHazardsList) ? rawHazardsList : []).filter(h => h && (h.is_active === true || h.is_active === 1 || h.is_active === '1'));
 
   // P3: Use live data when available, fall back to SQLite cache offline
-  const maintenances = (maintenanceData && maintenanceData.length > 0)
+  const maintenances = (Array.isArray(maintenanceData) && maintenanceData.length > 0)
     ? maintenanceData
-    : offlineMaintenances;
+    : (Array.isArray(maintenanceData?.data) ? maintenanceData.data : (Array.isArray(offlineMaintenances) ? offlineMaintenances : []));
+
+  // Filter active hazards based on Disaster Preset Filter
+  const safeHazards = Array.isArray(hazards) ? hazards : [];
+  const filteredHazards = selectedDisasterFilter === 'all' ? safeHazards : safeHazards.filter(h => {
+    if (!h) return false;
+    const hType = (h.hazard_type || '').toLowerCase();
+    if (selectedDisasterFilter === 'flood') return ['flood', 'landslide', 'tsunami', 'water'].some(t => hType.includes(t));
+    if (selectedDisasterFilter === 'fire') return ['fire', 'wildfire', 'explosion', 'smoke'].some(t => hType.includes(t));
+    if (selectedDisasterFilter === 'earthquake') return ['earthquake', 'tremor', 'structural_collapse', 'fault'].some(t => hType.includes(t));
+    if (selectedDisasterFilter === 'siege') return ['siege', 'armed', 'conflict', 'civil_unrest', 'security'].some(t => hType.includes(t));
+    if (selectedDisasterFilter === 'chemical') return ['chemical', 'biohazard', 'gas', 'toxic', 'decontamination'].some(t => hType.includes(t));
+    return true;
+  });
+
+  // Filter shelters/places based on Category AND Disaster Preset Filter
+  const safeShelters = Array.isArray(shelters) ? shelters : [];
+  const filteredShelters = safeShelters.filter(shelter => {
+    if (!shelter) return false;
+    // 1. Facility Category Filter
+    if (selectedCategoryFilter === 'shelter' && !(shelter.facility_type === 'evacuation_center' || !shelter.facility_type)) return false;
+    if (selectedCategoryFilter === 'safe_zone' && shelter.facility_type !== 'safe_zone') return false;
+    if (selectedCategoryFilter === 'assembly_point' && shelter.facility_type !== 'assembly_point') return false;
+    if (selectedCategoryFilter === 'security' && !['police_station', 'military_base'].includes(shelter.facility_type)) return false;
+
+    // 2. Disaster Preset Filter Context
+    if (selectedDisasterFilter === 'all') return true;
+    const fType = (shelter.facility_type || '').toLowerCase();
+    if (selectedDisasterFilter === 'flood') return ['safe_zone', 'evacuation_center', 'hospital'].includes(fType);
+    if (selectedDisasterFilter === 'fire') return ['assembly_point', 'fire_station', 'evacuation_center'].includes(fType);
+    if (selectedDisasterFilter === 'earthquake') return ['assembly_point', 'hospital', 'evacuation_center'].includes(fType);
+    if (selectedDisasterFilter === 'siege') return ['police_station', 'military_base', 'evacuation_center', 'safe_zone'].includes(fType);
+    if (selectedDisasterFilter === 'chemical') return ['hospital', 'safe_zone', 'evacuation_center'].includes(fType);
+    return true;
+  });
 
   // Ensure user location defaults to Zamboanga City (Tetuan) if GPS is outside Zamboanga bounds
-  const defaultZamboangaPos = [122.084, 6.918];
+  const defaultZamboangaPos = useMemo(() => [122.084, 6.918], []);
   const isValidZamboangaLocation = (pos) => {
     if (!pos || !Array.isArray(pos) || pos.length < 2) return false;
     const lng = pos[0];
@@ -462,57 +504,50 @@ export default function EvacMapScreen({ navigation, route }) {
     }
 
     return defaultZamboangaPos;
-  }, [location, user]);
+  }, [location, user, defaultZamboangaPos, homeLocation]);
 
   // ─── Proximity Hazard & Threat Protocol Analysis ───
-  const activeThreatsNearUser = useMemo(() => {
-    if (!activeUserLocation || !hazards || hazards.length === 0) return [];
-    return hazards.filter(h => {
-      const hLat = parseFloat(h.latitude);
-      const hLng = parseFloat(h.longitude);
-      const radius = parseFloat(h.radius_meters || 500);
-      const dist = getDistanceMeters(activeUserLocation[1], activeUserLocation[0], hLat, hLng);
-      return dist <= radius + 300; // Inside hazard zone or 300m buffer
-    });
-  }, [activeUserLocation, hazards]);
+  const activeThreatsNearUser = (activeUserLocation && hazards && hazards.length > 0)
+    ? hazards.filter(h => {
+        const hLat = parseFloat(h.latitude);
+        const hLng = parseFloat(h.longitude);
+        const radius = parseFloat(h.radius_meters || 500);
+        const dist = getDistanceMeters(activeUserLocation[1], activeUserLocation[0], hLat, hLng);
+        return dist <= radius + 300; // Inside hazard zone or 300m buffer
+      })
+    : [];
 
-  const activeSiegeThreat = useMemo(() => {
-    return activeThreatsNearUser.find(h =>
-      ['siege', 'war', 'active_shooter', 'civil_unrest'].includes(h.hazard_type) ||
-      (h.disaster_category === 'man_made' && h.severity_level === 'high')
-    );
-  }, [activeThreatsNearUser]);
+  const activeSiegeThreat = activeThreatsNearUser.find(h =>
+    ['siege', 'war', 'active_shooter', 'civil_unrest'].includes(h.hazard_type) ||
+    (h.disaster_category === 'man_made' && h.severity_level === 'high')
+  );
 
-  const isResidentInsideSiege = useMemo(() => {
-    if (!activeUserLocation || !hazards || hazards.length === 0) return false;
-    return hazards.some(h => {
-      if (!['siege', 'war', 'active_shooter', 'civil_unrest'].includes(h.hazard_type) &&
-          !(h.disaster_category === 'man_made' && h.severity_level === 'high')) {
-        return false;
-      }
-      const hLat = parseFloat(h.latitude);
-      const hLng = parseFloat(h.longitude);
-      const radius = parseFloat(h.radius_meters || 500);
-      const dist = getDistanceMeters(activeUserLocation[1], activeUserLocation[0], hLat, hLng);
-      return dist <= radius + 300; // Inside siege zone or 300m crossfire danger buffer
-    });
-  }, [activeUserLocation, hazards]);
+  const isResidentInsideSiege = (activeUserLocation && hazards && hazards.length > 0)
+    ? hazards.some(h => {
+        if (!['siege', 'war', 'active_shooter', 'civil_unrest'].includes(h.hazard_type) &&
+            !(h.disaster_category === 'man_made' && h.severity_level === 'high')) {
+          return false;
+        }
+        const hLat = parseFloat(h.latitude);
+        const hLng = parseFloat(h.longitude);
+        const radius = parseFloat(h.radius_meters || 500);
+        const dist = getDistanceMeters(activeUserLocation[1], activeUserLocation[0], hLat, hLng);
+        return dist <= radius + 300; // Inside siege zone or 300m crossfire danger buffer
+      })
+    : false;
 
-  const activeDisasterNearUser = useMemo(() => {
-    return activeThreatsNearUser.find(h =>
-      ['flood', 'landslide', 'typhoon', 'tsunami', 'fire', 'explosion'].includes(h.hazard_type) ||
-      h.severity_level === 'high' || h.severity_level === 'critical'
-    );
-  }, [activeThreatsNearUser]);
+  const activeDisasterNearUser = activeThreatsNearUser.find(h =>
+    ['flood', 'landslide', 'typhoon', 'tsunami', 'fire', 'explosion'].includes(h.hazard_type) ||
+    h.severity_level === 'high' || h.severity_level === 'critical'
+  );
 
   // Earthquake Broadcast Warning Detector
-  const activeEarthquakeHazard = useMemo(() => {
-    if (!hazards || hazards.length === 0) return null;
-    return hazards.find(h =>
-      (h.is_active === true || h.is_active === 1 || h.is_active === '1') &&
-      (h.hazard_type === 'earthquake' || h.name?.toLowerCase().includes('earthquake') || h.name?.toLowerCase().includes('tremor'))
-    );
-  }, [hazards]);
+  const activeEarthquakeHazard = (hazards && hazards.length > 0)
+    ? hazards.find(h =>
+        (h.is_active === true || h.is_active === 1 || h.is_active === '1') &&
+        (h.hazard_type === 'earthquake' || h.name?.toLowerCase().includes('earthquake') || h.name?.toLowerCase().includes('tremor'))
+      )
+    : null;
 
   const [hasDismissedEarthquakeModal, setHasDismissedEarthquakeModal] = useState(false);
 
@@ -551,13 +586,10 @@ export default function EvacMapScreen({ navigation, route }) {
   const showAlertBanner = Boolean(activeAlertKey && dismissedAlertKey !== activeAlertKey);
 
   let nearestShelter = null;
-  let smartRoutingReason = null;
-
-  if (activeUserLocation && shelters.length > 0) {
-    const targetResult = determineTargetFacility(activeUserLocation[1], activeUserLocation[0], shelters, hazards, selectedCategoryFilter);
+  if (activeUserLocation && filteredShelters.length > 0) {
+    const targetResult = determineTargetFacility(activeUserLocation[1], activeUserLocation[0], filteredShelters, filteredHazards, selectedCategoryFilter);
     if (targetResult && targetResult.facility) {
       nearestShelter = targetResult.facility;
-      smartRoutingReason = targetResult.reason;
     }
   }
 
@@ -566,6 +598,8 @@ export default function EvacMapScreen({ navigation, route }) {
   const targetShelterCoords = activeTargetShelter
     ? [parseFloat(activeTargetShelter.longitude), parseFloat(activeTargetShelter.latitude)]
     : null;
+  const targetLng = targetShelterCoords?.[0];
+  const targetLat = targetShelterCoords?.[1];
 
   const distanceMeters = (activeUserLocation && targetShelterCoords)
     ? getDistanceMeters(activeUserLocation[1], activeUserLocation[0], targetShelterCoords[1], targetShelterCoords[0])
@@ -576,16 +610,12 @@ export default function EvacMapScreen({ navigation, route }) {
   // Hysteresis Deadband Buffer (1.4 km - 1.6 km) to prevent GPS Jitter UI Flickering
   const prevSiegeStateRef = useRef(false);
 
-  const isShelterNearbyForSiege = useMemo(() => {
+  const isShelterNearbyForSiege = (() => {
     if (!nearestShelter || distanceMeters <= 0) {
       prevSiegeStateRef.current = false;
       return false;
     }
 
-    // Dual Threshold Hysteresis:
-    // Switch to NEAR at <= 1400m (1.4 km)
-    // Switch to FAR at >= 1600m (1.6 km)
-    // Between 1400m and 1600m: Maintain previous state to eliminate boundary GPS jitter
     if (distanceMeters <= 1400) {
       prevSiegeStateRef.current = true;
     } else if (distanceMeters >= 1600) {
@@ -593,7 +623,7 @@ export default function EvacMapScreen({ navigation, route }) {
     }
 
     return prevSiegeStateRef.current;
-  }, [distanceMeters, nearestShelter]);
+  })();
 
   const proceedWithNavigation = (dest) => {
     setSelectedShelter(dest);
@@ -745,7 +775,8 @@ export default function EvacMapScreen({ navigation, route }) {
       lastHazardsRef.current = hazards;
       lastShelterCoordsRef.current = targetShelterCoords;
     }
-  }, [isNavigating, activeUserLocation, targetShelterCoords, hazards, preloadedGraph, transportationMode]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNavigating, activeUserLocation, targetLng, targetLat, hazards, preloadedGraph, transportationMode, activeTargetShelter?.name, cachedRoute, lastRoutingLocation]);
 
   if (!location || (isLoadingShelters && offlineShelters.length === 0)) {
     return (
@@ -784,9 +815,11 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
   };
 }
 
+
+
   const hazardsGeoJSON = {
     type: 'FeatureCollection',
-    features: hazards.map(hazard => {
+    features: filteredHazards.map(hazard => {
       const polygon = createCirclePolygon(
         [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
         parseFloat(hazard.radius_meters || 50)
@@ -891,16 +924,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           }}
         />
 
-        {shelters
-          .filter(shelter => {
-            if (selectedCategoryFilter === 'all') return true;
-            if (selectedCategoryFilter === 'shelter') return shelter.facility_type === 'evacuation_center' || !shelter.facility_type;
-            if (selectedCategoryFilter === 'safe_zone') return shelter.facility_type === 'safe_zone';
-            if (selectedCategoryFilter === 'assembly_point') return shelter.facility_type === 'assembly_point';
-            if (selectedCategoryFilter === 'security') return ['police_station', 'military_base'].includes(shelter.facility_type);
-            return true;
-          })
-          .map(shelter => {
+        {filteredShelters.map(shelter => {
             const sLat = parseFloat(shelter.latitude);
             const sLng = parseFloat(shelter.longitude);
             
@@ -1539,48 +1563,144 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           <Info size={13} color="#94a3b8" />
         </TouchableOpacity>
 
-        {/* Right Side: Filter Dropdown Selector Pill */}
-        <TouchableOpacity
-          onPress={() => {
-            setIsFilterExpanded(prev => !prev);
-            Vibration.vibrate(40);
-          }}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: isHighContrast ? '#000000' : 'rgba(15, 23, 42, 0.95)',
-            paddingHorizontal: 12,
-            paddingVertical: 9,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: isFilterExpanded ? colors.primary : (isHighContrast ? '#FFFF00' : 'rgba(255, 255, 255, 0.2)'),
-            elevation: 6,
-            gap: 6,
-          }}
-        >
-          <Text style={{ fontSize: 12 }}>
-            {selectedCategoryFilter === 'shelter' ? '🏠' :
-             selectedCategoryFilter === 'safe_zone' ? '🛡️' :
-             selectedCategoryFilter === 'assembly_point' ? '🚩' :
-             selectedCategoryFilter === 'security' ? '👮' : '📍'}
-          </Text>
-          <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>
-            {selectedCategoryFilter === 'shelter' ? 'Evac Centers' :
-             selectedCategoryFilter === 'safe_zone' ? 'Safe Zones' :
-             selectedCategoryFilter === 'assembly_point' ? 'Assembly Points' :
-             selectedCategoryFilter === 'security' ? 'Police/Military' : 'All Places'}
-          </Text>
-          <ChevronDown size={14} color="#38bdf8" style={{ transform: [{ rotate: isFilterExpanded ? '180deg' : '0deg' }] }} />
-        </TouchableOpacity>
+        {/* Right Side: Dual Dropdown Selector Pills (Disasters & Places) */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {/* Disaster Event Dropdown Pill */}
+          <TouchableOpacity
+            onPress={() => {
+              setIsDisasterFilterExpanded(prev => !prev);
+              setIsFilterExpanded(false);
+              Vibration.vibrate(40);
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: selectedDisasterFilter !== 'all' ? '#0284c7' : (isHighContrast ? '#000000' : 'rgba(15, 23, 42, 0.95)'),
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: isDisasterFilterExpanded ? colors.primary : (isHighContrast ? '#FFFF00' : 'rgba(255, 255, 255, 0.2)'),
+              elevation: 6,
+              gap: 5,
+            }}
+          >
+            <Text style={{ fontSize: 12 }}>
+              {selectedDisasterFilter === 'flood' ? '🌊' :
+               selectedDisasterFilter === 'fire' ? '🚒' :
+               selectedDisasterFilter === 'earthquake' ? '🌋' :
+               selectedDisasterFilter === 'siege' ? '⚔️' :
+               selectedDisasterFilter === 'chemical' ? '🧪' : '🌐'}
+            </Text>
+            <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: 'bold' }}>
+              {selectedDisasterFilter === 'flood' ? 'Flood' :
+               selectedDisasterFilter === 'fire' ? 'Fire' :
+               selectedDisasterFilter === 'earthquake' ? 'Quake' :
+               selectedDisasterFilter === 'siege' ? 'Siege' :
+               selectedDisasterFilter === 'chemical' ? 'Chem' : 'Disasters'}
+            </Text>
+            <ChevronDown size={13} color="#38bdf8" style={{ transform: [{ rotate: isDisasterFilterExpanded ? '180deg' : '0deg' }] }} />
+          </TouchableOpacity>
+
+          {/* Place Category Dropdown Pill */}
+          <TouchableOpacity
+            onPress={() => {
+              setIsFilterExpanded(prev => !prev);
+              setIsDisasterFilterExpanded(false);
+              Vibration.vibrate(40);
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: selectedCategoryFilter !== 'all' ? colors.primary : (isHighContrast ? '#000000' : 'rgba(15, 23, 42, 0.95)'),
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: isFilterExpanded ? colors.primary : (isHighContrast ? '#FFFF00' : 'rgba(255, 255, 255, 0.2)'),
+              elevation: 6,
+              gap: 5,
+            }}
+          >
+            <Text style={{ fontSize: 12 }}>
+              {selectedCategoryFilter === 'shelter' ? '🏠' :
+               selectedCategoryFilter === 'safe_zone' ? '🛡️' :
+               selectedCategoryFilter === 'assembly_point' ? '🚩' :
+               selectedCategoryFilter === 'security' ? '👮' : '📍'}
+            </Text>
+            <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: 'bold' }}>
+              {selectedCategoryFilter === 'shelter' ? 'Shelters' :
+               selectedCategoryFilter === 'safe_zone' ? 'Safe' :
+               selectedCategoryFilter === 'assembly_point' ? 'Assembly' :
+               selectedCategoryFilter === 'security' ? 'Police' : 'Places'}
+            </Text>
+            <ChevronDown size={13} color="#38bdf8" style={{ transform: [{ rotate: isFilterExpanded ? '180deg' : '0deg' }] }} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* ─── Filter Dropdown Menu Options ─── */}
-      {isFilterExpanded && (
+      {/* Active Disaster Filter Contextual Notification Banner */}
+      {selectedDisasterFilter !== 'all' && (
         <View style={{
           position: 'absolute',
-          top: 98,
+          top: Math.max(insets.top + 48, 92),
+          left: 16,
           right: 16,
-          width: 170,
+          zIndex: 38,
+          backgroundColor: selectedDisasterFilter === 'flood' ? 'rgba(2, 132, 199, 0.95)' :
+                           selectedDisasterFilter === 'fire' ? 'rgba(234, 88, 12, 0.95)' :
+                           selectedDisasterFilter === 'earthquake' ? 'rgba(217, 119, 6, 0.95)' :
+                           selectedDisasterFilter === 'siege' ? 'rgba(79, 70, 229, 0.95)' : 'rgba(225, 29, 72, 0.95)',
+          borderRadius: 14,
+          paddingHorizontal: 12,
+          paddingVertical: 7,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderWidth: 1,
+          borderColor: 'rgba(255, 255, 255, 0.3)',
+          elevation: 6,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+            <Text style={{ fontSize: 13 }}>
+              {selectedDisasterFilter === 'flood' ? '🌊' :
+               selectedDisasterFilter === 'fire' ? '🚒' :
+               selectedDisasterFilter === 'earthquake' ? '🌋' :
+               selectedDisasterFilter === 'siege' ? '⚔️' : '🧪'}
+            </Text>
+            <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '800', flex: 1 }} numberOfLines={1}>
+              {selectedDisasterFilter === 'flood' ? 'FLOOD MODE: Safe High-Ground & Evac Centers' :
+               selectedDisasterFilter === 'fire' ? 'FIRE MODE: Safe Assembly Points & Fire Stations' :
+               selectedDisasterFilter === 'earthquake' ? 'EARTHQUAKE MODE: Open Areas & Hospitals' :
+               selectedDisasterFilter === 'siege' ? 'SIEGE MODE: Police & Military Security Points' :
+               'CHEMICAL MODE: Hospitals & Decontamination Safe Zones'}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => {
+              setSelectedDisasterFilter('all');
+              Vibration.vibrate(30);
+            }}
+            style={{
+              backgroundColor: 'rgba(0,0,0,0.3)',
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 8,
+              marginLeft: 6,
+            }}
+          >
+            <Text style={{ color: '#ffffff', fontSize: 10, fontWeight: '900' }}>RESET</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ─── Disaster Event Dropdown Menu Options ─── */}
+      {isDisasterFilterExpanded && (
+        <View style={{
+          position: 'absolute',
+          top: Math.max(insets.top + 48, 92),
+          right: 125,
+          width: 175,
           backgroundColor: isHighContrast ? '#000000' : 'rgba(15, 23, 42, 0.98)',
           borderRadius: 16,
           padding: 6,
@@ -1593,6 +1713,69 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           shadowOpacity: 0.4,
           shadowRadius: 8,
         }}>
+          <Text style={{ fontSize: 9, fontWeight: '900', color: '#38bdf8', paddingHorizontal: 8, paddingVertical: 4, textTransform: 'uppercase' }}>
+            Filter Disaster Event
+          </Text>
+          {[
+            { key: 'all', label: 'All Disasters', icon: '🌐' },
+            { key: 'flood', label: 'Flood Event', icon: '🌊' },
+            { key: 'fire', label: 'Fire Outbreak', icon: '🚒' },
+            { key: 'earthquake', label: 'Earthquake', icon: '🌋' },
+            { key: 'siege', label: 'Armed Siege', icon: '⚔️' },
+            { key: 'chemical', label: 'Chemical Spill', icon: '🧪' },
+          ].map(dItem => (
+            <TouchableOpacity
+              key={dItem.key}
+              onPress={() => {
+                setSelectedDisasterFilter(dItem.key);
+                setIsDisasterFilterExpanded(false);
+                Vibration.vibrate(30);
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 12,
+                paddingVertical: 9,
+                borderRadius: 10,
+                backgroundColor: selectedDisasterFilter === dItem.key ? (isHighContrast ? '#FFFF00' : colors.primary) : 'transparent',
+                marginBottom: 2,
+              }}
+            >
+              <Text style={{ fontSize: 13, marginRight: 8 }}>{dItem.icon}</Text>
+              <Text style={{
+                fontSize: 12,
+                fontWeight: '700',
+                color: selectedDisasterFilter === dItem.key ? (isHighContrast ? '#000000' : '#ffffff') : '#cbd5e1'
+              }}>
+                {dItem.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* ─── Place Category Dropdown Menu Options ─── */}
+      {isFilterExpanded && (
+        <View style={{
+          position: 'absolute',
+          top: Math.max(insets.top + 48, 92),
+          right: 16,
+          width: 175,
+          backgroundColor: isHighContrast ? '#000000' : 'rgba(15, 23, 42, 0.98)',
+          borderRadius: 16,
+          padding: 6,
+          borderWidth: 1,
+          borderColor: isHighContrast ? '#FFFF00' : 'rgba(255, 255, 255, 0.15)',
+          zIndex: 50,
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.4,
+          shadowRadius: 8,
+        }}>
+          <Text style={{ fontSize: 9, fontWeight: '900', color: '#94a3b8', paddingHorizontal: 8, paddingVertical: 4, textTransform: 'uppercase' }}>
+            Filter Place Type
+          </Text>
           {[
             { key: 'all', label: 'All Places', icon: '📍' },
             { key: 'shelter', label: 'Evac Centers', icon: '🏠' },
@@ -1611,7 +1794,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
                 flexDirection: 'row',
                 alignItems: 'center',
                 paddingHorizontal: 12,
-                paddingVertical: 10,
+                paddingVertical: 9,
                 borderRadius: 10,
                 backgroundColor: selectedCategoryFilter === item.key ? (isHighContrast ? '#FFFF00' : colors.primary) : 'transparent',
                 marginBottom: 2,

@@ -53,6 +53,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // Resident Incident Reporting (any authenticated user)
     Route::post('/incidents', [IncidentController::class, 'submit']);
+    Route::get('/user/incidents', [IncidentController::class, 'myIncidents']);
 
     // --- LGU & ADMIN ROUTES ---
     Route::middleware(['role:admin,lgu_staff'])->group(function () {

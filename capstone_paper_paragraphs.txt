@@ -1,0 +1,534 @@
+ Republic of the Philippines
+Western Mindanao State University
+College of Computing Studies
+DEPARTMENT OF INFORMATION TECHNOLOGY
+Zamboanga City
+EVAC-ROUTE: An A-Star Algorithm-Based Disaster Logistics System and Dynamic Pathfinding for Multi-Hazard Urban Emergencies
+A Capstone Project Presented to the Faculty of 
+Department of Information Technology
+College of Computing Studies
+In Partial Fulfillment of the Requirements for the Degree of
+Bachelor of Science in Information Technology
+. Erica C. Aquino,
+ Jenson L. Canones,
+ Pheinz Reneil T. Magnun
+Researchers
+Jason A. Catadman, MIT
+Jhon Paul I. Arip, MIT
+Adviser
+May 2027
+Republic of the Philippines
+Western Mindanao State University
+College of Computing Studies
+DEPARTMENT OF INFORMATION TECHNOLOGY
+Zamboanga City
+Approval Sheet
+The Capstone Project attached hereto, entitled “EVAC-ROUTE: An A-Star Algorithm-Based Disaster Logistics System and Dynamic Pathfinding for Multi-Hazard Urban Emergencies”, prepared and submitted by Erica C. Aquino, Jenson L. Canones, Pheinz Reneil T. Magnun, in partial fulfillment of the requirements for the degree of Bachelor of Science in Information Technology, is hereby recommended for Oral Examination.
+Jason A. Catadman, MIT
+                                                                                   Adviser
+APPROVED by the Oral Examination Committee on _______________ with a rating of PASSED.
+ENGR. MARJORIE A, ROJAS
+Chairperson
+JAYDEE C. BALLAHO, MIT  
+Member
+SHERARD CHRIS B. BANQUERIGO
+Member
+ACCEPTED in partial fulfillment of the requirements for the degree of BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY
+MR. JASON A. CATADMAN, MIT
+Head, Department of Information Technology
+ENGR. MARK L. FLORES, PhD
+Dean, College of Computing Studies
+Acknowledgment
+<This section recognizes the persons and organizations who assisted the researchers in the completion of the Capstone Project. Acknowledgments should be expressed simply and tactfully.>
+Abstract
+During multi-hazard urban emergencies such as flash floods, standard disaster response operations are severely bottlenecked by manual tracking, estimation-based resource distribution, and static navigation maps that fail to account for dynamic hazards. Furthermore, existing digital management platforms are highly dependent on continuous internet connectivity, rendering them virtually useless during telecommunication infrastructure failures. 
+To address these critical gaps, this study developed EVAC-ROUTE, an Algorithm-Based Disaster Logistics System designed to facilitate context-aware dynamic pathfinding, automated shelter capacity matching, and equitable relief allocation in Zamboanga City. Developed using the Agile methodology, the system utilizes a dual-client architecture comprising a React-based web command dashboard for Local Government Unit (LGU) administrators and a React Native mobile application for local residents. The platform integrates a custom A* (A-star) heuristic search algorithm executed directly on the user's mobile device via a localized SQLite database, enabling safe evacuation routing even during total network blackouts. Additionally, an offline-first Quick Response (QR) digital identification matrix was engineered to automate facility check-ins and mathematically deduct relief inventory based on LGU-configured ration templates. 
+Keywords: A-Star Algorithm, Disaster Logistics, Dynamic Pathfinding, Offline-First Architecture, Resource Allocation
+Table of Contents
+Approval Sheet1
+Acknowledgment2
+Abstract3
+Table of Contents4
+List of Figures6
+List of Tables6
+List of Appendices6
+CHAPTER IINTRODUCTION1
+Background of the Study1
+Statement of the Problem3
+Objectives3
+Scope and Limitations4
+Significance of the Study5
+Definition of Terms7
+CHAPTER IIREVIEW OF RELATED LITERATURE10
+Related Studies10
+Synthesis19
+Conceptual Framework25
+CHAPTER IIIMETHODOLOGY29
+Research Design29
+Data Source31
+Data Gathering Instrument31
+Data Gathering Technique and Procedures32
+Data Analysis32
+Software Development33
+Developmental Tools46
+Testing and Evaluation49
+CHAPTER IVRESULTS AND DISCUSSION50
+CHAPTER VCONCLUSION AND RECOMMENDATIONS51
+Conclusion51
+Recommendations51
+References52
+List of Figures
+Figure 1: Not a Conceptual Framework but a Guide8
+List of Tables
+Table 1: Definition of Terms4
+Table 2: Synthesis7
+Table 3: Developmental Tools and Cost13
+List of Appendices
+Appendix A: Data Collected17
+Appendix B: System Design18
+Appendix C: Evaluation Tool19
+Appendix D: Relevant Source Code20
+Appendix E: Ethical Clearance21
+Appendix F: Plagiarism Report22
+Appendix G: Research Critique and Editing Certificate23
+Appendix H: Curriculum Vitae24
+CHAPTER IINTRODUCTION
+Background of the Study
+Natural disasters represent a primary driver of high mortality rates globally, leaving communities physically compromised and struggling with psychological distress regarding immediate survival. In response to extreme multi-hazard disruptions such as heavy rainfall, systemic urban flooding, and seismic events, local governments are tasked with establishing structural evacuation paths and distribution hubs. However, standard disaster response operations are heavily bottlenecked by systemic fragmentation, infrastructure degradation, and computational limitations within active crisis zones.
+A critical operational vulnerability highlighted across humanitarian engineering literature is the historical dependency on rigid, deterministic scheduling and centralized data pipelines. Scholars have demonstrated that traditional post-disaster networks face severe structural isolation across intergovernmental divisions and material distribution channels, introducing immense processing lag during cascading emergencies [1]. To alleviate these data latencies, localized spatial modeling for flood-prone community grids demonstrates that roadway configurations must actively adapt to dynamic capacity and layout variables to prevent systemic bottlenecking [2]. Furthermore, conventional routing systems often rely on static mapping frameworks that fail to account for dynamic, real-world variables. Environmental disruptions frequently render primary pathways unpassable due to rising water lines, structural rubble, or gridlock. Mathematical models confirm that treating emergency logistics under static assumptions leads to systemic failure, as traditional pathfinding paradigms completely neglect time-dependent constraints like traffic density, visibility degradation, and fluctuating service times [3]. When flash floods occur, typical shortest-path tools fail because they do not dynamically factor in rainfall-intensity curves or the specific structural clearance tolerances of different rescue vehicle types [4]. there is also an adaptive method revolves around a novel dynamic graph-based algorithm that iteratively and recursively distributes the traffic flow across the road network using a depth first search (DFS) approach. When the algorithm assigns the traffic flow to the road segments, it also determines the direction of the road segments to dynamically improve the performance of the evacuation process[23]
+This operational uncertainty extends heavily into facility coordination and physical inventory placement. Academic evaluations of municipal layout schemas show that uncoordinated shelter selection and a failure to establish multi-level service boundaries create severe regional coverage gaps [5]. Macro-level spatial planning metrics further reveal that a high percentage of designated public assembly nodes remain highly vulnerable to cascading environmental threats because initial site assessments lack rigorous multi-criteria baseline checking [6]. Even when public infrastructure, such as regional schools, is utilized for temporary shelter, the lack of localized capacity rules transforms these safe zones into uncoordinated hubs that suffer from intense crowding and material waste [7]. During sudden mass displacements, managing authorities struggle to balance the minimization of civilian travel times with systemic resource equity under tight supply constraints [8]. These operational imbalances are further amplified by institutional barriers across administrative tiers, which frequently restrict real-time decision-making and stall the deployment of emergency field strategies [9].
+When populations simultaneously converge upon restricted exit corridors, the inability of legacy platforms to track real-time crowd velocity variations and structural bottlenecks can lead to catastrophic delays [10]. Consequently, tracking the clinical and logistical demands of displaced citizens becomes virtually impossible without adaptive data parsing modules tied directly to centralized logistical engines [11]. Proactive location-routing strategies highlight that pre-positioning assets based on probabilistic scenario tracking can mitigate transit latency [12]. Yet executing agencies continue to operate under severe data scarcity during the volatile initial hours following a disaster [13]. Solving these highly complex, non-linear optimization issues requires models that seamlessly integrate localized material allocation directly with dynamic, real-time path planning parameters [14].
+These global and regional vulnerabilities are acutely mirrored in the localized context of Zamboanga City. The current disaster response framework in the municipality relies heavily on manual interventions, static geographical maps, and non-automated tracking tools. When flash floods or earthquakes strike the urban center, the local government units open emergency shelters dynamically as conditions worsen. This ad-hoc approach creates massive logistical friction: residents navigate blindly through hazardous corridors only to find roads obstructed or designated safe zones already exceeding safe capacities. Concurrently, the City Social Welfare and Development Office (CSWDO) distributes life-saving relief provisions via estimation-heavy methods without verifiable headcount metrics at the reception gates. This dynamic lack of context-aware orchestration and structural resilience during infrastructure blackouts is the critical operational gap that EVAC-ROUTE is designed to fill.
+Statement of the Problem
+The lack of modernized, data-driven frameworks within local emergency services in Zamboanga City severely delays critical relief operations and compromises public safety during calamities. Current disaster response protocols suffer from a vital technological gap characterized by static navigation tools that fail to account for dynamic hazards, unmonitored shelter capacities that lead to systemic overcrowding, and estimation-based logistics that result in inequitable supply distribution. Furthermore, the inherent dependence of existing management systems on continuous internet connectivity renders them virtually useless during infrastructure failures. Addressing these intersecting gaps is critical; without an adaptive, offline-capable system that integrates real-time hazard routing, precise shelter tracking, and mathematically fair resource allocation, emergency operations will continue to experience catastrophic logistical failures that jeopardize the lives of vulnerable populations.
+Objectives
+The general objective of this study is to develop an Algorithm-Based Disaster Logistics System capable of multi-hazard dynamic pathfinding, real-time shelter capacity matching, and automated equitable relief distribution for urban emergencies. To achieve this primary goal and ensure the system effectively addresses the identified emergency response gaps, the study aims to accomplish the following specific objectives:
+To build a web command dashboard for LGU admins and an offline-capable mobile app for residents.
+To create an algorithm that recalculates routes based on hazard severity tiers (e.g., floods, road blockage).
+To create backend rules that monitor shelter availability and modify the system logic to allow shelter capacity to safely exceed predefined maximum limits by a configurable overflow percentage to account for sudden emergency surges, before redirecting evacuees to alternative sites. 
+To program an inventory system that multiplies a family’s registered headcount by custom, LGU-defined ration templates, ensuring a precise and automated deduction from central inventory stocks upon check-in.
+To code an offline caching system using AsyncStorage so residents can generate and present QR codes without cell data or Wi-Fi.
+Scope and Limitations
+Scope 
+The EVAC-ROUTE system works through three main access levels: 
+LGU/DRRM Administrators- who manage shelter statuses, map hazard pins, and view real-time data tables
+CSWDO Officials- who configure ration templates, monitor central warehouse inventories, and generate automated dispatch manifests
+Local Residents- who input family headcounts, declare transport types, view live evacuation paths, and present digital IDs.
+The system is built on a robust, multi-tier architecture designed for seamless cross-platform performance. The administrative console is deployed as a responsive web application powered by React and Tailwind CSS, while the citizen application is built as a native mobile app using React Native. These frontend applications connect directly to a secure PHP/Laravel RESTful API backend supported by a MySQL database. The entire ecosystem is safely deployed on a DigitalOcean Ubuntu Droplet utilizing Nginx and Cloudflare Tunnels to establish a secure, Zero Trust infrastructure. At its core, the system integrates the Mapbox API for mapping visual coordinates, local device caching for offline operations, and an automated PDF generation module to seamlessly output logistics manifests. The disaster management scope of the system encompasses both natural hazards (such as flash floods, severe typhoons, and earthquakes) and man-made disasters (including structural fires, industrial accidents, and localized infrastructure blockages) 
+Limitation
+The system requires smartphones with functioning cameras for scanning QR codes at shelter entry points, and local workstations for LGU command centers. The system relies entirely on manual or broadcast data inputs regarding hazard zones and flood depths pinned by LGU operators; it does not perform automated autonomous weather predictions or IoT telemetry monitoring on its own. While the resident app functions offline for ID retrieval and scanning, the initial download, user registration, and real-time mapping updates still require an active cellular or internet network prior to entering a total blackout zone.
+Significance of the Study
+The completion of this study yields significant advantages for various sectors of society:
+Local DRRM Teams and LGU Administrators: Provides a highly reliable command tool to manage urban movements mathematically, eliminate data fragmentation, and broadcast critical environmental updates instantly.
+CSWDO Officials: Eliminates the inefficiencies of estimation-based logistics by giving them mathematically sound guidelines to deploy relief stocks, preventing supply hoarding and food/water shortages.
+Vulnerable Community Residents: Empowers citizens with precise, life-saving routing maps tailored to how they travel, while guaranteeing their equitable access to government provisions during infrastructure failures via reliable offline access.
+Future Researchers: Serves as a technical blueprint for combining pathfinding algorithms with real-time resource allocation and offline data architectures in the field of disaster informatics.
+Definition of Terms
+Table 1: Definition of Terms
+Term
+Definition
+Algorithm-Based Disaster Logistics System 
+The core dual-client framework designed to mathematically calculate safe evacuation paths and manage physical relief distribution during emergencies. 
+Algorithmic Capacity Matching 
+A backend rule-based logic system that monitors shelter occupancy, accommodates emergency overflow limits during active crises, and automatically redirects evacuees to alternative locations only when absolute surge capacities are breached  
+AsyncStorage
+A local mobile device storage architecture used to cache and save data directly onto a resident's smartphone for offline access. 
+Automated Dispatch Manifests 
+Mathematically precise data tables generated for the CSWDO showing exactly how many bulk supplies need to be delivered to specific shelters based on live headcounts. 
+City Social Welfare and Development Office (CSWDO) 
+The local government agency responsible for managing central warehouse inventories, configuring ration templates, and distributing relief goods. 
+Context-Aware Pathfinding Engine
+A custom routing algorithm that dynamically calculates evacuation routes by matching a user’s mode of transportation against active hazard severity levels. 
+Dual-Client Architecture 
+A software design pattern consisting of a web-based command dashboard for administrators and a native mobile application for local residents.
+Equitable Relief Allocation Engine
+A backend system logic that automatically multiplies a family’s registered headcount by custom ration templates to deduct precise stock from the inventory upon check-in. 
+Hazard Zone Pinning: 
+The digital action performed by LGU administrators to mark active danger zones (such as floods or debris) on the central map network. 
+Laravel Tunnels (Cloudflare Tunnels)
+A Zero Trust security infrastructure utilized to establish secure connections between the system backend and deployment environments. 
+Local Government Units (LGUs) 
+The local government offices and disaster personnel responsible for broadcasting safety updates, opening shelters, and managing emergency operations in Zamboanga City 
+Multi-Hazard Urban Emergency 
+A complex crisis scenario where multiple environmental dangers or man-made dangers such as flash floods, road maintenance and earthquake
+Offline-First QR Digital ID: 
+A secure family identification barcode generated and cached locally on a resident's mobile device, allowing physical verification scanning to work without an internet connection. 
+Ration Templates
+Custom LGU-defined inventory configurations that dictate the fixed units of supplies allocated per individual or household unit. 
+Tiered Hazard Flagging 
+The classification of physical threats into clear severity categories (such as low, medium, and high) based on their impact on different vehicle and pedestrian types. 
+CHAPTER IIREVIEW OF RELATED LITERATURE
+Related Studies
+This chapter presents a systematic synthesis of academic literature, localized studies, and existing platforms relevant to the architectural design of EVAC-ROUTE. The study examines the application of current humanitarian engineering practices to address severe logistical bottlenecks, infrastructure failures, and communication breakdowns during urban crises. This section outlines the technical requirements necessary for transitioning emergency response operations from outdated manual methods and indiscriminate resource distribution by evaluating existing engineering models. The common characteristics identified in these previous implementations highlight several critical functionality gaps, which define the engineering objectives of this dual-client system. 
+The literature and systems review specifically focuses on four core domains necessary to achieve an integrated disaster response network. It assesses context-aware pathfinding engines that can dynamically adapt real-time routes as multi-hazard barriers evolve in combination with civilian transit constraints, together with rule-based capacity matching frameworks intended to prevent the overcrowding of shelters. It also explores automated supply chain logistics for defining equitable allocation of stores, and offline first local storage and barcode protocols to support critical data access during a total telecommunication outage. These technical pillars form the theory and practical framework for this proposed system when taken together.
+The following literature and systems exhibit comparable structures and thematic relevance.
+GIS-based evacuation routing using capacity aware shortest path evacuation routing algorithm and analytic hierarchy process for flood prone communities [2]
+The integration of Geographic Information Systems (GIS) with network optimization models represents a crucial milestone in automated evacuation mapping for highly vulnerable urban zones, as demonstrated by the foundational research of Manliguez et al. (2017) [2]. Traditional city planning and emergency management have long relied on static physical emergency mapping to guide civilian movement during climate-induced displacements. However, contemporary disaster research emphasizes that during severe urban floods, the topological characteristics of municipal transit corridors alter rapidly, necessitating a transition toward dynamic, computerized spatial network graphs that can translate geographic layouts into active computational elements. The researchers recognized that flood-prone communities require localized spatial-routing mechanics that can navigate environmental uncertainties and changing water depths.
+The fundamental operational flaw identified by the researchers centers on the inherent limitations of standard shortest-path algorithms when applied to mass civilian evacuations. When a sudden flood inundates a high-density municipal sector, conventional routing platforms and standard GPS navigators compute exit trajectories based solely on absolute geometric distances. This uniform routing logic creates a massive, uncoordinated convergence of civilian evacuees and emergency vehicles along major thoroughfares, completely neglecting destination facility capacities and structural corridor widths. Consequently, these routes rapidly transform into clogged transit bottlenecks that trap citizens inside hazardous zones while over-populating specific reception facilities far past their safe structural thresholds, leading to chaotic and fatal miscalculations in evacuation management.
+To systematically eliminate these spatial transit bottlenecks, the investigators engineered an integrated geospatial evacuation routing engine evaluated within flood-prone municipal zones in Mindanao, Philippines. The architectural core of their solution relies on extracting precise building footprints and secondary road segments from high-resolution Light Detection and Ranging (LiDAR) datasets to construct an active topological network graph. The system processes spatial routing requests by combining a customized Capacity-Aware Shortest Path Evacuation Routing (CASPER) algorithm with multi-criteria weights derived via the Analytic Hierarchy Process (AHP). This framework continuously alters the calculated cost variables of edges within the spatial grid; when a specific street experiences critical volume inundation or a target facility reaches its maximum occupancy threshold, the CASPER engine applies an exponential penalty multiplier to that path. This automatically reroutes subsequent civilian nodes toward alternative, less-congested secondary corridors, preventing bottleneck formation. However, this complex GIS architecture relies completely on server-side geospatial processors, rendering its pathfinding engine useless on consumer mobile devices if web connectivity collapses during an active crisis.
+Bridging the Information Gap in Emergency Response: A Hybrid Model for Digital Fire Safety Instructions [19]
+The structural integrity and reliability of digital disaster management software are inherently bound to the physical telecommunication network infrastructure over which it communicates, a vulnerability extensively examined by Krupa and Pántya (2026) [19]. Modern application development in the humanitarian sector leans heavily toward continuous cloud reliance, leveraging real-time application programming interfaces (APIs) and remote relational databases to coordinate logistics and broadcast safety instructions. However, high-stress disaster events such as severe typhoons, systemic flooding, and earthquakes frequently destroy network transmission nodes, down cellular arrays, and sever regional fiber-optic trunks. This creates an environment where both civilians seeking refuge and crisis coordinators managing the response are entirely disconnected from the centralized server frameworks designed to protect them.
+The critical vulnerability analyzed by the investigators is the massive operational lag and total information latency that occurs when these internet-dependent logistics platforms experience complete communication blackouts. When connection to the central database is lost, standard software packages fail to load vital structural safety profiles, prevent entry validation at refugee camps, and lock medical personnel out of critical documentation. In a high-density shelter environment, this digital collapse forces volunteers to abandon technology and revert to manual paper logbooks, causing extensive intake delays, database fragmentation, and highly error-prone tracking mechanisms. Furthermore, without an active network connection, standard web-based digital identification cards fail to render on mobile devices, making it virtually impossible to audit individual family profiles or accurately trace resource consumption at physical relief distribution stations.
+To directly counteract this infrastructure gap, the researchers designed a hybrid information deployment model engineered specifically to maintain continuous operational capability under total telecommunication infrastructure collapse. The software layout intelligently combines Progressive Web Applications (PWAs) with offline-first localized Quick Response (QR) matrices and supplementary paper master documentation. The system operates on a rigorous client-side data persistence loop, where the mobile client pre-bundles and caches essential safety procedures, structural layouts, and civilian authentication data directly into the local application memory prior to any crisis. During an active network blackout, field personnel utilize their native mobile camera modules to scan offline-generated QR codes from victims, allowing the app to locally decode these hashes and display critical instructions or confirm identities without querying an external web API. The system then stores all pending status updates in a secure local data queue, executing background synchronizations to push the offline logs to the cloud database the moment standard telecommunication networks are successfully restored.
+ResQConnect: an AI-powered multi-agentic platform for human-centered and resilient disaster response [20]
+Managing disaster logistics across expansive, highly populated urban environments generates a dense, volatile volume of multi-faceted information that easily overwhelms the processing capabilities of human emergency managers, a challenge directly confronted by Aththanayake et al. (2026) [20]. During an active, multi-hazard emergency, local government command centers are tasked with simultaneously tracking shifting hazard perimeters, monitoring changing roadway passability metrics, cataloging incoming warehouse supplies, and observing the real-time headcount fluctuations of multiple decentralized shelters. When these high-velocity data vectors are funneled into traditional command architectures, it creates an immense cognitive burden on dispatch directors who must manually parse the telemetry before authorizing tactical field responses.
+The primary operational problem identified in traditional disaster management frameworks is their reliance on centralized, single-tier software architectures where human operators act as the primary processors of field data. This manual chain of command introduces severe structural data bottlenecks, as human teams simply cannot process multi-dimensional crisis streams fast enough to redirect logistical assets before field conditions inevitably change. If a primary roadway is suddenly blocked by earthquake rubble or a specific evacuation center rapidly exhausts its relief goods inventory, a centralized manual system suffers from significant communication delays. These delays directly cause supply vehicles to navigate into active hazards, prevent first responders from rapidly adapting to secondary threats, and result in emergency provisions being delivered to entirely incorrect or already-evacuated locations.
+To systematically overcome these severe coordination lags and cognitive bottlenecks, the authors engineered "ResQConnect," an advanced artificial intelligence-driven platform built entirely upon a decentralized multi-agent system architecture. Instead of relying on a single, monolithic backend logic processor, the platform decomposes the massive scope of emergency management into an asynchronous cluster of specialized, autonomous digital agents running within a microservices framework. The architecture deploys independent Data-Harvesting Agents to continuously scrape raw environmental telemetry and crowd-sourced field notifications, Routing Agents to instantly recalculate spatial movement coordinates, and Relief Allocation Agents to continuously monitor inventory variations across distribution nodes. When a data agent logs a new hazard boundary, the routing and allocation agents autonomously negotiate the updated parameters, actively re-weighting the city's network graph and redirecting active supply trucks without ever requiring continuous human programming or intervention.
+Project Bantay: Breadth-First Search and Dijkstra Implementation for Community-Accessible Disaster Response [21]
+Translating high-velocity meteorological data and remote environmental sensor feeds into actionable, highly localized real-time guidance for on-ground civilian populations represents a persistent bottleneck in municipal disaster informatics, a complex issue addressed by Curada et al. (2026) [21]. Modern local government units frequently deploy extensive and sophisticated arrays of water-level sensors, automated rain gauges, and meteorological hardware across highly vulnerable river basins to monitor environmental shifts. However, these advanced telemetry systems typically function as closed administrative dashboards, purposefully keeping the granular data restricted strictly within the walls of LGU command centers. Consequently, vulnerable communities are forced to rely on broad, un-localized warning sirens or delayed social media broadcasts during rapidly escalating flood events, lacking the precise, street-level insight necessary to execute safe self-evacuation.
+The underlying technical gap meticulously addressed by this research is the fatal disconnect between automated government early warning data and personal, context-aware civilian evacuation mapping. When a river basin reaches critical overflow limits, floodwaters do not propagate uniformly across a city; they inundate specific streets based on highly intricate topographic variations and localized drainage failures. Because existing consumer mapping platforms and standard GPS applications lack a direct API connection to real-time municipal environmental sensors, they treat actively flooded streets as fully passable, safe thoroughfares. This lack of integrated data directly guides panicked citizens into rising floodwaters, stranding civilian vehicles, increasing casualty rates, and actively overwhelming rescue personnel due to the absolute lack of immediate, data-driven navigation alternatives available to the public.
+The researchers effectively resolved this critical communication and routing gap by developing "Project Bantay," an automated, fully integrated community early-warning and dynamic routing network specifically tailored for the Pasig-Marikina-Tullahan Basin. The platform's highly optimized architecture connects a robust FastAPI backend directly to remote telemetry sensor streams via an aggressive, automated 30-second synchronization cron loop. The backend ingests and processes this geospatial environmental data using a dual-graph computational architecture that deploys two distinct classical algorithms concurrently. First, a Breadth-First Search (BFS) algorithm actively evaluates a spatial grid graph of the river basin, accurately modeling and predicting physical flood spread patterns across local streets as the water lines progressively rise. Simultaneously, Dijkstra's algorithm operates on a comprehensive municipal road network graph, actively converting the sensor-detected flood heights into dynamic edge-weight traversal penalties. By continuously linking these two graphs, the optimized backend calculates completely safe, alternative evacuation paths that intelligently bypass flooded sectors in under one second, transforming reactive emergency monitoring into a proactive, life-saving logistical utility.
+Dynamic routing for disaster response in Venezuela [22]
+The necessity of real-time, adaptable spatial routing during severe infrastructure degradation is heavily emphasized in recent deployments by humanitarian organizations following the 2026 Venezuelan earthquakes, as detailed by the developers at openrouteservice (2026) [5]. Traditional mapping architectures and static emergency protocols often fail during the active phase of disaster response because operational landscapes are instantly compromised by cascading seismic events. The physical destruction of entire urban blocks and the collapse of transit corridors directly impair the logistics of aid delivery. The developers recognized that deploying relief teams requires immediate clarity on infrastructure reliability, necessitating a shift toward dynamic routing systems capable of actively assessing whether bridges remain reliable or if a standard transport route will suffer costly delays under shifting ground conditions.
+The fundamental operational flaw identified during this deployment centers on the inherent lag and data incompatibility of standard, global mapping platforms during high-velocity crises. While traditional systems like OpenStreetMap (OSM) provide comprehensive baseline maps, they rely on standard weekly network updates that are far too slow to reflect the rapidly changing realities of a post-earthquake environment. Furthermore, standard routing engines fail to efficiently process highly dynamic or sensitive mission data. When localized infrastructure collapses, legacy systems continue to treat impassable roads as viable transit corridors, which can guide medical and heavy relief teams directly into hazardous or blocked zones. The developers noted that relying exclusively on broad, public synchronization channels is inadequate, as humanitarian mission data is often too sensitive or structurally incompatible to be rapidly propagated through standard OSM networks, creating a critical information gap for on-ground responders.
+To systematically overcome these data latencies and routing failures, the engineering team deployed a custom, decentralized instance of openrouteservice (ORS) tailored specifically for the Venezuelan response [5]. The architectural core of this platform integrates baseline OpenStreetMap network graphs with real-time road blockage telemetry sourced directly from the Humanitarian Data Exchange (HDX). Instead of waiting for weekly map refreshes, the system allows field teams to input immediate manual updates regarding closed borders, damaged bridges, or impassable roads. Once new telemetry is received, the routing engine instantly recalculates paths to bypass those specific obstacles, utilizing specialized traversal profiles tailored for different vehicle types, such as standard cars and Heavy Goods Vehicles (HGVs). However, while this dynamic integration successfully mitigates transit delays, the developers acknowledged that the limitations of their older framework necessitated a transition toward new generation, localized portals capable of handling sensitive, fast-changing disaster inputs without strictly relying on public mapping repositories.
+Synthesis
+Features
+GIS-based evacuation routing using capacity aware shortest path evacuation routing algorithm and analytic hierarchy process for flood prone communities [2]
+Bridging the Information Gap in Emergency Response: A Hybrid Model for Digital Fire Safety Instructions [19]
+ResQConnect: an AI-powered multi-agentic platform for human-centered and resilient disaster response [20]
+Project Bantay: Breadth-First Search and Dijkstra Implementation for Community-Accessible Disaster Response [21
+Dynamic routing for disaster response in Venezuela [22]
+Proposed Study
+Dynamic Shelter Pinning & Tiered Hazard Flagging
+X
+X
+X
+X
+✓
+✓
+Context-Aware Pathfinding Engine
+✓
+X
+✓
+✓
+✓
+✓
+Algorithmic Capacity Matching
+✓
+X
+X
+X
+X
+✓
+Custom Relief Allocation Engine
+X
+X
+X
+X
+X
+✓
+Offline-First QR Digital ID
+X
+✓
+X
+X
+X
+X
+Automated Dispatch Manifests
+X
+X
+X
+X
+X
+X
+Table 2: Synthesis
+ The table shows that the proposed system shares several core modules with the related literature presented in this project, particularly regarding path planning, resource tracking, and digital tools. However, despite these similarities, EVAC-ROUTE stands out by introducing unique features tailored for real-world crises like routing based on your vehicle type, hiding full shelters automatically, and working entirely offline with QR codes. 
+The profound structural analysis of these state-of-the-art engineering frameworks highlights a critical, unbridged architectural chasm in modern disaster management technology: existing platforms invariably isolate dynamic spatial pathfinding, localized capacity tracking, and offline data resilience into entirely separate, philosophically opposed applications. Systems that boast highly advanced, context-aware spatial routing capabilities—such as the rapid sensor-synced dual-graph engine of Project Bantay [21] and the congestion-mitigating CASPER algorithms utilized in the Mindanao GIS framework [2]—are inextricably tethered to continuous cloud computing and stable web connections. The HDX-integrated open route service platform deployed in Venezuela [22] are inextricably tethered to continuous cloud computing, remote API servers, and stable web connections.  Conversely, platforms specifically engineered to survive catastrophic infrastructure damage—such as the Hybrid Digital Safety Model [19]—achieve their offline durability by stripping away complex computational logic, leaving them capable of rendering only static text data while remaining entirely blind to active geospatial hazards or dynamic resource distribution parameters. This intense technological divide leaves municipal disaster response teams operating with a fundamentally fractured toolkit, continually forcing local government units to choose between utilizing highly accurate spatial routing that breaks during a storm, or reliable offline data collection that provides zero navigational intelligence.
+EVAC-ROUTE fundamentally resolves this profound technological gap by systematically combining the algorithmic power of context-aware network navigation, the logistical precision of rule-based shelter capacity matching, and the absolute structural durability of offline-first local storage databases into a single, cohesive, dual-client architecture. Unlike previous geospatial designs that rely on distant cloud processors, EVAC-ROUTE decentralizes the computational burden by migrating the spatial routing logic directly onto the resident's mobile hardware. By executing a custom, edge-computed A* heuristic search algorithm over a pre-bundled local SQLite database containing indexed coordinate nodes and edge linkages, EVAC-ROUTE guarantees that displaced citizens can dynamically calculate safe, hazard-avoidant evacuation paths even when cellular networks experience complete, prolonged blackouts, successfully matching the sub-second calculation speeds of internet-dependent models like Project Bantay [21] without sharing their infrastructure dependency. 
+Furthermore, EVAC-ROUTE dramatically advances beyond basic offline text rendering by integrating its secure offline Quick Response (QR) check-in matrix directly with an automated, rule-based equitable allocation engine. While previous frameworks treat offline field registration merely as a digitized sign-in sheet [19], EVAC-ROUTE’s backend logic automatically captures the validated family headcount from the offline scan and multiplies it by highly specific, LGU-configured relief ration templates the exact moment network synchronization is restored. This localized capacity tracking actively prevents the severe shelter overcrowding identified in prior literature by automatically hiding or redirecting evacuees away from facilities that reach maximum structural occupancy [2]. Simultaneously, the automated inventory deduction mechanism eliminates the estimation-heavy, blind supply distribution processes that currently plague local operations, avoiding data collisions or resource hoarding altogether. By seamlessly uniting edge-computed dynamic spatial navigation with incredibly resilient offline-first relational tracking and mathematical resource allocation, EVAC-ROUTE establishes a significantly more capable, comprehensive, and failure-resistant engineering standard than any existing solution currently documented in humanitarian logistics literature.
+Summary
+In summary the comprehensive review of these five foundational systems reveals distinct architectural philosophies and varying operational priorities within the domain of disaster informatics, each addressing specific logistical bottlenecks while simultaneously exposing inherent technological limitations. The research conducted by Manliguez et al. [2] definitively proves the immense value of transitioning away from static geometric mapping toward dynamic, mathematically weighted geospatial networks. By utilizing the Capacity-Aware Shortest Path Evacuation Routing (CASPER) algorithm, their framework successfully demonstrates that applying real-time exponential penalty multipliers to highly congested roads and over-populated reception facilities can systematically prevent the formation of fatal urban transit bottlenecks. However, the extreme computational complexity of executing localized LiDAR grid adjustments requires massive server-side geospatial processors. This establishes a critical limitation: the system's spatial routing capabilities cannot be executed natively on consumer mobile devices, rendering the entire pathfinding engine completely useless if regional web connectivity collapses during an active crisis.
+Conversely, the investigation by Krupa and Pántya [19] directly attacks the vulnerability of cloud-dependent infrastructures by engineering a highly resilient hybrid information deployment model. Their research validates the absolute necessity of client-side data persistence, proving that pre-bundling essential operational data into local mobile caches via Progressive Web Applications allows critical response operations to survive total telecommunication failures. The successful implementation of offline-generated Quick Response (QR) matrices that decode locally without API queries establishes a flawless blueprint for maintaining data integrity and rapid check-in verification during blackouts. Despite this offline durability, the framework's scope is strictly confined to rendering static text documents and simple safety instructions; it entirely lacks the computational algorithms required to execute dynamic spatial routing matrices, process real-time hazard adjustments, or algorithmically manage relief inventory logistics.
+In the realm of high-velocity command coordination, Aththanayake et al. [20] introduced ResQConnect to completely eliminate the cognitive overload experienced by human dispatch directors. By decomposing massive disaster data streams into specialized, autonomous digital microservices, their multi-agentic system proves that independent data-harvesting, routing, and relief allocation agents can asynchronously negotiate tactical field responses faster than manual human processing. This decentralization of software intelligence successfully automates the redirection of supply trucks based on changing environmental telemetry. However, the framework's reliance on continuous cloud-based AI token evaluation and heavy real-time API polling creates a severe structural fragility, as the entire autonomous ecosystem is completely dependent on stable, high-bandwidth internet connectivity to function.
+The development of Project Bantay by Curada et al. [21] successfully bridges the gap between raw government sensor data and public spatial navigation. By connecting a high-performance backend directly to meteorological sensors via an automated 30-second synchronization loop, the researchers proved that real-time environmental hazards can be actively translated into dynamic traversal costs. The brilliant dual-graph execution of a Breadth-First Search for flood propagation alongside Dijkstra’s algorithm for road traversal enables the calculation of highly accurate, hazard-avoidant paths in under a single second. Yet, much like the multi-agent framework and the CASPER GIS model, Project Bantay's exceptional routing speed relies entirely on continuous live sensor streaming and active cloud API polling, meaning its life-saving navigational guidance instantly collapses the moment network communication towers are compromised.
+Similarly, the recent deployment of a custom openrouteservice (ORS) instance for disaster response in Venezuela [22] demonstrates the critical value of rapid, manual ground-condition inputs combined with live Humanitarian Data Exchange (HDX) telemetry. By allowing field teams to bypass standard weekly map update cycles, the system dynamically re-weights transit corridors for specific vehicle profiles (such as standard cars versus Heavy Goods Vehicles), effectively preventing relief responders from navigating into compromised bridges or collapsed urban blocks. However, much like the aforementioned cloud-dependent models, this deployment remains strictly tethered to centralized server availability and active internet connections. Furthermore, while it excels at real-time spatial navigation, the system completely lacks native offline client execution and offers zero computational functionality for shelter capacity tracking, civilian check-in verification, or automated relief goods allocation.
+Conceptual Framework
+This demonstrates the structural blueprint and technical foundation of the EVAC-ROUTE system. The platform utilizes a multi-tier, dual-client architecture designed specifically to address the unique constraints of disaster logistics: network instability, dynamic geographical hazards, and rapid resource depletion. 
+Figure 1: Conceptual Framework
+The conceptual framework of EVAC-ROUTE is structured using the Input-Process-Output (IPO) model. The input phase consists of geographic and tiered hazard data, user transportation mode and logistics data, and the tools and environment including React, React Native, PHP/Laravel backend, Mapbox API, and local storage. The process phase covers five core operations: data collection and registration, context-aware pathfinding engine, algorithmic capacity matching, equitable relief allocation, and offline QR generation and scanning. The output phase produces the system deliverables — multi-hazard safe evacuation routes, offline family QR IDs, shelter occupancy updates, and automated dispatch manifests — resulting in an overall impact of improved disaster logistics and equitable resource distribution. 
+Technology Requirements
+This section outlines the specific hardware specifications, software architecture, and cloud infrastructure required to successfully deploy and operate the EVAC-ROUTE system. Because the system is designed to function during high-stress urban emergencies, the technological environment is structured to ensure high availability, real-time data synchronization across dual clients, and offline resilience for on-ground personnel and residents. 
+Hardware Requirements 
+The system requires physical hardware scaled to handle concurrent civilian traffic and continuous WebSocket connections during an active disaster scenario. 
+Production Server Host: 
+A cloud-based Virtual Private Server (VPS), such as a DigitalOcean Droplet, is required to host the centralized application and database. 
+Minimum Specifications: 2 to 4 GB RAM, 2 vCPUs, and at least 50 GB of Solid State Drive (SSD) storage to process rapid algorithmic routing requests and maintain concurrent WebSocket connections. 
+Web Client Station (LGU Administrators & CSWDO Officials): 
+Standard desktop computers or laptops functioning as command workstations. 
+Minimum Specifications: 4 GB RAM, a dual-core processor, and a modern, updated web browser (e.g., Google Chrome, Mozilla Firefox, or Microsoft Edge). A stable internet connection is required to monitor live dashboards and map telemetry. 
+Mobile Client Devices (Local Residents & Evacuation Staff): 
+Smartphones operating on either Android (version 8.0 or higher) or iOS (version 13.0 or higher). 
+Hardware Capabilities: Devices must be equipped with a functional rear camera (strictly required for staff scanning offline QR IDs) and an active GPS module for spatial mapping and location-based routing. Sufficient internal storage is also required to support localized caching (SQLite/AsyncStorage) when telecommunication networks fail. 
+Software Requirements
+The operational environment relies on a multi-tier software architecture and robust cloud infrastructure to bridge the gap between LGU command centers and vulnerable communities. 
+Backend Runtime & Server Environment: 
+The primary server must operate on a robust Linux distribution (e.g., Ubuntu). 
+It requires a PHP ^8.3 runtime environment supported by a modern web server (such as Nginx) to securely route network requests. 
+Core Application Frameworks: 
+API & Business Logic: The backend architecture is strictly powered by the Laravel MVC framework to manage RESTful endpoints, database migrations, and security middleware. 
+Web Console: The administrative frontend relies on React 19 to render interactive, component-based dashboards. 
+Mobile Ecosystem & Edge Computing: The resident and staff applications operate within the React Native runtime environment powered by Expo. This environment must support local JavaScript thread execution to independently run the custom A* (A-star) pathfinding algorithm (astarRouter.jsx) directly on the user's device. Furthermore, it utilizes local rendering libraries (react-native-qrcode-svg) to visually construct digital identification without server-side image generation. 
+Dual-Layer Database Management Systems: 
+Primary Cloud Database (MySQL): A centralized MySQL relational database permanently records all user registries, shelter headcounts, active hazard coordinates, and automated relief inventory deductions. It acts as the ultimate source of truth when networks are online. 
+Local Offline Database (SQLite): To achieve true offline navigation, the mobile client requires a localized SQLite database (evac_route.db) via expo-sqlite. This database stores a pre-bundled spatial network graph of Zamboanga City—consisting of coordinate nodes and road segment edges. During network availability, it synchronizes active hazards, road closures, and shelter data from the cloud, allowing the local A* search algorithm to query this cached data and apply cost multipliers for safe routing during internet outages. 
+Secure Key-Value Storage: The infrastructure mandates the use of encrypted local storage (Expo Secure Store) paired with AsyncStorage. This allows the system to cache the resident's unique family identifier hashes natively on the device, ensuring the offline QR code module can reliably retrieve and display identification data at shelter doorways during cellular blackout scenarios. 
+Real-Time & Cloud Infrastructure: 
+Live Event Broadcasting: The architecture mandates the use of a native high-performance WebSocket server (Laravel Reverb) to push zero-latency updates—such as emergency weather alerts and shelter capacity changes—directly to active client devices. 
+Cloud Storage: Integration with cloud storage environments (e.g., AWS S3 via League Flysystem, DO Spaces) is required for the secure hosting and distribution of static system assets and user-uploaded media. 
+CHAPTER IIIMETHODOLOGY
+Research Design
+The project utilizes an applied research design, focusing on solving specific, practical logistical problems faced by local disaster risk reduction and management (DRRM) units. By observing the inefficiencies in manual shelter monitoring and blind relief distribution, this design aims to prototype, test, and deploy a functioning software solution. The integration of geospatial routing algorithms alongside automated inventory deduction models allows the research to measure the concrete improvement in operational velocity and resource equity during simulated disaster scenarios. 
+Figure 2: SDLC
+Sprint Planning & Iteration: Features were developed in distinct, decoupled cycles optimized for a multi-tier architecture. The development sequence commenced with the database schema design, progressed to the building of the backend RESTful API core using Laravel, and concluded with the parallel implementation of the frontends (the React web command dashboard and the React Native mobile application). 
+Continuous Integration: The dual-client nature of the system required continuous testing of API endpoints to ensure the React Web app and React Native Mobile app remained perfectly synchronized with the Laravel backend. 
+Adaptability: Agile provided the flexibility to refine the custom A* routing logic and the offline caching architecture based on continuous performance testing and evolving logistical requirements. 
+System Architecture
+A Three-Tier (Multi-Tier) Architecture was employed to ensure scalability, maintainability, and separation of concerns: 
+Presentation Layer (User Interface): Consists of the React-based Web Dashboard for administrators and the React Native Mobile App for residents. This layer handles all user inputs, map rendering, and QR code generation/scanning. 
+Application Layer (Business Logic): Powered by the Laravel PHP framework. This layer houses the core business rules, including the A* pathfinding evaluation, Algorithmic Capacity Matching for shelters, and the Equitable Relief Allocation logic that multiplies family headcounts by ration templates. 
+Data Layer (Storage): The central MySQL database hosted on a remote server handles all persistent data. Additionally, a localized Data Layer utilizing AsyncStorage exists on the mobile clients to cache user profiles and pending incident reports for offline execution. 
+Data Collection Methods
+To accurately model the system requirements, a mixed-methods approach to data collection was utilized: 
+Surveys: Structured survey questionnaires were administered to local DRRM personnel and CSWDO officials. This method was utilized to systematically gather quantitative data and operational feedback regarding their current standard operating procedures for shelter capacity tracking, hazard monitoring, and relief goods packaging. Utilizing surveys allowed the researchers to safely and efficiently collect a wider volume of standardized data without disrupting the daily operational duties of emergency staff.
+Document Analysis: Review of past evacuation logs, inventory manifests, and hazard maps to identify common data bottlenecks and formatting standards. 
+Algorithm Benchmarking: Quantitative data gathering derived from testing the custom A* algorithm against simulated urban road networks to optimize pathfinding execution times. 
+Data Source
+The primary data sources for this study will consist of the direct end-users of the EVAC-ROUTE system, specifically the personnel from the Local Government Units (LGUs), the local Disaster Risk Reduction and Management (DRRM) teams, and the City Social Welfare and Development Office (CSWDO) in Zamboanga City. Secondary data sources will involve historical records, including past evacuation logs, inventory manifests, and existing geographic hazard maps. For the technical evaluation, the data source will consist of system-generated performance logs produced during the simulated execution of the routing algorithms.
+Data Gathering Instrument
+The study will utilize three primary instruments to collect qualitative, quantitative, and technical data: 
+Survey Questionnaires: Structured questionnaires anchored on the System Usability Scale (SUS) and the ISO/IEC 25010 Software Quality Model will be used to measure user satisfaction, usability, and system acceptability among LGU and CSWDO respondents. 
+Document Checklists: A systematic review checklist will be employed to extract relevant operational variables, bottlenecks, and formatting standards from historical evacuation and relief distribution documents. 
+Automated Benchmarking Scripts: To evaluate the technical performance of the mobile application, diagnostic scripts will be used to record the execution times (in milliseconds) and resource consumption of the A* pathfinding algorithm as it processes the local SQLite database caching under offline conditions. 
+Data Gathering Technique and Procedures
+The data gathering process will be executed in three systematic phases: 
+Administrative Clearance and Document Review: Formal written requests will be submitted to the relevant Zamboanga City local government offices and the CSWDO to secure permission to conduct the study and access public historical disaster response records. Upon approval, document analysis will be conducted to establish the baseline inefficiencies of the current logistical operations. 
+System Deployment and Survey Distribution: The researchers will conduct a guided demonstration of both the React-based web command dashboard and the native mobile application for the targeted DRRM and CSWDO personnel. Following the simulation of hazard pinning, QR code generation, and inventory deduction, the structured evaluation surveys will be distributed to the participants to capture their usability scores and qualitative feedback. 
+Technical Simulation and Benchmarking: Concurrently, the researchers will run isolated technical trials in a controlled environment. Iterative pathfinding simulations will be executed on mobile devices simulating total network blackouts to log the exact computational speed and accuracy of the offline routing capabilities and data synchronization processes. 
+Data Analysis
+This section explains how the data collected during the system's evaluation, testing, and implementation phases will be processed and analyzed. To evaluate the system’s usability, acceptability, and technical performance, a mixed-methods approach combining quantitative statistical analysis, qualitative thematic analysis, and system metric evaluation will be employed.
+Software Development
+Development Approach
+The Agile Development methodology was adopted for the engineering of EVAC-ROUTE. Given the complex, multi-faceted nature of disaster response, Agile allowed the development team to break down the system into manageable, iterative sprints. 
+System Design
+Figure 3. Context Diagram
+Demonstrates the core EVAC-ROUTE system at the center. Interacting external entities include the LGU Administrator (inputs hazard data, updates shelter status), CSWDO Official (configures ration templates, views inventory reports), and the Resident (submits family profile, receives safe routing, presents QR code). 
+Data Flow Diagram
+Figure 4: Data Flow Diagram
+Details the flow of information. For example, a resident's transportation choice flows into the Pathfinding Process, which simultaneously pulls real-time hazard severity data from the database to output a safe route. Check-in data flows from the offline mobile scanner, updates the shelter headcount, and triggers an automated deduction in the inventory data store. 
+Flowchart
+Figure 5: Pathfinding Logic Flow Chart
+Maps the step-by-step logic. The routing flowchart illustrates the decision nodes of the A* algorithm (checking node neighbors, calculating heuristic costs based on flood depth, and returning the shortest safe path). 
+Figure 6: Offline Check-in & Sync Logic
+The offline check-in flowchart shows the system checking for network connectivity; if true, it pushes to the database, if false, it caches to local storage until reconnected. 
+Use Case
+Figure 7: Use Case
+Outlines system actor permissions. Admin Use Cases: Manage Users, Pin Hazards, Broadcast Alerts. CSWDO Use Cases: Create Ration Templates, Manage Inventory, Generate Dispatch Orders. Resident Use Cases: Setup Profile, View Evacuation Map, Report Incident, Generate QR ID. 
+Database Design
+This top-down diagram illustrates the flow of data across the database tiers, showing how local offline storage nodes interface with central servers.
+Figure 8: Database Design
+The database design employs a split-tier replication and cache strategy to achieve offline resiliency:
+The Master Database (MySQL): Installed on the central server, this database holds the single source of truth. It manages all records including complete user archives, physical shelter states, full evacuation check-in history logs, and master road networks.
+The Client-Side Database (SQLite): Configured on mobile units, this database acts as a localized read cache. It stores only active tables necessary for local path calculations—specifically coordinates of road intersections ( road_nodes ), route linkages ( road_edges ), dynamic danger zones ( hazards ), and active evacuation camps ( shelters ).
+Session Storage (AsyncStorage/SecureStore): Sensitive keys (e.g. login hashes) are stored in secure keystores rather than SQLite, ensuring user privacy and protecting against memory inspection attacks.
+Entity Relationship Diagram
+Figure 9: Entity Relationship Diagram
+The Entity Relationship Diagram (ERD) establishes key bounds and relational rules between system entities:
+One-to-One Relationships: Each USERS record of the resident role possesses exactly one matching FAMILY_PROFILES record, linking login credentials directly to physical household details (e.g.family surname, size, transit preferences, and check-in QR hashes).
+One-to-Many Operational Links:
+A resident (USERS) can have multiple EVACUATION_LOGS representing recurring displacement histories across past disasters.
+A SHELTERS site acts as the host destination for many EVACUATION LOGS  check-ins and receives multiple supply allocation runs recorded in  DISPATCH_ORDERS .
+Pathfinding Network Graphs: The road map layout is modeled as a logical self-referencing relationship: a single segment in ROAD EDGES links two distinct intersections stored in ROAD NODES (source_node_id and target_node_id), supporting fast graph calculations for routing queries.
+Supply and Inventory Deductions: The DISPATCH_ORDERS and RATION_TEMPLATES act as operational headers mapping items to inventories via intermediate junction entities (DISPATCH_ORDER_ITEMS and RATION_TEMPLATE_ITEMS ), preventing transactional data collisions.
+Functional Requirements (System Features)Functional requirements define the core actions and operations that the system must perform.
+User Authentication & Authorization
+Role-Based Access Control (RBAC): The system must distinguish user scopes: LGU Administrator, CSWDO Official, Shelter Staff, and Resident.
+Authentication Security: Secure authentication via REST API tokens (Laravel Sanctum). Mobile devices must store access tokens in encrypted local storage ( expo-secure-store ).
+Profile Management: Residents must be able to set up, edit, and save their family profiles, headcount, and transit choices.
+Data Management (CRUD Operations)
+Hazard Tracking: Administrators must be able to Create, Read, Update, and Delete (CRUD) dynamic hazards (e.g., coordinates, type, radius of safety).
+Shelter Status Management: Administrators and Staff must be able to register shelters, update occupancy limits, and set statuses (Open, Full, Closed).
+Inventory Control: CSWDO Officials must manage relief goods inventories, define ration templates, and log incoming stocks and outgoing dispatch orders.
+Dispatch Logs: Staff must be able to log and view relief supply dispatch orders and track their delivery status.
+Real-Time Data Processing
+Live WebSocket Broadcasts: The system must push immediate updates to the admin dashboard and mobile client using Laravel Reverb (WebSockets) for new hazards and shelter capacity adjustments.
+Real-time Map Synchronization: Active maps must update dynamically when new hazards or road blockages are pinned, modifying calculated routes in real-time.
+Notifications & Alerts
+Push Notifications: The mobile app must trigger local and push notifications (via  expo-notifications ) for emergency evacuation orders and dynamic hazard proximity alerts.
+Email Dispatch Notifications: The system must generate email updates (via Resend API) to CSWDO personnel when dispatch orders are created or completed.
+Software Functionality
+The EVAC-ROUTE platform provides a unified network across web and mobile services, enabling:
+Interactive Navigation & Safe Routing: Directs residents along the shortest safe route to nearest shelters using an on-device A* algorithm, dynamically recalculating paths to avoid LGU-flagged hazards. all LGU-designated safe zones and temporary assembly points are explicitly marked, color-coded, and permanently visible on the system's map interface to guarantee immediate spatial awareness for displaced users 
+Rapid QR Code Check-In: Accelerates admission at shelter gates by replacing manual paperwork with QR scanners that verify resident identity, log shelter arrival, and decrement inventory automatically.
+Relief Distribution Tracking: Manages inventory allocation, ensures families receive their assigned rations, and tracks dispatch trucks in real-time.
+User Characteristic
+The system accommodates users with varying levels of technical expertise, operational roles, and clearance levels.
+Below is a table classifying the primary users of the system:
+User Role
+User Name
+Priorities
+Feature
+LGU Administrator
+Emergency Management Admin
+Critical 
+Dynamic hazard pinning, shelter registration, emergency alert broadcasts, system user management.
+CSWDO Official
+Logistics and Relief Chief
+High
+Ration template configuration, inventory stock management, dispatch order generation, distribution reporting. 
+Resident
+Displaced Citizen / Family Head
+Critical
+Profile setup, real-time map visualization, offline routing navigation, QR identification ID generation.
+Shelter Staff
+Center Registrar / Marshal
+High
+Offline camera scanning for resident registration, ration claiming verification, live occupancy reporting. 
+Table 3: User Characteristics Matrix
+Non-Functional Requirements 
+Non-functional requirements describe quality attributes, performance standards, and security safeguards of the system.
+Technical Requirements
+Server Environment: Built on PHP ^8.3 (Laravel ^13.8) and MySQL for server-side persistence. Uses Laravel Reverb for WebSocket orchestration.
+Web Environment: Operates on React 19 and Tailwind CSS compiled via Vite, supporting modern desktop browsers (Chrome, Safari, Firefox, Edge).
+Mobile Runtime: Runs cross-platform on Android and iOS devices, compiled via Expo SDK 56 and React Native.
+Local Database: Mobile client must run SQLite ( expo-sqlite ) for offline map caching and offline schema lookups.
+Maps API Integration: Standardized on Mapbox GL API for geo-coordinates lookup and path mapping.
+Performance Requirements
+Offline Pathfinding Latency: The local A* routing engine must compute and display an alternative evacuation path on-device in under **500 milliseconds** from SQLite nodes.
+Real-time Synchronization Speed: WebSockets must broadcast new hazard pins or shelter capacity state changes to active users in under 2 seconds.
+Offline Storage Capacity: Local SQLite databases must support caching up to 5,000 road network nodes and edges without causing app lags.
+Check-In API Latency: Scanning a resident's QR code online must verify identity and record shelter check-in in under 1.5 seconds.
+Assumptions and Dependencies
+Device Hardware Capabilities: It is assumed that residents' mobile devices possess functioning GPS receivers and that shelter staff devices are equipped with working cameras for QR scanning.
+Connectivity Availability: While pathfinding and QR presentation function fully offline, initial database seeding, account registration, and sync operations depend on the availability of cellular data or Wi-Fi.
+Map Service Dependability: The mapping features are dependent on the availability and API rate limits of Mapbox GL.
+App Distribution Services: Mobile client deployments are dependent on standard publishing frameworks (Google Play Store and Apple App Store).
+Security Requirements
+Data Security & Privacy: All communication between frontends and backends must be encrypted using HTTPS/TLS. Profile information must comply with local data privacy guidelines.
+Token Authentication: Secure API sessions are enforced using unique Laravel Sanctum tokens. Reverb connection payloads must be authenticated.
+Client-Side Encryption: Sensitive resident tokens must be encrypted locally using iOS Keychain and Android Keystore via  expo-secure-store .
+Ration Claim Verification: QR codes encode encrypted or hashed resident profiles to prevent identity >         falsification or double-claiming of relief packages.
+Developmental Tools
+Table 3: Developmental Tools and Cost
+Name
+Purpose
+Price
+Quantity
+Total
+DigitalOcean Droplet (2 vCPU, 4GB RAM) 
+Cloud Production Server Host for API and Database 
+₱1,464.00 / month 
+Google Play Developer Account
+App distribution services
+₱1,525.00 one-time 
+1 Account 
+₱1,525.00
+Mapbox GL API
+Interactive geographic map rendering and spatial coordination
+₱0.00 (Free Tier) 
+1 Account 
+₱0.00 
+PHP 8.3 & Laravel 13.8
+Backend REST API architecture and core business logic
+₱0.00 (Open Source) 
+1 
+₱0.00 
+MySQL Server
+Centralized relational database for persistent cloud data
+₱0.00 (Open Source) 
+1 
+₱0.00 
+SQLite (expo-sqlite)
+Mobile client local offline database for caching network graphs
+₱0.00 (Open Source) 
+1 
+₱0.00 
+React Native & Expo SDK 56
+ross-platform framework for building the citizen mobile application
+₱0.00 (Open Source) 
+1 
+₱0.00 
+React 19, Tailwind CSS, Vite
+rontend frameworks for rendering the LGU Web Dashboard
+₱0.00 (Open Source) 
+1 
+₱0.00 
+Laravel Reverb & Echo
+WebSockets for real-time state broadcasts
+₱0.00 (Open Source) 
+1 
+₱0.00 
+Git, GitHub, Node.js, Composer
+Version control, backend runtime environment, and package management
+₱0.00 (Free) 
+3 Users 
+₱0.00 
+VS Code
+Primary code editor for local environment setup, scripting, and configuring algorithms
+₱0.00 (Free) 
+3 Users 
+₱0.00 
+Canva
+Designing UI/UX mockups and generating professional presentation materials
+₱0.00 (Free tier) 
+3 Users 
+₱0.00 
+Hardware (Workstations/Smartphones)
+Standard computers and mobile testing devices with functional GPS/cameras
+₱0.00 (Already Owned) 
+3 Researchers
+₱0.00 
+Grand Total
+Testing and Evaluation
+Refers to overall testing strategy. Finding the best evaluation method should be discussed with your advisor, as it depends on your research question, objectives, and the nature of your data. If applicable, you can simulate a controlled environment, compare model performance, conduct benchmarking, perform statistical analysis, or validate the results with a third party. Statistical analysis may include hypothesis testing, regression analysis, or other relevant methods to assess the reliability and significance of the results. Appendix C may be cited here.
+CHAPTER IVRESULTS AND DISCUSSION
+Results should be presented in a logical sequence, referencing the specific objectives and the execution of the proposed methodology, using text, tables, graphs, and figures. The discussion of results should include clear descriptions and explanations of observed phenomena, trends, and other relevant information. It is important to note that results and discussion should not be separated; each result must be immediately followed by its corresponding discussion.
+CHAPTER VCONCLUSION AND RECOMMENDATIONS
+Conclusion
+<The conclusion should present a summary of the important contributions of the study>
+Recommendations
+Future researchers should consider integrating IoT telemetry sensors to automate real-time hazard mapping, which would reduce the system's reliance on manual data entry from local officials. 
+To further improve offline resilience during total network blackouts, implementing peer-to-peer mesh networking (such as Bluetooth or Wi-Fi Direct) would allow mobile devices to actively share live hazard updates with one another without needing cellular data. The system could also be enhanced by incorporating predictive machine learning to anticipate evacuation bottlenecks before they form, and by adding automated supply chain triggers to instantly alert external warehouses when a shelter's inventory drops to critical levels.
+ Finally, local government units are encouraged to conduct regular community drills and establish data pre-caching protocols to ensure residents are fully prepared to use the offline routing and QR check-in features before a crisis occurs. 
+References
+[1] K. B. D. Medel, R. Kousar, and T. Masood, "A collaboration–resilience framework for disaster management supply networks: a case study of the Philippines," Journal of Humanitarian Logistics and Supply Chain Management, vol. 10, no. 4, pp. 509–553, Dec. 2020, doi: 10.1108/JHLSCM-09-2019-0066.  
+[2] C. Manliguez, Z. Diche, M. Jimenez, M. Agrazamendez, and J. Acosta, "GIS-based evacuation routing using capacity aware shortest path evacuation routing algorithm and analytic hierarchy process for flood prone communities," in Proc. 3rd Int. Conf. Geographical Information Systems Theory, Applications and Management (GISTAM), Porto, Portugal, 2017, pp. 237–243, doi: 10.5220/0006327402370243.  
+[3] D. Hartama, Wanayumini, and I. S. Damanik, "The cumulative capacitated vehicle routing problem with time-dependent on humanitarian logistics for disaster management," Journal of Applied Data Sciences, vol. 6, no. 1, pp. 286–298, Jan. 2025, doi: 10.47738/jads.v6i1.481.  
+[4] P. Zhang, C. Zhang, P. Zhang, X. Yan, and H. Yang, "Optimization of emergency logistics for urban flooding with consideration of rainfall effects," Scientific Reports, vol. 15, Art. no. 30301, 2025, doi: 10.1038/s41598-025-09986-w.  
+[5] Y. Shi, G. Zhai, L. Xu, Q. Zhu, and J. Du, "Planning emergency shelters for urban disasters: a multi-level location–allocation modeling approach," Sustainability, vol. 11, no. 16, Art. no. 4285, Aug. 2019, doi: 10.3390/su11164285.  
+[6] N. A. B. Mabahwi, Y. Bhattacharya, and H. Nakamura, "GIS-based multi-criteria analysis to identify site suitability of flood shelters in Kuantan, Malaysia," IOP Conference Series: Earth and Environmental Science, vol. 799, no. 1, Art. no. 012027, Mar. 2021, doi: 10.1088/1755-1315/799/1/012027.  
+[7] A. Tsioulou, J. Faure Walker, D. S. Lo, and R. Yore, "A method for determining the suitability of schools as evacuation shelters and aid distribution hubs following disasters: case study from Cagayan de Oro, Philippines," Natural Hazards, vol. 105, no. 2, pp. 1835–1859, 2021, doi: 10.1007/s11069-020-04380-3.  
+[8] Y. Ma, W. Xu, L. Qin, X. Zhao, and J. Du, "Emergency shelters location-allocation problem concerning uncertainty and limited resources: a multi-objective optimization with a case study in the Central area of Beijing, China," Geomatics, Natural Hazards and Risk, vol. 10, no. 1, pp. 1242–1266, 2019, doi: 10.1080/19475705.2019.1570977.  
+[9] S. Palagi and A. Javernick-Will, "Institutional constraints influencing relocation decision making and implementation," International Journal of Disaster Risk Reduction, vol. 33, pp. 310–320, 2019, doi: 10.1016/j.ijdrr.2018.10.016.  
+[10] M. Yoo, S. Haam, and W. S. Song, "Congestion-based earthquake emergency evacuation simulation model for underground structure," Buildings, vol. 14, no. 10, Art. no. 3217, Oct. 2024, doi: 10.3390/buildings14103217.  
+[11] S. Jahangiri, M. B. Fakhrzad, H. H. Nasab, H. Khademi Zare, and M. Movahedi Rad, "Data-driven planning for casualty evacuation and treatment in sustainable humanitarian logistics," Algorithms, vol. 19, no. 2, Art. no. 104, Jan. 2026, doi: 10.3390/a19020104.  
+[12] M. R. D. de Veluz et al., "Scenario-based multi-objective location-routing model for pre-disaster planning: a Philippine case study," Sustainability, vol. 15, no. 6, Art. no. 4882, Mar. 2023, doi: 10.3390/su15064882. 
+[13] J. Liang, Z. Zhang, and Y. Zhi, "Multi-armed bandit approaches for location planning with dynamic relief supplies allocation under disaster uncertainty," Smart Cities, vol. 8, no. 1, Art. no. 5, Dec. 2024, doi: 10.3390/smartcities8010005.  
+[14] F. Wang, Z. Xie, H. Liu, Z. Pei, and D. Liu, "Multiobjective emergency resource allocation under the natural disaster chain with path planning," International Journal of Environmental Research and Public Health, vol. 19, no. 13, Art. no. 7876, Jun. 2022, doi: 10.3390/ijerph19137876.  
+[15] S. E. Akwafuo, A. R. Mikler, and F. A. Irany, "Optimization models for emergency response and post-disaster delivery logistics: a review of current approaches," International Journal of Engineering Technologies and Management Research, vol. 7, no. 8, pp. 35–49, Aug. 2020, doi: 10.29121/ijetmr.v7.i8.2020.738.  
+[16] Y. Liang et al., "Shortest path planning and dynamic rescue forces dispatching for urban flood disasters," Scientific Reports, vol. 15, Jul. 2025, doi: 10.1038/s41598-025-06374-2.  
+[17] X. Wei, Y. Zhang, and Y. Zhao, "Evacuation path planning based on the hybrid improved sparrow search optimization algorithm," Fire, vol. 6, no. 10, Art. no. 380, Oct. 2023, doi: 10.3390/fire6100380. 
+[18] S. Heng, K. Phutthanawong, and C. Boonmee, "Optimizing localized humanitarian logistics: a stochastic programming approach for facility location, inventory and evacuation strategies," Journal of Humanitarian Logistics and Supply Chain Management, vol. ahead-of-print, Sep. 2025, doi: 10.1108/JHLSCM-02-2025-0020.  
+[19] P. Krupa and P. Pántya, "Bridging the information gap in emergency response: a hybrid model for digital fire safety instructions," Applied Sciences, vol. 16, no. 6, Art. no. 2733, Mar. 2026, doi: 10.3390/app16062733.  
+[20] S. Aththanayake, C. Mallikarachchi, J. Wickramasinghe, and B. Pradhan, "ResQConnect: an AI-powered multi-agentic platform for human-centered and resilient disaster response," Sustainability, vol. 18, no. 2, Art. no. 1014, Jan. 2026, doi: 10.3390/su18021014.  
+[21] J. Curada, C. N. Piamonte, and M. C. Zaragoza, "Project Bantay: Breadth-First Search and Dijkstra Implementation for Community-Accessible Disaster Response," Journal of Disaster Risk Reduction and Management, vol. 10, no. 1, pp. 45–56, Feb. 2026.  
+[22] openrouteservice, "Dynamic routing for disaster response in Venezuela," openrouteservice, Jul. 2026. [Online]. Available: https://openrouteservice.org.
+[23] H. Behrooz and M. Ilbeigi, "Adaptive emergency evacuation routing: a graph-based approach," International Journal of Transportation Science and Technology, vol. 20, pp. 178–192, Dec. 2025, doi: 10.1016/j.ijtst.2024.11.010. 
+Appendix A: Data Collected
+Note: only sample data collected, not all.
+Appendix B: System Design
+ChartsContext Diagram
+Data Flow Diagram
+Pathfinding Logic Flowchart
+Offline Check-in & Sync Logic
+Use Case
+Database Design
+Entity Relationship Diagram
+User Interface
+Appendix C: Evaluation Tool
+Appendix D: Relevant Source Code
+Appendix E: Ethical Clearance
+Appendix F: Plagiarism Report
+Appendix G: Research Critique and Editing Certificate
+Appendix H: Curriculum Vitae
+Note: 1 page per researcher

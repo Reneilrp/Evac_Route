@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Events\HazardCreated;
 use App\Events\HazardResolved;
 use App\Http\Controllers\Controller;
+use App\Models\BroadcastAlert;
 use App\Models\Hazard;
 use Illuminate\Http\Request;
 
@@ -44,7 +45,7 @@ class HazardController extends Controller
         try {
             broadcast(new HazardCreated($hazard));
         } catch (\Throwable $e) {
-            \Log::warning("WebSocket broadcast warning: " . $e->getMessage());
+            \Log::warning('WebSocket broadcast warning: '.$e->getMessage());
         }
 
         return response()->json(['status' => 'success', 'data' => $hazard], 201);
@@ -70,7 +71,7 @@ class HazardController extends Controller
         try {
             broadcast(new HazardResolved((int) $id));
         } catch (\Throwable $e) {
-            \Log::warning("WebSocket broadcast warning: " . $e->getMessage());
+            \Log::warning('WebSocket broadcast warning: '.$e->getMessage());
         }
 
         return response()->json([
@@ -94,7 +95,8 @@ class HazardController extends Controller
         if ($simType === 'none') {
             try {
                 broadcast(new HazardResolved(0));
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
 
             return response()->json([
                 'status' => 'success',
@@ -114,19 +116,21 @@ class HazardController extends Controller
         if ($activeHazard) {
             if ($simType === 'earthquake') {
                 try {
-                    \App\Models\BroadcastAlert::create([
+                    BroadcastAlert::create([
                         'title' => '🚨 EARTHQUAKE WARNING: MAGNITUDE 6.8 TREMORS DETECTED',
                         'message' => "An Earthquake tremor has been detected at Epicenter Latitude: {$activeHazard->latitude}° N, Longitude: {$activeHazard->longitude}° E. Duck, Cover & Hold! Proceed to open area safe zones.",
                         'severity' => 'critical',
                         'scope' => 'all',
                         'created_by' => auth()->id() ?? 1,
                     ]);
-                } catch (\Throwable $e) {}
+                } catch (\Throwable $e) {
+                }
             }
 
             try {
                 broadcast(new HazardCreated($activeHazard));
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
         }
 
         return response()->json([

@@ -19,7 +19,8 @@ const SEVERITY_COLORS = {
 
 export default function IncidentReviewQueue() {
   const [activeTab, setActiveTab] = useState('pending');
-  const [reviewModal, setReviewModal] = useState(null); // { id, action: 'approve'|'reject' }
+  const [reviewModal, setReviewModal] = useState(null); // { id, action: 'approve'|'reject', evaluation }
+  const [activePhotoModal, setActivePhotoModal] = useState(null); // URL of full photo
   const [note, setNote] = useState('');
   const [isFixedFloodSpot, setIsFixedFloodSpot] = useState(false);
   const [radiusMeters, setRadiusMeters] = useState(75);
@@ -48,7 +49,7 @@ export default function IncidentReviewQueue() {
     <div className="p-6 h-full overflow-y-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Incident Review Queue</h1>
-        <p className="text-sm text-gray-500 mt-1">Review and validate resident-submitted field reports</p>
+        <p className="text-sm text-gray-500 mt-1">Review, evaluate recurrence, and validate resident-submitted field reports</p>
       </div>
 
       {/* Tabs */}
@@ -91,79 +92,148 @@ export default function IncidentReviewQueue() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-        {incidents.map(incident => (
-          <div key={incident.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            {/* Photo */}
-            {incident.photo_url ? (
-              <img
-                src={incident.photo_url}
-                alt="Incident photo"
-                className="w-full h-40 object-cover"
-              />
-            ) : (
-              <div className="w-full h-40 bg-gray-100 flex items-center justify-center">
-                <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-            )}
+        {incidents.map(incident => {
+          const photos = incident.photo_urls && incident.photo_urls.length > 0
+            ? incident.photo_urls
+            : incident.photo_url ? [incident.photo_url] : [];
+          const evalData = incident.frequency_evaluation;
 
-            {/* Details */}
-            <div className="p-4">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className="font-semibold text-gray-900 text-sm leading-snug">{incident.name}</h3>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${SEVERITY_COLORS[incident.severity_level] ?? 'bg-gray-100 text-gray-700'}`}>
-                  {incident.severity_level}
-                </span>
-              </div>
+          return (
+            <div key={incident.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col justify-between">
+              <div>
+                {/* Photo Gallery (Up to 3 photos) */}
+                {photos.length > 0 ? (
+                  <div className="relative bg-gray-900">
+                    {photos.length === 1 ? (
+                      <img
+                        src={photos[0]}
+                        alt="Incident photo"
+                        onClick={() => setActivePhotoModal(photos[0])}
+                        className="w-full h-44 object-cover cursor-pointer hover:opacity-90 transition"
+                      />
+                    ) : (
+                      <div className="grid grid-cols-3 gap-0.5 h-44">
+                        {photos.slice(0, 3).map((url, idx) => (
+                          <div key={idx} className="relative h-full overflow-hidden">
+                            <img
+                              src={url}
+                              alt={`Incident photo ${idx + 1}`}
+                              onClick={() => setActivePhotoModal(url)}
+                              className="w-full h-full object-cover cursor-pointer hover:scale-105 transition duration-200"
+                            />
+                            <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
+                              Photo {idx + 1}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-full h-40 bg-gray-100 flex items-center justify-center">
+                    <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                )}
 
-              <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mb-2 ${HAZARD_COLORS[incident.hazard_type] ?? 'bg-gray-100 text-gray-800'}`}>
-                {incident.hazard_type}
-              </span>
+                {/* Details */}
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h3 className="font-semibold text-gray-900 text-sm leading-snug">{incident.name}</h3>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${SEVERITY_COLORS[incident.severity_level] ?? 'bg-gray-100 text-gray-700'}`}>
+                      {incident.severity_level}
+                    </span>
+                  </div>
 
-              {incident.description && (
-                <p className="text-xs text-gray-500 mb-3 line-clamp-2">{incident.description}</p>
-              )}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${HAZARD_COLORS[incident.hazard_type] ?? 'bg-gray-100 text-gray-800'}`}>
+                      {incident.hazard_type}
+                    </span>
+                    {photos.length > 1 && (
+                      <span className="text-[11px] bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded-full">
+                        📸 {photos.length} Photos Attached
+                      </span>
+                    )}
+                  </div>
 
-              <div className="text-xs text-gray-400 mb-1">
-                📍 {parseFloat(incident.latitude).toFixed(5)}, {parseFloat(incident.longitude).toFixed(5)}
-              </div>
-              <div className="text-xs text-gray-400 mb-3">
-                Reported by: {incident.reporter?.name ?? 'Unknown'}
-              </div>
+                  {/* Hotspot / Frequency Evaluation Banner */}
+                  {evalData?.is_frequent_hotspot ? (
+                    <div className="mb-3 p-2.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs">
+                      <div className="font-bold flex items-center gap-1 mb-0.5 text-amber-800">
+                        <span>⚠️ FREQUENT INCIDENT HOTSPOT</span>
+                      </div>
+                      <p className="text-[11px] leading-tight text-amber-700">
+                        {evalData.evaluation_summary}
+                      </p>
+                    </div>
+                  ) : evalData ? (
+                    <div className="mb-3 p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 text-[11px]">
+                      📍 Area Evaluation: {evalData.nearby_count} total report(s) in 250m radius.
+                    </div>
+                  ) : null}
 
-              {/* Actions */}
-              {activeTab === 'pending' && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setReviewModal({ id: incident.id, action: 'approve', hazard_type: incident.hazard_type });
-                      setNote('');
-                      setIsFixedFloodSpot(incident.hazard_type === 'flood');
-                      setRadiusMeters(75);
-                    }}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-1.5 rounded-lg font-medium transition"
-                  >
-                    ✓ Approve
-                  </button>
-                  <button
-                    onClick={() => {
-                      setReviewModal({ id: incident.id, action: 'reject' });
-                      setNote('');
-                    }}
-                    className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-1.5 rounded-lg font-medium transition"
-                  >
-                    ✕ Reject
-                  </button>
+                  {incident.description && (
+                    <p className="text-xs text-gray-500 mb-3 line-clamp-2">{incident.description}</p>
+                  )}
+
+                  <div className="text-xs text-gray-500 mb-1">
+                    📍 {parseFloat(incident.latitude).toFixed(5)}, {parseFloat(incident.longitude).toFixed(5)}
+                  </div>
+                  <div className="text-xs text-gray-600 bg-slate-50 p-2 rounded-lg border border-slate-200/80 mb-3">
+                    <span className="font-semibold text-gray-800">👤 Reported by:</span> {incident.reporter?.name ?? 'Unknown Resident'}
+                    {incident.reporter?.family_profile?.barangay && (
+                      <span className="text-gray-500"> ({incident.reporter.family_profile.barangay})</span>
+                    )}
+                    {incident.reporter?.family_profile?.contact_number && (
+                      <div className="text-[11px] text-gray-500 mt-0.5 font-mono">
+                        📞 {incident.reporter.family_profile.contact_number}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+              </div>
 
-              {activeTab !== 'pending' && incident.review_note && (
-                <p className="text-xs text-gray-400 italic">Note: {incident.review_note}</p>
-              )}
+              {/* Actions Footer */}
+              <div className="p-4 pt-0">
+                {activeTab === 'pending' && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        const shouldRecommendFixed = evalData?.recommended_fixed_spot || incident.hazard_type === 'flood';
+                        setReviewModal({
+                          id: incident.id,
+                          action: 'approve',
+                          hazard_type: incident.hazard_type,
+                          evaluation: evalData
+                        });
+                        setNote('');
+                        setIsFixedFloodSpot(shouldRecommendFixed);
+                        setRadiusMeters(75);
+                      }}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 rounded-lg font-medium transition flex items-center justify-center gap-1"
+                    >
+                      ✓ Approve
+                    </button>
+                    <button
+                      onClick={() => {
+                        setReviewModal({ id: incident.id, action: 'reject' });
+                        setNote('');
+                      }}
+                      className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-2 rounded-lg font-medium transition flex items-center justify-center gap-1"
+                    >
+                      ✕ Reject
+                    </button>
+                  </div>
+                )}
+
+                {activeTab !== 'pending' && incident.review_note && (
+                  <p className="text-xs text-gray-400 italic border-t pt-2">Note: {incident.review_note}</p>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Review Modal */}
@@ -181,6 +251,12 @@ export default function IncidentReviewQueue() {
 
             {reviewModal.action === 'approve' && (
               <div className="mb-4 bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                {reviewModal.evaluation?.is_frequent_hotspot && (
+                  <div className="mb-3 p-2 bg-amber-100 border border-amber-300 text-amber-900 rounded-lg text-xs font-medium">
+                    💡 Area Evaluation: This location has {reviewModal.evaluation.nearby_count} frequent reports. Promoting to a Fixed Hazard Spot is strongly recommended.
+                  </div>
+                )}
+
                 {reviewModal.hazard_type === 'flood' && (
                   <div className="mb-3">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -251,6 +327,22 @@ export default function IncidentReviewQueue() {
           </div>
         </div>
       )}
+
+      {/* Full Photo Modal */}
+      {activePhotoModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setActivePhotoModal(null)}>
+          <div className="relative max-w-3xl max-h-[90vh] overflow-hidden rounded-xl bg-black">
+            <img src={activePhotoModal} alt="Full view" className="max-w-full max-h-[85vh] object-contain" />
+            <button
+              onClick={() => setActivePhotoModal(null)}
+              className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-2 hover:bg-black transition"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

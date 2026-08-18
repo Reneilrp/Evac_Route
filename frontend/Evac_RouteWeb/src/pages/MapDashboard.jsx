@@ -1465,13 +1465,25 @@ const MapViewer = React.memo(({
     }
   }, [showWeather]);
 
-  const hazardsGeoJSON = useMemo(() => ({
-    type: 'FeatureCollection',
-    features: hazards.map(h => ({
-      ...createCirclePolygon([parseFloat(h.longitude), parseFloat(h.latitude)], parseFloat(h.radius_meters || 50)),
-      properties: { id: h.id, name: h.name, hazard_type: h.hazard_type, severity_level: h.severity_level, radius: h.radius_meters }
-    }))
-  }), [hazards]);
+  const hazardsGeoJSON = useMemo(() => {
+    const displayHazards = activeDisasterSim === 'none' ? hazards : hazards.filter(h => {
+      const type = (h.hazard_type || '').toLowerCase();
+      if (activeDisasterSim === 'flood') return ['flood', 'landslide', 'tsunami', 'water'].some(t => type.includes(t));
+      if (activeDisasterSim === 'fire') return ['fire', 'wildfire', 'explosion', 'smoke'].some(t => type.includes(t));
+      if (activeDisasterSim === 'earthquake') return ['earthquake', 'tremor', 'structural_collapse', 'fault'].some(t => type.includes(t));
+      if (activeDisasterSim === 'siege') return ['siege', 'armed', 'conflict', 'civil_unrest', 'security'].some(t => type.includes(t));
+      if (activeDisasterSim === 'chemical') return ['chemical', 'biohazard', 'gas', 'toxic', 'decontamination'].some(t => type.includes(t));
+      return true;
+    });
+
+    return {
+      type: 'FeatureCollection',
+      features: displayHazards.map(h => ({
+        ...createCirclePolygon([parseFloat(h.longitude), parseFloat(h.latitude)], parseFloat(h.radius_meters || 50)),
+        properties: { id: h.id, name: h.name, hazard_type: h.hazard_type, severity_level: h.severity_level, radius: h.radius_meters }
+      }))
+    };
+  }, [hazards, activeDisasterSim]);
 
   const demographicsGeoJSON = useMemo(() => ({
     type: 'FeatureCollection',
