@@ -2,6 +2,8 @@
 
 **Evac_Route** is a comprehensive disaster management and evacuation assistance system designed to streamline communication between residents and emergency administrators. It provides real-time hazard tracking, optimized evacuation routing, and efficient resource management.
 
+> 📖 **System Testing & Credentials Guide:** See [SYSTEM_TESTING_GUIDE.md](SYSTEM_TESTING_GUIDE.md) for full server startup instructions, pre-seeded accounts (CDRRMO, CSWDO, Rescue Units, Residents), and step-by-step evaluation scenarios.
+
 ---
 
 ## 🚀 System Features
@@ -108,3 +110,11 @@ npm run dev
 
 ## 🗺 System Architecture
 The system utilizes a **monolithic backend** providing a highly-concurrent RESTful API and WebSocket broadcast events. Database transactions utilize **pessimistic row locking** to prevent race conditions during mass evacuation check-ins. The **Mobile app** acts as an offline-first node, computing escape routes locally via an A* graph algorithm using `expo-sqlite`, while the **Web dashboard** provides real-time administrative command capabilities.
+
+---
+
+## 📐 Engineering Guidelines & Best Practices
+For frontend and backend implementation standards, refer to the dedicated guidelines folders:
+* 🎨 **[UI/UX Design Standards](./guidelines/ui-ux/README.md)**: Usability heuristics, spatial view/edit parity, touch ergonomics, and WCAG accessibility standards.
+* ⚡ **[Backend Performance Standards](./guidelines/backend-performance/README.md)**: N+1 query prevention, eager loading, database indexing, and query optimization.
+

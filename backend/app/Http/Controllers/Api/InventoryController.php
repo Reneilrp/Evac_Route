@@ -126,17 +126,26 @@ class InventoryController extends Controller
             'total_stock' => 'required|integer|min:0',
         ]);
 
-        $item = InventoryItem::findOrFail($id);
-        $oldStock = $item->total_stock;
-        $item->update(['total_stock' => $validated['total_stock']]);
+        $item = DB::transaction(function () use ($validated, $request, $id) {
+            $item = InventoryItem::where('id', $id)->lockForUpdate()->firstOrFail();
 
-        AuditLog::create([
-            'user_id' => auth()->id(),
-            'action' => 'inventory_adjust_stock',
-            'ip_address' => $request->ip(),
-            'old_values' => ['item_name' => $item->item_name, 'total_stock' => $oldStock],
-            'new_values' => ['item_name' => $item->item_name, 'total_stock' => $item->total_stock],
-        ]);
+            if ($validated['total_stock'] < (int) $item->reserved_quantity) {
+                abort(422, "Cannot set total stock to {$validated['total_stock']} because {$item->reserved_quantity} {$item->unit_type} are currently reserved in pending or in-transit dispatch orders.");
+            }
+
+            $oldStock = $item->total_stock;
+            $item->update(['total_stock' => $validated['total_stock']]);
+
+            AuditLog::create([
+                'user_id' => auth()->id(),
+                'action' => 'inventory_adjust_stock',
+                'ip_address' => $request->ip(),
+                'old_values' => ['item_name' => $item->item_name, 'total_stock' => $oldStock],
+                'new_values' => ['item_name' => $item->item_name, 'total_stock' => $item->total_stock],
+            ]);
+
+            return $item;
+        });
 
         return response()->json([
             'status' => 'success',

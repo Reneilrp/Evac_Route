@@ -123,7 +123,7 @@ export default function SafeCheckInScreen({ navigation }) {
               </View>
 
               <View style={styles.list}>
-                {allocation?.allocation ? (
+                {Array.isArray(allocation?.allocation) && allocation.allocation.length > 0 ? (
                   <FlatList
                     data={allocation.allocation}
                     keyExtractor={(_item, index) => index.toString()}

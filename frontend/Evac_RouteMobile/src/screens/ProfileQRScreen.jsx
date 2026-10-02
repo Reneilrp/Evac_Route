@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import PrimaryButton from '../components/PrimaryButton';
 import EmptyState from '../components/EmptyState';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { colors } from '../styles/theme';
 import styles from '../styles/ProfileQRScreen.styles';
 import * as Crypto from 'expo-crypto';
@@ -23,24 +24,18 @@ export default function ProfileQRScreen({ navigation }) {
   const { user, logout } = useAuth();
 
   const [isHomeModalOpen, setIsHomeModalOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [customLat, setCustomLat] = useState(homeLocation ? homeLocation[1].toString() : '6.9185');
   const [customLng, setCustomLng] = useState(homeLocation ? homeLocation[0].toString() : '122.0882');
 
   const effectiveId = profile?.id || user?.id || 1;
   const effectiveName = profile?.name || user?.name || 'Resident';
-  const effectiveBarangay = profile?.barangay || user?.family_profile?.barangay || 'Tetuan';
-  const effectiveHeadcount = profile?.headcount || user?.family_profile?.headcount || 1;
-  const effectiveQrHash = qrHash || user?.family_profile?.qr_code_hash || `family_hash_${effectiveId}`;
+  const effectiveBarangay = profile?.barangay || user?.family_profile?.barangay || user?.familyProfile?.barangay || 'Tetuan';
+  const effectiveHeadcount = profile?.headcount || user?.family_profile?.headcount || user?.familyProfile?.headcount || 1;
+  const effectiveQrHash = qrHash || user?.family_profile?.qr_code_hash || user?.familyProfile?.qr_code_hash || `family_hash_${effectiveId}`;
 
   const handleLogout = () => {
-    Alert.alert(
-      "Confirm Logout",
-      "Are you sure you want to logout? You will need to sign in again to access your account.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Logout", style: "destructive", onPress: logout }
-      ]
-    );
+    setShowLogoutModal(true);
   };
 
   // Dynamic TOTP Payload Generation
@@ -82,7 +77,7 @@ export default function ProfileQRScreen({ navigation }) {
 
   const getInitials = (name) => {
     if (!name) return '?';
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    return name.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || '?';
   };
 
   return (
@@ -119,7 +114,7 @@ export default function ProfileQRScreen({ navigation }) {
             elevation: 4,
           }}>
             {totpPayload ? (
-              <QRCode value={totpPayload} size={180} color="#000000" bgColor="#ffffff" />
+              <QRCode value={totpPayload} size={180} color="#000000" backgroundColor="#ffffff" />
             ) : (
               <EmptyState
                 title="Generating QR Code..."
@@ -234,7 +229,7 @@ export default function ProfileQRScreen({ navigation }) {
           {[
             {
               title: 'Pinpoint Home Address',
-              subtitle: homeLocation ? `📍 Home set: ${homeLocation[1].toFixed(4)}, ${homeLocation[0].toFixed(4)}` : 'Tap to pinpoint home GPS coordinates for A* routing',
+              subtitle: (Array.isArray(homeLocation) && homeLocation.length >= 2) ? `📍 Home set: ${Number(homeLocation[1]).toFixed(4)}, ${Number(homeLocation[0]).toFixed(4)}` : 'Tap to pinpoint home GPS coordinates for A* routing',
               icon: <MapPin size={20} color="#38bdf8" />,
               iconBg: 'rgba(56, 189, 248, 0.15)',
               onPress: () => setIsHomeModalOpen(true),
@@ -485,6 +480,20 @@ export default function ProfileQRScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* Styled Logout Confirmation Modal */}
+      <ConfirmationModal
+        visible={showLogoutModal}
+        title="Confirm Logout"
+        message="Are you sure you want to logout? You will need to sign in again to access your account."
+        detail={effectiveName}
+        confirmText="Logout"
+        cancelText="Cancel"
+        variant="danger"
+        icon={LogOut}
+        onConfirm={logout}
+        onClose={() => setShowLogoutModal(false)}
+      />
     </SafeAreaView>
   );
 }

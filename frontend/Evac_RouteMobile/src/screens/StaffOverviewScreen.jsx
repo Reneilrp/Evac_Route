@@ -33,15 +33,26 @@ export default function StaffOverviewScreen() {
     refetchInterval: 30000,
   });
 
-  // Pending incident count
+  // Pending incident count (API returns paginated structure: { status, data: { current_page, data: [...] } })
   const { data: incidentData } = useQuery({
     queryKey: ['staff-incidents'],
     queryFn: () => api.get('/incidents').then(r => r.data),
     refetchInterval: 60000,
   });
 
-  const shelters = shelterData?.shelters ?? [];
-  const pendingIncidents = (incidentData?.data ?? []).filter(i => i.status === 'pending');
+  const shelters = Array.isArray(shelterData?.shelters)
+    ? shelterData.shelters
+    : Array.isArray(shelterData?.data)
+    ? shelterData.data
+    : [];
+
+  const rawIncidents = Array.isArray(incidentData?.data)
+    ? incidentData.data
+    : Array.isArray(incidentData?.data?.data)
+    ? incidentData.data.data
+    : [];
+
+  const pendingIncidents = rawIncidents.filter(i => i && i.status === 'pending');
   const pendingCount = pendingIncidents.length;
 
   const openDashboard = () => {
@@ -55,19 +66,26 @@ export default function StaffOverviewScreen() {
   };
 
   const getOccupancyColor = (shelter) => {
-    const ratio = shelter.current_occupancy / shelter.max_capacity;
+    const maxCap = Math.max(1, Number(shelter?.max_capacity) || 1);
+    const currOcc = Math.max(0, Number(shelter?.current_occupancy) || 0);
+    const ratio = currOcc / maxCap;
     if (ratio >= 1) return colors.danger;
     if (ratio >= 0.8) return colors.warning;
     return colors.successLight;
   };
 
-  const renderShelterCard = ({ item: shelter }) => {
-    const ratio = shelter.current_occupancy / shelter.max_capacity;
-    const pct = Math.min(100, Math.round(ratio * 100));
+  const renderShelterCard = (shelter, index) => {
+    if (!shelter) return null;
+    const maxCap = Math.max(1, Number(shelter.max_capacity) || 1);
+    const currOcc = Math.max(0, Number(shelter.current_occupancy) || 0);
+    const ratio = Math.min(1, currOcc / maxCap);
+    const pct = Math.min(100, Math.max(0, Math.round(ratio * 100))) || 0;
     const isExpanded = expandedShelterId === shelter.id;
+    const isOpen = (shelter.status || '').toLowerCase() === 'open';
 
     return (
       <TouchableOpacity
+        key={shelter.id ? `shelter-${shelter.id}` : `shelter-idx-${index}`}
         onPress={() => setExpandedShelterId(isExpanded ? null : shelter.id)}
         activeOpacity={0.85}
         style={styles.shelterCard}
@@ -75,12 +93,12 @@ export default function StaffOverviewScreen() {
         {/* Card header */}
         <View style={styles.cardHeader}>
           <View style={styles.cardHeaderLeft}>
-            <View style={[styles.statusDot, { backgroundColor: shelter.status === 'open' ? colors.successLight : colors.danger }]} />
-            <Text style={styles.shelterName} numberOfLines={1}>{shelter.name}</Text>
+            <View style={[styles.statusDot, { backgroundColor: isOpen ? colors.successLight : colors.danger }]} />
+            <Text style={styles.shelterName} numberOfLines={1}>{shelter.name || 'Evacuation Shelter'}</Text>
           </View>
-          <View style={[styles.statusChip, { backgroundColor: shelter.status === 'open' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)' }]}>
-            <Text style={[styles.statusChipText, { color: shelter.status === 'open' ? colors.successLight : colors.danger }]}>
-              {shelter.status.toUpperCase()}
+          <View style={[styles.statusChip, { backgroundColor: isOpen ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)' }]}>
+            <Text style={[styles.statusChipText, { color: isOpen ? colors.successLight : colors.danger }]}>
+              {isOpen ? 'OPEN' : 'CLOSED'}
             </Text>
           </View>
         </View>
@@ -93,7 +111,7 @@ export default function StaffOverviewScreen() {
           <Text style={[styles.pctText, { color: getOccupancyColor(shelter) }]}>{pct}%</Text>
         </View>
         <Text style={styles.occupancyLabel}>
-          {shelter.current_occupancy} / {shelter.max_capacity} occupants
+          {currOcc} / {maxCap} occupants
         </Text>
 
         {/* Expanded detail */}
@@ -102,13 +120,13 @@ export default function StaffOverviewScreen() {
             <View style={styles.detailRow}>
               <Users size={14} color={colors.textMuted} />
               <Text style={styles.detailText}>
-                {shelter.max_capacity - shelter.current_occupancy} slots remaining
+                {Math.max(0, maxCap - currOcc)} slots remaining
               </Text>
             </View>
             <View style={styles.detailRow}>
               <Home size={14} color={colors.textMuted} />
               <Text style={styles.detailText}>
-                Status: {shelter.status}
+                Barangay: {shelter.barangay || 'Zamboanga City'}
               </Text>
             </View>
           </View>
@@ -151,19 +169,19 @@ export default function StaffOverviewScreen() {
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Text style={styles.statValue}>
-            {shelters.filter(s => s.status === 'open').length}
+            {shelters.filter(s => (s?.status || '').toLowerCase() === 'open').length}
           </Text>
           <Text style={styles.statLabel}>Open Shelters</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={[styles.statValue, { color: colors.primary }]}>
-            {shelters.reduce((sum, s) => sum + (s.current_occupancy || 0), 0)}
+            {shelters.reduce((sum, s) => sum + (Number(s?.current_occupancy) || 0), 0)}
           </Text>
           <Text style={styles.statLabel}>Total Evacuees</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={[styles.statValue, { color: colors.danger }]}>
-            {shelters.filter(s => s.current_occupancy >= s.max_capacity).length}
+            {shelters.filter(s => (Number(s?.current_occupancy) || 0) >= Math.max(1, Number(s?.max_capacity) || 1)).length}
           </Text>
           <Text style={styles.statLabel}>Full Shelters</Text>
         </View>
@@ -186,11 +204,7 @@ export default function StaffOverviewScreen() {
         </View>
       )}
 
-      {!isLoadingShelters && shelters.map(shelter => (
-        <View key={shelter.id}>
-          {renderShelterCard({ item: shelter })}
-        </View>
-      ))}
+      {!isLoadingShelters && shelters.map((shelter, idx) => renderShelterCard(shelter, idx))}
 
       {/* Open Web Dashboard Button */}
       <TouchableOpacity style={styles.webDashBtn} onPress={openDashboard} activeOpacity={0.85}>

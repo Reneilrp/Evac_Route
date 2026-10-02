@@ -10,6 +10,7 @@ export const useResidentStore = create(
       qrHash: null,
       status: 'danger', // 'danger' | 'safe'
       allocation: null, // details about what they receive
+      alertHistory: [], // alert notification history list
       // Home pinpoint location coordinates [lng, lat] for testing & evacuation routing
       homeLocation: null,
 
@@ -27,7 +28,7 @@ export const useResidentStore = create(
             .catch(err => console.warn('Failed to update DB location:', err));
         }
       },
-      setProfileData: (profile, qrHash) => set({ profile, qrHash, transportationMode: profile.transportation_mode }),
+      setProfileData: (profile, qrHash) => set({ profile, qrHash, transportationMode: profile?.transportation_mode || 'pedestrian' }),
       setTransportationMode: (mode) => set({ transportationMode: mode }),
       setSafeStatus: (allocation) => {
         const state = get();
@@ -45,7 +46,7 @@ export const useResidentStore = create(
           set({
             status: 'safe',
             allocation,
-            alertHistory: [newAlert, ...state.alertHistory].slice(0, 50), // Keep max 50 alerts
+            alertHistory: [newAlert, ...(state.alertHistory || [])].slice(0, 50), // Keep max 50 alerts
           });
         } else {
           set({ status: 'safe', allocation });
@@ -62,7 +63,7 @@ export const useResidentStore = create(
           ...alert,
         };
         set({
-          alertHistory: [newAlert, ...state.alertHistory].slice(0, 50),
+          alertHistory: [newAlert, ...(state.alertHistory || [])].slice(0, 50),
         });
       },
 
@@ -71,6 +72,7 @@ export const useResidentStore = create(
         qrHash: null,
         status: 'danger',
         allocation: null,
+        alertHistory: [],
         transportationMode: 'pedestrian',
         isOffline: false,
       }),

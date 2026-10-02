@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react';
 import { TouchableOpacity, Text, Animated, ActivityIndicator, Vibration, StyleSheet } from 'react-native';
-import { colors, radii, shadows, typography, spacing } from '../styles/theme';
+import { radii, spacing } from '../styles/theme';
 
 /**
  * PrimaryButton — Animated pressable button with haptic feedback.

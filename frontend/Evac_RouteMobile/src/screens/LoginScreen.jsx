@@ -1,28 +1,41 @@
 import { useRef, useEffect, useState } from 'react';
-import { View, Text, Animated, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { ShieldAlert } from 'lucide-react-native';
+import {
+  View,
+  Text,
+  Animated,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+} from 'react-native';
+import { ShieldAlert, Eye, EyeOff, Sparkles } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import PrimaryButton from '../components/PrimaryButton';
-import { colors } from '../styles/theme';
 import styles from '../styles/LoginScreen.styles';
 
 export default function LoginScreen({ navigation }) {
-  const { login, loginWithCredentials } = useAuth();
+  const { loginWithCredentials } = useAuth();
   const insets = useSafeAreaInsets();
+  const passwordInputRef = useRef(null);
 
-  const [isStaffMode, setIsStaffMode] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Animated values stored as refs
+  // Input Focus States for glowing borders
+  const [isEmailFocused, setIsEmailFocused] = useState(false);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+
+  // Animated values
   const bgAnimRef = useRef(new Animated.Value(0));
   const floatAnimRef = useRef(new Animated.Value(0));
   const fadeAnimRef = useRef(new Animated.Value(0));
-
-  const [isLoginForm, setIsLoginForm] = useState(false);
 
   useEffect(() => {
     const bgAnim = bgAnimRef.current;
@@ -40,18 +53,24 @@ export default function LoginScreen({ navigation }) {
     // Floating icon loop
     Animated.loop(
       Animated.sequence([
-        Animated.timing(floatAnim, { toValue: -8, duration: 2000, useNativeDriver: true }),
-        Animated.timing(floatAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: -6, duration: 2200, useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: 0, duration: 2200, useNativeDriver: true }),
       ])
     ).start();
 
     // Fade in content
-    Animated.timing(fadeAnim, { toValue: 1, duration: 1000, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
   }, []);
+
+  const handleQuickSelect = (testEmail, testPassword) => {
+    setEmail(testEmail);
+    setPassword(testPassword);
+    setError('');
+  };
 
   const handleLoginSubmit = async () => {
     if (!email.trim() || !password.trim()) {
-      setError('Please fill in email and password.');
+      setError('Please provide your email and password.');
       return;
     }
     setError('');
@@ -59,133 +78,184 @@ export default function LoginScreen({ navigation }) {
     const result = await loginWithCredentials(email.trim().toLowerCase(), password);
     setLoading(false);
     if (!result || !result.success) {
-      setError(result?.message || 'Invalid email or password.');
+      setError(result?.message || 'Invalid email or password. Please try again.');
     }
   };
 
   const backgroundColor = bgAnimRef.current.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#0f172a', '#0c1524'],
+    outputRange: ['#090d16', '#0f172a'],
   });
 
   return (
-    <Animated.View style={[styles.container, { backgroundColor }]}>
-      <Animated.View
-        style={[
-          styles.gradient,
-          { opacity: fadeAnimRef.current, paddingTop: insets.top, paddingBottom: insets.bottom },
-        ]}
-      >
-        {/* Logo Section */}
-        <View style={styles.logoSection}>
-          <Animated.View
-            style={[
-              styles.iconRing,
-              { transform: [{ translateY: floatAnimRef.current }] },
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <Animated.View style={[styles.container, { backgroundColor }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoid}
+        >
+          <ScrollView
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 20 },
             ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <ShieldAlert size={56} color={colors.primary} />
-          </Animated.View>
-          <Text style={styles.title}>EVAC-ROUTE</Text>
-          <Text style={styles.subtitle}>Emergency Evacuation System</Text>
-          <Text style={styles.cityLabel}>{isStaffMode ? 'LGU STAFF PORTAL' : 'ZAMBOANGA CITY'}</Text>
-        </View>
-
-        {/* Action Buttons & Login Form */}
-        {!isLoginForm ? (
-          <View style={styles.buttonSection}>
-            <PrimaryButton
-              title="REGISTER FAMILY"
-              onPress={() => navigation.navigate('SetupProfile')}
-              variant="primary"
-              size="large"
-            />
-
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
+            {/* Header / Logo */}
+            <View style={styles.logoSection}>
+              <Animated.View
+                style={[
+                  styles.iconRing,
+                  {
+                    transform: [{ translateY: floatAnimRef.current }],
+                  },
+                ]}
+              >
+                <ShieldAlert size={48} color="#38bdf8" />
+              </Animated.View>
+              <Text style={styles.title}>EVAC-ROUTE</Text>
+              <Text style={styles.subtitle}>Emergency Evacuation System</Text>
+              <View style={styles.cityBadge}>
+                <Text style={styles.cityLabel}>ZAMBOANGA CITY</Text>
+              </View>
             </View>
 
-            <PrimaryButton
-              title="I ALREADY REGISTERED"
-              onPress={() => {
-                setError('');
-                setIsStaffMode(false);
-                setIsLoginForm(true);
-              }}
-              variant="outline"
-              size="medium"
-            />
+            {/* Auth Card */}
+            <Animated.View style={[styles.card, { opacity: fadeAnimRef.current }]}>
+              {/* Quick Test Account Select */}
+              <View style={styles.quickChipsHeader}>
+                <Text style={styles.quickChipsTitle}>Quick Select Test Account</Text>
+                <Sparkles size={12} color="#64748b" />
+              </View>
 
-            <TouchableOpacity
-              style={styles.staffPortalButton}
-              onPress={() => {
-                setError('');
-                setIsStaffMode(true);
-                setIsLoginForm(true);
-              }}
-            >
-              <Text style={styles.staffPortalText}>LGU Staff Portal Sign In</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.buttonSection}>
-            <Text style={styles.inputLabel}>{isStaffMode ? 'LGU Staff Email' : 'Resident Email Address'}</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder={isStaffMode ? 'scanner1@lgu.gov.ph' : 'resident_tetuan_1@evacroute.local'}
-              placeholderTextColor="#64748b"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!loading}
-            />
+              <View style={styles.quickChipsRow}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => handleQuickSelect('rescue1@lgu.gov.ph', 'password')}
+                  style={[styles.quickChip, styles.quickChipRescue]}
+                >
+                  <Text style={[styles.quickChipText, { color: '#f87171' }]}>🚤 Rescue QRT</Text>
+                </TouchableOpacity>
 
-            <Text style={styles.inputLabel}>Password</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="••••••••"
-              placeholderTextColor="#64748b"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!loading}
-            />
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => handleQuickSelect('scanner1@lgu.gov.ph', 'password')}
+                  style={[styles.quickChip, styles.quickChipScanner]}
+                >
+                  <Text style={[styles.quickChipText, { color: '#38bdf8' }]}>📋 Scanner</Text>
+                </TouchableOpacity>
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => handleQuickSelect('pheinz@evacroute.local', 'password')}
+                  style={[styles.quickChip, styles.quickChipResident]}
+                >
+                  <Text style={[styles.quickChipText, { color: '#34d399' }]}>👤 Resident</Text>
+                </TouchableOpacity>
+              </View>
 
-            {loading ? (
-              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 10 }} />
-            ) : (
-              <PrimaryButton
-                title={isStaffMode ? 'LOG IN AS STAFF' : 'SIGN IN TO MY ACCOUNT'}
-                onPress={handleLoginSubmit}
-                variant="primary"
-                size="large"
-              />
-            )}
+              {/* Form Section */}
+              <View style={styles.formSection}>
+                <Text style={styles.inputLabel}>Email</Text>
+                <TextInput
+                  style={[
+                    styles.textInput,
+                    isEmailFocused && styles.textInputFocused,
+                  ]}
+                  placeholder="name@example.com"
+                  placeholderTextColor="#475569"
+                  value={email}
+                  onChangeText={(val) => {
+                    setEmail(val);
+                    if (error) setError('');
+                  }}
+                  onFocus={() => setIsEmailFocused(true)}
+                  onBlur={() => setIsEmailFocused(false)}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordInputRef.current?.focus()}
+                  editable={!loading}
+                />
 
-            <PrimaryButton
-              title="BACK TO MAIN MENU"
-              onPress={() => {
-                setError('');
-                setIsLoginForm(false);
-                setIsStaffMode(false);
-              }}
-              variant="outline"
-              size="medium"
-              disabled={loading}
-            />
-          </View>
-        )}
+                <Text style={styles.inputLabel}>Password</Text>
+                <View
+                  style={[
+                    styles.passwordInputContainer,
+                    isPasswordFocused && styles.passwordInputContainerFocused,
+                  ]}
+                >
+                  <TextInput
+                    ref={passwordInputRef}
+                    style={styles.passwordInput}
+                    placeholder="••••••••"
+                    placeholderTextColor="#475569"
+                    value={password}
+                    onChangeText={(val) => {
+                      setPassword(val);
+                      if (error) setError('');
+                    }}
+                    onFocus={() => setIsPasswordFocused(true)}
+                    onBlur={() => setIsPasswordFocused(false)}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="go"
+                    onSubmitEditing={handleLoginSubmit}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIconButton}
+                    onPress={() => setShowPassword(!showPassword)}
+                    activeOpacity={0.7}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={18} color="#94a3b8" />
+                    ) : (
+                      <Eye size={18} color="#94a3b8" />
+                    )}
+                  </TouchableOpacity>
+                </View>
 
-        <Text style={styles.versionText}>v1.0.0</Text>
+                {error ? (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                ) : null}
+
+                {/* Submit CTA */}
+                <TouchableOpacity
+                  style={styles.submitButton}
+                  onPress={handleLoginSubmit}
+                  disabled={loading}
+                  activeOpacity={0.8}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.submitButtonText}>SIGN IN</Text>
+                  )}
+                </TouchableOpacity>
+
+                {/* Need to evacuate? Register as Evacuee */}
+                <View style={styles.registerPrompt}>
+                  <Text style={styles.registerPromptText}>Need to evacuate household?</Text>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('SetupProfile')}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.registerLinkText}>Register as Evacuee</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Animated.View>
+
+            <Text style={styles.versionText}>EVAC_ROUTE MOBILE • v1.0.1</Text>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Animated.View>
-    </Animated.View>
+    </TouchableWithoutFeedback>
   );
 }

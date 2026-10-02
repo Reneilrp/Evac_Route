@@ -18,11 +18,11 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Interceptor to handle 401/403 globally — redirect to login when session expires
+// Interceptor to handle 401 globally — redirect to login when session expires
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+    if (error.response && error.response.status === 401) {
       // Do NOT redirect if the failing request is the logout call itself —
       // that would create an infinite redirect loop when tokens expire mid-session
       const isLogoutRequest = error.config?.url?.includes('/logout');

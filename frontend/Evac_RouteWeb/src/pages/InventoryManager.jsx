@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Package, ClipboardList, Plus, AlertCircle, X, Trash2, Truck, CheckCircle, Clock, MapPin } from 'lucide-react';
+import { Package, ClipboardList, Plus, AlertCircle, X, Trash2, Truck, CheckCircle, Clock, MapPin, Printer, ShieldAlert } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { showSuccess, showError } from '../utils/toast';
+import PrintDispatchManifestModal from '../components/PrintDispatchManifestModal';
 
 // --- Add Stock Modal ---
 function AddStockModal({ onCancel, onAdd }) {
@@ -179,11 +180,20 @@ function RationTemplateForm({ items, onCancel, onCreate }) {
 // --- Adjust Stock Modal ---
 function AdjustStockModal({ item, onCancel, onAdjust }) {
   const [stock, setStock] = useState(item.total_stock);
+  const reserved = item.reserved_quantity || 0;
+  const avail = item.available_stock ?? Math.max(0, item.total_stock - reserved);
+  const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (stock === '' || isNaN(parseInt(stock, 10)) || parseInt(stock, 10) < 0) return;
-    onAdjust(parseInt(stock, 10));
+    const val = parseInt(stock, 10);
+    if (stock === '' || isNaN(val) || val < 0) return;
+    if (val < reserved) {
+      setError(`Cannot reduce total stock below ${reserved} ${item.unit_type} because it is currently reserved in active dispatch orders.`);
+      return;
+    }
+    setError('');
+    onAdjust(val);
   };
 
   return (
@@ -196,10 +206,34 @@ function AdjustStockModal({ item, onCancel, onAdjust }) {
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition"><X size={22} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-semibold">
+              {error}
+            </div>
+          )}
+          <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs space-y-1">
+            <div className="flex justify-between text-gray-600">
+              <span>Current Physical Stock:</span>
+              <span className="font-bold text-gray-800">{item.total_stock} {item.unit_type}</span>
+            </div>
+            <div className="flex justify-between text-amber-700">
+              <span>Reserved in Dispatch Orders:</span>
+              <span className="font-bold">{reserved} {item.unit_type}</span>
+            </div>
+            <div className="flex justify-between text-blue-700 pt-1 border-t border-gray-200">
+              <span>Available to Promise (ATP):</span>
+              <span className="font-bold">{avail} {item.unit_type}</span>
+            </div>
+          </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Total Stock Count ({item.unit_type})</label>
-            <input type="number" min="0" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={stock} onChange={e => setStock(e.target.value)} required autoFocus />
+            <label className="block text-sm font-semibold text-gray-700 mb-1">New Total Stock Count ({item.unit_type})</label>
+            <input type="number" min={reserved} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={stock} onChange={e => { setStock(e.target.value); setError(''); }} required autoFocus />
+            {reserved > 0 && (
+              <p className="text-[11px] text-gray-400 mt-1">
+                Minimum {reserved} {item.unit_type} required to fulfill pending/in-transit reservations.
+              </p>
+            )}
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg font-semibold text-sm transition">Cancel</button>
@@ -214,12 +248,14 @@ function AdjustStockModal({ item, onCancel, onAdjust }) {
 // --- Main InventoryManager ---
 export default function InventoryManager() {
   const { user } = useAuth();
+  const isCSWDO = user?.email?.toLowerCase().includes('logistics') || user?.email?.toLowerCase().includes('cswdo');
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('stock');
   const [showTemplateForm, setShowTemplateForm] = useState(false);
   const [showAddStockModal, setShowAddStockModal] = useState(false);
   const [adjustingItem, setAdjustingItem] = useState(null);
   const [showDispatchModal, setShowDispatchModal] = useState(false);
+  const [printingOrder, setPrintingOrder] = useState(null);
 
   // Fetch consolidated inventory and ration templates
   const { data: inventoryDashboardData, isLoading } = useQuery({
@@ -285,7 +321,7 @@ export default function InventoryManager() {
   const activeTemplate = templates.find(t => t.is_active);
 
   // Dispatch Orders
-  const { data: dispatchData, isLoading: isLoadingDispatch, refetch: refetchDispatch } = useQuery({
+  const { data: dispatchData, isLoading: isLoadingDispatch } = useQuery({
     queryKey: ['dispatch-orders'],
     queryFn: () => api.get('/dispatch-orders').then(r => r.data),
     refetchInterval: 30000,
@@ -303,9 +339,11 @@ export default function InventoryManager() {
     mutationFn: (id) => api.post(`/dispatch-orders/${id}/cancel`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
-      showSuccess('Dispatch order cancelled.');
+      queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+      showSuccess('Dispatch order cancelled and reserved stock released.');
     },
-    onError: () => showError('Could not cancel this order.'),
+    onError: (err) => showError(err?.response?.data?.message || 'Could not cancel this order.'),
   });
 
   const handleAddStock = (newItem) => {
@@ -342,10 +380,33 @@ export default function InventoryManager() {
 
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Inventory &amp; Relief Manager</h2>
-          <p className="text-sm text-gray-500 mt-1">Manage CSWDO warehouse stock and ration templates.</p>
+          <h2 className="text-2xl font-bold text-gray-800">
+            {isCSWDO ? 'Relief Logistics & Inventory' : 'Central Relief Inventory Monitoring'}
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            {isCSWDO
+              ? 'Manage CSWDO relief supply stocks, ration formulas, and dispatch manifests.'
+              : 'Situational awareness of CSWDO relief supplies, active ration formulas, and delivery dispatches.'}
+          </p>
         </div>
       </div>
+
+      {!isCSWDO && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3.5 text-blue-900 shadow-sm">
+          <ShieldAlert size={22} className="text-blue-600 shrink-0" />
+          <div>
+            <div className="text-xs font-black uppercase flex items-center gap-2">
+              <span>CDRRMO Situational View</span>
+              <span className="text-[9px] bg-blue-100 text-blue-700 border border-blue-300 px-2 py-0.5 rounded-full font-bold">
+                Read-Only
+              </span>
+            </div>
+            <p className="text-xs text-blue-700 mt-0.5">
+              Central inventory stocks, ration formulas, and transport manifests are managed by <strong>CSWDO Logistics</strong>. CDRRMO monitors stock levels for situational awareness and rescue prioritization.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Custom Tabs */}
       <div className="flex space-x-1 bg-gray-200 p-1 rounded-lg w-fit mb-6">
@@ -355,7 +416,7 @@ export default function InventoryManager() {
             activeTab === 'stock' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          <Package size={16} /> Warehouse Stock
+          <Package size={16} /> Relief Supplies &amp; Stock
         </button>
         <button
           onClick={() => setActiveTab('rations')}
@@ -385,7 +446,7 @@ export default function InventoryManager() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
             <h3 className="font-semibold text-gray-700">Current Stock Levels</h3>
-            {user?.role === 'admin' ? (
+            {isCSWDO ? (
               <button 
                 onClick={() => setShowAddStockModal(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm"
@@ -393,22 +454,23 @@ export default function InventoryManager() {
                 <Plus size={16} /> Receive Delivery
               </button>
             ) : (
-              <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 font-semibold select-none">
-                Read-Only (Admin Managed)
+              <span className="text-xs text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg font-semibold select-none flex items-center gap-1.5">
+                <ShieldAlert size={14} className="text-blue-500" /> Managed by CSWDO Logistics
               </span>
             )}
           </div>
 
-          {items.some(item => item.total_stock < 200) && (
+          {items.some(item => (item.available_stock ?? Math.max(0, item.total_stock - (item.reserved_quantity || 0))) < 200) && (
             <div className="mx-6 mt-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl flex items-start gap-3 text-red-700 dark:text-red-400 animate-pulse">
               <AlertCircle size={20} className="mt-0.5 flex-shrink-0" />
               <div>
                 <h4 className="font-bold text-sm">Critical Stock Deficits Detected</h4>
                 <p className="text-xs mt-0.5">
-                  The following warehouse item levels are critically low (&lt; 200 units):{' '}
+                  The following relief item available levels are critically low (&lt; 200 units available):{' '}
                   <span className="font-bold">
-                    {items.filter(item => item.total_stock < 200).map(item => `${item.item_name} (${item.total_stock} ${item.unit_type})`).join(', ')}
-                  </span>. Please schedule emergency supplier deliveries.
+                    {items.filter(item => (item.available_stock ?? Math.max(0, item.total_stock - (item.reserved_quantity || 0))) < 200)
+                      .map(item => `${item.item_name} (${item.available_stock ?? Math.max(0, item.total_stock - (item.reserved_quantity || 0))} ${item.unit_type} avail)`).join(', ')}
+                  </span>. Please schedule emergency replenishment.
                 </p>
               </div>
             </div>
@@ -427,7 +489,9 @@ export default function InventoryManager() {
                 <thead>
                   <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                     <th className="py-3 px-6 font-semibold">Item Name</th>
-                    <th className="py-3 px-6 font-semibold">Total Stock</th>
+                    <th className="py-3 px-6 font-semibold">Available to Dispatch (ATP)</th>
+                    <th className="py-3 px-6 font-semibold">Reserved (In Dispatches)</th>
+                    <th className="py-3 px-6 font-semibold">Physical Total</th>
                     <th className="py-3 px-6 font-semibold">Unit Type</th>
                     <th className="py-3 px-6 font-semibold text-right">Actions</th>
                   </tr>
@@ -435,53 +499,67 @@ export default function InventoryManager() {
                 <tbody className="divide-y divide-gray-100">
                   {items.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-12 text-center text-gray-400 font-medium">
+                      <td colSpan={6} className="py-12 text-center text-gray-400 font-medium">
                         No inventory items yet. Add your first delivery.
                       </td>
                     </tr>
                   ) : (
-                    items.map(item => (
-                      <tr key={item.id} className="hover:bg-blue-50/30 transition">
-                        <td className="py-4 px-6 font-medium text-gray-800">{item.item_name}</td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-3">
-                            <span className={`py-1 px-3 rounded-full text-xs font-bold w-16 text-center inline-block ${
-                              item.total_stock < 200 ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' :
-                              item.total_stock < 500 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' :
-                              'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400'
-                            }`}>
-                              {item.total_stock}
-                            </span>
-                            <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden flex-shrink-0">
-                              <div 
-                                className={`h-full rounded-full transition-all duration-500 ${
-                                  item.total_stock < 200 ? 'bg-red-500' :
-                                  item.total_stock < 500 ? 'bg-amber-500' :
-                                  'bg-green-500'
-                                }`} 
-                                style={{ width: `${Math.min(100, Math.max(5, (item.total_stock / 1000) * 100))}%` }}
-                              />
+                    items.map(item => {
+                      const avail = item.available_stock ?? Math.max(0, item.total_stock - (item.reserved_quantity || 0));
+                      const reserved = item.reserved_quantity || 0;
+                      return (
+                        <tr key={item.id} className="hover:bg-blue-50/30 transition">
+                          <td className="py-4 px-6 font-medium text-gray-800">{item.item_name}</td>
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-3">
+                              <span className={`py-1 px-3 rounded-full text-xs font-bold w-16 text-center inline-block ${
+                                avail < 200 ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' :
+                                avail < 500 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' :
+                                'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400'
+                              }`}>
+                                {avail}
+                              </span>
+                              <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden flex-shrink-0">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    avail < 200 ? 'bg-red-500' :
+                                    avail < 500 ? 'bg-amber-500' :
+                                    'bg-green-500'
+                                  }`} 
+                                  style={{ width: `${Math.min(100, Math.max(5, (avail / 1000) * 100))}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] text-gray-400 font-bold uppercase select-none">
+                                {Math.min(100, Math.round((avail / 1000) * 100))}%
+                              </span>
                             </div>
-                            <span className="text-[10px] text-gray-400 font-bold uppercase select-none">
-                              {Math.min(100, Math.round((item.total_stock / 1000) * 100))}% of Cap
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-gray-600 text-sm">{item.unit_type}</td>
-                        <td className="py-4 px-6 text-right">
-                          {user?.role === 'admin' ? (
-                            <button 
-                              onClick={() => setAdjustingItem(item)}
-                              className="text-blue-600 hover:text-blue-800 font-medium text-sm transition"
-                            >
-                              Adjust
-                            </button>
-                          ) : (
-                            <span className="text-gray-400 text-xs italic">Admin Locked</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                          </td>
+                          <td className="py-4 px-6 text-sm">
+                            {reserved > 0 ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                {reserved} {item.unit_type}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 text-xs">0</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-6 font-semibold text-gray-700 text-sm">{item.total_stock}</td>
+                          <td className="py-4 px-6 text-gray-600 text-sm">{item.unit_type}</td>
+                          <td className="py-4 px-6 text-right">
+                            {isCSWDO ? (
+                              <button 
+                                onClick={() => setAdjustingItem(item)}
+                                className="text-blue-600 hover:text-blue-800 font-medium text-sm transition"
+                              >
+                                Adjust
+                              </button>
+                            ) : (
+                              <span className="text-gray-400 text-xs italic">View Only</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -546,7 +624,7 @@ export default function InventoryManager() {
                         }).join(', ')}
                       </p>
                     </div>
-                    {user?.role === 'admin' ? (
+                    {isCSWDO ? (
                       <button 
                         onClick={() => activateTemplateMutation.mutate(t.id)}
                         disabled={activateTemplateMutation.isPending}
@@ -555,8 +633,8 @@ export default function InventoryManager() {
                         Activate
                       </button>
                     ) : (
-                      <span className="text-xs text-gray-400 font-bold bg-gray-50 border border-gray-200 px-3 py-1.5 rounded select-none cursor-not-allowed">
-                        Admin Only
+                      <span className="text-xs text-gray-400 font-semibold bg-gray-50 border border-gray-200 px-2.5 py-1 rounded select-none">
+                        CSWDO Managed
                       </span>
                     )}
                   </div>
@@ -576,7 +654,7 @@ export default function InventoryManager() {
             <p className="text-sm text-gray-500 mb-6 max-w-sm">
               Create a new relief allocation strategy. Define exactly what each person receives upon shelter check-in.
             </p>
-            {user?.role === 'admin' ? (
+            {isCSWDO ? (
               <button 
                 onClick={() => setShowTemplateForm(true)}
                 disabled={items.length === 0}
@@ -587,9 +665,9 @@ export default function InventoryManager() {
             ) : (
               <button 
                 disabled
-                className="bg-gray-200 text-gray-400 cursor-not-allowed font-bold py-2 px-6 rounded-lg w-full max-w-xs"
+                className="bg-gray-100 text-gray-400 font-bold py-2 px-6 rounded-lg w-full max-w-xs border border-gray-200 cursor-not-allowed"
               >
-                Ration Builder Locked (Admin)
+                CSWDO Managed Profiles
               </button>
             )}
           </div>
@@ -607,7 +685,9 @@ export default function InventoryManager() {
               onCreated={() => {
                 setShowDispatchModal(false);
                 queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
-                showSuccess('Dispatch order created. Staff have been notified.');
+                queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
+                queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+                showSuccess('Dispatch order created, stock reserved, and staff notified.');
               }}
             />
           )}
@@ -616,14 +696,20 @@ export default function InventoryManager() {
             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <div>
                 <h3 className="font-semibold text-gray-700">Delivery Dispatch Orders</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Stock deducted from warehouse upon staff delivery confirmation.</p>
+                <p className="text-xs text-gray-400 mt-0.5">Stock is reserved upon creation to prevent over-allocation, and deducted from physical inventory upon delivery confirmation.</p>
               </div>
-              <button
-                onClick={() => setShowDispatchModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm"
-              >
-                <Plus size={16} /> New Dispatch Order
-              </button>
+              {isCSWDO ? (
+                <button
+                  onClick={() => setShowDispatchModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm"
+                >
+                  <Plus size={16} /> New Dispatch Order
+                </button>
+              ) : (
+                <span className="text-xs text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg font-semibold select-none flex items-center gap-1.5">
+                  <ShieldAlert size={14} className="text-blue-500" /> Dispatches Initiated by CSWDO
+                </span>
+              )}
             </div>
 
             {isLoadingDispatch ? (
@@ -666,19 +752,18 @@ export default function InventoryManager() {
                             {order.notes && <p className="text-xs text-gray-400 mt-0.5 italic truncate max-w-[180px]">{order.notes}</p>}
                           </td>
                           <td className="px-4 py-3">
-                            <div className="space-y-0.5">
-                              {order.items?.slice(0, 2).map(item => (
-                                <div key={item.id} className="text-xs text-gray-600">
-                                  {item.inventory_item?.item_name ?? '—'} ×{item.quantity}
-                                </div>
+                            <ul className="space-y-0.5 text-xs text-gray-600">
+                              {order.items?.map(item => (
+                                <li key={item.id} className="flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0" />
+                                  <span className="font-semibold text-gray-800">{item.inventory_item?.item_name ?? `Item #${item.inventory_item_id}`}</span>
+                                  <span className="text-gray-400">× {item.quantity} {item.inventory_item?.unit_type}</span>
+                                </li>
                               ))}
-                              {(order.items?.length ?? 0) > 2 && (
-                                <div className="text-xs text-gray-400">+{order.items.length - 2} more</div>
-                              )}
-                            </div>
+                            </ul>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${scfg.cls}`}>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${scfg.cls}`}>
                               <Icon size={12} /> {scfg.label}
                             </span>
                           </td>
@@ -688,14 +773,24 @@ export default function InventoryManager() {
                             {order.delivered_at && <div className="text-green-600">Delivered: {new Date(order.delivered_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>}
                           </td>
                           <td className="px-4 py-3">
-                            {order.status === 'pending' ? (
+                            <div className="flex items-center gap-2">
                               <button
-                                onClick={() => { if (window.confirm(`Cancel order #${order.id}?`)) cancelDispatchMutation.mutate(order.id); }}
-                                className="text-xs text-red-500 hover:text-red-700 font-semibold flex items-center gap-1 transition"
+                                onClick={() => setPrintingOrder(order)}
+                                className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded font-bold flex items-center gap-1 transition shadow-xs"
+                                title="Print Official Requisition Manifest"
                               >
-                                <X size={13} /> Cancel
+                                <Printer size={13} /> Manifest
                               </button>
-                            ) : <span className="text-xs text-gray-300">—</span>}
+                              {isCSWDO && ['pending', 'in_transit'].includes(order.status) && (
+                                <button
+                                  onClick={() => { if (window.confirm(`Cancel order #${order.id} and release reserved stock?`)) cancelDispatchMutation.mutate(order.id); }}
+                                  className="text-xs text-red-500 hover:text-red-700 font-semibold flex items-center gap-1 transition p-1"
+                                  title="Cancel Order & Release Stock"
+                                >
+                                  <X size={13} /> Cancel
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -706,6 +801,14 @@ export default function InventoryManager() {
             )}
           </div>
         </div>
+      )}
+
+      {printingOrder && (
+        <PrintDispatchManifestModal
+          order={printingOrder}
+          shelterDetails={shelterOptions.find(s => s.id === printingOrder.shelter_id) || printingOrder.shelter}
+          onCancel={() => setPrintingOrder(null)}
+        />
       )}
     </div>
   );
@@ -732,6 +835,20 @@ function CreateDispatchModal({ inventoryItems, shelters, onCancel, onCreated }) 
     if (!shelterId) { setError('Please select a destination shelter.'); return; }
     const validItems = manifest.filter(r => r.inventory_item_id && r.quantity > 0);
     if (validItems.length === 0) { setError('Add at least one item to the manifest.'); return; }
+
+    // Client-side ATP validation
+    for (const row of validItems) {
+      const invItem = inventoryItems.find(it => String(it.id) === String(row.inventory_item_id));
+      if (invItem) {
+        const avail = invItem.available_stock ?? Math.max(0, invItem.total_stock - (invItem.reserved_quantity || 0));
+        const qty = parseInt(row.quantity, 10);
+        if (qty > avail) {
+          setError(`Cannot dispatch ${qty} ${invItem.unit_type} of ${invItem.item_name}. Only ${avail} ${invItem.unit_type} are available to promise (Physical Total: ${invItem.total_stock}, Already Reserved: ${invItem.reserved_quantity || 0}).`);
+          return;
+        }
+      }
+    }
+
     setIsSubmitting(true); setError('');
     try {
       await api.post('/dispatch-orders', {
@@ -771,29 +888,39 @@ function CreateDispatchModal({ inventoryItems, shelters, onCancel, onCreated }) 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Manifest</label>
             <div className="space-y-2">
-              {manifest.map((row, i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <select
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={row.inventory_item_id} onChange={e => updateRow(i, 'inventory_item_id', e.target.value)}
-                  >
-                    <option value="">Select item…</option>
-                    {inventoryItems.map(item => (
-                      <option key={item.id} value={item.id}>{item.item_name} (stock: {item.total_stock} {item.unit_type})</option>
-                    ))}
-                  </select>
-                  <input
-                    type="number" min="1" placeholder="Qty"
-                    className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={row.quantity} onChange={e => updateRow(i, 'quantity', e.target.value)}
-                  />
-                  {manifest.length > 1 && (
-                    <button type="button" onClick={() => removeRow(i)} className="text-red-400 hover:text-red-600 transition">
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
+              {manifest.map((row, i) => {
+                const selectedItem = inventoryItems.find(it => String(it.id) === String(row.inventory_item_id));
+                const itemAvail = selectedItem ? (selectedItem.available_stock ?? Math.max(0, selectedItem.total_stock - (selectedItem.reserved_quantity || 0))) : null;
+
+                return (
+                  <div key={i} className="flex gap-2 items-center">
+                    <select
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={row.inventory_item_id} onChange={e => updateRow(i, 'inventory_item_id', e.target.value)}
+                    >
+                      <option value="">Select item…</option>
+                      {inventoryItems.map(item => {
+                        const avail = item.available_stock ?? Math.max(0, item.total_stock - (item.reserved_quantity || 0));
+                        return (
+                          <option key={item.id} value={item.id} disabled={avail <= 0}>
+                            {item.item_name} (Avail: {avail} / Total: {item.total_stock} {item.unit_type}){avail <= 0 ? ' — Out of Stock' : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <input
+                      type="number" min="1" max={itemAvail !== null ? itemAvail : undefined} placeholder="Qty"
+                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={row.quantity} onChange={e => updateRow(i, 'quantity', e.target.value)}
+                    />
+                    {manifest.length > 1 && (
+                      <button type="button" onClick={() => removeRow(i)} className="text-red-400 hover:text-red-600 transition">
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <button type="button" onClick={addRow} className="mt-2 text-blue-600 text-sm font-semibold hover:underline flex items-center gap-1">
               <Plus size={14} /> Add Item

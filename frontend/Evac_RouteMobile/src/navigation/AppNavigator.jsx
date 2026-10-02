@@ -5,7 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { MapPin, QrCode, AlertTriangle, BarChart2, Package, User } from 'lucide-react-native';
+import { MapPin, QrCode, AlertTriangle, BarChart2, Package, User, LifeBuoy, Navigation } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { colors, typography } from '../styles/theme';
@@ -23,21 +23,41 @@ import EmergencyContactsScreen from '../screens/EmergencyContactsScreen';
 import AlertHistoryScreen from '../screens/AlertHistoryScreen';
 import StaffScannerScreen from '../screens/StaffScannerScreen';
 import StaffOverviewScreen from '../screens/StaffOverviewScreen';
+import StaffProfileScreen from '../screens/StaffProfileScreen';
 import DispatchQueueScreen from '../screens/DispatchQueueScreen';
 import DispatchDetailScreen from '../screens/DispatchDetailScreen';
+import RescueDutyScreen from '../screens/RescueDutyScreen';
+import RescueMapScreen from '../screens/RescueMapScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-// Protected Staff Tabs (Scanner + Dispatch + Overview)
-function StaffTabs({ pendingDispatchCount }) {
+// Protected Staff Tabs (Rescue + Scanner + Dispatch + Overview + Profile)
+function StaffTabs({ pendingDispatchCount, user }) {
+  const isAdmin = user?.role === 'admin';
+  const isRescueUser =
+    user?.operator_type === 'rescue' ||
+    !!user?.assigned_rescue_unit_id ||
+    !!user?.rescue_role ||
+    user?.email?.toLowerCase().includes('rescue');
+  const isScannerUser =
+    user?.operator_type === 'scanner' ||
+    !!user?.assigned_shelter_id ||
+    user?.email?.toLowerCase().includes('scanner');
+
+  const initialRoute = isRescueUser ? 'Rescue' : 'Scanner';
+
   return (
     <Tab.Navigator
+      initialRouteName={initialRoute}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => {
-          if (route.name === 'Scanner')  return <QrCode   color={color} size={size} />;
-          if (route.name === 'Dispatch') return <Package  color={color} size={size} />;
-          if (route.name === 'Overview') return <BarChart2 color={color} size={size} />;
+          if (route.name === 'Rescue')    return <LifeBuoy   color={color} size={size} />;
+          if (route.name === 'RescueMap') return <Navigation color={color} size={size} />;
+          if (route.name === 'Scanner')   return <QrCode     color={color} size={size} />;
+          if (route.name === 'Dispatch')  return <Package    color={color} size={size} />;
+          if (route.name === 'Overview')  return <BarChart2  color={color} size={size} />;
+          if (route.name === 'Profile')   return <User       color={color} size={size} />;
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
@@ -52,16 +72,58 @@ function StaffTabs({ pendingDispatchCount }) {
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       })}
     >
-      <Tab.Screen name="Scanner"  component={StaffScannerScreen} />
+      {(isAdmin || isRescueUser) && (
+        <Tab.Screen
+          name="Rescue"
+          component={RescueDutyScreen}
+          options={{
+            tabBarLabel: 'Rescue Duty',
+            tabBarActiveTintColor: '#ef4444',
+          }}
+        />
+      )}
+      {(isAdmin || isRescueUser) && (
+        <Tab.Screen
+          name="RescueMap"
+          component={RescueMapScreen}
+          options={{
+            tabBarLabel: 'Rescue Map',
+            tabBarActiveTintColor: '#06b6d4',
+          }}
+        />
+      )}
+      {(isAdmin || isScannerUser || (!isRescueUser && !isScannerUser)) && (
+        <Tab.Screen
+          name="Scanner"
+          component={StaffScannerScreen}
+          options={{
+            tabBarLabel: 'Shelter Scanner',
+            tabBarActiveTintColor: '#3b82f6',
+          }}
+        />
+      )}
+      {(isAdmin || isRescueUser) && (
+        <Tab.Screen
+          name="Dispatch"
+          component={DispatchQueueScreen}
+          options={{
+            tabBarLabel: 'Missions Queue',
+            tabBarBadge: pendingDispatchCount > 0 ? pendingDispatchCount : undefined,
+            tabBarBadgeStyle: { backgroundColor: '#ef4444', fontSize: 10 },
+          }}
+        />
+      )}
+      {(isAdmin || !isRescueUser) && (
+        <Tab.Screen name="Overview" component={StaffOverviewScreen} />
+      )}
       <Tab.Screen
-        name="Dispatch"
-        component={DispatchQueueScreen}
+        name="Profile"
+        component={StaffProfileScreen}
         options={{
-          tabBarBadge: pendingDispatchCount > 0 ? pendingDispatchCount : undefined,
-          tabBarBadgeStyle: { backgroundColor: '#ef4444', fontSize: 10 },
+          tabBarLabel: 'Profile',
+          tabBarActiveTintColor: colors.primary,
         }}
       />
-      <Tab.Screen name="Overview" component={StaffOverviewScreen} />
     </Tab.Navigator>
   );
 }
@@ -173,11 +235,21 @@ export default function AppNavigator() {
                   <Stack.Screen
                     name="Root"
                   >
-                    {() => <StaffTabs pendingDispatchCount={pendingDispatchCount} />}
+                    {() => (
+                      <StaffTabs
+                        pendingDispatchCount={pendingDispatchCount}
+                        user={user}
+                      />
+                    )}
                   </Stack.Screen>
                   <Stack.Screen
                     name="DispatchDetail"
                     component={DispatchDetailScreen}
+                    options={{ animation: 'slide_from_right' }}
+                  />
+                  <Stack.Screen
+                    name="RescueMap"
+                    component={RescueMapScreen}
                     options={{ animation: 'slide_from_right' }}
                   />
                 </>

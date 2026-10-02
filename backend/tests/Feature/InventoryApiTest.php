@@ -111,4 +111,47 @@ class InventoryApiTest extends TestCase
             'total_stock' => 88,
         ]);
     }
+
+    public function test_can_adjust_stock_above_reserved()
+    {
+        $user = User::factory()->create(['role' => 'admin']);
+        $item = InventoryItem::create([
+            'item_name' => 'Sacks of Rice',
+            'total_stock' => 100,
+            'reserved_quantity' => 25,
+            'unit_type' => 'sacks',
+        ]);
+
+        $response = $this->actingAs($user, 'sanctum')->putJson("/api/inventory/{$item->id}/adjust", [
+            'total_stock' => 80,
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertDatabaseHas('inventory_items', [
+            'id' => $item->id,
+            'total_stock' => 80,
+        ]);
+    }
+
+    public function test_cannot_adjust_stock_below_reserved()
+    {
+        $user = User::factory()->create(['role' => 'admin']);
+        $item = InventoryItem::create([
+            'item_name' => 'Sacks of Rice',
+            'total_stock' => 100,
+            'reserved_quantity' => 40,
+            'unit_type' => 'sacks',
+        ]);
+
+        // Attempting to reduce total_stock to 30 when 40 is reserved should fail
+        $response = $this->actingAs($user, 'sanctum')->putJson("/api/inventory/{$item->id}/adjust", [
+            'total_stock' => 30,
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertDatabaseHas('inventory_items', [
+            'id' => $item->id,
+            'total_stock' => 100,
+        ]);
+    }
 }

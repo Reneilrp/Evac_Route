@@ -11,7 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'role', 'status', 'push_token', 'last_latitude', 'last_longitude', 'alert_radius_meters'])]
+#[Fillable(['name', 'email', 'password', 'role', 'operator_type', 'assigned_rescue_unit_id', 'assigned_shelter_id', 'rescue_role', 'status', 'push_token', 'last_latitude', 'last_longitude', 'alert_radius_meters'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -21,6 +21,21 @@ class User extends Authenticatable
     public function familyProfile()
     {
         return $this->hasOne(FamilyProfile::class);
+    }
+
+    public function assignedRescueUnit()
+    {
+        return $this->belongsTo(RescueUnit::class, 'assigned_rescue_unit_id');
+    }
+
+    public function assignedShelter()
+    {
+        return $this->belongsTo(Shelter::class, 'assigned_shelter_id');
+    }
+
+    public function rescueUnits()
+    {
+        return $this->hasMany(RescueUnit::class, 'assigned_personnel_id');
     }
 
     /**

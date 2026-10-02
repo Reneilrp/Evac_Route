@@ -10,6 +10,7 @@ import {
   CheckCircle, Clock, AlertTriangle, Box,
 } from 'lucide-react-native';
 import api from '../services/api';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { colors, spacing, typography, radii, shadows } from '../styles/theme';
 
 const STATUS_CONFIG = {
@@ -63,26 +64,58 @@ export default function DispatchDetailScreen({ route, navigation }) {
     },
   });
 
+  // ── Confirmation Modal State ──
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    detail: null,
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    variant: 'primary',
+    icon: null,
+    loading: false,
+    onConfirm: null,
+  });
+
+  const closeConfirmModal = () => {
+    setConfirmModal(prev => ({ ...prev, visible: false }));
+  };
+
   const handleDepart = () => {
-    Alert.alert(
-      '📦 Load & Depart',
-      `Confirm you have loaded all items for ${order?.shelter?.name}?\n\nThis will mark the order as In Transit.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Yes, Departing Now', style: 'default', onPress: () => departMutation.mutate() },
-      ]
-    );
+    setConfirmModal({
+      visible: true,
+      title: 'Load & Depart',
+      message: 'Confirm you have loaded all requested relief supplies onto the vehicle? This will mark the order as In Transit.',
+      detail: `Destination: ${order?.shelter?.name ?? 'Evacuation Shelter'}`,
+      confirmText: 'Yes, Departing Now',
+      cancelText: 'Cancel',
+      variant: 'primary',
+      icon: Truck,
+      loading: departMutation.isPending,
+      onConfirm: () => {
+        closeConfirmModal();
+        departMutation.mutate();
+      },
+    });
   };
 
   const handleDeliver = () => {
-    Alert.alert(
-      '✅ Confirm Delivery',
-      `Confirm all items have been delivered to ${order?.shelter?.name}?\n\nWarehouse stock will be deducted immediately.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Yes, Delivered!', style: 'default', onPress: () => deliverMutation.mutate() },
-      ]
-    );
+    setConfirmModal({
+      visible: true,
+      title: 'Confirm Delivery',
+      message: 'Confirm all items have been safely handed over at the shelter? Warehouse stock will be deducted immediately.',
+      detail: `Shelter: ${order?.shelter?.name ?? 'Evacuation Shelter'}`,
+      confirmText: 'Yes, Delivered!',
+      cancelText: 'Cancel',
+      variant: 'success',
+      icon: CheckCircle,
+      loading: deliverMutation.isPending,
+      onConfirm: () => {
+        closeConfirmModal();
+        deliverMutation.mutate();
+      },
+    });
   };
 
   // ── Delivery success screen ──
@@ -268,6 +301,21 @@ export default function DispatchDetailScreen({ route, navigation }) {
           <Text style={styles.cancelledText}>This order was cancelled.</Text>
         </View>
       )}
+
+      {/* Styled Confirmation Modal */}
+      <ConfirmationModal
+        visible={confirmModal.visible}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        detail={confirmModal.detail}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        variant={confirmModal.variant}
+        icon={confirmModal.icon}
+        loading={confirmModal.loading}
+        onConfirm={confirmModal.onConfirm}
+        onClose={closeConfirmModal}
+      />
     </ScrollView>
   );
 }

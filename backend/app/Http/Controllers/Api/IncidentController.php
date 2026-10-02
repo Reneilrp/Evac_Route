@@ -70,41 +70,119 @@ class IncidentController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Incident report submitted. Pending LGU review.',
-            'data' => array_merge($incident->toArray(), [
+            'data' => [
+                'id' => $incident->id,
+                'name' => $incident->name,
+                'latitude' => (float) $incident->latitude,
+                'longitude' => (float) $incident->longitude,
+                'hazard_type' => $incident->hazard_type,
+                'severity_level' => $incident->severity_level,
+                'description' => $incident->description,
                 'photo_url' => $incident->photo_url,
                 'photo_urls' => $incident->photo_urls,
-                'frequency_evaluation' => $evaluation,
-            ]),
+                'photos' => $incident->photos,
+                'status' => $incident->status,
+                'is_read' => false,
+                'created_at' => $incident->created_at,
+            ],
         ], 201);
     }
 
     /**
      * Resident fetches their own submitted incident history.
+     * Strictly scopes to authenticated user's reports without exposing other residents' data.
+     * Supports filtering by ?archived=true/false or returns all with is_archived metadata.
      * Route: GET /api/user/incidents  (auth:sanctum)
      */
     public function myIncidents(Request $request)
     {
-        $incidents = PendingIncident::where('reported_by', auth()->id())
-            ->latest()
-            ->get();
+        $query = PendingIncident::where('reported_by', auth()->id());
 
-        $incidents->transform(function ($incident) {
-            $incident->photo_urls = $incident->photo_urls;
-            $incident->photo_url = $incident->photo_url;
-            $incident->is_read = $incident->is_read;
-            $incident->frequency_evaluation = $this->evaluateFrequency(
-                (float) $incident->latitude,
-                (float) $incident->longitude,
-                $incident->hazard_type,
-                $incident->id
-            );
+        if ($request->has('archived')) {
+            if ($request->boolean('archived')) {
+                $query->whereNotNull('archived_at');
+            } else {
+                $query->whereNull('archived_at');
+            }
+        }
 
-            return $incident;
+        $incidents = $query->latest()->get();
+
+        $data = $incidents->map(function ($incident) {
+            return [
+                'id' => $incident->id,
+                'name' => $incident->name,
+                'latitude' => (float) $incident->latitude,
+                'longitude' => (float) $incident->longitude,
+                'hazard_type' => $incident->hazard_type,
+                'severity_level' => $incident->severity_level,
+                'description' => $incident->description,
+                'photo_url' => $incident->photo_url,
+                'photo_urls' => $incident->photo_urls,
+                'status' => $incident->status,
+                'is_read' => $incident->is_read,
+                'is_archived' => $incident->is_archived,
+                'archived_at' => $incident->archived_at?->toISOString() ?? $incident->archived_at,
+                'review_note' => $incident->review_note,
+                'reviewed_at' => $incident->reviewed_at,
+                'created_at' => $incident->created_at,
+                'updated_at' => $incident->updated_at,
+            ];
         });
 
         return response()->json([
             'status' => 'success',
-            'data' => $incidents,
+            'data' => $data,
+        ]);
+    }
+
+    /**
+     * Resident archives their own submitted incident report.
+     * Route: PATCH /api/user/incidents/{id}/archive  (auth:sanctum)
+     */
+    public function archive(Request $request, $id)
+    {
+        $incident = PendingIncident::findOrFail($id);
+
+        if ($incident->reported_by !== auth()->id()) {
+            return response()->json(['message' => 'Unauthorized. You can only archive your own reports.'], 403);
+        }
+
+        $incident->update(['archived_at' => now()]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Incident report archived successfully.',
+            'data' => [
+                'id' => $incident->id,
+                'is_archived' => true,
+                'archived_at' => $incident->archived_at,
+            ],
+        ]);
+    }
+
+    /**
+     * Resident restores an archived incident report back to active.
+     * Route: PATCH /api/user/incidents/{id}/unarchive  (auth:sanctum)
+     */
+    public function unarchive(Request $request, $id)
+    {
+        $incident = PendingIncident::findOrFail($id);
+
+        if ($incident->reported_by !== auth()->id()) {
+            return response()->json(['message' => 'Unauthorized. You can only unarchive your own reports.'], 403);
+        }
+
+        $incident->update(['archived_at' => null]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Incident report restored to active history.',
+            'data' => [
+                'id' => $incident->id,
+                'is_archived' => false,
+                'archived_at' => null,
+            ],
         ]);
     }
 
@@ -287,6 +365,13 @@ class IncidentController extends Controller
     public function photo($id, $index = 0)
     {
         $incident = PendingIncident::findOrFail($id);
+        $user = auth()->user();
+
+        // Residents are strictly restricted to accessing photos from their own reports
+        if ($user && $user->role === 'resident' && $incident->reported_by !== $user->id) {
+            abort(403, 'Unauthorized. You can only view photos from your own reports.');
+        }
+
         $photos = $incident->photos;
 
         if (! empty($photos) && is_array($photos) && isset($photos[$index])) {

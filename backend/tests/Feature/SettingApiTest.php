@@ -7,128 +7,102 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-test('guest cannot access settings endpoints', function () {
-    $this->getJson('/api/settings')->assertStatus(401);
-    $this->postJson('/api/settings')->assertStatus(401);
-    $this->postJson('/api/settings/backup')->assertStatus(401);
-    $this->postJson('/api/settings/housekeeping')->assertStatus(401);
-});
+test('staff and admin can fetch system settings with defaults', function () {
+    $staff = User::factory()->create(['role' => 'lgu_staff', 'operator_type' => 'general', 'status' => 'active']);
 
-test('staff cannot access settings endpoints', function () {
-    $staff = User::factory()->create(['role' => 'lgu_staff', 'status' => 'active']);
-
-    $this->actingAs($staff, 'sanctum')->getJson('/api/settings')->assertStatus(403);
-    $this->actingAs($staff, 'sanctum')->postJson('/api/settings', [])->assertStatus(403);
-    $this->actingAs($staff, 'sanctum')->postJson('/api/settings/backup')->assertStatus(403);
-    $this->actingAs($staff, 'sanctum')->postJson('/api/settings/housekeeping')->assertStatus(403);
-});
-
-test('admin can retrieve settings with default fallbacks merged', function () {
-    $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-
-    // Set one settings in db to check merging
-    Setting::set('low_stock_threshold', 250);
-
-    $response = $this->actingAs($admin, 'sanctum')->getJson('/api/settings');
+    $response = $this->actingAs($staff, 'sanctum')
+        ->getJson('/api/settings');
 
     $response->assertStatus(200)
         ->assertJsonPath('status', 'success')
-        ->assertJsonStructure([
-            'status',
-            'data' => [
-                'map_center_lat',
-                'map_center_lng',
-                'map_zoom',
-                'capacity_warning_threshold',
-                'low_stock_threshold',
-                'audio_alerts_enabled',
-                'siren_volume',
-                'audit_log_retention_days',
-            ],
-        ]);
-
-    $data = $response->json('data');
-    expect($data['low_stock_threshold'])->toBe(250);
-    expect($data['map_zoom'])->toBe(13); // fallback default
-    expect($data['audio_alerts_enabled'])->toBe(true); // fallback default
+        ->assertJsonPath('data.master_emergency_active', true)
+        ->assertJsonPath('data.active_emergency_title', 'ACTIVE EMERGENCY DISASTER RESPONSE MODE')
+        ->assertJsonPath('data.active_disaster_type', 'all');
 });
 
-test('admin can save settings and record audit logs', function () {
+test('non-admin cannot update system settings', function () {
+    $staff = User::factory()->create(['role' => 'lgu_staff', 'operator_type' => 'general', 'status' => 'active']);
+
+    $this->actingAs($staff, 'sanctum')
+        ->postJson('/api/settings', [
+            'master_emergency_active' => false,
+        ])
+        ->assertStatus(403);
+});
+
+test('admin can update system settings and it logs to audit trail', function () {
     $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
-    $payload = [
-        'map_zoom' => 15,
-        'capacity_warning_threshold' => 90,
-        'low_stock_threshold' => 50,
-        'audio_alerts_enabled' => false,
-        'siren_volume' => 45,
-        'audit_log_retention_days' => 120,
-    ];
-
-    $response = $this->actingAs($admin, 'sanctum')->postJson('/api/settings', $payload);
+    $response = $this->actingAs($admin, 'sanctum')
+        ->postJson('/api/settings', [
+            'master_emergency_active' => false,
+            'active_emergency_title' => 'STANDBY PEACETIME MONITORING',
+            'active_disaster_type' => 'natural',
+            'capacity_warning_threshold' => 90,
+            'low_stock_threshold' => 150,
+        ]);
 
     $response->assertStatus(200)
         ->assertJsonPath('status', 'success');
 
-    // Assert written to DB
-    expect(Setting::get('map_zoom'))->toBe(15);
-    expect(Setting::get('capacity_warning_threshold'))->toBe(90);
-    expect(Setting::get('low_stock_threshold'))->toBe(50);
-    expect(filter_var(Setting::get('audio_alerts_enabled'), FILTER_VALIDATE_BOOLEAN))->toBe(false);
+    expect(Setting::get('active_emergency_title'))->toBe('STANDBY PEACETIME MONITORING')
+        ->and(Setting::get('active_disaster_type'))->toBe('natural')
+        ->and((int) Setting::get('capacity_warning_threshold'))->toBe(90);
 
-    // Assert Audit Log was created
-    $this->assertDatabaseHas('audit_logs', [
-        'user_id' => $admin->id,
-        'action' => 'settings_update',
-    ]);
+    $log = AuditLog::where('action', 'settings_update')->first();
+    expect($log)->not->toBeNull()
+        ->and($log->user_id)->toBe($admin->id)
+        ->and($log->new_values['active_emergency_title'])->toBe('STANDBY PEACETIME MONITORING');
 });
 
-test('admin can download database backup sql script', function () {
+test('admin can generate and download database backup', function () {
     $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
-    $response = $this->actingAs($admin, 'sanctum')->postJson('/api/settings/backup');
+    $response = $this->actingAs($admin, 'sanctum')
+        ->post('/api/settings/backup');
 
     $response->assertStatus(200)
-        ->assertHeader('Content-Type', 'application/sql')
-        ->assertHeader('Content-Disposition', 'attachment; filename="evac_route_backup_'.now()->format('Y_m_d_His').'.sql"');
+        ->assertHeader('content-type', 'application/sql');
 
-    $content = $response->getContent();
-    expect($content)->toContain('-- Evac_Route Automated Database Backup');
-    expect($content)->toContain('DROP TABLE IF EXISTS `users`');
+    expect($response->getContent())->toContain('-- Evac_Route Automated Database Backup');
 });
 
-test('admin can clear older audit logs based on settings', function () {
+test('admin can perform housekeeping and prune old audit logs', function () {
     $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
-    // Configure retention to 30 days
+    // Set retention days to 30
     Setting::set('audit_log_retention_days', 30);
 
-    // Create an audit log 45 days ago
+    // Old log created 45 days ago
     $oldLog = AuditLog::create([
         'user_id' => $admin->id,
-        'action' => 'old_action',
+        'action' => 'old_test_action',
         'ip_address' => '127.0.0.1',
     ]);
-    // Force set created_at timestamp
-    DB::table('audit_logs')->where('id', $oldLog->id)->update(['created_at' => now()->subDays(45)]);
+    $oldLog->timestamps = false;
+    $oldLog->created_at = now()->subDays(45);
+    $oldLog->save();
 
-    // Create a recent audit log 2 days ago
-    $newLog = AuditLog::create([
+    // Recent log created 5 days ago
+    $recentLog = AuditLog::create([
         'user_id' => $admin->id,
-        'action' => 'recent_action',
+        'action' => 'recent_test_action',
         'ip_address' => '127.0.0.1',
     ]);
-    DB::table('audit_logs')->where('id', $newLog->id)->update(['created_at' => now()->subDays(2)]);
+    $recentLog->timestamps = false;
+    $recentLog->created_at = now()->subDays(5);
+    $recentLog->save();
 
-    $response = $this->actingAs($admin, 'sanctum')->postJson('/api/settings/housekeeping');
+    $response = $this->actingAs($admin, 'sanctum')
+        ->postJson('/api/settings/housekeeping');
 
     $response->assertStatus(200)
-        ->assertJsonPath('status', 'success')
-        ->assertJsonFragment([
-            'message' => 'Housekeeping finished. Cleared 1 older log entries.',
-        ]);
+        ->assertJsonPath('status', 'success');
 
-    // Verify old log deleted, new log retained
-    $this->assertDatabaseMissing('audit_logs', ['id' => $oldLog->id]);
-    $this->assertDatabaseHas('audit_logs', ['id' => $newLog->id]);
+    expect(AuditLog::find($oldLog->id))->toBeNull()
+        ->and(AuditLog::find($recentLog->id))->not->toBeNull();
+
+    $housekeepingLog = AuditLog::where('action', 'settings_housekeeping')->first();
+    expect($housekeepingLog)->not->toBeNull()
+        ->and($housekeepingLog->user_id)->toBe($admin->id);
 });

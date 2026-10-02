@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { QrCode, Search, MapPin, ClipboardList, FileSpreadsheet, AlertTriangle, CheckCircle, TrendingUp, X } from 'lucide-react';
+import { QrCode, Search, MapPin, ClipboardList, FileSpreadsheet, AlertTriangle, CheckCircle, TrendingUp, X, Truck } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../context/AuthContext';
 import QRScannerModal from '../components/common/QRScannerModal';
+import PrePopulatedDispatchModal from '../components/PrePopulatedDispatchModal';
+import QuickDispatchModal from '../components/QuickDispatchModal';
 import api from '../services/api';
 import { showSuccess, showError } from '../utils/toast';
 
@@ -24,14 +27,19 @@ const getDurationOpen = (createdAt) => {
 };
 
 export default function ShelterManagement() {
+  const { user } = useAuth();
+  const isCSWDO = user?.email?.toLowerCase().includes('logistics') || user?.email?.toLowerCase().includes('cswdo');
+  const queryClient = useQueryClient();
   const location = useLocation();
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedShelterForScanner, setSelectedShelterForScanner] = useState(null);
   const [selectedShelterForDetails, setSelectedShelterForDetails] = useState(null);
+  const [dispatchModalConfig, setDispatchModalConfig] = useState(null);
+  const [quickDispatchShelter, setQuickDispatchShelter] = useState(null);
   const [search, setSearch] = useState(location.state?.search || '');
   const [activeTab, setActiveTab] = useState('capacities'); // 'capacities' or 'ration-planning'
 
-  // Consolidated query fetching both shelters and templates in one request
+  // Consolidated query fetching shelters, templates, and central inventory
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ['shelters-dashboard'],
     queryFn: () => api.get('/shelters/dashboard').then(res => res.data),
@@ -40,6 +48,36 @@ export default function ShelterManagement() {
 
   const shelters = dashboardData?.shelters || [];
   const activeTemplate = dashboardData?.templates?.find(t => t.is_active);
+  const inventoryItems = dashboardData?.inventory || [];
+
+  const handleOpenDispatchForShelter = (shelter, bufferPax) => {
+    if (!activeTemplate?.items) return;
+    const initialManifest = activeTemplate.items.map(item => ({
+      inventory_item_id: item.inventory_item_id,
+      quantity: Math.max(1, bufferPax * item.quantity_per_head),
+    }));
+
+    setDispatchModalConfig({
+      initialShelterId: shelter.id,
+      initialManifest,
+      initialNotes: `Automated safety buffer stocking for ${shelter.name} (+${bufferPax} capacity slots) based on "${activeTemplate.name}".`,
+    });
+  };
+
+  const handleOpenDispatchForBarangay = (summary) => {
+    if (!summary?.estimated_supplies_needed) return;
+    const matchingShelter = shelters.find(s => (s.barangay || '').toLowerCase() === (summary.barangay || '').toLowerCase());
+    const initialManifest = summary.estimated_supplies_needed.map(item => ({
+      inventory_item_id: item.inventory_item_id,
+      quantity: Math.max(1, item.recommended_total_amount),
+    }));
+
+    setDispatchModalConfig({
+      initialShelterId: matchingShelter ? matchingShelter.id : (shelters[0]?.id || ''),
+      initialManifest,
+      initialNotes: `Proactive demographic pre-staging for Brgy. ${summary.barangay} (${summary.recommended_total_headcount} Pax: ${summary.total_affected_headcount} base + ${summary.safety_buffer_headcount} reserve).`,
+    });
+  };
 
   const filteredShelters = shelters.filter(s =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -259,6 +297,46 @@ export default function ShelterManagement() {
                                 style={{ width: `${Math.min(percentage, 100)}%` }}
                               ></div>
                             </div>
+
+                            {activeTemplate && (
+                              <div className="mt-2.5 flex items-center justify-between text-[11px] bg-gray-50/70 dark:bg-slate-950/40 p-1.5 rounded-lg border border-gray-100 dark:border-slate-800">
+                                <span className="text-gray-500 dark:text-slate-400 font-medium truncate max-w-[170px]" title="Remaining buffer slots">
+                                  Buffer ({Math.max(0, shelter.max_capacity - shelter.current_occupancy)}):{' '}
+                                  <strong className="text-gray-700 dark:text-slate-200">
+                                    {activeTemplate.items.map(i => `${Math.max(0, shelter.max_capacity - shelter.current_occupancy) * i.quantity_per_head} ${i.inventory_item?.unit_type || ''}`).join(', ')}
+                                  </strong>
+                                </span>
+                                {(() => {
+                                  const bufferPax = Math.max(0, shelter.max_capacity - shelter.current_occupancy);
+                                  let isShortage = false;
+                                  let isPartial = false;
+                                  for (const item of activeTemplate.items) {
+                                    const needed = bufferPax * item.quantity_per_head;
+                                    const inv = inventoryItems.find(it => it.id === item.inventory_item_id);
+                                    const avail = inv?.available_stock ?? Math.max(0, (inv?.total_stock || 0) - (inv?.reserved_quantity || 0));
+                                    if (avail < needed) {
+                                      isShortage = true;
+                                      if (avail > 0) isPartial = true;
+                                    }
+                                  }
+                                  if (bufferPax === 0) {
+                                    return <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">Full Cap</span>;
+                                  }
+                                  if (isShortage) {
+                                    return (
+                                      <span className="text-amber-700 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/50 text-[10px] flex items-center gap-1">
+                                        <AlertTriangle size={10} /> {isPartial ? 'Partial ATP' : 'Low Stock'}
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <span className="text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/50 text-[10px] flex items-center gap-1">
+                                      <CheckCircle size={10} /> Stock Ready
+                                    </span>
+                                  );
+                                })()}
+                              </div>
+                            )}
                           </td>
                           <td className="py-4 px-6">
                             {shelter.current_occupancy > shelter.max_capacity ? (
@@ -285,12 +363,23 @@ export default function ShelterManagement() {
                             </div>
                           </td>
                           <td className="py-4 px-6 text-right">
-                            <button
-                              onClick={() => setSelectedShelterForDetails(shelter.id)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition shadow-sm"
-                            >
-                              View Details
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              {isCSWDO && activeTemplate && (
+                                <button
+                                  onClick={() => setQuickDispatchShelter(shelter)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition shadow-sm"
+                                  title="Quick Dispatch Smart Presets"
+                                >
+                                  <Truck size={13} /> Quick Dispatch
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setSelectedShelterForDetails(shelter.id)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition shadow-sm"
+                              >
+                                View Details
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -442,18 +531,37 @@ export default function ShelterManagement() {
                               </td>
                               <td className="py-4 px-6 w-1/3">
                                 {bufferPax > 0 ? (
-                                  <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-xl p-3 text-xs text-blue-800 dark:text-blue-300">
-                                    <div className="font-bold flex items-center gap-1.5">
-                                      <TrendingUp size={14} className="text-blue-600 dark:text-blue-400" />
-                                      Pre-emptive Stocking Recommendation
+                                  <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-xl p-3.5 text-xs text-blue-800 dark:text-blue-300">
+                                    <div className="font-bold flex items-center justify-between">
+                                      <span className="flex items-center gap-1.5">
+                                        <TrendingUp size={14} className="text-blue-600 dark:text-blue-400" />
+                                        Pre-emptive Stocking Recommendation
+                                      </span>
+                                      <span className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 font-extrabold px-2 py-0.5 rounded-full">
+                                        +{bufferPax} Slots
+                                      </span>
                                     </div>
                                     <p className="mt-1.5 text-blue-700 dark:text-blue-400 leading-relaxed">
                                       Recommend dispatching an additional{' '}
                                       <strong>
                                         {activeTemplate.items.map(i => `${bufferPax * i.quantity_per_head} ${i.inventory_item.unit_type} of ${i.inventory_item.item_name.split(' (')[0]}`).join(', ')}
                                       </strong>{' '}
-                                      to this shelter to establish a 100% capacity buffer for potential new evacuees.
+                                      to establish a 100% capacity safety buffer.
                                     </p>
+
+                                    {isCSWDO ? (
+                                      <button
+                                        onClick={() => handleOpenDispatchForShelter(shelter, bufferPax)}
+                                        className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-xs"
+                                        title="Auto-populate dispatch order from this buffer recommendation"
+                                      >
+                                        <Truck size={14} /> Generate Dispatch Order ({bufferPax} Pax Buffer)
+                                      </button>
+                                    ) : (
+                                      <span className="mt-2 block text-[10px] text-gray-400 dark:text-slate-500 font-semibold italic text-center">
+                                        Dispatches managed by CSWDO Logistics
+                                      </span>
+                                    )}
                                   </div>
                                 ) : (
                                   <div className="bg-green-50 dark:bg-green-950/20 border border-green-100 dark:border-green-900/30 rounded-xl p-3 text-xs text-green-800 dark:text-green-305 flex items-start gap-2">
@@ -479,14 +587,55 @@ export default function ShelterManagement() {
 
       {/* Tab 3: Proactive Barangay Relief Calculator (Zero Background GPS / Privacy-Preserving) */}
       {activeTab === 'barangay-calculator' && (
-        <BarangayReliefCalculatorWidget />
+        <BarangayReliefCalculatorWidget
+          isCSWDO={isCSWDO}
+          onDispatchManifest={(summary) => handleOpenDispatchForBarangay(summary)}
+        />
+      )}
+
+      {/* Quick Dispatch Modal (Direct with 20% suggested buffer & extra rations customizer) */}
+      {quickDispatchShelter && (
+        <QuickDispatchModal
+          shelter={quickDispatchShelter}
+          activeTemplate={activeTemplate}
+          inventoryItems={inventoryItems}
+          onCancel={() => setQuickDispatchShelter(null)}
+          onCreated={() => {
+            setQuickDispatchShelter(null);
+            queryClient.invalidateQueries({ queryKey: ['shelters-dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
+            queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+            showSuccess('Quick dispatch order created and warehouse stock reserved!');
+          }}
+        />
+      )}
+
+      {/* Auto-Generated Pre-Populated Dispatch Modal */}
+      {dispatchModalConfig && (
+        <PrePopulatedDispatchModal
+          initialShelterId={dispatchModalConfig.initialShelterId}
+          initialManifest={dispatchModalConfig.initialManifest}
+          initialNotes={dispatchModalConfig.initialNotes}
+          inventoryItems={inventoryItems}
+          shelters={shelters}
+          onCancel={() => setDispatchModalConfig(null)}
+          onCreated={() => {
+            setDispatchModalConfig(null);
+            queryClient.invalidateQueries({ queryKey: ['shelters-dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
+            queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+            showSuccess('Dispatch order generated and warehouse stock reserved!');
+          }}
+        />
       )}
     </div>
   );
 }
 
 // ─── Proactive Barangay Relief Calculator Component (Zero Background GPS) ────
-function BarangayReliefCalculatorWidget() {
+function BarangayReliefCalculatorWidget({ isCSWDO, onDispatchManifest }) {
   const [selectedBarangay, setSelectedBarangay] = useState('Tumaga');
   const [customInput, setCustomInput] = useState('');
 
@@ -593,12 +742,18 @@ function BarangayReliefCalculatorWidget() {
 
           <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col justify-center">
             <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block">Pre-Staging Dispatch</span>
-            <button
-              onClick={() => alert(`Pre-staging dispatch manifest generated for Brgy. ${summary.barangay}! Loaded supplies for ${summary.recommended_total_headcount} persons (80 Base + 16 Buffer Reserve).`)}
-              className="mt-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
-            >
-              🚚 Dispatch {summary.recommended_total_headcount} Pax Manifest
-            </button>
+            {isCSWDO ? (
+              <button
+                onClick={() => onDispatchManifest && onDispatchManifest(summary)}
+                className="mt-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                🚚 Dispatch {summary.recommended_total_headcount} Pax Manifest
+              </button>
+            ) : (
+              <span className="mt-2 block text-[10px] text-gray-400 dark:text-slate-500 font-semibold italic text-center">
+                Dispatches managed by CSWDO
+              </span>
+            )}
           </div>
 
           {/* Supply Breakdown Table */}

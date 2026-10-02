@@ -15,7 +15,11 @@ export default function AdminLogin() {
     const success = await login(email, password);
     if (success) {
       showSuccess("Welcome! Logged in successfully.");
-      navigate('/admin/dashboard');
+      if (email.toLowerCase().includes('admin')) {
+        navigate('/admin/staff');
+      } else {
+        navigate('/admin/dashboard');
+      }
     } else {
       showError("Login failed. Please check your email and password.");
     }
@@ -64,6 +68,38 @@ export default function AdminLogin() {
             Secure Login
           </button>
         </form>
+
+        <div className="mt-6 pt-6 border-t border-gray-700/80">
+          <p className="text-xs font-semibold text-gray-400 mb-2.5 uppercase tracking-wider text-center">
+            Quick Select Test Role
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => { setEmail('admin@lgu.gov.ph'); setPassword('password'); }}
+              className="px-2.5 py-2 bg-gray-700/70 hover:bg-gray-700 border border-gray-600 rounded-lg text-left transition text-xs group"
+            >
+              <div className="font-bold text-purple-400 group-hover:text-purple-300">⚡ Admin</div>
+              <div className="text-[9px] text-gray-400 truncate">admin@lgu.gov.ph</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEmail('drrm@lgu.gov.ph'); setPassword('password'); }}
+              className="px-2.5 py-2 bg-gray-700/70 hover:bg-gray-700 border border-gray-600 rounded-lg text-left transition text-xs group"
+            >
+              <div className="font-bold text-blue-400 group-hover:text-blue-300">🛡️ CDRRMO</div>
+              <div className="text-[9px] text-gray-400 truncate">drrm@lgu.gov.ph</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEmail('logistics@lgu.gov.ph'); setPassword('password'); }}
+              className="px-2.5 py-2 bg-gray-700/70 hover:bg-gray-700 border border-gray-600 rounded-lg text-left transition text-xs group"
+            >
+              <div className="font-bold text-amber-400 group-hover:text-amber-300">📦 CSWDO</div>
+              <div className="text-[9px] text-gray-400 truncate">logistics@lgu.gov.ph</div>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

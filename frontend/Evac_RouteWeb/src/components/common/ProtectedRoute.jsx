@@ -2,7 +2,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-export default function ProtectedRoute({ allowedRoles }) {
+export default function ProtectedRoute({ allowedRoles, allowedOperatorTypes }) {
   const { user, loading, logout } = useAuth();
 
   if (loading) {
@@ -36,6 +36,27 @@ export default function ProtectedRoute({ allowedRoles }) {
     
     // Otherwise generic unauthorized fallback
     return <div className="p-10 text-center text-red-500 font-bold">403 Unauthorized: Insufficient Role Permissions</div>;
+  }
+
+  // Check operator type restrictions (Super Admin bypasses all agency restrictions)
+  if (allowedOperatorTypes && user.role !== 'admin') {
+    const userOpType = user.operator_type || 'general';
+    if (!allowedOperatorTypes.includes(userOpType)) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-center p-6">
+          <div className="bg-amber-500/20 p-6 rounded-full mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-widest">Restricted Agency Module</h2>
+          <p className="text-sm text-gray-300 font-medium border border-gray-700 bg-gray-800 p-6 rounded-xl shadow-lg max-w-md mb-6 leading-relaxed">
+            This module is reserved for <strong className="text-amber-400">CSWDO Relief & Camp Operations</strong>. CDRRMO Rescue and Tactical Staff are redirected to tactical disaster operations.
+          </p>
+          <a href="/admin/dashboard" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition shadow-md text-sm uppercase tracking-wide">
+            Return to Command Center
+          </a>
+        </div>
+      );
+    }
   }
 
   return <Outlet />;

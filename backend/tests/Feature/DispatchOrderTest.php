@@ -295,15 +295,99 @@ test('admin can cancel a pending dispatch order', function () {
     ]);
 });
 
-test('cannot cancel a non-pending dispatch order', function () {
+test('cannot cancel a delivered dispatch order', function () {
     $order = DispatchOrder::create([
         'created_by' => $this->admin->id,
         'shelter_id' => $this->shelter->id,
-        'status' => 'in_transit',
+        'status' => 'delivered',
     ]);
 
     $response = $this->actingAs($this->admin, 'sanctum')->postJson("/api/dispatch-orders/{$order->id}/cancel");
     $response->assertStatus(422)
         ->assertJsonPath('status', 'error')
-        ->assertJsonPath('message', 'Only pending orders can be cancelled.');
+        ->assertJsonPath('message', 'Only pending or in-transit orders can be cancelled.');
 });
+
+test('dispatch order creation reserves stock atomically and respects ATP', function () {
+    Event::fake();
+
+    // item1 total_stock is 100, reserved is 0, so available is 100
+    expect($this->item1->fresh()->available_stock)->toBe(100);
+
+    // Create order for 60 units
+    $response = $this->actingAs($this->admin, 'sanctum')->postJson('/api/dispatch-orders', [
+        'shelter_id' => $this->shelter->id,
+        'items' => [
+            ['inventory_item_id' => $this->item1->id, 'quantity' => 60],
+        ],
+    ]);
+    $response->assertStatus(201);
+
+    // Reserved quantity should now be 60, total stock remains 100, available stock is 40
+    $freshItem = $this->item1->fresh();
+    expect($freshItem->total_stock)->toBe(100);
+    expect($freshItem->reserved_quantity)->toBe(60);
+    expect($freshItem->available_stock)->toBe(40);
+
+    // Attempting to create a second order for 50 units should fail (40 available < 50 requested)
+    $overResponse = $this->actingAs($this->admin, 'sanctum')->postJson('/api/dispatch-orders', [
+        'shelter_id' => $this->shelter->id,
+        'items' => [
+            ['inventory_item_id' => $this->item1->id, 'quantity' => 50],
+        ],
+    ]);
+    $overResponse->assertStatus(422);
+
+    // Reserved stock must remain 60
+    expect($this->item1->fresh()->reserved_quantity)->toBe(60);
+});
+
+test('cancelling dispatch order releases reserved stock back to available', function () {
+    Event::fake();
+
+    $response = $this->actingAs($this->admin, 'sanctum')->postJson('/api/dispatch-orders', [
+        'shelter_id' => $this->shelter->id,
+        'items' => [
+            ['inventory_item_id' => $this->item1->id, 'quantity' => 30],
+        ],
+    ]);
+    $orderId = $response->json('data.id');
+
+    expect($this->item1->fresh()->reserved_quantity)->toBe(30);
+    expect($this->item1->fresh()->available_stock)->toBe(70);
+
+    // Cancel order
+    $cancelResp = $this->actingAs($this->admin, 'sanctum')->postJson("/api/dispatch-orders/{$orderId}/cancel");
+    $cancelResp->assertStatus(200);
+
+    // Reserved quantity should be released back to 0, available back to 100
+    $freshItem = $this->item1->fresh();
+    expect($freshItem->reserved_quantity)->toBe(0);
+    expect($freshItem->available_stock)->toBe(100);
+});
+
+test('confirming delivery decrements total_stock and releases reserved_quantity', function () {
+    Event::fake();
+
+    $response = $this->actingAs($this->admin, 'sanctum')->postJson('/api/dispatch-orders', [
+        'shelter_id' => $this->shelter->id,
+        'items' => [
+            ['inventory_item_id' => $this->item1->id, 'quantity' => 45],
+        ],
+    ]);
+    $orderId = $response->json('data.id');
+
+    // Depart order
+    $this->actingAs($this->staff, 'sanctum')->postJson("/api/dispatch-orders/{$orderId}/depart")->assertStatus(200);
+
+    // Deliver order
+    $deliverResp = $this->actingAs($this->staff, 'sanctum')->postJson("/api/dispatch-orders/{$orderId}/deliver");
+    $deliverResp->assertStatus(200);
+
+    // Total stock: 100 - 45 = 55. Reserved quantity: 45 - 45 = 0. Available stock: 55.
+    $freshItem = $this->item1->fresh();
+    expect($freshItem->total_stock)->toBe(55);
+    expect($freshItem->reserved_quantity)->toBe(0);
+    expect($freshItem->available_stock)->toBe(55);
+});
+

@@ -8,6 +8,8 @@ use App\Models\Hazard;
 use App\Models\InventoryItem;
 use App\Models\RationTemplate;
 use App\Models\RationTemplateItem;
+use App\Models\RescueMission;
+use App\Models\RescueUnit;
 use App\Models\RoadEdge;
 use App\Models\RoadNode;
 use App\Models\Shelter;
@@ -25,10 +27,19 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // 1. Create Admins & LGU Staff
-        $admin = User::firstOrCreate(['email' => 'drrm@lgu.gov.ph'], [
-            'name' => 'Admin Account',
+        $systemAdmin = User::firstOrCreate(['email' => 'admin@lgu.gov.ph'], [
+            'name' => 'System Administrator',
             'password' => bcrypt('password'),
             'role' => 'admin',
+            'operator_type' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $admin = User::firstOrCreate(['email' => 'drrm@lgu.gov.ph'], [
+            'name' => 'CDRRMO Director',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'operator_type' => 'cdrrmo',
             'status' => 'active',
         ]);
 
@@ -39,12 +50,54 @@ class DatabaseSeeder extends Seeder
             'status' => 'active',
         ]);
 
-        $staff2 = User::create([
-            'name' => 'Warehouse Mgr',
-            'email' => 'warehouse@lgu.gov.ph',
+        $staff2 = User::firstOrCreate(['email' => 'logistics@lgu.gov.ph'], [
+            'name' => 'CSWDO Logistics Officer',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
-            'status' => 'inactive',
+            'status' => 'active',
+        ]);
+
+        $rescueStaff = User::firstOrCreate(['email' => 'rescue1@lgu.gov.ph'], [
+            'name' => 'Rescue Unit Alpha Operator',
+            'password' => bcrypt('password'),
+            'role' => 'lgu_staff',
+            'status' => 'active',
+        ]);
+
+        RescueUnit::firstOrCreate(['call_sign' => 'BOAT-ALPHA'], [
+            'name' => 'Zamboanga Rescue Boat Alpha',
+            'call_sign' => 'BOAT-ALPHA',
+            'unit_type' => 'water_rescue',
+            'status' => 'standby',
+            'current_latitude' => 6.9155,
+            'current_longitude' => 122.0790,
+            'assigned_personnel_id' => $rescueStaff->id,
+            'contact_number' => '0917-RESCUE-01',
+            'capacity_persons' => 8,
+        ]);
+
+        RescueUnit::firstOrCreate(['call_sign' => 'MEDIC-1'], [
+            'name' => 'Zamboanga Medic Ambulance 01',
+            'call_sign' => 'MEDIC-1',
+            'unit_type' => 'medical_ambulance',
+            'status' => 'standby',
+            'current_latitude' => 6.9210,
+            'current_longitude' => 122.0750,
+            'assigned_personnel_id' => $rescueStaff->id,
+            'contact_number' => '0917-MEDIC-911',
+            'capacity_persons' => 4,
+        ]);
+
+        RescueUnit::firstOrCreate(['call_sign' => 'DELTA-3'], [
+            'name' => 'QRT 4x4 Heavy Rescue Truck 03',
+            'call_sign' => 'DELTA-3',
+            'unit_type' => 'high_clearance_truck',
+            'status' => 'standby',
+            'current_latitude' => 6.9140,
+            'current_longitude' => 122.0810,
+            'assigned_personnel_id' => $rescueStaff->id,
+            'contact_number' => '0917-QRT-DELTA',
+            'capacity_persons' => 15,
         ]);
 
         // 2. Create Shelters (in Zamboanga City area coords)

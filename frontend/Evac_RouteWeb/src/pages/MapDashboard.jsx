@@ -6,7 +6,7 @@ import {
   MapPin, AlertTriangle, X, Cloud, Flame, Zap,
   ChevronRight, ChevronLeft, Moon, Satellite, Mountain,
   TriangleAlert, Droplets, Waves, Shield, SlidersHorizontal, Layers,
-  Eye, Wrench, Users, Navigation
+  Eye, Wrench, Users, Navigation, Building2
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
@@ -848,49 +848,47 @@ function ShelterEditModal({ shelter, onUpdate, onDelete, onCancel, isLoading }) 
     <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
+          <h3 className="font-bold text-gray-900 dark:text-white text-lg flex items-center gap-2">
             <MapPin size={20} className="text-blue-500" /> Manage Shelter
           </h3>
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition"><X size={22} /></button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Shelter Name</label>
+            <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider mb-1">Shelter Name</label>
             <input
               type="text"
-              className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+              required
               value={name}
               onChange={e => setName(e.target.value)}
-              required
+              className="w-full border dark:border-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-950 text-gray-900 dark:text-white"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Max Capacity</label>
-              <input
-                type="number"
-                min="1"
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-                value={cap}
-                onChange={e => setCap(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Status</label>
-              <select
-                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-                value={status}
-                onChange={e => setStatus(e.target.value)}
-              >
-                <option value="open">Open</option>
-                <option value="full">Full</option>
-                <option value="closed">Closed</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider mb-1">Max Capacity (Persons)</label>
+            <input
+              type="number"
+              required
+              min="1"
+              value={cap}
+              onChange={e => setCap(e.target.value)}
+              className="w-full border dark:border-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-950 text-gray-900 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider mb-1">Status</label>
+            <select
+              value={status}
+              onChange={e => setStatus(e.target.value)}
+              className="w-full border dark:border-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-950 text-gray-900 dark:text-white cursor-pointer"
+            >
+              <option value="open">Open (Accepting Evacuees)</option>
+              <option value="full">Full (At Capacity)</option>
+              <option value="closed">Closed</option>
+            </select>
           </div>
 
-          <div className="flex justify-between items-center pt-1">
+          <div className="bg-gray-50 dark:bg-slate-950 p-3 rounded-lg flex items-center justify-between border border-gray-100 dark:border-slate-800">
             <span className="text-xs text-gray-500 dark:text-slate-400">
               Current Occupancy: <strong className="text-gray-700 dark:text-slate-200">{shelter.current_occupancy}</strong>
             </span>
@@ -941,7 +939,7 @@ function ShelterEditModal({ shelter, onUpdate, onDelete, onCancel, isLoading }) 
 }
 
 // --- Hazard Detail Modal ---
-function HazardDetailModal({ hazard, onResolve, onCancel, isLoading }) {
+function HazardDetailModal({ hazard, onResolve, onCancel, isLoading, readOnly = false }) {
   return (
     <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
@@ -968,21 +966,33 @@ function HazardDetailModal({ hazard, onResolve, onCancel, isLoading }) {
             <p className="text-gray-800 dark:text-slate-200 font-medium mt-0.5">{hazard.radius_meters} meters</p>
           </div>
           <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-2.5 rounded-lg font-semibold text-sm transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={onResolve}
-              disabled={isLoading}
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold text-sm transition disabled:opacity-60"
-            >
-              Resolve Hazard
-            </button>
+            {readOnly ? (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="w-full bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-2.5 rounded-lg font-bold text-sm transition"
+              >
+                Close View
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-2.5 rounded-lg font-semibold text-sm transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={onResolve}
+                  disabled={isLoading}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold text-sm transition disabled:opacity-60"
+                >
+                  Resolve Hazard
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -1308,6 +1318,7 @@ const MapViewer = React.memo(({
   residentDistanceKm = '0.00',
   isResidentNearShelter = false,
   setPinMode = null,
+  isCSWDO = false,
 }) => {
   const [viewState, setViewState] = useState({
     longitude: 122.0729,
@@ -1691,7 +1702,12 @@ const MapViewer = React.memo(({
               <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col w-max bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-3 z-50">
                 <p className="font-black text-white text-sm">{shelter.name}</p>
                 <p className="text-xs text-white/50 mt-0.5">Status: <span className={`font-bold uppercase ${shelter.status === 'open' ? 'text-green-400' : 'text-red-400'}`}>{shelter.status}</span></p>
-                <p className="text-[10px] text-white/30 mt-1">Click to manage</p>
+                <p className="text-xs text-white/70 mt-1 flex items-center gap-1.5">
+                  <span className="font-bold text-white">Headcount:</span>
+                  <span className="font-mono text-emerald-400 font-bold">{shelter.current_occupancy}</span>
+                  <span className="text-white/40">/ {shelter.max_capacity}</span>
+                </p>
+                <p className="text-[10px] text-white/30 mt-1">{isCSWDO ? 'Click to view headcount details' : 'Click to manage'}</p>
               </div>
             </div>
           </Marker>
@@ -1727,7 +1743,7 @@ const MapViewer = React.memo(({
                       hazardType={hazard.hazard_type} 
                     />
                   )}
-                  <p className="text-[9px] text-white/30 mt-1.5">Radius: {hazard.radius_meters}m · Click to resolve</p>
+                  <p className="text-[9px] text-white/30 mt-1.5">Radius: {hazard.radius_meters}m · {isCSWDO ? 'Click to view details' : 'Click to resolve'}</p>
                 </div>
               </div>
             </Marker>
@@ -2184,6 +2200,10 @@ function RiskAlertsDrawer({ hazards, roadMaintenances = [], simulationMode, draw
 // ─── Main Dashboard Component ─────────────────────────────────────────────────
 export default function MapDashboard() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const isCSWDO = user?.email?.toLowerCase().includes('logistics') || user?.email?.toLowerCase().includes('cswdo');
+
   const [pinMode, setPinMode] = useState(null);
   const [pendingLocation, setPendingLocation] = useState(null);
   const [showShelterForm, setShowShelterForm] = useState(false);
@@ -2302,8 +2322,19 @@ export default function MapDashboard() {
   }, [pinMode, pendingLocation, isDrawingRadius, maintenancePoints]);
 
   const inspectLocation = useCallback((lng, lat) => {
-    const map = mapRef.current?.getMap();
+    const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
     if (!map) return;
+
+    // CSWDO View-Only: smooth pan/zoom to location without 3D orbit tilt/rotation
+    if (isCSWDO) {
+      map.flyTo({
+        center: [lng, lat],
+        zoom: 16.5,
+        duration: 1200,
+        essential: true,
+      });
+      return;
+    }
 
     // Halt any ongoing sweep first
     stopInspection();
@@ -2544,6 +2575,7 @@ export default function MapDashboard() {
   });
 
   const handleMapClick = (e) => {
+    if (isCSWDO) return; // View-only mode for CSWDO: no pinning or drawing
     if (pinMode) {
       if (pinMode === 'inspect') {
         inspectLocation(e.lngLat.lng, e.lngLat.lat);
@@ -2653,8 +2685,35 @@ export default function MapDashboard() {
           isLoading={resolveMaintenanceMutation.isPending}
         />
       )}
-      {selectedShelter && <ShelterEditModal shelter={selectedShelter} onUpdate={handleUpdateShelter} onDelete={handleDeleteShelter} onCancel={() => setSelectedShelter(null)} isLoading={updateShelterMutation.isPending || deleteShelterMutation.isPending} />}
-      {selectedHazard && <HazardDetailModal hazard={selectedHazard} onResolve={handleResolveHazard} onCancel={() => setSelectedHazard(null)} isLoading={resolveHazardMutation.isPending} />}
+      {selectedShelter && (
+        isCSWDO ? (
+          <ShelterViewModal
+            shelter={selectedShelter}
+            onCancel={() => setSelectedShelter(null)}
+            onNavigateShelter={() => {
+              setSelectedShelter(null);
+              navigate('/admin/shelters', { state: { search: selectedShelter.name } });
+            }}
+          />
+        ) : (
+          <ShelterEditModal
+            shelter={selectedShelter}
+            onUpdate={handleUpdateShelter}
+            onDelete={handleDeleteShelter}
+            onCancel={() => setSelectedShelter(null)}
+            isLoading={updateShelterMutation.isPending || deleteShelterMutation.isPending}
+          />
+        )
+      )}
+      {selectedHazard && (
+        <HazardDetailModal
+          hazard={selectedHazard}
+          readOnly={isCSWDO}
+          onResolve={handleResolveHazard}
+          onCancel={() => setSelectedHazard(null)}
+          isLoading={resolveHazardMutation.isPending}
+        />
+      )}
 
       {/* GIS Floating Layers Selector */}
       <div className="absolute top-3 left-3 z-30">
@@ -2690,128 +2749,199 @@ export default function MapDashboard() {
               Active Hazard Zones
             </label>
 
-            <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-              <input
-                type="checkbox"
-                checked={showRoadMaintenances}
-                onChange={e => setShowRoadMaintenances(e.target.checked)}
-                className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-              />
-              Active Road Blocks
-            </label>
+            {!isCSWDO && (
+              <>
+                <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
+                  <input
+                    type="checkbox"
+                    checked={showRoadMaintenances}
+                    onChange={e => setShowRoadMaintenances(e.target.checked)}
+                    className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
+                  />
+                  Active Road Blocks
+                </label>
 
-            <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-              <input
-                type="checkbox"
-                checked={showRoadNetwork}
-                onChange={e => setShowRoadNetwork(e.target.checked)}
-                className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-              />
-              Road Network Grid (GIS)
-            </label>
+                <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
+                  <input
+                    type="checkbox"
+                    checked={showRoadNetwork}
+                    onChange={e => setShowRoadNetwork(e.target.checked)}
+                    className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
+                  />
+                  Road Network Grid (GIS)
+                </label>
 
-            <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-              <input
-                type="checkbox"
-                checked={showLocalSimulation}
-                onChange={e => handleSetLocalSimulation(e.target.checked)}
-                className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-              />
-              Flood Flow Simulation
-            </label>
+                <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
+                  <input
+                    type="checkbox"
+                    checked={showLocalSimulation}
+                    onChange={e => handleSetLocalSimulation(e.target.checked)}
+                    className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
+                  />
+                  Flood Flow Simulation
+                </label>
 
-            <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-              <input
-                type="checkbox"
-                checked={showHeatmap}
-                onChange={e => setShowHeatmap(e.target.checked)}
-                className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-              />
-              Demographics Heatmap
-            </label>
+                <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
+                  <input
+                    type="checkbox"
+                    checked={showHeatmap}
+                    onChange={e => setShowHeatmap(e.target.checked)}
+                    className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
+                  />
+                  Demographics Heatmap
+                </label>
 
-            <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-              <input
-                type="checkbox"
-                checked={showWeather}
-                onChange={e => setShowWeather(e.target.checked)}
-                className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-              />
-              Live Weather Radar
-            </label>
+                <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
+                  <input
+                    type="checkbox"
+                    checked={showWeather}
+                    onChange={e => setShowWeather(e.target.checked)}
+                    className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
+                  />
+                  Live Weather Radar
+                </label>
+              </>
+            )}
           </div>
         )}
       </div>
 
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-4 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
-        {/* Overlays Group */}
-        <div className="flex flex-col items-center">
-          <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Overlays</span>
-          <div className="flex items-center gap-1">
-            <ToolbarBtn active={showHeatmap} onClick={() => setShowHeatmap(o => !o)} icon={<Flame size={14} />} label="Heatmap" color="amber" />
-            <ToolbarBtn active={showWeather} onClick={() => setShowWeather(o => !o)} icon={<Cloud size={14} />} label="Weather" color="blue" />
-            <ToolbarBtn active={showResidentSignals} onClick={() => setShowResidentSignals(o => !o)} icon={<Users size={14} />} label="Residents" color="purple" />
+      {isCSWDO ? (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-4 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] whitespace-nowrap">
+          {/* Title & Subtitle Section */}
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 shrink-0">
+              <Building2 size={20} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-black text-white tracking-wide uppercase">CSWDO Situational Map</span>
+              <span className="text-[10px] text-white/50 font-medium">Shelter Locations, Live Headcount &amp; Hazards</span>
+            </div>
+          </div>
+
+          <div className="w-px h-8 bg-white/10" />
+
+          {/* Dedicated View Only Status Column */}
+          <div className="flex flex-col items-center justify-center px-1">
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-wider mb-0.5 select-none">Access</span>
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 rounded-lg uppercase tracking-wider shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              View Only
+            </span>
+          </div>
+
+          <div className="w-px h-8 bg-white/10" />
+
+          {/* Headcount & Hazards Summary - Single Row */}
+          <div className="flex items-center gap-3">
+            {/* Shelters & Total Headcount */}
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-xl">
+              <MapPin size={15} className="text-emerald-400 shrink-0" />
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-white/60 font-medium text-[11px]">Shelters:</span>
+                <span className="font-extrabold text-white text-[12px]">{shelters?.length || 0}</span>
+                <span className="text-white/20">|</span>
+                <span className="text-white/60 font-medium text-[11px]">Total Headcount:</span>
+                <span className="text-emerald-400 font-mono font-bold text-[12px]">
+                  {shelters?.reduce((acc, s) => acc + (parseInt(s.current_occupancy) || 0), 0) || 0}
+                </span>
+                <span className="text-white/40 text-[10px] font-mono">
+                  / {shelters?.reduce((acc, s) => acc + (parseInt(s.max_capacity) || 0), 0) || 0} Cap
+                </span>
+              </div>
+            </div>
+
+            {/* Active Hazards */}
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-xl">
+              <AlertTriangle size={15} className="text-amber-400 shrink-0" />
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-white/60 font-medium text-[11px]">Active Hazards:</span>
+                <span className="font-extrabold text-amber-400 text-[12px]">{hazards?.length || 0} Active</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-px h-8 bg-white/10" />
+
+          {/* Feed Group */}
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-0.5 select-none">Feed</span>
+            <div className="flex items-center">
+              <ToolbarBtn active={drawerOpen} onClick={() => setDrawerOpen(o => !o)} icon={<SlidersHorizontal size={14} />} label="Alerts" color="purple" />
+            </div>
           </div>
         </div>
+      ) : (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-4 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
+          {/* Overlays Group */}
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Overlays</span>
+            <div className="flex items-center gap-1">
+              <ToolbarBtn active={showHeatmap} onClick={() => setShowHeatmap(o => !o)} icon={<Flame size={14} />} label="Heatmap" color="amber" />
+              <ToolbarBtn active={showWeather} onClick={() => setShowWeather(o => !o)} icon={<Cloud size={14} />} label="Weather" color="blue" />
+              <ToolbarBtn active={showResidentSignals} onClick={() => setShowResidentSignals(o => !o)} icon={<Users size={14} />} label="Residents" color="purple" />
+            </div>
+          </div>
 
-        <div className="w-px bg-white/10 self-stretch my-1" />
+          <div className="w-px bg-white/10 self-stretch my-1" />
 
-        {/* Disaster Scenario Simulation Group (Revisions Defense Feature) */}
-        <div className="flex flex-col items-center">
-          <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-1 select-none">Disaster Test Sim</span>
-          <select
-            value={activeDisasterSim}
-            onChange={(e) => {
-              const val = e.target.value;
-              setActiveDisasterSim(val);
-              api.post('/simulation/toggle', { simulation_type: val })
-                .then(() => queryClient.invalidateQueries(['mapDashboard']))
-                .catch(err => console.warn('Sim toggle warning:', err));
-            }}
-            className="bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-extrabold rounded-lg px-2 py-1 focus:ring-2 focus:ring-amber-400 outline-none cursor-pointer shadow-md"
-          >
-            <option value="none">⚪ Command Mode (Off)</option>
-            <option value="siege">⚔️ Armed Siege Simulation</option>
-            <option value="flood">🌊 Flood &amp; Safe Zones</option>
-            <option value="earthquake">🌋 Earthquake Tremors</option>
-            <option value="fire">🚒 Fire &amp; Assembly Points</option>
-            <option value="chemical">🧪 Chem &amp; Decontamination</option>
-          </select>
-        </div>
+          {/* Disaster Scenario Simulation Group (Revisions Defense Feature) */}
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-1 select-none">Disaster Test Sim</span>
+            <select
+              value={activeDisasterSim}
+              onChange={(e) => {
+                const val = e.target.value;
+                setActiveDisasterSim(val);
+                api.post('/simulation/toggle', { simulation_type: val })
+                  .then(() => queryClient.invalidateQueries(['mapDashboard']))
+                  .catch(err => console.warn('Sim toggle warning:', err));
+              }}
+              className="bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-extrabold rounded-lg px-2 py-1 focus:ring-2 focus:ring-amber-400 outline-none cursor-pointer shadow-md"
+            >
+              <option value="none">⚪ Command Mode (Off)</option>
+              <option value="siege">⚔️ Armed Siege Simulation</option>
+              <option value="flood">🌊 Flood &amp; Safe Zones</option>
+              <option value="earthquake">🌋 Earthquake Tremors</option>
+              <option value="fire">🚒 Fire &amp; Assembly Points</option>
+              <option value="chemical">🧪 Chem &amp; Decontamination</option>
+            </select>
+          </div>
 
-        <div className="w-px bg-white/10 self-stretch my-1" />
+          <div className="w-px bg-white/10 self-stretch my-1" />
 
-        {/* Pinpoint & Orbit Tools Group */}
-        <div className="flex flex-col items-center">
-          <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Pinpoint &amp; Orbit</span>
-          <div className="flex items-center gap-1">
-            {!pinMode ? (
-              <>
-                <ToolbarBtn active={false} onClick={() => setPinMode('inspect')} icon={<Eye size={14} className="animate-pulse" />} label="Inspect" color="purple" />
-                <ToolbarBtn active={false} onClick={() => setPinMode('shelter')} icon={<MapPin size={14} />} label="Shelter" color="blue" />
-                <ToolbarBtn active={false} onClick={() => setPinMode('hazard')} icon={<AlertTriangle size={14} />} label="Hazard" color="red" />
-                <ToolbarBtn active={false} onClick={() => setPinMode('maintenance')} icon={<Wrench size={14} />} label="Maintenance" color="amber" />
-              </>
-            ) : (
-              <ToolbarBtn active={false} onClick={handleCancelPin} icon={<X size={14} />} label="Cancel Pin" color="red" />
-            )}
+          {/* Pinpoint & Orbit Tools Group */}
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Pinpoint &amp; Orbit</span>
+            <div className="flex items-center gap-1">
+              {!pinMode ? (
+                <>
+                  <ToolbarBtn active={false} onClick={() => setPinMode('inspect')} icon={<Eye size={14} className="animate-pulse" />} label="Inspect" color="purple" />
+                  <ToolbarBtn active={false} onClick={() => setPinMode('shelter')} icon={<MapPin size={14} />} label="Shelter" color="blue" />
+                  <ToolbarBtn active={false} onClick={() => setPinMode('hazard')} icon={<AlertTriangle size={14} />} label="Hazard" color="red" />
+                  <ToolbarBtn active={false} onClick={() => setPinMode('maintenance')} icon={<Wrench size={14} />} label="Maintenance" color="amber" />
+                </>
+              ) : (
+                <ToolbarBtn active={false} onClick={handleCancelPin} icon={<X size={14} />} label="Cancel Pin" color="red" />
+              )}
+            </div>
+          </div>
+
+          <div className="w-px bg-white/10 self-stretch my-1" />
+
+          {/* Control Group */}
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Feed</span>
+            <div className="flex items-center">
+              <ToolbarBtn active={drawerOpen} onClick={() => setDrawerOpen(o => !o)} icon={<SlidersHorizontal size={14} />} label="Alerts" color="purple" />
+            </div>
           </div>
         </div>
-
-        <div className="w-px bg-white/10 self-stretch my-1" />
-
-        {/* Control Group */}
-        <div className="flex flex-col items-center">
-          <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Feed</span>
-          <div className="flex items-center">
-            <ToolbarBtn active={drawerOpen} onClick={() => setDrawerOpen(o => !o)} icon={<SlidersHorizontal size={14} />} label="Alerts" color="purple" />
-          </div>
-        </div>
-      </div>
+      )}
 
       <div className="flex-1 relative overflow-hidden">
         {/* Resident Perspective Simulation Banner Overlay */}
-        {activeDisasterSim !== 'none' && (
+        {activeDisasterSim !== 'none' && !isCSWDO && (
           <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md border-2 border-emerald-500 text-white rounded-2xl px-5 py-2.5 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
             <span className="flex h-3 w-3 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -2845,7 +2975,7 @@ export default function MapDashboard() {
         )}
 
 
-        {pinMode && (
+        {pinMode && !isCSWDO && (
           <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-blue-600/95 backdrop-blur-md border border-blue-500/50 text-white rounded-2xl px-5 py-3.5 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
             <span className="flex h-2.5 w-2.5 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -2888,7 +3018,7 @@ export default function MapDashboard() {
             </button>
           </div>
         )}
-        {showLocalSimulation && (
+        {showLocalSimulation && !isCSWDO && (
           <div className="absolute top-20 left-6 z-40 w-80 bg-gray-950/95 backdrop-blur-xl border border-white/10 rounded-3xl p-5 shadow-[0_12px_40px_rgba(0,0,0,0.7)] flex flex-col gap-4 animate-in slide-in-from-left duration-250">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -3038,7 +3168,7 @@ export default function MapDashboard() {
             )}
           </div>
         )}
-        {isInspecting && (
+        {isInspecting && !isCSWDO && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 animate-in fade-in zoom-in duration-200">
             <button
               onClick={stopInspection}
@@ -3054,6 +3184,7 @@ export default function MapDashboard() {
           showShelterForm={showShelterForm} showHazardForm={showHazardForm}
           handleMapClick={handleMapClick} setSelectedShelter={setSelectedShelter}
           setSelectedHazard={setSelectedHazard} MAPBOX_TOKEN={MAPBOX_TOKEN}
+          isCSWDO={isCSWDO}
           showHeatmap={showHeatmap}
           showWeather={showWeather}
           mapStyle={mapStyle}

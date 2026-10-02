@@ -75,9 +75,18 @@ test('evaluates incident area as frequent hotspot when multiple reports exist in
         ]);
 
     $response->assertStatus(201);
-    $evaluation = $response->json('data.frequency_evaluation');
+    // Resident does NOT access frequency evaluation / other reports info
+    expect($response->json('data.frequency_evaluation'))->toBeNull();
 
-    expect($evaluation['is_frequent_hotspot'])->toBeTrue();
-    expect($evaluation['nearby_count'])->toBeGreaterThanOrEqual(2);
-    expect($evaluation['recommended_fixed_spot'])->toBeTrue();
+    // LGU staff reviewing the incident queue DOES receive the frequency hotspot evaluation
+    $lguStaff = User::factory()->create(['role' => 'lgu_staff']);
+    $lguResponse = $this->actingAs($lguStaff)->getJson('/api/incidents?status=pending');
+    $lguResponse->assertStatus(200);
+
+    $lguIncidents = $lguResponse->json('data.data');
+    $evaluated = collect($lguIncidents)->firstWhere('name', 'Report 3 New');
+
+    expect($evaluated['frequency_evaluation']['is_frequent_hotspot'])->toBeTrue();
+    expect($evaluated['frequency_evaluation']['nearby_count'])->toBeGreaterThanOrEqual(2);
+    expect($evaluated['frequency_evaluation']['recommended_fixed_spot'])->toBeTrue();
 });

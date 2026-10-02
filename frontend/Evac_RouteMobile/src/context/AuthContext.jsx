@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
 
         // Sync profile data to Zustand if they are a resident
         if (user && user.role === 'resident') {
-          const familyProfile = user.family_profile || user.family || {};
+          const familyProfile = user.family_profile || user.familyProfile || user.family || {};
           useResidentStore.getState().setProfileData(
             {
               id: user.id,
@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }) => {
 
       // Sync profile data to Zustand if they are a resident
       if (user && user.role === 'resident') {
-        const familyProfile = user?.family_profile || user?.family || {};
+        const familyProfile = user?.family_profile || user?.familyProfile || user?.family || {};
         useResidentStore.getState().setProfileData(
           {
             id: user.id,
@@ -100,7 +100,7 @@ export const AuthProvider = ({ children }) => {
 
       // Sync profile data to Zustand if they are a resident
       if (user && user.role === 'resident') {
-        const familyProfile = user.family_profile || user.family || {};
+        const familyProfile = user.family_profile || user.familyProfile || user.family || {};
         useResidentStore.getState().setProfileData(
           {
             id: user.id,

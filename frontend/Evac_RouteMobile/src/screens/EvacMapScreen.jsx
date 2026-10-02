@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Linking, Alert, Platform, Animated, PanResponder, Vibration, Modal } from 'react-native';
-import { AlertTriangle, Navigation, Phone, X, User, ChevronDown, Info, Layers, ShieldAlert, Activity } from 'lucide-react-native';
+import { AlertTriangle, Navigation, Phone, X, User, ChevronDown, Info, Layers, ShieldAlert, Activity, CheckCircle2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
@@ -195,6 +195,13 @@ export default function EvacMapScreen({ navigation, route }) {
   const transportationMode = useResidentStore(state => state.transportationMode || 'pedestrian');
   const setTransportationMode = useResidentStore(state => state.setTransportationMode);
   const status = useResidentStore(state => state.status);
+  const setSafeStatus = useResidentStore(state => state.setSafeStatus);
+
+  // ─── Automated Geofence Arrival State ───
+  const [geofencePrompt, setGeofencePrompt] = useState(null);
+  const [isGeofenceCheckingIn, setIsGeofenceCheckingIn] = useState(false);
+  const checkedInShelterIdRef = useRef(null);
+  const dismissedSheltersRef = useRef(new Set());
 
   const lastHazardsRef = useRef(null);
   const lastShelterCoordsRef = useRef(null);
@@ -416,9 +423,11 @@ export default function EvacMapScreen({ navigation, route }) {
     };
   }, []);
 
-  const shelters = (Array.isArray(sheltersData) && sheltersData.length > 0)
-    ? sheltersData
-    : (Array.isArray(sheltersData?.data) ? sheltersData.data : (Array.isArray(offlineShelters) ? offlineShelters : []));
+  const shelters = useMemo(() => {
+    return (Array.isArray(sheltersData) && sheltersData.length > 0)
+      ? sheltersData
+      : (Array.isArray(sheltersData?.data) ? sheltersData.data : (Array.isArray(offlineShelters) ? offlineShelters : []));
+  }, [sheltersData, offlineShelters]);
 
   const rawHazardsList = (Array.isArray(hazardsData) && hazardsData.length > 0)
     ? hazardsData
@@ -444,7 +453,7 @@ export default function EvacMapScreen({ navigation, route }) {
   });
 
   // Filter shelters/places based on Category AND Disaster Preset Filter
-  const safeShelters = Array.isArray(shelters) ? shelters : [];
+  const safeShelters = useMemo(() => (Array.isArray(shelters) ? shelters : []), [shelters]);
   const filteredShelters = safeShelters.filter(shelter => {
     if (!shelter) return false;
     // 1. Facility Category Filter
@@ -489,7 +498,7 @@ export default function EvacMapScreen({ navigation, route }) {
     if (!isNaN(userLat) && !isNaN(userLng) && isValidZamboangaLocation([userLng, userLat])) {
       return [userLng, userLat];
     }
-    
+
     const barangayName = user?.family_profile?.barangay || user?.barangay;
     if (barangayName) {
       const barangayCoords = {
@@ -516,6 +525,56 @@ export default function EvacMapScreen({ navigation, route }) {
         return dist <= radius + 300; // Inside hazard zone or 300m buffer
       })
     : [];
+
+  // ─── Automated Geofence Arrival Detection (<= 80 meters) ───
+  useEffect(() => {
+    if (!activeUserLocation || !Array.isArray(activeUserLocation) || activeUserLocation.length < 2 || geofencePrompt || isGeofenceCheckingIn) return;
+    if (!safeShelters || safeShelters.length === 0) return;
+
+    const userLng = activeUserLocation[0];
+    const userLat = activeUserLocation[1];
+
+    for (const s of safeShelters) {
+      if (!s.latitude || !s.longitude || s.status === 'closed') continue;
+      if (checkedInShelterIdRef.current === s.id) continue;
+      if (dismissedSheltersRef.current.has(s.id)) continue;
+
+      const dist = getDistanceMeters(userLat, userLng, Number(s.latitude), Number(s.longitude));
+      if (dist <= 80) {
+        setTimeout(() => {
+          setGeofencePrompt({ shelter: s, distanceMeters: Math.round(dist) });
+        }, 0);
+        Vibration.vibrate([0, 80, 50, 80]);
+        break;
+      }
+    }
+  }, [activeUserLocation, safeShelters, geofencePrompt, isGeofenceCheckingIn]);
+
+  const handleConfirmGeofenceCheckIn = async (targetShelter) => {
+    if (!targetShelter || !activeUserLocation) return;
+    setIsGeofenceCheckingIn(true);
+    try {
+      await api.post(`/shelters/${targetShelter.id}/geofence-checkin`, {
+        latitude: activeUserLocation[1],
+        longitude: activeUserLocation[0],
+      });
+      checkedInShelterIdRef.current = targetShelter.id;
+      setGeofencePrompt(null);
+      setSafeStatus({
+        shelter_name: targetShelter.name,
+        checked_in_at: new Date().toISOString(),
+      });
+      Alert.alert(
+        '🎉 Check-In Confirmed!',
+        `Welcome to ${targetShelter.name}!\n\nYour family has been automatically registered in the system.\n\nPlease proceed inside to the CSWDO relief desk to claim your supplies.`
+      );
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Geofence check-in could not be completed.';
+      Alert.alert('Check-In Notice', msg);
+    } finally {
+      setIsGeofenceCheckingIn(false);
+    }
+  };
 
   const activeSiegeThreat = activeThreatsNearUser.find(h =>
     ['siege', 'war', 'active_shooter', 'civil_unrest'].includes(h.hazard_type) ||
@@ -1507,6 +1566,89 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
             </View>
             <TouchableOpacity onPress={() => setDismissedAlertKey(activeAlertKey)} style={{ padding: 4, marginLeft: 8 }}>
               <X size={18} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* ─── Automated Geofence Arrival Proximity Banner ─── */}
+      {geofencePrompt && (
+        <View style={{
+          position: 'absolute',
+          top: Math.max(insets.top + 60, 105),
+          left: 16,
+          right: 16,
+          zIndex: 999,
+          backgroundColor: '#0f172a',
+          borderRadius: 16,
+          padding: 14,
+          borderWidth: 2,
+          borderColor: '#22c55e',
+          elevation: 12,
+          shadowColor: '#22c55e',
+          shadowOpacity: 0.4,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 4 },
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <View style={{ backgroundColor: '#15803d', padding: 7, borderRadius: 10 }}>
+              <CheckCircle2 color="#ffffff" size={22} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#86efac', fontSize: 10, fontWeight: '900', letterSpacing: 0.8 }}>
+                GEOFENCE PROXIMITY DETECTED ({geofencePrompt.distanceMeters}M)
+              </Text>
+              <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: 'bold' }}>
+                {geofencePrompt.shelter.name}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={{ color: '#cbd5e1', fontSize: 12, marginBottom: 12, lineHeight: 16 }}>
+            You have arrived at this shelter perimeter. Would you like to automatically register your family headcount to secure accommodations and CSWDO relief supplies?
+          </Text>
+
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                backgroundColor: '#22c55e',
+                paddingVertical: 12,
+                borderRadius: 8,
+                alignItems: 'center',
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+              onPress={() => handleConfirmGeofenceCheckIn(geofencePrompt.shelter)}
+              disabled={isGeofenceCheckingIn}
+            >
+              {isGeofenceCheckingIn ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <>
+                  <CheckCircle2 color="#ffffff" size={16} />
+                  <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 13 }}>CONFIRM CHECK-IN</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                backgroundColor: '#334155',
+                borderRadius: 8,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onPress={() => {
+                dismissedSheltersRef.current.add(geofencePrompt.shelter.id);
+                setGeofencePrompt(null);
+              }}
+              disabled={isGeofenceCheckingIn}
+            >
+              <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600' }}>Passing By</Text>
             </TouchableOpacity>
           </View>
         </View>

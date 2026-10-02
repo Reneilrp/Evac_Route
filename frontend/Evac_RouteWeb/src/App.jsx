@@ -1,7 +1,8 @@
 import { lazy, Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import toast, { Toaster } from 'react-hot-toast';
-import { Bell, ShieldAlert, CheckCircle, TrendingUp, AlertCircle, AlertTriangle, RefreshCw, LayoutDashboard, Map, Building2, Package, ClipboardCheck, FileText, Flag, Users, LogOut, Sun, Moon, Contact, Settings, X, User, MapPin, Volume2, Database, Megaphone } from 'lucide-react';
+import { Bell, ShieldAlert, CheckCircle, TrendingUp, AlertCircle, AlertTriangle, RefreshCw, LayoutDashboard, Map, Building2, Package, FileText, Flag, Users, LogOut, Sun, Moon, Contact, Settings, X, User, MapPin, Volume2, Database, Megaphone, LifeBuoy, Activity } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import RoleGuard from './components/common/RoleGuard';
@@ -19,9 +20,12 @@ const StaffManagement = lazy(() => import('./pages/StaffManagement'));
 const EvacuationLogs = lazy(() => import('./pages/EvacuationLogs'));
 const DashboardOverview = lazy(() => import('./pages/DashboardOverview'));
 const IncidentReviewQueue = lazy(() => import('./pages/IncidentReviewQueue'));
-const ReliefDistribution = lazy(() => import('./pages/ReliefDistribution'));
 const ResidentRegistry = lazy(() => import('./pages/ResidentRegistry'));
 const EmergencyAlerts = lazy(() => import('./pages/EmergencyAlerts'));
+const RescueDispatch = lazy(() => import('./pages/RescueDispatch'));
+const AuditLogs = lazy(() => import('./pages/AuditLogs'));
+const SituationReport = lazy(() => import('./pages/SituationReport'));
+const SystemHealth = lazy(() => import('./pages/SystemHealth'));
 
 
 function NavLink({ to, children }) {
@@ -61,6 +65,7 @@ function IconNavLink({ to, icon, label, badge = 0 }) {
 function DashboardLayout({ children }) {
   const { logout, user, setUser } = useAuth();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const isMapRoute = location.pathname === '/admin/map';
   
   const [notifications, setNotifications] = useState([]);
@@ -73,6 +78,11 @@ function DashboardLayout({ children }) {
 
   // Master Emergency Mode Switch State
   const [isEmergencyActive, setIsEmergencyActive] = useState(true);
+
+  // Agency operational segregation: System Admin, CDRRMO (DRRM Tactical Command), or CSWDO (Camp & Relief Hub)
+  const isSystemAdmin = (user?.email?.toLowerCase() === 'admin@lgu.gov.ph') || (user?.role === 'admin' && user?.operator_type === 'admin' && !user?.email?.toLowerCase().includes('drrm'));
+  const isCswdoUser = !isSystemAdmin && (user?.operator_type === 'logistics' || user?.operator_type === 'scanner' || (user?.email?.toLowerCase().includes('logistics') || user?.email?.toLowerCase().includes('cswdo')));
+  const activeAgency = isSystemAdmin ? 'admin' : (isCswdoUser ? 'cswdo' : 'cdrmo');
 
   useEffect(() => {
     api.get('/settings').then(res => {
@@ -457,92 +467,207 @@ function DashboardLayout({ children }) {
       setUnreadCount(prev => prev + 1);
     });
 
+    channel.listen('.dispatch.order.delivered', (data) => {
+      playNotificationSound();
+      queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
+      queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+      const newNotif = {
+        id: `dispatch-delivered-${data.id}-${Date.now()}`,
+        title: 'Relief Order Delivered',
+        message: `Dispatch #${data.id} delivered to ${data.shelter_name}. Physical stock deducted.`,
+        time: new Date(),
+        type: 'dispatch_delivered',
+        link: '/admin/inventory'
+      };
+      setNotifications(prev => [newNotif, ...prev]);
+      setUnreadCount(prev => prev + 1);
+    });
+
     return () => {
       echo.leaveChannel('map-updates');
     };
   }, [location.pathname]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-100">
+    <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-slate-950">
       {/* Sidebar */}
       <aside className={`${isMapRoute ? 'w-16' : 'w-64'} bg-gray-900 text-white flex flex-col z-20 shadow-xl transition-all duration-300`}>
         <div className={`border-b border-gray-800 flex items-center justify-center ${isMapRoute ? 'p-3' : 'p-4'}`}>
           {isMapRoute ? (
-            <span className="text-blue-400 font-black text-lg" title="Evac_Route">E</span>
+            <div className="flex flex-col items-center gap-1.5">
+              <span className="text-blue-400 font-black text-lg" title="Evac_Route">E</span>
+            </div>
           ) : (
-            <div>
-              <h1 className="text-xl font-black tracking-wider text-blue-400">Evac_Route</h1>
-              <p className="text-xs text-gray-400 mt-1 uppercase font-bold tracking-widest">LGU Command Center</p>
+            <div className="w-full">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-black tracking-wider text-blue-400">Evac_Route</h1>
+                  <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wide border ${
+                    activeAgency === 'admin'
+                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                      : activeAgency === 'cswdo'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                        : 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                  }`}>
+                    {activeAgency === 'admin' ? 'ADMIN' : (activeAgency === 'cswdo' ? 'CSWDO' : 'CDRRMO')}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-1 uppercase font-bold tracking-widest">
+                {activeAgency === 'admin' ? 'System & City Control' : (activeAgency === 'cswdo' ? 'Relief & Camp Desk' : 'Disaster Operations')}
+              </p>
             </div>
           )}
         </div>
         <nav className={`flex-1 ${isMapRoute ? 'p-2' : 'p-4'} space-y-1 overflow-y-auto`}>
-          {!isMapRoute && <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 mt-2 px-3">Command Center</p>}
-          {isMapRoute ? (
-            <IconNavLink to="/admin/dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard Overview" />
-          ) : (
-            <NavLink to="/admin/dashboard">Dashboard Overview</NavLink>
-          )}
-          {isMapRoute ? (
-            <IconNavLink to="/admin/map" icon={<Map size={20} />} label="Live Map View" />
-          ) : (
-            <NavLink to="/admin/map">Live Map View</NavLink>
-          )}
-          {isMapRoute ? (
-            <IconNavLink to="/admin/incidents" icon={<Flag size={20} />} label="Incident Reports" badge={pendingIncidentCount} />
-          ) : (
-            <NavLink to="/admin/incidents">
-               <div className="flex justify-between items-center w-full">
-                  <span>Incident Reports</span>
-                  {pendingIncidentCount > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
-                      {pendingIncidentCount}
-                    </span>
-                  )}
-               </div>
-            </NavLink>
-          )}
+          {activeAgency === 'admin' ? (
+            /* === SYSTEM ADMIN CONSOLE (USER MANAGEMENT, RESIDENTS, AUDIT LOGS, SYSTEM HEALTH) === */
+            <>
+              {!isMapRoute && <p className="text-[10px] font-bold text-purple-400 uppercase tracking-wider mb-2 mt-2 px-3">User &amp; Access Control</p>}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/staff" icon={<Users size={20} />} label="User Management" />
+              ) : (
+                <NavLink to="/admin/staff">User Management</NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/residents" icon={<Contact size={20} />} label="Resident Registry" />
+              ) : (
+                <NavLink to="/admin/residents">Resident Registry</NavLink>
+              )}
 
-          {!isMapRoute && <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 mt-6 px-3">Operations &amp; Logistics</p>}
-          {isMapRoute ? (
-            <IconNavLink to="/admin/shelters" icon={<Building2 size={20} />} label="Shelter Capacity" />
-          ) : (
-            <NavLink to="/admin/shelters">Shelter Capacity</NavLink>
-          )}
-          {isMapRoute ? (
-            <IconNavLink to="/admin/inventory" icon={<Package size={20} />} label="Warehouse Stock" />
-          ) : (
-            <NavLink to="/admin/inventory">Warehouse Stock</NavLink>
-          )}
-          {isMapRoute ? (
-            <IconNavLink to="/admin/relief-desk" icon={<ClipboardCheck size={20} />} label="Relief Claims Desk" />
-          ) : (
-            <NavLink to="/admin/relief-desk">Relief Claims Desk</NavLink>
-          )}
+              {!isMapRoute && <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 mt-6 px-3">System &amp; Security</p>}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/audit-logs" icon={<ShieldAlert size={20} />} label="Security &amp; Audit Logs" />
+              ) : (
+                <NavLink to="/admin/audit-logs">Security &amp; Audit Logs</NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/system-health" icon={<Activity size={20} />} label="System &amp; API Health" />
+              ) : (
+                <NavLink to="/admin/system-health">System &amp; API Health</NavLink>
+              )}
+            </>
+          ) : activeAgency === 'cswdo' ? (
+            /* === CSWDO CAMP & RELIEF HUB === */
+            <>
+              {!isMapRoute && <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-2 mt-2 px-3">Relief &amp; Camp Operations</p>}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard Overview" />
+              ) : (
+                <NavLink to="/admin/dashboard">Dashboard Overview</NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/inventory" icon={<Package size={20} />} label="Relief Stock Monitoring" />
+              ) : (
+                <NavLink to="/admin/inventory">Relief Stock Monitoring</NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/shelters" icon={<Building2 size={20} />} label="Shelter Capacity" />
+              ) : (
+                <NavLink to="/admin/shelters">Shelter Capacity</NavLink>
+              )}
 
-          {!isMapRoute && <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 mt-6 px-3">Administration</p>}
-          {isMapRoute ? (
-            <IconNavLink to="/admin/reports" icon={<FileText size={20} />} label="Evacuation Logs" />
+              {!isMapRoute && <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 mt-6 px-3">Camp Monitoring &amp; Records</p>}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/reports" icon={<FileText size={20} />} label="Evacuation & Relief Logs" />
+              ) : (
+                <NavLink to="/admin/reports">Evacuation &amp; Relief Logs</NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/map" icon={<Map size={20} />} label="Safe Route Map" />
+              ) : (
+                <NavLink to="/admin/map">Safe Route Map</NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/residents" icon={<Contact size={20} />} label="Resident Registry" />
+              ) : (
+                <NavLink to="/admin/residents">Resident Registry</NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/staff" icon={<Users size={20} />} label="Staff Operators" />
+              ) : (
+                <NavLink to="/admin/staff">Staff Operators</NavLink>
+              )}
+              <RoleGuard allowedRoles={['admin']}>
+                {isMapRoute ? (
+                  <IconNavLink to="/admin/audit-logs" icon={<ShieldAlert size={20} />} label="Security & Audit Logs" />
+                ) : (
+                  <NavLink to="/admin/audit-logs">Security &amp; Audit Logs</NavLink>
+                )}
+              </RoleGuard>
+            </>
           ) : (
-            <NavLink to="/admin/reports">Evacuation Logs</NavLink>
+            /* === CDRRMO TACTICAL OPERATIONS (SHELTER CAPACITY & INVENTORY REMOVED) === */
+            <>
+              {!isMapRoute && <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-2 mt-2 px-3">CDRRMO Tactical Operations</p>}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard Overview" />
+              ) : (
+                <NavLink to="/admin/dashboard">Dashboard Overview</NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/map" icon={<Map size={20} />} label="Live Map View" />
+              ) : (
+                <NavLink to="/admin/map">Live Map View</NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/incidents" icon={<Flag size={20} />} label="Incident Reports" badge={pendingIncidentCount} />
+              ) : (
+                <NavLink to="/admin/incidents">
+                   <div className="flex justify-between items-center w-full">
+                      <span>Incident Reports</span>
+                      {pendingIncidentCount > 0 && (
+                        <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                          {pendingIncidentCount}
+                        </span>
+                      )}
+                   </div>
+                </NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/rescue-dispatch" icon={<LifeBuoy size={20} />} label="Rescue Dispatch" />
+              ) : (
+                <NavLink to="/admin/rescue-dispatch">
+                   <div className="flex justify-between items-center w-full">
+                      <span>Rescue Dispatch</span>
+                      <span className="bg-red-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">
+                        Fleet
+                      </span>
+                   </div>
+                </NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/alerts" icon={<Megaphone size={20} />} label="Emergency Warnings" />
+              ) : (
+                <NavLink to="/admin/alerts">Emergency Warnings</NavLink>
+              )}
+
+              {!isMapRoute && <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 mt-6 px-3">Administration &amp; Records</p>}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/reports" icon={<FileText size={20} />} label="Evacuation Logs" />
+              ) : (
+                <NavLink to="/admin/reports">Evacuation Logs</NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/residents" icon={<Contact size={20} />} label="Resident Registry" />
+              ) : (
+                <NavLink to="/admin/residents">Resident Registry</NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/staff" icon={<Users size={20} />} label="Staff Operators" />
+              ) : (
+                <NavLink to="/admin/staff">Staff Operators</NavLink>
+              )}
+              <RoleGuard allowedRoles={['admin']}>
+                {isMapRoute ? (
+                  <IconNavLink to="/admin/audit-logs" icon={<ShieldAlert size={20} />} label="Security & Audit Logs" />
+                ) : (
+                  <NavLink to="/admin/audit-logs">Security &amp; Audit Logs</NavLink>
+                )}
+              </RoleGuard>
+            </>
           )}
-          {isMapRoute ? (
-            <IconNavLink to="/admin/residents" icon={<Contact size={20} />} label="Resident Registry" />
-          ) : (
-            <NavLink to="/admin/residents">Resident Registry</NavLink>
-          )}
-          {isMapRoute ? (
-            <IconNavLink to="/admin/alerts" icon={<Megaphone size={20} />} label="Emergency Warnings" />
-          ) : (
-            <NavLink to="/admin/alerts">Emergency Warnings</NavLink>
-          )}
-          <RoleGuard allowedRoles={['admin']}>
-            {isMapRoute ? (
-              <IconNavLink to="/admin/staff" icon={<Users size={20} />} label="Staff Operators" />
-            ) : (
-              <NavLink to="/admin/staff">Staff Operators</NavLink>
-            )}
-          </RoleGuard>
 
         </nav>
         <div className={`border-t border-gray-800 bg-gray-950/20 ${isMapRoute ? 'p-2' : 'p-4'}`}>
@@ -614,12 +739,14 @@ function DashboardLayout({ children }) {
                 <div className="flex items-center gap-2 bg-red-600 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-sm animate-pulse">
                   <ShieldAlert size={14} />
                   <span>🔴 EMERGENCY CRISIS MODE ACTIVATED</span>
-                  <button 
-                    onClick={toggleMasterEmergency}
-                    className="ml-2 bg-white text-red-700 hover:bg-red-50 text-[10px] px-2 py-0.5 rounded font-black transition uppercase cursor-pointer"
-                  >
-                    Deactivate
-                  </button>
+                  {user?.role === 'admin' && (
+                    <button 
+                      onClick={toggleMasterEmergency}
+                      className="ml-2 bg-white text-red-700 hover:bg-red-50 text-[10px] px-2 py-0.5 rounded font-black transition uppercase cursor-pointer"
+                    >
+                      Deactivate
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-900/50">
@@ -628,12 +755,14 @@ function DashboardLayout({ children }) {
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
                   <span>🟢 STANDBY PEACETIME MODE</span>
-                  <button 
-                    onClick={toggleMasterEmergency}
-                    className="ml-2 bg-red-600 hover:bg-red-700 text-white text-[10px] px-2.5 py-0.5 rounded font-black transition uppercase shadow-sm cursor-pointer"
-                  >
-                    🚨 ACTIVATE DISASTER MODE
-                  </button>
+                  {user?.role === 'admin' && (
+                    <button 
+                      onClick={toggleMasterEmergency}
+                      className="ml-2 bg-red-600 hover:bg-red-700 text-white text-[10px] px-2.5 py-0.5 rounded font-black transition uppercase shadow-sm cursor-pointer"
+                    >
+                      🚨 ACTIVATE DISASTER MODE
+                    </button>
+                  )}
                 </div>
               )}
            </div>
@@ -791,22 +920,34 @@ function App() {
             <Route path="/" element={<AdminLogin />} />
             <Route path="/admin/login" element={<Navigate to="/" replace />} />
 
-            {/* Protected LGU Admin/Staff Routes */}
+            {/* Protected LGU Admin/Staff General & Tactical Routes */}
             <Route element={<ProtectedRoute allowedRoles={['admin', 'lgu_staff']} />}>
               <Route path="/admin/dashboard" element={<DashboardLayout><DashboardOverview /></DashboardLayout>} />
               <Route path="/admin/map" element={<DashboardLayout><MapDashboard /></DashboardLayout>} />
-              <Route path="/admin/shelters" element={<DashboardLayout><ShelterManagement /></DashboardLayout>} />
-              <Route path="/admin/inventory" element={<DashboardLayout><InventoryManager /></DashboardLayout>} />
               <Route path="/admin/reports" element={<DashboardLayout><EvacuationLogs /></DashboardLayout>} />
               <Route path="/admin/residents" element={<DashboardLayout><ResidentRegistry /></DashboardLayout>} />
               <Route path="/admin/incidents" element={<DashboardLayout><IncidentReviewQueue /></DashboardLayout>} />
-              <Route path="/admin/relief-desk" element={<DashboardLayout><ReliefDistribution /></DashboardLayout>} />
               <Route path="/admin/alerts" element={<DashboardLayout><EmergencyAlerts /></DashboardLayout>} />
+              <Route path="/admin/rescue-dispatch" element={<DashboardLayout><RescueDispatch /></DashboardLayout>} />
+              <Route path="/admin/relief-desk" element={<Navigate to="/admin/inventory" replace />} />
             </Route>
 
-            {/* Admin-Only Routes */}
-            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+            {/* CSWDO Camp & Relief Inventory Modules (Segregated from DRRM rescue/field operators) */}
+            <Route element={<ProtectedRoute allowedRoles={['admin', 'lgu_staff']} allowedOperatorTypes={['logistics', 'scanner']} />}>
+              <Route path="/admin/shelters" element={<DashboardLayout><ShelterManagement /></DashboardLayout>} />
+              <Route path="/admin/inventory" element={<DashboardLayout><InventoryManager /></DashboardLayout>} />
+            </Route>
+
+            {/* Staff Operator Management (Accessible by both CDRRMO & CSWDO) */}
+            <Route element={<ProtectedRoute allowedRoles={['admin', 'lgu_staff']} />}>
               <Route path="/admin/staff" element={<DashboardLayout><StaffManagement /></DashboardLayout>} />
+            </Route>
+
+            {/* Admin-Only Security, SitRep & Telemetry */}
+            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+              <Route path="/admin/audit-logs" element={<DashboardLayout><AuditLogs /></DashboardLayout>} />
+              <Route path="/admin/sitrep" element={<DashboardLayout><SituationReport /></DashboardLayout>} />
+              <Route path="/admin/system-health" element={<DashboardLayout><SystemHealth /></DashboardLayout>} />
             </Route>
 
           </Routes>
@@ -829,6 +970,9 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // Configuration States
+  const [masterEmergencyActive, setMasterEmergencyActive] = useState(true);
+  const [activeEmergencyTitle, setActiveEmergencyTitle] = useState('ACTIVE EMERGENCY DISASTER RESPONSE MODE');
+  const [activeDisasterType, setActiveDisasterType] = useState('all');
   const [mapCenterLat, setMapCenterLat] = useState(6.9126);
   const [mapCenterLng, setMapCenterLng] = useState(122.0729);
   const [mapZoom, setMapZoom] = useState(13);
@@ -854,6 +998,9 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
       api.get('/settings')
         .then(res => {
           const cfg = res.data.data;
+          setMasterEmergencyActive(cfg.master_emergency_active === true || cfg.master_emergency_active === 'true' || cfg.master_emergency_active === 1 || cfg.master_emergency_active === '1');
+          setActiveEmergencyTitle(cfg.active_emergency_title || 'ACTIVE EMERGENCY DISASTER RESPONSE MODE');
+          setActiveDisasterType(cfg.active_disaster_type || 'all');
           setMapCenterLat(cfg.map_center_lat);
           setMapCenterLng(cfg.map_center_lng);
           setMapZoom(cfg.map_zoom);
@@ -914,6 +1061,9 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
     setLoading(true);
     try {
       const payload = {
+        master_emergency_active: masterEmergencyActive,
+        active_emergency_title: activeEmergencyTitle,
+        active_disaster_type: activeDisasterType,
         map_center_lat: parseFloat(mapCenterLat),
         map_center_lng: parseFloat(mapCenterLng),
         map_zoom: parseInt(mapZoom),
@@ -1122,7 +1272,58 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
             {/* Tab 2: Operations & Thresholds */}
             {activeTab === 'thresholds' && (
               <form onSubmit={handleConfigSubmit} className="space-y-4">
-                <h4 className="font-bold text-sm text-gray-800 dark:text-slate-200 border-b border-gray-200 dark:border-slate-800 pb-2">Stock Alert Warnings</h4>
+                <h4 className="font-bold text-sm text-gray-800 dark:text-slate-200 border-b border-gray-200 dark:border-slate-800 pb-2">Master Disaster &amp; Emergency Mode</h4>
+
+                {/* Master Emergency Mode Switch */}
+                <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-lg flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-800 dark:text-slate-200">Global Disaster Response Mode</span>
+                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${masterEmergencyActive ? 'bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse' : 'bg-green-500/20 text-green-400 border border-green-500/30'}`}>
+                        {masterEmergencyActive ? '🚨 Emergency Active' : '🟢 Standby Peacetime'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-gray-400 dark:text-slate-500 block mt-0.5">
+                      Activates real-time hazard routing algorithms, emergency banners, and prioritizes rescue dispatches.
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={masterEmergencyActive}
+                      onChange={e => setMasterEmergencyActive(e.target.checked)}
+                    />
+                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">Active Emergency Broadcast Title</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. TYPHOON DISASTER EMERGENCY RESPONSE MODE"
+                    value={activeEmergencyTitle}
+                    onChange={e => setActiveEmergencyTitle(e.target.value)}
+                  />
+                  <span className="text-[10px] text-gray-400 dark:text-slate-500 block mt-1">Displayed city-wide on mobile app top banners and public warning tickers.</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">Disaster Focus Category</label>
+                  <select
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={activeDisasterType}
+                    onChange={e => setActiveDisasterType(e.target.value)}
+                  >
+                    <option value="all">Comprehensive Multi-Hazard Operations (All Disasters)</option>
+                    <option value="natural">Natural Hazards Priority (Typhoons, Floods, Landslides)</option>
+                    <option value="man_made">Civil &amp; Urban Emergencies (Fires, Chemical/HazMat, Structural)</option>
+                  </select>
+                </div>
+
+                <h4 className="font-bold text-sm text-gray-800 dark:text-slate-200 border-b border-gray-200 dark:border-slate-800 pb-2 pt-2">Operational Alert Thresholds</h4>
                 
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">Low-Stock Alert Trigger Limit (Items)</label>
@@ -1134,16 +1335,16 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
                     onChange={e => setLowStock(e.target.value)}
                     required
                   />
-                  <span className="text-[10px] text-gray-400 dark:text-slate-500 block mt-1">Generates command board warnings when relief warehouse stock levels fall below this count.</span>
+                  <span className="text-[10px] text-gray-400 dark:text-slate-500 block mt-1">Generates command board warnings when relief inventory stock levels fall below this count.</span>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">Critical Shelter Capacity Threshold (%)</label>
                   <input 
                     type="number" 
-                    min="1"
+                    min="1" 
                     max="100"
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-255 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                     value={capacityWarning}
                     onChange={e => setCapacityWarning(e.target.value)}
                     required
@@ -1156,7 +1357,7 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
                   disabled={loading}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition disabled:opacity-60 shadow-sm"
                 >
-                  {loading ? 'Saving...' : 'Save Thresholds'}
+                  {loading ? 'Saving...' : 'Save Settings & Thresholds'}
                 </button>
               </form>
             )}

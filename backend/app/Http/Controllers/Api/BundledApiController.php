@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BroadcastAlert;
 use App\Models\EvacuationLog;
 use App\Models\FamilyProfile;
 use App\Models\Hazard;
 use App\Models\InventoryItem;
+use App\Models\PendingIncident;
 use App\Models\RationTemplate;
+use App\Models\RescueUnit;
 use App\Models\RoadMaintenance;
 use App\Models\Shelter;
 use Illuminate\Http\Request;
@@ -38,12 +41,42 @@ class BundledApiController extends Controller
             ->orderBy('item_name')
             ->get();
 
+        // 5. CDRRMO Tactical Command Metrics
+        $pendingIncidentsCount = PendingIncident::where('status', 'pending')->count();
+        $approvedIncidentsCount = PendingIncident::where('status', 'approved')->count();
+        $rejectedIncidentsCount = PendingIncident::where('status', 'rejected')->count();
+        $totalIncidentsCount = PendingIncident::count();
+
+        $rescueUnits = RescueUnit::with('crewMembers')->get();
+        $rescueStandbyCount = $rescueUnits->where('status', 'standby')->count();
+        $rescueDispatchedCount = $rescueUnits->where('status', 'dispatched')->count();
+        $rescueMaintenanceCount = $rescueUnits->where('status', 'maintenance')->count();
+
+        $recentIncidents = PendingIncident::with('reporter:id,name')
+            ->orderBy('created_at', 'desc')
+            ->take(6)
+            ->get();
+
+        $alertsCount = BroadcastAlert::count();
+
         return response()->json([
             'status' => 'success',
             'shelters' => $shelters,
             'hazards' => $hazards,
             'recent_logs' => $recentLogs,
             'inventory' => $inventory,
+            'tactical' => [
+                'pending_incidents' => $pendingIncidentsCount,
+                'approved_incidents' => $approvedIncidentsCount,
+                'rejected_incidents' => $rejectedIncidentsCount,
+                'total_incidents' => $totalIncidentsCount,
+                'rescue_standby' => $rescueStandbyCount,
+                'rescue_dispatched' => $rescueDispatchedCount,
+                'rescue_maintenance' => $rescueMaintenanceCount,
+                'rescue_total' => $rescueUnits->count(),
+                'recent_incidents' => $recentIncidents,
+                'alerts_count' => $alertsCount,
+            ],
         ], 200);
     }
 
@@ -89,8 +122,10 @@ class BundledApiController extends Controller
         // 1. Fetch operational shelters (open or full/overflow state)
         $shelters = Shelter::whereIn('status', ['open', 'full'])->get();
 
-        // 2. Fetch active hazards
-        $hazards = Hazard::where('is_active', true)->get();
+        // 2. Fetch active hazards (excluding reporter PII)
+        $hazards = Hazard::where('is_active', true)
+            ->select('id', 'name', 'latitude', 'longitude', 'radius_meters', 'hazard_type', 'severity_level', 'is_fixed_flood_spot', 'created_at')
+            ->get();
 
         // 3. P3: Fetch active road maintenance blocks so mobile can render them
         //    Returns only the fields needed for map rendering (no reporter PII)
@@ -146,10 +181,14 @@ class BundledApiController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        // 3. Central inventory stock levels with reserved_quantity and available_stock
+        $inventory = InventoryItem::orderBy('item_name')->get();
+
         return response()->json([
             'status' => 'success',
             'shelters' => $shelters,
             'templates' => $templates,
+            'inventory' => $inventory,
         ], 200);
     }
 
@@ -179,6 +218,7 @@ class BundledApiController extends Controller
                 $recommendedTotalQty = $item->quantity_per_head * $recommendedTotalHeadcount;
 
                 $requiredSupplies[] = [
+                    'inventory_item_id' => $item->inventory_item_id,
                     'item_name' => $item->inventoryItem?->item_name ?? 'Unknown Item',
                     'quantity_per_head' => $item->quantity_per_head,
                     'base_required' => $baseQty,

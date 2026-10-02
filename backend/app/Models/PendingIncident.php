@@ -9,16 +9,25 @@ class PendingIncident extends Model
     protected $fillable = [
         'reported_by', 'name', 'latitude', 'longitude',
         'hazard_type', 'severity_level', 'description',
-        'photo_path', 'photos', 'status', 'read_at', 'reviewed_by', 'reviewed_at', 'review_note',
+        'photo_path', 'photos', 'status', 'read_at', 'archived_at', 'reviewed_by', 'reviewed_at', 'review_note',
     ];
 
     protected $casts = [
         'reviewed_at' => 'datetime',
         'read_at' => 'datetime',
+        'archived_at' => 'datetime',
         'photos' => 'array',
     ];
 
-    protected $appends = ['is_read'];
+    protected $appends = ['is_read', 'is_archived'];
+
+    /**
+     * Check if the incident has been archived by the resident.
+     */
+    public function getIsArchivedAttribute(): bool
+    {
+        return $this->archived_at !== null;
+    }
 
     public function reporter()
     {

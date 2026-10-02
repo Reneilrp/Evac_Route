@@ -83,11 +83,11 @@ export default function EvacuationLogs() {
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
   return (
-    <div className="p-6 h-full overflow-y-auto bg-gray-50">
+    <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Evacuation Logs &amp; Reports</h2>
-          <p className="text-sm text-gray-500 mt-1">Audit trail for shelter check-ins and relief allocation.</p>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Evacuation Logs &amp; Reports</h2>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Audit trail for shelter check-ins and relief allocation.</p>
         </div>
         <button 
           onClick={handleExport}
@@ -97,24 +97,24 @@ export default function EvacuationLogs() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
+        <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-950/50">
           <div className="flex gap-3 w-1/2">
             <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={18} />
               <input 
                 type="text" 
                 placeholder="Search family name, QR hash, or shelter..." 
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <button className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm hover:bg-gray-50">
+            <button className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm hover:bg-gray-50 dark:hover:bg-slate-750">
               <Filter size={16} /> Filter
             </button>
           </div>
-          <div className="text-sm text-gray-500 flex items-center gap-2">
+          <div className="text-sm text-gray-500 dark:text-slate-400 flex items-center gap-2">
             <Calendar size={16} /> {today}
           </div>
         </div>
@@ -126,12 +126,12 @@ export default function EvacuationLogs() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-6 w-6 bg-blue-500"></span>
               </span>
-              <p className="text-gray-500 font-medium">Loading logs from backend...</p>
+              <p className="text-gray-500 dark:text-slate-400 font-medium">Loading logs from backend...</p>
             </div>
           ) : (
             <table className="min-w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wider">
                   <th className="py-3 px-6 font-semibold">Time</th>
                   <th className="py-3 px-6 font-semibold">Family Profile</th>
                   <th className="py-3 px-6 font-semibold">QR Hash</th>
@@ -141,48 +141,48 @@ export default function EvacuationLogs() {
                   <th className="py-3 px-6 font-semibold">Status / Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                 {filteredLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-gray-400 font-medium">
+                    <td colSpan={7} className="py-12 text-center text-gray-400 dark:text-slate-500 font-medium">
                       {search ? 'No matching logs found.' : 'No check-ins recorded yet.'}
                     </td>
                   </tr>
                 ) : (
                   filteredLogs.map(log => (
-                    <tr key={log.id} className="hover:bg-blue-50/30 transition">
-                      <td className="py-4 px-6 text-gray-500 text-sm whitespace-nowrap">
+                    <tr key={log.id} className="hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition">
+                      <td className="py-4 px-6 text-gray-500 dark:text-slate-400 text-sm whitespace-nowrap">
                         {log.checked_in_at ? new Date(log.checked_in_at).toLocaleString() : '—'}
                       </td>
-                      <td className="py-4 px-6 font-medium text-gray-800">
+                      <td className="py-4 px-6 font-medium text-gray-800 dark:text-slate-200">
                         {log.family_profile?.user?.name || 'Unknown'}
                       </td>
-                      <td className="py-4 px-6 text-gray-400 text-xs font-mono">
+                      <td className="py-4 px-6 text-gray-400 dark:text-slate-500 text-xs font-mono">
                         {log.family_profile?.qr_code_hash || '—'}
                       </td>
-                      <td className="py-4 px-6 text-gray-600 text-sm">
+                      <td className="py-4 px-6 text-gray-600 dark:text-slate-300 text-sm">
                         {log.shelter?.name || '—'}
                       </td>
                       <td className="py-4 px-6">
-                        <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full text-xs font-bold">
+                        <span className="bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 py-1 px-3 rounded-full text-xs font-bold">
                           {log.recorded_headcount}
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        <span className={`py-1 px-3 rounded-full text-xs font-bold ${log.ration_claimed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        <span className={`py-1 px-3 rounded-full text-xs font-bold ${log.ration_claimed ? 'bg-green-100 text-green-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400'}`}>
                           {log.ration_claimed ? 'Claimed' : 'Pending'}
                         </span>
                       </td>
                       <td className="py-4 px-6">
                         {log.checked_out_at ? (
-                          <span className="text-gray-400 text-xs">
+                          <span className="text-gray-400 dark:text-slate-500 text-xs">
                             Checked Out at {new Date(log.checked_out_at).toLocaleTimeString()}
                           </span>
                         ) : (
                           <button
                             onClick={() => handleCheckOut(log.id)}
                             disabled={checkoutMutation.isPending}
-                            className="bg-red-50 hover:bg-red-500 hover:text-white text-red-600 text-xs font-bold px-3 py-1.5 rounded transition disabled:opacity-50"
+                            className="bg-red-50 hover:bg-red-500 hover:text-white dark:bg-red-950/40 dark:hover:bg-red-600 text-red-600 dark:text-red-400 text-xs font-bold px-3 py-1.5 rounded transition disabled:opacity-50"
                           >
                             Check Out
                           </button>
@@ -198,22 +198,22 @@ export default function EvacuationLogs() {
 
         {/* Pagination Controls */}
         {!isLoading && logsData?.data && (
-          <div className="p-4 border-t border-gray-100 flex justify-between items-center bg-gray-50/50">
-            <p className="text-xs text-gray-500 font-medium">
+          <div className="p-4 border-t border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-950/50">
+            <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">
               Showing page {page} of {logsData.data.last_page || 1} (Total: {logsData.data.total || 0} logs)
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-3 py-1.5 bg-white border border-gray-200 rounded text-xs font-bold text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
+                className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded text-xs font-bold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition disabled:opacity-50"
               >
                 Previous
               </button>
               <button
                 onClick={() => setPage(p => Math.min(logsData.data.last_page || 1, p + 1))}
                 disabled={page === (logsData.data.last_page || 1)}
-                className="px-3 py-1.5 bg-white border border-gray-200 rounded text-xs font-bold text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
+                className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded text-xs font-bold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition disabled:opacity-50"
               >
                 Next
               </button>

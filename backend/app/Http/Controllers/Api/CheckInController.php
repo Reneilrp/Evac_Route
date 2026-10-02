@@ -488,4 +488,123 @@ class CheckInController extends Controller
             'data' => $logs,
         ], 200);
     }
+
+    /**
+     * Automated Geofence Check-In for residents within shelter proximity.
+     * Route: POST /api/shelters/{shelter_id}/geofence-checkin
+     */
+    public function geofenceCheckIn(Request $request, $shelter_id)
+    {
+        $validated = $request->validate([
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+        ]);
+
+        $user = $request->user();
+        $family = $user ? $user->familyProfile : null;
+
+        if (!$family) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Family profile not found for this resident account.',
+            ], 404);
+        }
+
+        $shelter = Shelter::findOrFail($shelter_id);
+
+        // Server-side Haversine distance calculation
+        $latFrom = deg2rad($validated['latitude']);
+        $lonFrom = deg2rad($validated['longitude']);
+        $latTo = deg2rad($shelter->latitude);
+        $lonTo = deg2rad($shelter->longitude);
+
+        $latDelta = $latTo - $latFrom;
+        $lonDelta = $lonTo - $lonFrom;
+
+        $angle = 2 * asin(sqrt(pow(sin($latDelta / 2), 2) +
+            cos($latFrom) * cos($latTo) * pow(sin($lonDelta / 2), 2)));
+        $distanceMeters = $angle * 6371000;
+
+        // Allow up to 100 meters (accounting for urban GPS drift in heavy storms)
+        if ($distanceMeters > 100) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "You are outside the geofence perimeter for {$shelter->name} (" . round($distanceMeters) . "m away). Geofence check-in requires being within 100m.",
+                'distance_meters' => round($distanceMeters),
+            ], 422);
+        }
+
+        try {
+            $result = DB::transaction(function () use ($family, $shelter_id, $validated, $distanceMeters) {
+                // Check if already checked in anywhere
+                $activeLog = EvacuationLog::where('family_profile_id', $family->id)
+                    ->whereNull('checked_out_at')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($activeLog) {
+                    if ($activeLog->shelter_id == $shelter_id) {
+                        return [
+                            'action' => 'already_checked_in',
+                            'shelter' => Shelter::find($shelter_id),
+                            'log' => $activeLog,
+                            'message' => "Your family is already registered at {$activeLog->shelter->name}.",
+                        ];
+                    }
+
+                    // Transfer shelter! Check out from old shelter first
+                    $oldShelter = Shelter::lockForUpdate()->find($activeLog->shelter_id);
+                    if ($oldShelter) {
+                        $oldShelter->current_occupancy = max(0, $oldShelter->current_occupancy - $activeLog->recorded_headcount);
+                        if ($oldShelter->status === 'full' && $oldShelter->current_occupancy < $oldShelter->max_capacity) {
+                            $oldShelter->status = 'open';
+                        }
+                        $oldShelter->save();
+                        broadcast(new ShelterStatusUpdated($oldShelter));
+                    }
+                    $activeLog->checked_out_at = now();
+                    $activeLog->save();
+                }
+
+                $shelter = Shelter::lockForUpdate()->findOrFail($shelter_id);
+                $shelter->current_occupancy += $family->headcount;
+                if ($shelter->current_occupancy >= $shelter->max_capacity) {
+                    $shelter->status = 'full';
+                }
+                $shelter->save();
+                broadcast(new ShelterStatusUpdated($shelter));
+
+                $log = EvacuationLog::create([
+                    'family_profile_id' => $family->id,
+                    'shelter_id' => $shelter->id,
+                    'recorded_headcount' => $family->headcount,
+                    'ration_claimed' => false,
+                    'checked_in_at' => now(),
+                    'checkin_method' => 'geofence',
+                    'checkin_latitude' => $validated['latitude'],
+                    'checkin_longitude' => $validated['longitude'],
+                ]);
+
+                return [
+                    'action' => 'geofence_checkin',
+                    'shelter' => $shelter,
+                    'log' => $log,
+                    'distance_meters' => round($distanceMeters),
+                    'message' => "Welcome to {$shelter->name}! Registered {$family->headcount} family members via Geofence. Proceed inside to claim your relief pack.",
+                ];
+            }, 5);
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $result,
+                'message' => $result['message'],
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
 }

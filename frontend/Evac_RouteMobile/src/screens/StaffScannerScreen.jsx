@@ -3,12 +3,14 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator,
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { QrCode, LogOut, CheckCircle, XCircle, AlertTriangle, RefreshCw, Send, Users, Home } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
+import ConfirmationModal from '../components/ConfirmationModal';
 import api from '../services/api';
 import { colors, spacing, radii, typography, shadows } from '../styles/theme';
 
 export default function StaffScannerScreen() {
   const { user, logout } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   
   const [scanned, setScanned] = useState(false);
   const [manualHash, setManualHash] = useState('');
@@ -17,6 +19,8 @@ export default function StaffScannerScreen() {
   const [error, setError] = useState(null);
   const [claimLoading, setClaimLoading] = useState(false);
   const [claimSuccess, setClaimSuccess] = useState(null);
+  const [checkInLoading, setCheckInLoading] = useState(false);
+  const [checkInSuccess, setCheckInSuccess] = useState(null);
 
   // Reset scanner state
   const resetScanner = () => {
@@ -25,6 +29,7 @@ export default function StaffScannerScreen() {
     setError(null);
     setManualHash('');
     setClaimSuccess(null);
+    setCheckInSuccess(null);
   };
 
   const handleBarCodeScanned = ({ data }) => {
@@ -100,6 +105,43 @@ export default function StaffScannerScreen() {
     }
   };
 
+  const executeCheckIn = async () => {
+    const assignedShelter = user?.assigned_shelter || user?.assignedShelter;
+    const targetShelterId = user?.assigned_shelter_id || assignedShelter?.id;
+    if (!targetShelterId) {
+      setError("No evacuation shelter assigned to your marshal profile. Please contact CSWDO supervisor.");
+      return;
+    }
+    if (!scanResult || checkInLoading) return;
+    setCheckInLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.post(`/shelters/${targetShelterId}/check-in`, {
+        qr_code_hash: scanResult.hash,
+      });
+
+      Vibration.vibrate([0, 200, 100, 200]);
+      const sName = response.data?.shelter?.name || assignedShelter?.name || 'Assigned Shelter';
+      setCheckInSuccess({
+        shelterName: sName,
+        message: `Resident admitted to ${sName}.`,
+      });
+
+      // Update scanResult state to checkedIn
+      setScanResult(prev => ({
+        ...prev,
+        checkedIn: true,
+        shelter: sName,
+      }));
+    } catch (err) {
+      Vibration.vibrate([0, 100, 100, 100]);
+      setError(err.response?.data?.message || 'Failed to check in resident to shelter. Please try again.');
+    } finally {
+      setCheckInLoading(false);
+    }
+  };
+
   if (!permission) {
     // Camera permissions are still loading
     return (
@@ -122,7 +164,7 @@ export default function StaffScannerScreen() {
         <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
           <Text style={styles.permissionButtonText}>Enable Camera Access</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.logoutButtonTop} onPress={logout}>
+        <TouchableOpacity style={styles.logoutButtonTop} onPress={() => setShowLogoutModal(true)}>
           <LogOut size={20} color={colors.dangerLight} />
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
@@ -134,11 +176,24 @@ export default function StaffScannerScreen() {
     <View style={styles.container}>
       {/* Top Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>RELIEF CLAIMS DESK</Text>
-          <Text style={styles.headerSubtitle}>Staff: {user?.name || 'Operator'}</Text>
+        <View style={{ flex: 1, paddingRight: 8 }}>
+          <Text style={styles.headerTitle}>CSWDO INTAKE &amp; RELIEF DESK</Text>
+          <Text style={styles.headerSubtitle}>Operator: {user?.name || 'Gate Marshal'}</Text>
+          {(user?.assigned_shelter || user?.assignedShelter) && (
+            <View style={styles.shelterHeaderBadge}>
+              <Home size={12} color="#60a5fa" />
+              <Text style={styles.shelterBadgeText} numberOfLines={1}>
+                {user?.assigned_shelter?.name || user?.assignedShelter?.name}
+              </Text>
+            </View>
+          )}
         </View>
-        <TouchableOpacity style={styles.logoutIconBtn} onPress={logout} title="Logout">
+        <TouchableOpacity
+          style={styles.logoutIconBtn}
+          onPress={() => setShowLogoutModal(true)}
+          title="Logout"
+          accessibilityLabel="Sign Out of Duty"
+        >
           <LogOut size={22} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
@@ -254,6 +309,35 @@ export default function StaffScannerScreen() {
 
                   {/* Actions */}
                   <View style={styles.actionBlock}>
+                    {checkInSuccess && (
+                      <View style={styles.successBadge}>
+                        <CheckCircle size={36} color={colors.success} />
+                        <Text style={styles.successBadgeTitle}>INTAKE RECORDED</Text>
+                        <Text style={styles.successBadgeText}>{checkInSuccess.message}</Text>
+                      </View>
+                    )}
+
+                    {!scanResult.checkedIn && (
+                      <TouchableOpacity 
+                        style={styles.checkInBtn} 
+                        onPress={executeCheckIn}
+                        disabled={checkInLoading}
+                      >
+                        {checkInLoading ? (
+                          <ActivityIndicator size="small" color={colors.white} />
+                        ) : (
+                          <>
+                            <CheckCircle size={18} color={colors.white} />
+                            <Text style={styles.claimBtnText}>
+                              {user?.assigned_shelter?.name || user?.assignedShelter?.name
+                                ? `CHECK IN TO ${(user?.assigned_shelter?.name || user?.assignedShelter?.name).toUpperCase()}`
+                                : 'CHECK IN RESIDENT'}
+                            </Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
+
                     {scanResult.checkedIn && !scanResult.rationClaimed && !claimSuccess ? (
                       <TouchableOpacity 
                         style={styles.claimBtn} 
@@ -276,7 +360,7 @@ export default function StaffScannerScreen() {
                         <AlertTriangle size={18} color={colors.warning} />
                         <Text style={styles.warningBoxText}>
                           {!scanResult.checkedIn 
-                            ? 'Resident must check in to a shelter to be eligible.' 
+                            ? 'Resident must check in to a shelter first to be eligible for relief rations.' 
                             : 'This resident has already received their designated supply packages.'}
                         </Text>
                       </View>
@@ -315,6 +399,22 @@ export default function StaffScannerScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmationModal
+        visible={showLogoutModal}
+        title="Confirm Duty Sign Out"
+        message="Are you sure you want to end your shift and sign out? You will be disconnected from the shelter intake desk."
+        confirmText="Yes, Sign Out"
+        cancelText="Stay on Duty"
+        variant="danger"
+        icon={LogOut}
+        onConfirm={async () => {
+          setShowLogoutModal(false);
+          await logout();
+        }}
+        onClose={() => setShowLogoutModal(false)}
+      />
     </View>
   );
 }
@@ -406,6 +506,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
+  },
+  shelterHeaderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#1e3a8a30',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radii.sm,
+    alignSelf: 'flex-start',
+    marginTop: 5,
+    borderWidth: 1,
+    borderColor: '#3b82f640',
+  },
+  shelterBadgeText: {
+    color: '#60a5fa',
+    fontSize: 11,
+    fontWeight: '700',
   },
   logoutIconBtn: {
     padding: spacing.xs,
@@ -662,6 +780,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '950',
     letterSpacing: 0.5,
+  },
+  checkInBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.lg,
+    borderRadius: radii.md,
+    ...shadows.glow(colors.primary),
   },
   statusWarningBox: {
     flexDirection: 'row',

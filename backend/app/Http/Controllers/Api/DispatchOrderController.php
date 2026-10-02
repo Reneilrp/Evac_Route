@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\DispatchOrder;
 use App\Models\DispatchOrderItem;
+use App\Models\InventoryItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -23,7 +24,7 @@ class DispatchOrderController extends Controller
             'shelter:id,name',
             'creator:id,name',
             'assignee:id,name',
-            'items.inventoryItem:id,item_name,unit_type',
+            'items.inventoryItem:id,item_name,unit_type,total_stock,reserved_quantity',
         ])
             ->orderByRaw("CASE status WHEN 'pending' THEN 1 WHEN 'in_transit' THEN 2 WHEN 'delivered' THEN 3 WHEN 'cancelled' THEN 4 ELSE 5 END")
             ->orderBy('created_at', 'desc')
@@ -34,7 +35,7 @@ class DispatchOrderController extends Controller
 
     /**
      * Create a new dispatch order with a manifest of items.
-     * Admin only.
+     * Atomically validates available stock and locks rows to reserve inventory.
      */
     public function store(Request $request)
     {
@@ -48,6 +49,22 @@ class DispatchOrderController extends Controller
         ]);
 
         $order = DB::transaction(function () use ($validated, $request) {
+            // 1. Lock rows with lockForUpdate to prevent race conditions, check ATP, and reserve stock
+            foreach ($validated['items'] as $itemData) {
+                $inv = InventoryItem::where('id', $itemData['inventory_item_id'])
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $available = (int) $inv->total_stock - (int) ($inv->reserved_quantity ?? 0);
+                if ($available < (int) $itemData['quantity']) {
+                    abort(422, "Insufficient available stock for {$inv->item_name}. Available to dispatch: {$available} {$inv->unit_type}, requested: {$itemData['quantity']} {$inv->unit_type}.");
+                }
+
+                $inv->reserved_quantity = (int) ($inv->reserved_quantity ?? 0) + (int) $itemData['quantity'];
+                $inv->save();
+            }
+
+            // 2. Create the dispatch order and line items
             $order = DispatchOrder::create([
                 'created_by' => $request->user()->id,
                 'assigned_to' => $validated['assigned_to'] ?? null,
@@ -67,7 +84,7 @@ class DispatchOrderController extends Controller
             return $order->load([
                 'shelter:id,name',
                 'creator:id,name',
-                'items.inventoryItem:id,item_name,unit_type,total_stock',
+                'items.inventoryItem:id,item_name,unit_type,total_stock,reserved_quantity',
             ]);
         });
 
@@ -146,19 +163,28 @@ class DispatchOrderController extends Controller
         }
 
         DB::transaction(function () use ($order, $request) {
-            // 1. Deduct warehouse stock for each manifest item
+            // 1. Deduct warehouse stock and release reserved stock for each manifest item with row locks
             foreach ($order->items as $lineItem) {
-                $inv = $lineItem->inventoryItem;
-                $newStock = max(0, $inv->total_stock - $lineItem->quantity);
+                $inv = InventoryItem::where('id', $lineItem->inventory_item_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-                $inv->update(['total_stock' => $newStock]);
+                $oldStock = $inv->total_stock;
+                $oldReserved = $inv->reserved_quantity;
+                $newStock = max(0, $inv->total_stock - $lineItem->quantity);
+                $newReserved = max(0, (int) $inv->reserved_quantity - $lineItem->quantity);
+
+                $inv->update([
+                    'total_stock' => $newStock,
+                    'reserved_quantity' => $newReserved,
+                ]);
 
                 AuditLog::create([
                     'user_id' => $request->user()->id,
                     'action' => 'dispatch_stock_deducted',
                     'ip_address' => $request->ip(),
-                    'old_values' => ['item' => $inv->item_name, 'stock' => $inv->getOriginal('total_stock')],
-                    'new_values' => ['item' => $inv->item_name, 'stock' => $newStock, 'dispatch_order_id' => $order->id],
+                    'old_values' => ['item' => $inv->item_name, 'stock' => $oldStock, 'reserved' => $oldReserved],
+                    'new_values' => ['item' => $inv->item_name, 'stock' => $newStock, 'reserved' => $newReserved, 'dispatch_order_id' => $order->id],
                 ]);
             }
 
@@ -183,37 +209,62 @@ class DispatchOrderController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Delivery confirmed. Warehouse stock updated.',
-            'data' => $order->fresh(['shelter:id,name', 'items.inventoryItem:id,item_name,unit_type']),
+            'data' => $order->fresh(['shelter:id,name', 'items.inventoryItem:id,item_name,unit_type,total_stock,reserved_quantity']),
         ]);
     }
 
     /**
-     * Admin cancels a pending dispatch order.
+     * Admin or CSWDO cancels a pending or in-transit dispatch order and releases reserved stock.
      */
     public function cancel(Request $request, int $id)
     {
-        $order = DispatchOrder::findOrFail($id);
+        $order = DispatchOrder::with('items.inventoryItem')->findOrFail($id);
 
-        if ($order->status !== 'pending') {
+        if (!in_array($order->status, ['pending', 'in_transit'])) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Only pending orders can be cancelled.',
+                'message' => 'Only pending or in-transit orders can be cancelled.',
             ], 422);
         }
 
-        $order->update(['status' => 'cancelled']);
+        DB::transaction(function () use ($order, $request) {
+            // Release reserved stock for each line item with row lock
+            foreach ($order->items as $lineItem) {
+                $inv = InventoryItem::where('id', $lineItem->inventory_item_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-        AuditLog::create([
-            'user_id' => $request->user()->id,
-            'action' => 'dispatch_order_cancelled',
-            'ip_address' => $request->ip(),
-            'old_values' => ['status' => 'pending'],
-            'new_values' => ['status' => 'cancelled', 'order_id' => $order->id],
-        ]);
+                $oldReserved = $inv->reserved_quantity;
+                $newReserved = max(0, (int) $inv->reserved_quantity - $lineItem->quantity);
+
+                $inv->update([
+                    'reserved_quantity' => $newReserved,
+                ]);
+
+                AuditLog::create([
+                    'user_id' => $request->user()->id,
+                    'action' => 'dispatch_stock_reservation_released',
+                    'ip_address' => $request->ip(),
+                    'old_values' => ['item' => $inv->item_name, 'reserved' => $oldReserved],
+                    'new_values' => ['item' => $inv->item_name, 'reserved' => $newReserved, 'dispatch_order_id' => $order->id],
+                ]);
+            }
+
+            $oldStatus = $order->status;
+            $order->update(['status' => 'cancelled']);
+
+            AuditLog::create([
+                'user_id' => $request->user()->id,
+                'action' => 'dispatch_order_cancelled',
+                'ip_address' => $request->ip(),
+                'old_values' => ['status' => $oldStatus],
+                'new_values' => ['status' => 'cancelled', 'order_id' => $order->id],
+            ]);
+        });
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Dispatch order cancelled.',
+            'message' => 'Dispatch order cancelled and reserved stock released.',
         ]);
     }
 }

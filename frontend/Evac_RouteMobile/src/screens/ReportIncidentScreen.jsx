@@ -16,10 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, MapPin, AlertTriangle, X, Plus, Eye, Clock, CheckCircle2, XCircle, ShieldAlert } from 'lucide-react-native';
+import { Camera, MapPin, AlertTriangle, X, Plus, Eye, Clock, CheckCircle2, XCircle, ShieldAlert, LifeBuoy, Archive, ArchiveRestore } from 'lucide-react-native';
 import api from '../services/api';
 import ChipSelector from '../components/ChipSelector';
 import PrimaryButton from '../components/PrimaryButton';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { colors } from '../styles/theme';
 import styles from '../styles/ReportIncidentScreen.styles';
 
@@ -55,6 +56,7 @@ const SEVERITY_COLORS = {
 export default function ReportIncidentScreen({ navigation }) {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [historyTab, setHistoryTab] = useState('active'); // 'active' | 'archived'
 
   // --- Form State ---
   const [name, setName] = useState('');
@@ -65,6 +67,72 @@ export default function ReportIncidentScreen({ navigation }) {
   const [coords, setCoords] = useState(null); // { latitude, longitude }
   const [locating, setLocating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isSendingSOS, setIsSendingSOS] = useState(false);
+
+  // --- Styled Confirmation Modal State ---
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    detail: null,
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    variant: 'warning',
+    icon: null,
+    loading: false,
+    onConfirm: null,
+  });
+
+  const closeConfirmModal = () => {
+    setConfirmModal(prev => ({ ...prev, visible: false, loading: false }));
+  };
+
+  const handleTriggerSOS = () => {
+    setConfirmModal({
+      visible: true,
+      title: 'Request Emergency Rescue?',
+      message: 'This will broadcast an urgent Search & Rescue SOS to CDRRMO EOC with your live GPS location for immediate boat/truck dispatch.',
+      detail: 'Quick Response Teams (QRT) will be mobilized.',
+      confirmText: 'CONFIRM & SEND SOS',
+      cancelText: 'Cancel',
+      variant: 'danger',
+      icon: LifeBuoy,
+      loading: false,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, loading: true }));
+        setIsSendingSOS(true);
+        try {
+          let { status } = await Location.requestForegroundPermissionsAsync();
+          let lat = 6.9214, lng = 122.0790;
+          if (status === 'granted') {
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            lat = loc.coords.latitude;
+            lng = loc.coords.longitude;
+          }
+
+          await api.post('/rescue/sos', {
+            latitude: lat,
+            longitude: lng,
+            headcount: 4,
+            situation: 'Emergency flood rescue requested via Resident Mobile App SOS button.',
+          });
+
+          queryClient.invalidateQueries({ queryKey: ['my-incidents'] });
+          closeConfirmModal();
+          Alert.alert(
+            '🚨 RESCUE SOS DISPATCHED',
+            'Your distress signal has been received by CDRRMO EOC. Quick Response Teams (QRT) have been alerted and will be dispatched to your location.',
+            [{ text: 'OK' }]
+          );
+        } catch (err) {
+          closeConfirmModal();
+          Alert.alert('Error', err?.response?.data?.message || 'Failed to transmit SOS signal.');
+        } finally {
+          setIsSendingSOS(false);
+        }
+      },
+    });
+  };
 
   // --- Fetch resident's report history ---
   const { data, isLoading, isRefetching, refetch } = useQuery({
@@ -73,6 +141,59 @@ export default function ReportIncidentScreen({ navigation }) {
   });
 
   const incidents = data ?? [];
+  const activeIncidents = incidents.filter(i => !i.is_archived);
+  const archivedIncidents = incidents.filter(i => i.is_archived);
+  const displayedIncidents = historyTab === 'active' ? activeIncidents : archivedIncidents;
+
+  const handleArchive = (incident) => {
+    setConfirmModal({
+      visible: true,
+      title: 'Archive Incident Report',
+      message: 'Move this report to your archive history? You can review or restore it at any time from the Archived tab.',
+      detail: incident.name,
+      confirmText: 'Archive Report',
+      cancelText: 'Cancel',
+      variant: 'warning',
+      icon: Archive,
+      loading: false,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, loading: true }));
+        try {
+          await api.patch(`/user/incidents/${incident.id}/archive`);
+          queryClient.invalidateQueries({ queryKey: ['my-incidents'] });
+          closeConfirmModal();
+        } catch (err) {
+          closeConfirmModal();
+          Alert.alert('Error', err?.response?.data?.message || 'Failed to archive report.');
+        }
+      },
+    });
+  };
+
+  const handleUnarchive = (incident) => {
+    setConfirmModal({
+      visible: true,
+      title: 'Restore Incident Report',
+      message: 'Restore this report back to your active incident reports feed?',
+      detail: incident.name,
+      confirmText: 'Restore to Active',
+      cancelText: 'Cancel',
+      variant: 'primary',
+      icon: ArchiveRestore,
+      loading: false,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, loading: true }));
+        try {
+          await api.patch(`/user/incidents/${incident.id}/unarchive`);
+          queryClient.invalidateQueries({ queryKey: ['my-incidents'] });
+          closeConfirmModal();
+        } catch (err) {
+          closeConfirmModal();
+          Alert.alert('Error', err?.response?.data?.message || 'Failed to restore report.');
+        }
+      },
+    });
+  };
 
   // --- Use current GPS location ---
   const handleGetLocation = async () => {
@@ -214,24 +335,18 @@ export default function ReportIncidentScreen({ navigation }) {
         }
       });
 
-      const res = await api.post('/incidents', formData, {
+      await api.post('/incidents', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-
-      const evalData = res.data?.data?.frequency_evaluation;
-      let alertTitle = '✓ Report Submitted';
-      let alertMsg = 'Your incident report has been sent to LGU for review. Thank you for helping keep your community safe.';
-
-      if (evalData?.is_frequent_hotspot) {
-        alertTitle = '⚠️ Hotspot Area Report Logged';
-        alertMsg = `Your report was submitted! Note: Our system evaluated this location as a FREQUENT INCIDENT HOTSPOT (${evalData.nearby_count} prior reports in 250m). LGU has been notified of this high recurrence area.`;
-      }
 
       queryClient.invalidateQueries({ queryKey: ['my-incidents'] });
       resetForm();
       setShowCreateModal(false);
 
-      Alert.alert(alertTitle, alertMsg);
+      Alert.alert(
+        '✓ Report Submitted',
+        'Your incident report has been sent to LGU for review. Thank you for helping keep your community safe.'
+      );
     } catch (error) {
       const msg = error?.response?.data?.message || 'Failed to submit report. Please try again.';
       Alert.alert('Submission Failed', msg);
@@ -378,21 +493,80 @@ export default function ReportIncidentScreen({ navigation }) {
           )}
         </View>
 
-        {/* Hotspot Notification */}
-        {item.frequency_evaluation?.is_frequent_hotspot && (
-          <View style={{ marginTop: 8, padding: 8, borderRadius: 8, backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fcd34d' }}>
-            <Text style={{ fontSize: 11, color: '#92400e', fontWeight: '700' }}>
-              ⚠️ High Recurrence Zone ({item.frequency_evaluation.nearby_count} reports in 250m)
-            </Text>
-          </View>
-        )}
+        {/* Action Bar (Archive / Restore) */}
+        <View style={{
+          marginTop: 12,
+          paddingTop: 10,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          {item.is_archived ? (
+            <>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <Archive size={13} color={colors.textMuted} />
+                <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                  Archived {item.archived_at ? new Date(item.archived_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => handleUnarchive(item)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 5,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <ArchiveRestore size={13} color={colors.primary} />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>
+                  Restore
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                Report #{item.id}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => handleArchive(item)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 5,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Archive size={13} color={colors.textSecondary} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary }}>
+                  Archive
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       </View>
     );
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* Header Bar with Top Right Report Button */}
+      {/* Header Bar with Top Right Archive Button */}
       <View style={{
         paddingHorizontal: 16,
         paddingTop: 8,
@@ -405,34 +579,150 @@ export default function ReportIncidentScreen({ navigation }) {
       }}>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <AlertTriangle color={colors.warning} size={22} />
+            {historyTab === 'archived' ? (
+              <Archive color={colors.primary} size={22} />
+            ) : (
+              <AlertTriangle color={colors.warning} size={22} />
+            )}
             <Text style={{ fontSize: 20, fontWeight: '800', color: colors.textPrimary }}>
-              Incident Reports
+              {historyTab === 'archived' ? 'Archived Reports' : 'Incident Reports'}
             </Text>
           </View>
           <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-            Track and report community disaster hazards
+            {historyTab === 'archived'
+              ? 'Past and resolved incident reports history'
+              : 'Track and report community disaster hazards'}
           </Text>
         </View>
 
-        {/* Top Right Report Button */}
+        {/* Top Right Archive History Icon Button */}
         <TouchableOpacity
-          onPress={() => setShowCreateModal(true)}
+          onPress={() => setHistoryTab(prev => prev === 'active' ? 'archived' : 'active')}
           style={{
-            backgroundColor: colors.primary,
-            paddingHorizontal: 14,
-            paddingVertical: 8,
-            borderRadius: 20,
-            flexDirection: 'row',
+            width: 42,
+            height: 42,
+            borderRadius: 21,
+            backgroundColor: historyTab === 'archived' ? colors.primary : colors.surface,
             alignItems: 'center',
-            gap: 6,
-            elevation: 2,
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: historyTab === 'archived' ? colors.primary : colors.border,
+            position: 'relative',
           }}
+          accessibilityLabel={historyTab === 'archived' ? 'Switch to Active Reports' : 'View Archive History'}
         >
-          <Plus color={colors.white} size={16} />
-          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.white }}>+ Report</Text>
+          <Archive
+            size={20}
+            color={historyTab === 'archived' ? colors.white : colors.textPrimary}
+          />
+          {archivedIncidents.length > 0 && historyTab !== 'archived' && (
+            <View style={{
+              position: 'absolute',
+              top: -3,
+              right: -3,
+              backgroundColor: colors.primary,
+              borderRadius: 8,
+              minWidth: 16,
+              height: 16,
+              paddingHorizontal: 4,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1.5,
+              borderColor: colors.background,
+            }}>
+              <Text style={{
+                color: colors.white,
+                fontSize: 9,
+                fontWeight: '800',
+              }}>
+                {archivedIncidents.length}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
+
+      {/* Emergency Rescue SOS Banner */}
+      <View style={{
+        marginHorizontal: 16,
+        marginTop: 12,
+        marginBottom: 6,
+        backgroundColor: '#450a0a',
+        borderWidth: 1,
+        borderColor: '#dc2626',
+        borderRadius: 14,
+        padding: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        elevation: 3,
+      }}>
+        <View style={{ flex: 1, paddingRight: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            <LifeBuoy color="#fca5a5" size={16} />
+            <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 }}>
+              TRAPPED OR NEED RESCUE?
+            </Text>
+          </View>
+          <Text style={{ color: '#fecaca', fontSize: 11, lineHeight: 15 }}>
+            Send an instant emergency distress SOS with your exact GPS to CDRRMO Quick Response Teams.
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          onPress={handleTriggerSOS}
+          disabled={isSendingSOS}
+          style={{
+            backgroundColor: '#dc2626',
+            paddingVertical: 10,
+            paddingHorizontal: 14,
+            borderRadius: 10,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: '#fca5a5',
+          }}
+        >
+          <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '900', letterSpacing: 0.5 }}>
+            {isSendingSOS ? 'SENDING...' : '🚨 CALL SOS'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Archive Active Notification Bar (shown when viewing archive) */}
+      {historyTab === 'archived' && (
+        <View style={{
+          marginHorizontal: 16,
+          marginTop: 8,
+          marginBottom: 4,
+          paddingVertical: 8,
+          paddingHorizontal: 12,
+          borderRadius: 10,
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.border,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+            Viewing Archived Reports ({archivedIncidents.length})
+          </Text>
+          <TouchableOpacity
+            onPress={() => setHistoryTab('active')}
+            style={{
+              backgroundColor: colors.primary,
+              paddingHorizontal: 12,
+              paddingVertical: 5,
+              borderRadius: 8,
+            }}
+          >
+            <Text style={{ fontSize: 11, fontWeight: '700', color: colors.white }}>
+              Back to Active
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Main Content: History List or Empty State */}
       {isLoading ? (
@@ -442,61 +732,114 @@ export default function ReportIncidentScreen({ navigation }) {
             Loading incident history...
           </Text>
         </View>
-      ) : incidents.length === 0 ? (
-        /* Empty State */
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <View style={{
-            width: 80,
-            height: 80,
-            borderRadius: 40,
-            backgroundColor: colors.surface,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 16,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}>
-            <ShieldAlert color={colors.warning} size={40} />
-          </View>
-
-          <Text style={{ fontSize: 18, fontWeight: '800', color: colors.textPrimary, textAlign: 'center', marginBottom: 8 }}>
-            No Incident Reports Yet
-          </Text>
-
-          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 24, lineHeight: 20, paddingHorizontal: 16 }}>
-            Have you observed street flooding, landslides, or road blockages in your neighborhood? Submit a field report to alert LGU officials immediately.
-          </Text>
-
-          <TouchableOpacity
-            onPress={() => setShowCreateModal(true)}
-            style={{
-              backgroundColor: colors.primary,
-              paddingHorizontal: 24,
-              paddingVertical: 14,
-              borderRadius: 14,
-              flexDirection: 'row',
+      ) : displayedIncidents.length === 0 ? (
+        historyTab === 'archived' ? (
+          /* Empty Archived State */
+          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+            <View style={{
+              width: 80,
+              height: 80,
+              borderRadius: 40,
+              backgroundColor: colors.surface,
               alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            <Plus color={colors.white} size={18} />
-            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.white }}>
-              Submit First Incident Report
+              justifyContent: 'center',
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}>
+              <Archive color={colors.textMuted} size={36} />
+            </View>
+
+            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.textPrimary, textAlign: 'center', marginBottom: 8 }}>
+              No Archived Reports
             </Text>
-          </TouchableOpacity>
-        </ScrollView>
+
+            <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, paddingHorizontal: 16 }}>
+              Past or resolved incident reports that you archive will appear here for your history and reference.
+            </Text>
+          </ScrollView>
+        ) : (
+          /* Empty Active State */
+          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+            <View style={{
+              width: 80,
+              height: 80,
+              borderRadius: 40,
+              backgroundColor: colors.surface,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}>
+              <ShieldAlert color={colors.warning} size={40} />
+            </View>
+
+            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.textPrimary, textAlign: 'center', marginBottom: 8 }}>
+              No Active Reports
+            </Text>
+
+            <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 24, lineHeight: 20, paddingHorizontal: 16 }}>
+              Have you observed street flooding, landslides, or road blockages in your neighborhood? Submit a field report to alert LGU officials immediately.
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => setShowCreateModal(true)}
+              style={{
+                backgroundColor: colors.primary,
+                paddingHorizontal: 24,
+                paddingVertical: 14,
+                borderRadius: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <Plus color={colors.white} size={18} />
+              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.white }}>
+                Submit First Incident Report
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )
       ) : (
         /* History List */
         <FlatList
-          data={incidents}
+          data={displayedIncidents}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderIncidentCard}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 95 }}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} colors={[colors.primary]} />
           }
         />
       )}
+
+      {/* Fixed Bottom-Right (+ icon) Floating Action Button */}
+      <TouchableOpacity
+        onPress={() => setShowCreateModal(true)}
+        style={{
+          position: 'absolute',
+          bottom: 24,
+          right: 20,
+          width: 58,
+          height: 58,
+          borderRadius: 29,
+          backgroundColor: colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.35,
+          shadowRadius: 5,
+          elevation: 8,
+          zIndex: 999,
+        }}
+        activeOpacity={0.85}
+        accessibilityLabel="Report New Incident"
+      >
+        <Plus color={colors.white} size={28} strokeWidth={2.5} />
+      </TouchableOpacity>
 
       {/* Creation Modal Form */}
       <Modal
@@ -639,6 +982,21 @@ export default function ReportIncidentScreen({ navigation }) {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      {/* Reusable Styled Confirmation Modal */}
+      <ConfirmationModal
+        visible={confirmModal.visible}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        detail={confirmModal.detail}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        variant={confirmModal.variant}
+        icon={confirmModal.icon}
+        loading={confirmModal.loading}
+        onConfirm={confirmModal.onConfirm}
+        onClose={closeConfirmModal}
+      />
     </SafeAreaView>
   );
 }
