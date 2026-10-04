@@ -464,6 +464,9 @@ class CheckInController extends Controller
     public function getLogs(Request $request)
     {
         $search = $request->query('search');
+        $status = $request->query('status');
+        $ration = $request->query('ration');
+        $shelterId = $request->query('shelter_id');
 
         $query = EvacuationLog::with(['familyProfile.user', 'shelter']);
 
@@ -479,6 +482,22 @@ class CheckInController extends Controller
                         $fq->where('qr_code_hash', 'like', "%{$search}%");
                     });
             });
+        }
+
+        if ($shelterId) {
+            $query->where('shelter_id', $shelterId);
+        }
+
+        if ($status === 'active') {
+            $query->whereNull('checked_out_at');
+        } elseif ($status === 'checked_out') {
+            $query->whereNotNull('checked_out_at');
+        }
+
+        if ($ration === 'claimed') {
+            $query->where('ration_claimed', true);
+        } elseif ($ration === 'unclaimed') {
+            $query->where('ration_claimed', false);
         }
 
         $logs = $query->orderBy('checked_in_at', 'desc')->paginate(50);

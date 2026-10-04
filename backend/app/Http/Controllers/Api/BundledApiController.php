@@ -124,7 +124,7 @@ class BundledApiController extends Controller
 
         // 2. Fetch active hazards (excluding reporter PII)
         $hazards = Hazard::where('is_active', true)
-            ->select('id', 'name', 'latitude', 'longitude', 'radius_meters', 'hazard_type', 'severity_level', 'is_fixed_flood_spot', 'created_at')
+            ->select('id', 'name', 'latitude', 'longitude', 'radius_meters', 'hazard_type', 'severity_level', 'is_fixed_flood_spot', 'is_active', 'created_at')
             ->get();
 
         // 3. P3: Fetch active road maintenance blocks so mobile can render them

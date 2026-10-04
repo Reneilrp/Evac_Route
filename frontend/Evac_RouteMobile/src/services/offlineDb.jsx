@@ -297,7 +297,7 @@ export function saveHazards(hazardsList) {
 export function getOfflineHazards() {
   if (!db) return [];
   try {
-    return db.getAllSync('SELECT id, name, lat AS latitude, lng AS longitude, radius AS radius_meters, disaster_category, hazard_type, severity_level FROM hazards');
+    return db.getAllSync('SELECT id, name, lat AS latitude, lng AS longitude, radius AS radius_meters, disaster_category, hazard_type, severity_level, 1 AS is_active FROM hazards');
   } catch (e) {
     console.error('Error fetching offline hazards:', e);
     return [];
@@ -448,7 +448,7 @@ export function getOfflineHazardsExtended() {
   if (!db) return [];
   try {
     return db.getAllSync(
-      'SELECT id, lat AS latitude, lng AS longitude, radius AS radius_meters, hazard_type, severity_level FROM hazards'
+      'SELECT id, lat AS latitude, lng AS longitude, radius AS radius_meters, hazard_type, severity_level, 1 AS is_active FROM hazards'
     );
   } catch {
     // Fallback to basic schema

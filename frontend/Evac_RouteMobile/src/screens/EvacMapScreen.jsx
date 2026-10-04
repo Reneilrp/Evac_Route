@@ -4,13 +4,14 @@ import { AlertTriangle, Navigation, Phone, X, User, ChevronDown, Info, Layers, S
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import api from '../services/api';
 import styles from '../styles/EvacMapScreen.styles';
 import { useResidentStore } from '../context/useResidentStore';
 import PrimaryButton from '../components/PrimaryButton';
 import { colors } from '../styles/theme';
+import { getEcho } from '../services/echoService';
 
 import {
   initDb,
@@ -50,6 +51,7 @@ const MAPBOX_TOKEN = Constants.expoConfig?.extra?.mapboxToken || process.env.EXP
 
 export default function EvacMapScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const [location, setLocation] = useState(null);
   const [isPinningHomeMode, setIsPinningHomeMode] = useState(false);
 
@@ -132,7 +134,7 @@ export default function EvacMapScreen({ navigation, route }) {
     const destLng = parseFloat(targetFacility.longitude);
 
     for (const h of hazards) {
-      if (h.is_active === true || h.is_active === 1 || h.is_active === '1') {
+      if (h.is_active === true || h.is_active === 1 || h.is_active === '1' || h.is_active === undefined) {
         const hLat = parseFloat(h.latitude);
         const hLng = parseFloat(h.longitude);
         const rad = parseFloat(h.radius_meters || 150);
@@ -300,6 +302,25 @@ export default function EvacMapScreen({ navigation, route }) {
     retry: 1
   });
 
+  // Real-time synchronization for hazard updates from DRRM / EOC
+  useEffect(() => {
+    const echo = getEcho();
+    if (!echo || !echo.channel) return;
+
+    const channel = echo.channel('map-updates');
+    const refreshMap = () => {
+      queryClient.invalidateQueries({ queryKey: ['resident-map-data'] });
+    };
+
+    channel.listen('.hazard.created', refreshMap);
+    channel.listen('.hazard.resolved', refreshMap);
+
+    return () => {
+      channel.stopListening('.hazard.created');
+      channel.stopListening('.hazard.resolved');
+    };
+  }, [queryClient]);
+
   const { data: roadNetworkData } = useQuery({
     queryKey: ['road-network'],
     queryFn: () => api.get('/road-network').then(res => res.data),
@@ -432,7 +453,7 @@ export default function EvacMapScreen({ navigation, route }) {
   const rawHazardsList = (Array.isArray(hazardsData) && hazardsData.length > 0)
     ? hazardsData
     : (Array.isArray(hazardsData?.data) ? hazardsData.data : (Array.isArray(offlineHazards) ? offlineHazards : []));
-  const hazards = (Array.isArray(rawHazardsList) ? rawHazardsList : []).filter(h => h && (h.is_active === true || h.is_active === 1 || h.is_active === '1'));
+  const hazards = (Array.isArray(rawHazardsList) ? rawHazardsList : []).filter(h => h && (h.is_active === true || h.is_active === 1 || h.is_active === '1' || h.is_active === undefined));
 
   // P3: Use live data when available, fall back to SQLite cache offline
   const maintenances = (Array.isArray(maintenanceData) && maintenanceData.length > 0)
@@ -603,7 +624,7 @@ export default function EvacMapScreen({ navigation, route }) {
   // Earthquake Broadcast Warning Detector
   const activeEarthquakeHazard = (hazards && hazards.length > 0)
     ? hazards.find(h =>
-        (h.is_active === true || h.is_active === 1 || h.is_active === '1') &&
+        (h.is_active === true || h.is_active === 1 || h.is_active === '1' || h.is_active === undefined) &&
         (h.hazard_type === 'earthquake' || h.name?.toLowerCase().includes('earthquake') || h.name?.toLowerCase().includes('tremor'))
       )
     : null;

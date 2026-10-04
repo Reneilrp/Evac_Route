@@ -107,7 +107,8 @@ export default function RescueDutyScreen({ navigation }) {
   }, []);
 
   const assignedUnit =
-    unitsData?.find((u) => u.id === user?.assigned_rescue_unit_id) || unitsData?.[0] || null;
+    unitsData?.find((u) => u.id === user?.assigned_rescue_unit_id) ||
+    (user?.role === 'admin' ? unitsData?.[0] : null);
 
   const roleDisplayNames = {
     boat_pilot: '🚤 Boat Pilot / Vessel Commander',
@@ -118,11 +119,16 @@ export default function RescueDutyScreen({ navigation }) {
   };
   const rescuerRoleTitle = roleDisplayNames[user?.rescue_role] || '🦺 Rescue Field Operator';
 
+  const [selectedMissionId, setSelectedMissionId] = useState(null);
+
   const allActiveMissions = missionsData ?? [];
   const activeMissions = assignedUnit
     ? allActiveMissions.filter((m) => m.rescue_unit_id === assignedUnit.id)
-    : allActiveMissions;
-  const currentMission = activeMissions[0] || allActiveMissions[0] || null;
+    : (user?.role === 'admin' ? allActiveMissions : []);
+  const currentMission =
+    (selectedMissionId ? activeMissions.find((m) => m.id === selectedMissionId) : null) ||
+    activeMissions[0] ||
+    (user?.role === 'admin' ? allActiveMissions[0] : null);
   const shelters = sheltersData ?? [];
 
   // Confirmation modal state
@@ -344,6 +350,38 @@ export default function RescueDutyScreen({ navigation }) {
         ) : currentMission ? (
           /* Active Mission View */
           <View style={styles.activeMissionContainer}>
+            {/* Multiple Assigned Missions Switcher */}
+            {activeMissions.length > 1 && (
+              <View style={styles.missionSwitcherBox}>
+                <Text style={styles.missionSwitcherLabel}>ASSIGNED ACTIVE MISSIONS ({activeMissions.length}):</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.missionChipScroll}
+                >
+                  {activeMissions.map((m) => {
+                    const isSelected = currentMission?.id === m.id;
+                    return (
+                      <TouchableOpacity
+                        key={m.id}
+                        style={[styles.missionChip, isSelected && styles.missionChipActive]}
+                        onPress={() => setSelectedMissionId(m.id)}
+                        activeOpacity={0.8}
+                      >
+                        <AlertTriangle size={12} color={isSelected ? '#ffffff' : '#f59e0b'} />
+                        <Text
+                          style={[styles.missionChipText, isSelected && styles.missionChipTextActive]}
+                          numberOfLines={1}
+                        >
+                          {m.victim_name} ({m.headcount}p • {m.barangay || 'Sector'})
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+
             {/* 1. Priority & Control Banner */}
             <View
               style={[
@@ -1225,5 +1263,52 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     flex: 1,
+  },
+
+  /* Multi-mission switcher */
+  missionSwitcherBox: {
+    marginBottom: 10,
+    backgroundColor: 'rgba(30, 41, 59, 0.75)',
+    borderRadius: radii.md,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  missionSwitcherLabel: {
+    color: '#94a3b8',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    marginLeft: 2,
+  },
+  missionChipScroll: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  missionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radii.full,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+  },
+  missionChipActive: {
+    backgroundColor: '#d97706',
+    borderColor: '#f59e0b',
+  },
+  missionChipText: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    fontWeight: '700',
+    maxWidth: 200,
+  },
+  missionChipTextActive: {
+    color: '#ffffff',
+    fontWeight: '900',
   },
 });

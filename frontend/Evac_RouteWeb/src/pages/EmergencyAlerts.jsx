@@ -56,6 +56,17 @@ export default function EmergencyAlerts() {
     fetchAlerts();
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (isModalOpen) setIsModalOpen(false);
+        if (deletingAlertId) setDeletingAlertId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isModalOpen, deletingAlertId]);
+
   const openModal = () => {
     setTitle('');
     setMessage('');
@@ -242,8 +253,11 @@ export default function EmergencyAlerts() {
 
       {/* Broadcast Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}
+          className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+        >
+          <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center p-4 border-b border-gray-100 dark:border-slate-800">
               <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm flex items-center gap-2">
                 📢 Dispatch Warning Broadcast

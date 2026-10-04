@@ -1,6 +1,6 @@
 import React from "react";
 import { useState } from 'react';
-import { Download, Search, Filter, Calendar } from 'lucide-react';
+import { Download, Search, Filter, Calendar, X, RotateCcw } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import ConfirmationModal from '../components/common/ConfirmationModal';
@@ -10,6 +10,10 @@ export default function EvacuationLogs() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [rationFilter, setRationFilter] = useState('all');
+  const [shelterFilter, setShelterFilter] = useState('all');
   const queryClient = useQueryClient();
 
   // Debounce search string to limit API requests
@@ -21,12 +25,31 @@ export default function EvacuationLogs() {
     return () => clearTimeout(handler);
   }, [search]);
 
+  // Fetch shelters for filter dropdown
+  const { data: sheltersData } = useQuery({
+    queryKey: ['evac-shelters-dropdown'],
+    queryFn: () => api.get('/shelters').then(res => res.data?.data || res.data || []),
+  });
+  const shelters = Array.isArray(sheltersData) ? sheltersData : (sheltersData?.data || []);
+
+  const activeFilterCount = (statusFilter !== 'all' ? 1 : 0) + (rationFilter !== 'all' ? 1 : 0) + (shelterFilter !== 'all' ? 1 : 0);
+
+  const resetFilters = () => {
+    setStatusFilter('all');
+    setRationFilter('all');
+    setShelterFilter('all');
+    setPage(1);
+  };
+
   const { data: logsData, isLoading } = useQuery({
-    queryKey: ['evacuation-logs', page, debouncedSearch],
+    queryKey: ['evacuation-logs', page, debouncedSearch, statusFilter, rationFilter, shelterFilter],
     queryFn: () => api.get('/evacuation-logs', {
       params: {
         page,
-        search: debouncedSearch
+        search: debouncedSearch,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        ration: rationFilter !== 'all' ? rationFilter : undefined,
+        shelter_id: shelterFilter !== 'all' ? shelterFilter : undefined,
       }
     }).then(res => res.data),
     refetchInterval: 10000, // Refresh every 10 seconds
@@ -110,14 +133,90 @@ export default function EvacuationLogs() {
                 className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <button className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm hover:bg-gray-50 dark:hover:bg-slate-750">
-              <Filter size={16} /> Filter
+            <button 
+              type="button"
+              onClick={() => setIsFilterOpen(prev => !prev)}
+              className={`border px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm cursor-pointer ${
+                isFilterOpen || activeFilterCount > 0
+                  ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-500 text-blue-600 dark:text-blue-400 font-bold'
+                  : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-750'
+              }`}
+            >
+              <Filter size={16} />
+              <span>Filter</span>
+              {activeFilterCount > 0 && (
+                <span className="bg-blue-600 text-white text-[10px] font-black rounded-full h-4 w-4 flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
           </div>
           <div className="text-sm text-gray-500 dark:text-slate-400 flex items-center gap-2">
             <Calendar size={16} /> {today}
           </div>
         </div>
+
+        {/* Collapsible Filter Panel */}
+        {isFilterOpen && (
+          <div className="p-4 bg-gray-50/90 dark:bg-slate-950/80 border-b border-gray-200/80 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-4 gap-3 animate-in fade-in duration-150">
+            <div>
+              <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Stay Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+                className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Records</option>
+                <option value="active">Checked In (Active)</option>
+                <option value="checked_out">Checked Out</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Relief Ration Status
+              </label>
+              <select
+                value={rationFilter}
+                onChange={e => { setRationFilter(e.target.value); setPage(1); }}
+                className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Allocations</option>
+                <option value="claimed">Ration Claimed</option>
+                <option value="unclaimed">Unclaimed</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Shelter Location
+              </label>
+              <select
+                value={shelterFilter}
+                onChange={e => { setShelterFilter(e.target.value); setPage(1); }}
+                className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Shelters</option>
+                {shelters.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.barangay || 'Area'})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={resetFilters}
+                disabled={activeFilterCount === 0}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg text-xs font-bold transition disabled:opacity-40 cursor-pointer"
+              >
+                <RotateCcw size={13} /> Reset Filters
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           {isLoading ? (

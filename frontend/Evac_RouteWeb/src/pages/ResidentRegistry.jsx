@@ -9,6 +9,16 @@ export default function ResidentRegistry() {
   const [page, setPage] = useState(1);
   const [selectedResident, setSelectedResident] = useState(null);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (selectedResident) setSelectedResident(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedResident]);
+
   // Debounce search input to limit API calls
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -213,7 +223,10 @@ export default function ResidentRegistry() {
 // ─── Scoped Resident Stay History Modal Component ───────────────────────────────────────────
 function ResidentHistoryModal({ resident, onClose }) {
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div 
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+    >
       <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   UserPlus, Shield, User, X, Edit2, Trash2, 
   LifeBuoy, QrCode, Package, Building2, Truck, Check, Filter, Eye
@@ -84,6 +84,7 @@ export default function StaffManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [viewingStaff, setViewingStaff] = useState(null);
+  const [revokeConfirmUser, setRevokeConfirmUser] = useState(null);
 
   const isSuperAdmin = (currentUser?.email?.toLowerCase() === 'admin@lgu.gov.ph') || (currentUser?.role === 'admin' && currentUser?.operator_type === 'admin' && !currentUser?.email?.toLowerCase().includes('drrm'));
   const isCswdoStaff = !isSuperAdmin && (currentUser?.operator_type === 'logistics' || currentUser?.operator_type === 'scanner' || (currentUser?.email?.toLowerCase().includes('logistics') || currentUser?.email?.toLowerCase().includes('cswdo')));
@@ -110,6 +111,18 @@ export default function StaffManagement() {
 
   // Dynamic Shelter Scanner field (when operatorType === 'scanner')
   const [assignedShelterId, setAssignedShelterId] = useState('');
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (isModalOpen) closeModal();
+        if (viewingStaff) setViewingStaff(null);
+        if (revokeConfirmUser) setRevokeConfirmUser(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isModalOpen, viewingStaff, revokeConfirmUser]);
 
   // Fetch staff list
   const { data: staffData, isLoading } = useQuery({
@@ -265,8 +278,6 @@ export default function StaffManagement() {
       createMutation.mutate(payload);
     }
   };
-
-  const [revokeConfirmUser, setRevokeConfirmUser] = useState(null);
 
   const handleRevoke = (user) => {
     setRevokeConfirmUser(user);
@@ -494,7 +505,10 @@ export default function StaffManagement() {
 
       {/* Dynamic Modal for Register / Edit Operator */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
+          className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs z-[100] flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 w-full max-w-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-blue-50/50 to-indigo-50/30 dark:from-slate-950 dark:to-slate-900">
               <h3 className="font-black text-gray-900 dark:text-slate-100 text-base flex items-center gap-2">
@@ -838,7 +852,10 @@ export default function StaffManagement() {
         const isSelf = viewingStaff.id === currentUser?.id;
 
         return (
-          <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div 
+            onClick={(e) => { if (e.target === e.currentTarget) setViewingStaff(null); }}
+            className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs z-[100] flex items-center justify-center p-4 animate-in fade-in duration-150"
+          >
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 w-full max-w-xl max-h-[92vh] overflow-y-auto">
               {/* Header */}
               <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-blue-50/40 dark:from-slate-950 dark:to-slate-900">

@@ -30,6 +30,11 @@ import {
   ZAMBOANGA_VICTIM_DEFAULT,
   ZAMBOANGA_SHELTER_DEFAULT,
 } from '../utils/zamboangaGeo';
+import {
+  fetchTacticalRescueRoute,
+  getRescuerCapabilityProfile,
+  getHaversineDistanceMeters,
+} from '../utils/tacticalRescueRouter';
 
 // Ensure token is set immediately
 if (MAPBOX_PUBLIC_TOKEN) {
@@ -40,71 +45,6 @@ if (MAPBOX_PUBLIC_TOKEN) {
   }
 }
 
-// Haversine direct distance
-function getDirectDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3;
-  const φ1 = (lat1 * Math.PI) / 180;
-  const φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-// Mapbox Directions API fetcher
-async function fetchRescueDirections(startCoord, endCoord, token) {
-  if (!startCoord || !endCoord) return null;
-  if (token) {
-    try {
-      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startCoord[0]},${startCoord[1]};${endCoord[0]},${endCoord[1]}?geometries=geojson&overview=full&steps=true&access_token=${token}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-        const r = data.routes[0];
-        const steps = (r.legs?.[0]?.steps || []).map((s) => ({
-          instruction: s.maneuver?.instruction || 'Proceed Forward',
-          distanceMeters: Math.round(s.distance || 0),
-          type: s.maneuver?.type || 'straight',
-          modifier: s.maneuver?.modifier || '',
-        }));
-        return {
-          coordinates: r.geometry.coordinates,
-          distanceMeters: Math.round(r.distance || 0),
-          durationSeconds: Math.round(r.duration || 0),
-          steps,
-        };
-      }
-    } catch (e) {
-      console.warn('[TacticalRescueMap] Mapbox directions fetch failed:', e);
-    }
-  }
-
-  // Resilient fallback: direct tactical path
-  const dist = getDirectDistance(startCoord[1], startCoord[0], endCoord[1], endCoord[0]);
-  return {
-    coordinates: [startCoord, endCoord],
-    distanceMeters: Math.round(dist),
-    durationSeconds: Math.round(dist / 11),
-    steps: [
-      {
-        instruction: 'Proceed direct tactical route toward destination',
-        distanceMeters: Math.round(dist),
-        type: 'straight',
-        modifier: '',
-      },
-      {
-        instruction: 'Arrive at destination point',
-        distanceMeters: 0,
-        type: 'arrive',
-        modifier: '',
-      },
-    ],
-  };
-}
-
 export default function TacticalRescueMap({
   victimCoords,
   victimName = 'Distress Victim',
@@ -113,6 +53,8 @@ export default function TacticalRescueMap({
   shelterCoords,
   shelterName = 'Target Evacuation Shelter',
   rescuerLocation,
+  assignedUnit = null,
+  hazards = [],
   onOpenExternalNav,
   onStartTurnByTurn,
 }) {
@@ -122,6 +64,23 @@ export default function TacticalRescueMap({
   const [routeData, setRouteData] = useState(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+
+  const routeFeatureCollection = useMemo(() => {
+    if (!routeData?.coordinates || routeData.coordinates.length < 2) return null;
+    return {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: routeData.coordinates,
+          },
+        },
+      ],
+    };
+  }, [routeData]);
 
   const cameraRef = useRef(null);
 
@@ -172,25 +131,38 @@ export default function TacticalRescueMap({
       return;
     }
     setIsLoadingRoute(true);
-    const result = await fetchRescueDirections(rescuerLngLat, activeTargetLngLat, MAPBOX_PUBLIC_TOKEN);
-    setIsLoadingRoute(false);
+    try {
+      const rescuerProfile = getRescuerCapabilityProfile(assignedUnit, null);
+      const result = await fetchTacticalRescueRoute(
+        rescuerLngLat,
+        activeTargetLngLat,
+        MAPBOX_PUBLIC_TOKEN,
+        rescuerProfile,
+        hazards
+      );
 
-    if (result && result.coordinates && result.coordinates.length > 0) {
-      setRouteData(result);
-      setCurrentStepIndex(0);
-      setIsNavigating(true);
-      setIsExpanded(true); // Automatically expand map for driving clarity
+      if (result && result.coordinates && result.coordinates.length > 0) {
+        setRouteData(result);
+        setCurrentStepIndex(0);
+        setIsNavigating(true);
+        setIsExpanded(true); // Automatically expand map for driving clarity
 
-      if (cameraRef.current) {
-        cameraRef.current.setCamera({
-          centerCoordinate: rescuerLngLat,
-          zoomLevel: 16.5,
-          pitch: 35, // Tilted forward tactical driving HUD
-          animationDuration: 1200,
-        });
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: rescuerLngLat,
+            zoomLevel: 16.5,
+            pitch: 35, // Tilted forward tactical driving HUD
+            animationDuration: 1200,
+          });
+        }
+      } else {
+        Alert.alert('Route Unavailable', 'Could not compute Mapbox navigation route.');
       }
-    } else {
-      Alert.alert('Route Unavailable', 'Could not compute Mapbox navigation route.');
+    } catch (err) {
+      console.error('[TacticalRescueMap] Navigation start error:', err);
+      Alert.alert('Route Error', 'Failed to load navigation route.');
+    } finally {
+      setIsLoadingRoute(false);
     }
   };
 
@@ -304,7 +276,7 @@ export default function TacticalRescueMap({
               <View style={styles.expoGoStatBox}>
                 <Text style={styles.expoGoStatLabel}>DISTANCE TO TARGET</Text>
                 <Text style={styles.expoGoStatVal}>
-                  {getDirectDistance(rescuerLngLat[1], rescuerLngLat[0], activeTargetLngLat[1], activeTargetLngLat[0]).toFixed(0)}m
+                  {getHaversineDistanceMeters(rescuerLngLat[1], rescuerLngLat[0], activeTargetLngLat[1], activeTargetLngLat[0]).toFixed(0)}m
                 </Text>
               </View>
             </View>
@@ -335,16 +307,10 @@ export default function TacticalRescueMap({
             />
 
           {/* Glowing Mapbox Turn-by-Turn Route Layer */}
-          {routeData?.coordinates && routeData.coordinates.length > 1 && (
+          {routeFeatureCollection && (
             <Mapbox.ShapeSource
               id="rescue-route-source"
-              shape={{
-                type: 'Feature',
-                geometry: {
-                  type: 'LineString',
-                  coordinates: routeData.coordinates,
-                },
-              }}
+              shape={routeFeatureCollection}
             >
               {/* Outer Neon Glow */}
               <Mapbox.LineLayer

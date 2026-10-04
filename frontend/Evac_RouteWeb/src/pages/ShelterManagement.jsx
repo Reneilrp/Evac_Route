@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { QrCode, Search, MapPin, ClipboardList, FileSpreadsheet, AlertTriangle, CheckCircle, TrendingUp, X, Truck } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -38,6 +38,19 @@ export default function ShelterManagement() {
   const [quickDispatchShelter, setQuickDispatchShelter] = useState(null);
   const [search, setSearch] = useState(location.state?.search || '');
   const [activeTab, setActiveTab] = useState('capacities'); // 'capacities' or 'ration-planning'
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (isScannerOpen) { setIsScannerOpen(false); setSelectedShelterForScanner(null); }
+        if (selectedShelterForDetails) setSelectedShelterForDetails(null);
+        if (quickDispatchShelter) setQuickDispatchShelter(null);
+        if (dispatchModalConfig) setDispatchModalConfig(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isScannerOpen, selectedShelterForDetails, quickDispatchShelter, dispatchModalConfig]);
 
   // Consolidated query fetching shelters, templates, and central inventory
   const { data: dashboardData, isLoading } = useQuery({
@@ -811,7 +824,10 @@ function ShelterDetailsModal({ shelterId, onClose, onLaunchScanner }) {
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div 
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      >
         <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-2xl p-6 flex items-center justify-center h-64">
           <span className="flex h-6 w-6 relative mr-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -828,7 +844,10 @@ function ShelterDetailsModal({ shelterId, onClose, onLaunchScanner }) {
 
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div 
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+    >
       <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-start mb-6">
           <div>

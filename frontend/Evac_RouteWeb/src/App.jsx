@@ -1016,6 +1016,17 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   // Handler for Profile Update
@@ -1120,8 +1131,11 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-3xl h-[520px] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+    <div 
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+    >
+      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] h-full sm:h-[560px] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-gray-100 dark:border-slate-800 shrink-0">

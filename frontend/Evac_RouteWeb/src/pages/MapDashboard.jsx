@@ -572,8 +572,8 @@ function ShelterFormModal({ location, onConfirm, onCancel, isLoading }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
             <MapPin size={20} className="text-blue-500" /> Pin Emergency Facility
@@ -697,8 +697,8 @@ function HazardFormModal({ location, initialRadius = 50, onConfirm, onCancel, is
   const isSeverityLocked = hazardType === 'earthquake' || hazardType === 'maintenance';
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
             <AlertTriangle size={20} className="text-red-500" /> Flag Hazard Zone
@@ -845,8 +845,8 @@ function ShelterEditModal({ shelter, onUpdate, onDelete, onCancel, isLoading }) 
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-gray-900 dark:text-white text-lg flex items-center gap-2">
             <MapPin size={20} className="text-blue-500" /> Manage Shelter
@@ -941,8 +941,8 @@ function ShelterEditModal({ shelter, onUpdate, onDelete, onCancel, isLoading }) 
 // --- Hazard Detail Modal ---
 function HazardDetailModal({ hazard, onResolve, onCancel, isLoading, readOnly = false }) {
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-red-600 text-lg flex items-center gap-2">
             <AlertTriangle size={20} className="text-red-500" /> Active Hazard Zone
@@ -1019,8 +1019,8 @@ function MaintenanceFormModal({ onConfirm, onCancel, isLoading }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-amber-600 text-lg flex items-center gap-2">
             <Wrench size={20} className="text-amber-500" /> Flag Road Blockage
@@ -1087,8 +1087,8 @@ function MaintenanceFormModal({ onConfirm, onCancel, isLoading }) {
 // --- Maintenance Detail Modal ---
 function MaintenanceDetailModal({ maintenance, onResolve, onCancel, isLoading }) {
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-amber-600 text-lg flex items-center gap-2">
             <Wrench size={20} className="text-amber-500" /> Active Road Maintenance
@@ -2482,6 +2482,30 @@ export default function MapDashboard() {
     // eslint-disable-next-line react-hooks/immutability
     isModalOpenRef.current = isModalOpen;
   }, [isModalOpen]);
+
+  // Handle Escape key to cleanly dismiss open modals or cancel active pin/draw modes
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (pinMode) setPinMode(null);
+        if (pendingLocation) setPendingLocation(null);
+        if (showShelterForm) setShowShelterForm(false);
+        if (showHazardForm) setShowHazardForm(false);
+        if (showMaintenanceForm) setShowMaintenanceForm(false);
+        if (selectedHazard) setSelectedHazard(null);
+        if (selectedShelter) setSelectedShelter(null);
+        if (selectedRoadMaintenance) setSelectedRoadMaintenance(null);
+        if (isDeleteConfirmOpen) setIsDeleteConfirmOpen(false);
+        if (layersOpen) setLayersOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    pinMode, pendingLocation, showShelterForm, showHazardForm,
+    showMaintenanceForm, selectedHazard, selectedShelter,
+    selectedRoadMaintenance, isDeleteConfirmOpen, layersOpen
+  ]);
 
   const addShelterMutation = useMutation({
     mutationFn: (data) => api.post('/shelters', data),

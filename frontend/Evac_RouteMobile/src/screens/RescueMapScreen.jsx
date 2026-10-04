@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Linking,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -31,6 +32,8 @@ import {
   Radio,
   Sliders,
   RotateCcw,
+  MapPin,
+  Check,
 } from 'lucide-react-native';
 import api from '../services/api';
 import { colors, spacing, radii } from '../styles/theme';
@@ -42,6 +45,11 @@ import {
   ZAMBOANGA_VICTIM_DEFAULT,
   ZAMBOANGA_SHELTER_DEFAULT,
 } from '../utils/zamboangaGeo';
+import {
+  fetchTacticalRescueRoute,
+  getRescuerCapabilityProfile,
+  getHaversineDistanceMeters,
+} from '../utils/tacticalRescueRouter';
 
 // Ensure Mapbox access token is set immediately
 if (MAPBOX_PUBLIC_TOKEN) {
@@ -50,20 +58,6 @@ if (MAPBOX_PUBLIC_TOKEN) {
   } catch (_e) {
     // Ignore in Expo Go
   }
-}
-
-// Haversine distance in meters
-function getHaversineDistanceMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371e3;
-  const phi1 = (lat1 * Math.PI) / 180;
-  const phi2 = (lat2 * Math.PI) / 180;
-  const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
-  const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-    Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
 }
 
 // Bearing angle helper
@@ -77,63 +71,6 @@ function getBearing(lat1, lon1, lat2, lon2) {
     Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
   let brng = (Math.atan2(y, x) * 180) / Math.PI;
   return (brng + 360) % 360;
-}
-
-// Mapbox Directions fetcher with turn-by-turn maneuvers
-async function fetchMapboxNavigationRoute(startCoord, endCoord, token) {
-  if (!startCoord || !endCoord) return null;
-  if (token) {
-    try {
-      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startCoord[0]},${startCoord[1]};${endCoord[0]},${endCoord[1]}?geometries=geojson&overview=full&steps=true&access_token=${token}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const rawSteps = route.legs?.[0]?.steps || [];
-        const steps = rawSteps.map((s) => ({
-          instruction: s.maneuver?.instruction || 'Proceed forward',
-          distanceMeters: Math.round(s.distance || 0),
-          type: s.maneuver?.type || 'straight',
-          modifier: s.maneuver?.modifier || '',
-        }));
-        return {
-          coordinates: route.geometry.coordinates,
-          distanceMeters: Math.round(route.distance || 0),
-          durationSeconds: Math.round(route.duration || 0),
-          steps,
-        };
-      }
-    } catch (e) {
-      console.warn('[RescueMapScreen] Directions API failed, using fallback:', e);
-    }
-  }
-
-  // Fallback direct tactical route
-  const dist = getHaversineDistanceMeters(
-    startCoord[1],
-    startCoord[0],
-    endCoord[1],
-    endCoord[0]
-  );
-  return {
-    coordinates: [startCoord, endCoord],
-    distanceMeters: Math.round(dist),
-    durationSeconds: Math.round(dist / 11),
-    steps: [
-      {
-        instruction: 'Proceed direct tactical approach toward target',
-        distanceMeters: Math.round(dist),
-        type: 'straight',
-        modifier: '',
-      },
-      {
-        instruction: 'Arrive at destination point',
-        distanceMeters: 0,
-        type: 'arrive',
-        modifier: '',
-      },
-    ],
-  };
 }
 
 export default function RescueMapScreen({ navigation, route }) {
@@ -185,22 +122,60 @@ export default function RescueMapScreen({ navigation, route }) {
   const allActiveMissions = useMemo(() => missionsData ?? [], [missionsData]);
   const assignedUnit =
     unitsData?.find((u) => u.id === user?.assigned_rescue_unit_id) ||
-    unitsData?.[0] ||
-    null;
+    (user?.role === 'admin' ? unitsData?.[0] : null);
 
-  // Find target mission: by param ID or first assigned or first active
+  const rescuerProfile = useMemo(
+    () => getRescuerCapabilityProfile(assignedUnit, user),
+    [assignedUnit, user]
+  );
+
+  const [selectedMissionId, setSelectedMissionId] = useState(route?.params?.missionId || null);
+
+  // Available active missions for assigned unit or fleet
+  const availableMissions = useMemo(() => {
+    if (assignedUnit) {
+      const unitList = allActiveMissions.filter((m) => m.rescue_unit_id === assignedUnit.id);
+      if (unitList.length > 0) return unitList;
+    }
+    return allActiveMissions;
+  }, [allActiveMissions, assignedUnit]);
+
+  // Target mission: by selected ID or param ID or first unit mission
   const missionParamId = route?.params?.missionId;
   const currentMission = useMemo(() => {
-    if (missionParamId) {
-      const found = allActiveMissions.find((m) => m.id === missionParamId);
+    if (selectedMissionId) {
+      const found = availableMissions.find((m) => m.id === selectedMissionId);
       if (found) return found;
     }
-    if (assignedUnit) {
-      const unitMission = allActiveMissions.find((m) => m.rescue_unit_id === assignedUnit.id);
-      if (unitMission) return unitMission;
+    if (missionParamId) {
+      const paramFound = availableMissions.find((m) => m.id === missionParamId);
+      if (paramFound) return paramFound;
     }
-    return allActiveMissions[0] || null;
-  }, [allActiveMissions, missionParamId, assignedUnit]);
+    if (assignedUnit) {
+      const unitMission = availableMissions.find((m) => m.rescue_unit_id === assignedUnit.id);
+      if (unitMission) return unitMission;
+      if (user?.assigned_rescue_unit_id) return null;
+    }
+    return user?.role === 'admin' ? availableMissions[0] || null : null;
+  }, [availableMissions, selectedMissionId, missionParamId, assignedUnit, user?.assigned_rescue_unit_id, user?.role]);
+
+  // Guided simulation step 1 to 5 derived from actual mission lifecycle
+  const currentSimulationStep = useMemo(() => {
+    if (!currentMission) return 5;
+    switch (currentMission.status) {
+      case 'dispatched':
+        return 1;
+      case 'en_route':
+        return 2;
+      case 'on_scene':
+        return 3;
+      case 'transporting':
+        return 4;
+      case 'completed':
+      default:
+        return 5;
+    }
+  }, [currentMission]);
 
   const shelters = useMemo(() => sheltersData ?? [], [sheltersData]);
   const activeHazards = useMemo(
@@ -226,7 +201,7 @@ export default function RescueMapScreen({ navigation, route }) {
         ZAMBOANGA_VICTIM_DEFAULT
       );
     }
-    return ZAMBOANGA_VICTIM_DEFAULT;
+    return currentMission ? ZAMBOANGA_VICTIM_DEFAULT : null;
   }, [currentMission]);
 
   const shelterLngLat = useMemo(() => {
@@ -245,7 +220,7 @@ export default function RescueMapScreen({ navigation, route }) {
         ZAMBOANGA_SHELTER_DEFAULT
       );
     }
-    return ZAMBOANGA_SHELTER_DEFAULT;
+    return currentMission ? ZAMBOANGA_SHELTER_DEFAULT : null;
   }, [currentMission, shelters]);
 
   // Current Target Mode: 'victim' (during en_route / on_scene) or 'shelter' (during transporting)
@@ -260,6 +235,24 @@ export default function RescueMapScreen({ navigation, route }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [mapStyleMode, setMapStyleMode] = useState('dark'); // 'dark' | 'satellite'
+
+  // Memoize valid GeoJSON FeatureCollection for Mapbox ShapeSource
+  const routeFeatureCollection = useMemo(() => {
+    if (!routeData?.coordinates || routeData.coordinates.length < 2) return null;
+    return {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: routeData.coordinates,
+          },
+        },
+      ],
+    };
+  }, [routeData]);
 
   // Proximity Geofencing Triggers (prevent multiple prompts for same event)
   const hasTriggeredVictimArrival = useRef(false);
@@ -316,20 +309,36 @@ export default function RescueMapScreen({ navigation, route }) {
   // Compute Route to Active Target whenever Target Coords or Mode change
   const computeRoute = useCallback(async (start, end) => {
     if (!start || !end) return;
-    const result = await fetchMapboxNavigationRoute(start, end, MAPBOX_PUBLIC_TOKEN);
-    setIsLoadingRoute(false);
-    if (result && result.coordinates?.length > 0) {
-      setRouteData(result);
-      setCurrentStepIndex(0);
+    setIsLoadingRoute(true);
+    try {
+      const result = await fetchTacticalRescueRoute(
+        start,
+        end,
+        MAPBOX_PUBLIC_TOKEN,
+        rescuerProfile,
+        activeHazards
+      );
+      if (result && result.coordinates?.length > 0) {
+        setRouteData(result);
+        setCurrentStepIndex(0);
+      }
+    } catch (e) {
+      console.warn('[RescueMapScreen] computeRoute error:', e);
+    } finally {
+      setIsLoadingRoute(false);
     }
-  }, []);
+  }, [rescuerProfile, activeHazards]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      computeRoute(activeRescuerLocation, activeTargetLngLat);
+      if (!currentMission || !activeTargetLngLat) {
+        setRouteData(null);
+      } else {
+        computeRoute(activeRescuerLocation, activeTargetLngLat);
+      }
     }, 0);
     return () => clearTimeout(timer);
-  }, [computeRoute, activeRescuerLocation, activeTargetLngLat, isTransportPhase]);
+  }, [computeRoute, activeRescuerLocation, activeTargetLngLat, isTransportPhase, currentMission]);
 
   // Stepper Status Mutation
   const updateStatusMutation = useMutation({
@@ -371,8 +380,8 @@ export default function RescueMapScreen({ navigation, route }) {
   useEffect(() => {
     if (!currentMission || !activeRescuerLocation) return;
 
-    // 1. Proximity to Victim (≤ 20 meters during en_route)
-    if (currentMission.status === 'en_route') {
+    // 1. Proximity to Victim (≤ 20 meters during dispatched or en_route)
+    if ((currentMission.status === 'dispatched' || currentMission.status === 'en_route') && victimLngLat) {
       const distVictim = getHaversineDistanceMeters(
         activeRescuerLocation[1],
         activeRescuerLocation[0],
@@ -397,7 +406,7 @@ export default function RescueMapScreen({ navigation, route }) {
     }
 
     // 2. Proximity to Shelter Gate (≤ 20 meters during transporting)
-    if (currentMission.status === 'transporting') {
+    if (currentMission.status === 'transporting' && shelterLngLat) {
       const distShelter = getHaversineDistanceMeters(
         activeRescuerLocation[1],
         activeRescuerLocation[0],
@@ -499,34 +508,105 @@ export default function RescueMapScreen({ navigation, route }) {
     Linking.openURL(url);
   };
 
-  // Presentation Simulation Shortcuts
-  const simulate20mToVictim = () => {
+  // ─── GUIDED 5-STEP SIMULATION HANDLERS ───
+  const handleStep1_EnRoute = () => {
+    if (!currentMission) return;
+    updateStatusMutation.mutate({
+      id: currentMission.id,
+      status: 'en_route',
+    });
+    if (activeRescuerLocation) {
+      cameraRef.current?.setCamera({
+        centerCoordinate: activeRescuerLocation,
+        zoomLevel: 15.8,
+        animationDuration: 800,
+      });
+    }
+  };
+
+  const handleStep2_SimVictim20m = () => {
+    if (!victimLngLat || !currentMission) return;
     // 15 meters offset from victim
     const sim = [victimLngLat[0] + 0.0001, victimLngLat[1] + 0.0001];
     hasTriggeredVictimArrival.current = false;
     setSimulatedLocation(sim);
+    cameraRef.current?.setCamera({
+      centerCoordinate: sim,
+      zoomLevel: 17,
+      animationDuration: 800,
+    });
+    updateStatusMutation.mutate({
+      id: currentMission.id,
+      status: 'on_scene',
+    });
+    Vibration.vibrate([0, 200, 100, 300, 100, 400]);
+    setShowVictimArrivalModal(true);
   };
 
-  const simulateTransportReRoute = () => {
+  const handleStep3_ExtractAndReRoute = () => {
     if (!currentMission) return;
     updateStatusMutation.mutate({
       id: currentMission.id,
       status: 'transporting',
       target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
     });
+    setShowVictimArrivalModal(false);
   };
 
-  const simulate20mToShelter = () => {
-    // 15 meters offset from shelter
+  const handleStep4_SimShelter20m = () => {
+    if (!shelterLngLat || !currentMission) return;
+    // 15 meters offset from shelter gate
     const sim = [shelterLngLat[0] + 0.0001, shelterLngLat[1] + 0.0001];
     hasTriggeredShelterArrival.current = false;
     setSimulatedLocation(sim);
+    cameraRef.current?.setCamera({
+      centerCoordinate: sim,
+      zoomLevel: 17,
+      animationDuration: 800,
+    });
+    Vibration.vibrate([0, 250, 100, 250, 100, 500]);
+    setShowShelterArrivalModal(true);
+  };
+
+  const handleStep5_HandoverAndStandby = () => {
+    if (!currentMission) return;
+    updateStatusMutation.mutate({
+      id: currentMission.id,
+      status: 'completed',
+      target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
+    });
+    setShowShelterArrivalModal(false);
+    resetSimulation();
+  };
+
+  const handleTriggerStep = (step) => {
+    if (step === 1) handleStep1_EnRoute();
+    else if (step === 2) handleStep2_SimVictim20m();
+    else if (step === 3) handleStep3_ExtractAndReRoute();
+    else if (step === 4) handleStep4_SimShelter20m();
+    else if (step === 5) handleStep5_HandoverAndStandby();
   };
 
   const resetSimulation = () => {
     setSimulatedLocation(null);
     hasTriggeredVictimArrival.current = false;
     hasTriggeredShelterArrival.current = false;
+    if (gpsLocation) {
+      cameraRef.current?.setCamera({
+        centerCoordinate: gpsLocation,
+        zoomLevel: 16.5,
+        animationDuration: 800,
+      });
+    }
+  };
+
+  const handleResetMissionToDispatched = () => {
+    if (!currentMission) return;
+    updateStatusMutation.mutate({
+      id: currentMission.id,
+      status: 'dispatched',
+    });
+    resetSimulation();
   };
 
   const isExpoGo = Constants.appOwnership === 'expo' || !Mapbox?.MapView;
@@ -582,16 +662,10 @@ export default function RescueMapScreen({ navigation, route }) {
           />
 
         {/* Tactical Route Polyline */}
-        {routeData?.coordinates && routeData.coordinates.length > 1 && (
+        {routeFeatureCollection && (
           <Mapbox.ShapeSource
             id="rescue-map-route-source"
-            shape={{
-              type: 'Feature',
-              geometry: {
-                type: 'LineString',
-                coordinates: routeData.coordinates,
-              },
-            }}
+            shape={routeFeatureCollection}
           >
             {/* Outer Glow */}
             <Mapbox.LineLayer
@@ -618,7 +692,7 @@ export default function RescueMapScreen({ navigation, route }) {
         )}
 
         {/* 1. Victim SOS Distress Pin */}
-        {victimLngLat && (
+        {currentMission && victimLngLat && (
           <Mapbox.PointAnnotation
             key="victim-marker"
             id="victim-marker"
@@ -639,7 +713,7 @@ export default function RescueMapScreen({ navigation, route }) {
         )}
 
         {/* 2. Target Evacuation Shelter Pin */}
-        {shelterLngLat && (
+        {currentMission && shelterLngLat && (
           <Mapbox.PointAnnotation
             key="shelter-marker"
             id="shelter-marker"
@@ -714,10 +788,12 @@ export default function RescueMapScreen({ navigation, route }) {
             <Text style={styles.backBtnText}>Duty Hub</Text>
           </TouchableOpacity>
 
-          <View style={styles.phaseBadge}>
-            <Radio size={12} color="#34d399" />
+          <View style={[styles.phaseBadge, !currentMission && styles.phaseBadgeStandby]}>
+            <Radio size={12} color={currentMission ? '#34d399' : '#60a5fa'} />
             <Text style={styles.phaseBadgeText}>
-              {isTransportPhase ? 'PHASE 2: SHELTER TRANSPORT' : 'PHASE 1: VICTIM EXTRACTION'}
+              {currentMission
+                ? (isTransportPhase ? 'PHASE 2: SHELTER TRANSPORT' : 'PHASE 1: VICTIM EXTRACTION')
+                : 'FLEET STANDBY • READY'}
             </Text>
           </View>
 
@@ -740,38 +816,68 @@ export default function RescueMapScreen({ navigation, route }) {
           </View>
         </View>
 
-        {/* Turn-by-Turn Card */}
-        <View style={styles.maneuverCard}>
-          <View style={styles.maneuverIconCircle}>
-            <Text style={styles.maneuverIconText}>
-              {getTurnIcon(currentStep?.type, currentStep?.modifier)}
-            </Text>
-          </View>
+        {currentMission ? (
+          <>
+            {/* Turn-by-Turn Card */}
+            <View style={styles.maneuverCard}>
+              <View style={styles.maneuverIconCircle}>
+                <Text style={styles.maneuverIconText}>
+                  {getTurnIcon(currentStep?.type, currentStep?.modifier)}
+                </Text>
+              </View>
 
-          <View style={{ flex: 1 }}>
-            <Text style={styles.maneuverDistance}>
-              {currentStep?.distanceMeters > 0
-                ? `IN ${currentStep.distanceMeters} METERS`
-                : 'UPCOMING MANEUVER'}
-            </Text>
-            <Text style={styles.maneuverInstruction} numberOfLines={2}>
-              {currentStep?.instruction || `Proceed toward ${activeTargetName}`}
-            </Text>
-          </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.maneuverDistance}>
+                  {currentStep?.distanceMeters > 0
+                    ? `IN ${currentStep.distanceMeters} METERS`
+                    : 'UPCOMING MANEUVER'}
+                </Text>
+                <Text style={styles.maneuverInstruction} numberOfLines={2}>
+                  {currentStep?.instruction || `Proceed toward ${activeTargetName}`}
+                </Text>
+              </View>
 
-          <View style={styles.proximityPill}>
-            <Text style={styles.proximityDistance}>{distanceToTarget}m</Text>
-            <Text style={styles.proximityLabel}>TO TARGET</Text>
-          </View>
-        </View>
+              <View style={styles.proximityPill}>
+                <Text style={styles.proximityDistance}>{distanceToTarget}m</Text>
+                <Text style={styles.proximityLabel}>TO TARGET</Text>
+              </View>
+            </View>
 
-        {/* Trip Stats Footer Bar */}
-        <View style={styles.tripStatsRow}>
-          <Text style={styles.tripStatsText}>
-            🏁 {totalDistanceKm} km • ⏱ ~{totalEtaMinutes} min • Target: {activeTargetName}
-          </Text>
-          {isLoadingRoute && <ActivityIndicator size="small" color="#38bdf8" />}
-        </View>
+            {/* Trip Stats Footer Bar */}
+            <View style={styles.tripStatsRow}>
+              <Text style={styles.tripStatsText}>
+                🏁 {totalDistanceKm} km • ⏱ ~{totalEtaMinutes} min • Target: {activeTargetName}
+              </Text>
+              {isLoadingRoute && <ActivityIndicator size="small" color="#38bdf8" />}
+            </View>
+
+            {/* Tactical Engine Status Chip (Option 1) */}
+            {routeData?.tacticalTelemetry && (
+              <View
+                style={[
+                  styles.tacticalStrategyBadge,
+                  routeData.tacticalTelemetry.badgeType === 'water' && styles.tacticalBadgeWater,
+                  routeData.tacticalTelemetry.badgeType === 'wading' && styles.tacticalBadgeWading,
+                  routeData.tacticalTelemetry.badgeType === 'detour' && styles.tacticalBadgeDetour,
+                ]}
+              >
+                <Text style={styles.tacticalStrategyText} numberOfLines={1}>
+                  {routeData.tacticalTelemetry.statusText}
+                </Text>
+              </View>
+            )}
+          </>
+        ) : (
+          <View style={styles.standbyHudCard}>
+            <LifeBuoy size={20} color="#34d399" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.standbyHudTitle}>Active Standby Monitoring</Text>
+              <Text style={styles.standbyHudSub}>
+                GPS: {activeRescuerLocation[1].toFixed(4)}°N, {activeRescuerLocation[0].toFixed(4)}°E • Sector: Zamboanga City
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
 
       {/* ─── FLOATING ACTION CONTROLS (RIGHT) ─── */}
@@ -793,172 +899,310 @@ export default function RescueMapScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
-      {/* ─── PRESENTATION DEMO TOOLBAR (COLLAPSIBLE) ─── */}
-      {showDemoControls && (
-        <View style={styles.demoToolbar}>
-          <View style={styles.demoToolbarHeader}>
-            <Text style={styles.demoToolbarTitle}>⚡ PRESENTATION DEMO SHORTCUTS</Text>
-            <TouchableOpacity onPress={() => setShowDemoControls(false)}>
-              <Text style={styles.demoCloseText}>✕</Text>
+      {/* ─── GUIDED 5-STEP SIMULATION FOCUS DOCK (COLLAPSIBLE) ─── */}
+      {showDemoControls ? (
+        <View style={[styles.guidedSimContainer, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+          {/* Header Bar */}
+          <View style={styles.guidedSimHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ fontSize: 13 }}>⚡</Text>
+              <Text style={styles.guidedSimTitle}>GUIDED RESCUE SIMULATION • 5-STEP FOCUS</Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowDemoControls(false)} style={styles.guidedSimCloseBtn}>
+              <Text style={styles.guidedSimCloseText}>✕</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.demoSubText}>
-            Simulate proximity triggers for judges/evaluation without physical movement:
-          </Text>
-          <View style={styles.demoButtonsRow}>
+
+          {/* Dual Critical Test Family Switcher */}
+          {availableMissions.length > 0 && (
+            <View style={styles.missionSwitcherBox}>
+              <Text style={styles.missionSwitcherLabel}>SELECT CRITICAL TEST TARGET:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.missionChipScroll}>
+                {availableMissions.map((m) => {
+                  const isSelected = currentMission?.id === m.id;
+                  return (
+                    <TouchableOpacity
+                      key={m.id}
+                      style={[styles.missionChip, isSelected && styles.missionChipActive]}
+                      onPress={() => {
+                        setSelectedMissionId(m.id);
+                        resetSimulation();
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <AlertTriangle size={12} color={isSelected ? '#ffffff' : '#f59e0b'} />
+                      <Text style={[styles.missionChipText, isSelected && styles.missionChipTextActive]} numberOfLines={1}>
+                        {m.victim_name} ({m.headcount}p • {m.barangay || 'Sector'})
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* 5-Step Progress Tracker Strip */}
+          <View style={styles.stepperProgressStrip}>
+            {[
+              { num: 1, label: 'En Route' },
+              { num: 2, label: '20m Victim' },
+              { num: 3, label: 'Re-Route' },
+              { num: 4, label: '20m Shelter' },
+              { num: 5, label: 'Standby' },
+            ].map((step, idx) => {
+              const isPast = step.num < currentSimulationStep;
+              const isCurrent = step.num === currentSimulationStep;
+              return (
+                <React.Fragment key={step.num}>
+                  <TouchableOpacity
+                    style={[
+                      styles.stepNode,
+                      isCurrent && styles.stepNodeCurrent,
+                      isPast && styles.stepNodePast,
+                    ]}
+                    onPress={() => handleTriggerStep(step.num)}
+                    activeOpacity={0.8}
+                  >
+                    {isPast ? (
+                      <Check size={12} color="#ffffff" />
+                    ) : (
+                      <Text style={[styles.stepNodeText, isCurrent && styles.stepNodeTextCurrent]}>
+                        {step.num}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                  {idx < 4 && (
+                    <View
+                      style={[
+                        styles.stepConnector,
+                        isPast && styles.stepConnectorPast,
+                        isCurrent && styles.stepConnectorCurrent,
+                      ]}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </View>
+
+          {/* Current Step Focus Card */}
+          <View style={styles.stepFocusCard}>
+            <View style={styles.stepFocusHeaderRow}>
+              <View style={styles.stepNumberBadge}>
+                <Text style={styles.stepNumberBadgeText}>STEP {currentSimulationStep} OF 5</Text>
+              </View>
+              <Text style={styles.stepFocusStageName}>
+                {currentSimulationStep === 1 && 'ACCEPT & EN ROUTE'}
+                {currentSimulationStep === 2 && '20M PROXIMITY GEOFENCE'}
+                {currentSimulationStep === 3 && 'EXTRACT & RE-ROUTE'}
+                {currentSimulationStep === 4 && '20M SHELTER GEOFENCE'}
+                {currentSimulationStep === 5 && 'HANDOVER & STANDBY RESET'}
+              </Text>
+            </View>
+
+            <Text style={styles.stepFocusDescription}>
+              {currentSimulationStep === 1 &&
+                'Accepts CDRRMO dispatch order. Calculates road/water navigation route to distress family and illuminates Amber polyline.'}
+              {currentSimulationStep === 2 &&
+                'Simulates vessel arriving within 15 meters of distress victim. Automatically triggers 20m Haversine geofence, camera fly-to, and updates status to on_scene.'}
+              {currentSimulationStep === 3 &&
+                'Victims safely secured onboard. Dynamically re-routes Mapbox navigation straight to the assigned Evacuation Center (Cyan polyline).'}
+              {currentSimulationStep === 4 &&
+                'Simulates vessel arriving within 15 meters of the shelter gate. Triggers shelter proximity geofence and displays Intake Handover modal.'}
+              {currentSimulationStep === 5 &&
+                'CSWDO shelter intake confirmed. Completes mission, clears route, and resets vehicle to Active Standby for next call.'}
+            </Text>
+
+            {/* Primary Action Button for Active Step */}
             <TouchableOpacity
-              style={[styles.demoBtn, styles.demoBtnAmber]}
-              onPress={simulate20mToVictim}
+              style={[
+                styles.stepPrimaryActionBtn,
+                currentSimulationStep === 1 && styles.btnBlue,
+                currentSimulationStep === 2 && styles.btnAmber,
+                currentSimulationStep === 3 && styles.btnCyan,
+                currentSimulationStep === 4 && styles.btnIndigo,
+                currentSimulationStep === 5 && styles.btnGreen,
+              ]}
+              onPress={() => handleTriggerStep(currentSimulationStep)}
+              disabled={updateStatusMutation.isPending}
+              activeOpacity={0.85}
             >
-              <Text style={styles.demoBtnText}>1. Sim: 20m to Victim</Text>
+              {updateStatusMutation.isPending ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <>
+                  {currentSimulationStep === 1 && <Navigation size={17} color="#ffffff" />}
+                  {currentSimulationStep === 2 && <MapPin size={17} color="#ffffff" />}
+                  {currentSimulationStep === 3 && <Shield size={17} color="#ffffff" />}
+                  {currentSimulationStep === 4 && <Building size={17} color="#ffffff" />}
+                  {currentSimulationStep === 5 && <CheckCircle2 size={17} color="#ffffff" />}
+                  <Text style={styles.stepPrimaryActionBtnText}>
+                    {currentSimulationStep === 1 && '▶ 1. ACCEPT DISPATCH & EN ROUTE'}
+                    {currentSimulationStep === 2 && '📍 2. TRIGGER 20M GEOFENCE (ARRIVED)'}
+                    {currentSimulationStep === 3 && '🔄 3. EXTRACT & RE-ROUTE TO SHELTER'}
+                    {currentSimulationStep === 4 && '🏢 4. TRIGGER 20M GEOFENCE (SHELTER)'}
+                    {currentSimulationStep === 5 && '🏁 5. CONFIRM HANDOVER & STANDBY'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Step Telemetry Row */}
+            <View style={styles.simTelemetryRow}>
+              <Text style={styles.simTelemetryText}>
+                🎯 Target: <Text style={{ color: '#ffffff', fontWeight: 'bold' }}>{activeTargetName}</Text> • Range:{' '}
+                <Text style={{ color: distanceToTarget <= 20 ? '#34d399' : '#38bdf8', fontWeight: 'bold' }}>
+                  {distanceToTarget}m {distanceToTarget <= 20 ? '(Geofence Active)' : ''}
+                </Text>
+              </Text>
+            </View>
+          </View>
+
+          {/* Quick Utility Actions Footer */}
+          <View style={styles.simFooterActionsRow}>
+            <TouchableOpacity
+              style={styles.simUtilityBtn}
+              onPress={handleResetMissionToDispatched}
+              activeOpacity={0.8}
+            >
+              <RotateCcw size={12} color="#94a3b8" />
+              <Text style={styles.simUtilityBtnText}>Restart Step 1</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.demoBtn, styles.demoBtnCyan]}
-              onPress={simulateTransportReRoute}
-            >
-              <Text style={styles.demoBtnText}>2. Extract &amp; Re-Route</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.demoBtn, styles.demoBtnGreen]}
-              onPress={simulate20mToShelter}
-            >
-              <Text style={styles.demoBtnText}>3. Sim: 20m to Shelter</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.demoBtn, styles.demoBtnDark]}
+              style={styles.simUtilityBtn}
               onPress={resetSimulation}
+              activeOpacity={0.8}
             >
-              <RotateCcw size={14} color="#94a3b8" />
+              <Crosshair size={12} color="#38bdf8" />
+              <Text style={styles.simUtilityBtnText}>Reset to Live GPS</Text>
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      ) : (
+        /* ─── BOTTOM MISSION CONTROL DOCK ─── */
+        <View style={[styles.bottomDock, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          {currentMission ? (
+            <View>
+              {/* Target Status Banner */}
+              <View style={styles.dockHeaderRow}>
+                <View style={styles.dockStatusBadge}>
+                  <View
+                    style={[
+                      styles.statusDot,
+                      isTransportPhase ? styles.dotCyan : styles.dotAmber,
+                    ]}
+                  />
+                  <Text style={styles.dockStatusText}>
+                    {currentMission.status.toUpperCase()} • {currentMission.control_no}
+                  </Text>
+                </View>
 
-      {/* ─── BOTTOM MISSION CONTROL DOCK ─── */}
-      <View style={[styles.bottomDock, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        {currentMission ? (
-          <View>
-            {/* Target Status Banner */}
-            <View style={styles.dockHeaderRow}>
-              <View style={styles.dockStatusBadge}>
                 <View
                   style={[
-                    styles.statusDot,
-                    isTransportPhase ? styles.dotCyan : styles.dotAmber,
+                    styles.triageBadge,
+                    currentMission.triage_level === 'critical'
+                      ? styles.triageCritical
+                      : styles.triageUrgent,
                   ]}
-                />
-                <Text style={styles.dockStatusText}>
-                  {currentMission.status.toUpperCase()} • {currentMission.control_no}
+                >
+                  <Text style={styles.triageBadgeText}>
+                    {currentMission.triage_level?.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Target Details */}
+              <View style={styles.dockTargetInfo}>
+                <Text style={styles.dockTargetTitle} numberOfLines={1}>
+                  {isTransportPhase
+                    ? `🏢 Delivering to: ${activeTargetName}`
+                    : `🚨 Extracting: ${currentMission.victim_name} (${currentMission.headcount} Persons)`}
+                </Text>
+                <Text style={styles.dockTargetSub} numberOfLines={1}>
+                  {isTransportPhase
+                    ? `Drop-off: CSWDO Intake Desk • Auto registration enabled`
+                    : `Barangay: ${currentMission.barangay || 'Baliwasan'} • Needs: ${currentMission.special_needs || 'Standard evacuation'}`}
                 </Text>
               </View>
 
-              <View
-                style={[
-                  styles.triageBadge,
-                  currentMission.triage_level === 'critical'
-                    ? styles.triageCritical
-                    : styles.triageUrgent,
-                ]}
-              >
-                <Text style={styles.triageBadgeText}>
-                  {currentMission.triage_level?.toUpperCase()}
-                </Text>
-              </View>
-            </View>
+              {/* Tactical Action Buttons Row */}
+              <View style={styles.dockButtonsRow}>
+                {!isTransportPhase && (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.dockBtn, styles.callBtn]}
+                      onPress={() => handleCallVictim(currentMission.victim_phone)}
+                    >
+                      <Phone size={15} color={colors.white} />
+                      <Text style={styles.dockBtnText}>Call Victim</Text>
+                    </TouchableOpacity>
 
-            {/* Target Details */}
-            <View style={styles.dockTargetInfo}>
-              <Text style={styles.dockTargetTitle} numberOfLines={1}>
-                {isTransportPhase
-                  ? `🏢 Delivering to: ${activeTargetName}`
-                  : `🚨 Extracting: ${currentMission.victim_name} (${currentMission.headcount} Persons)`}
-              </Text>
-              <Text style={styles.dockTargetSub} numberOfLines={1}>
-                {isTransportPhase
-                  ? `Drop-off: CSWDO Intake Desk • Auto registration enabled`
-                  : `Barangay: ${currentMission.barangay || 'Baliwasan'} • Needs: ${currentMission.special_needs || 'Standard evacuation'}`}
-              </Text>
-            </View>
+                    <TouchableOpacity
+                      style={[styles.dockBtn, styles.smsBtn]}
+                      onPress={() =>
+                        handleSmsVictim(
+                          currentMission.victim_phone,
+                          currentMission.victim_name,
+                          currentMission.barangay
+                        )
+                      }
+                    >
+                      <MessageSquare size={15} color={colors.white} />
+                      <Text style={styles.dockBtnText}>Quick SMS</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
 
-            {/* Tactical Action Buttons Row */}
-            <View style={styles.dockButtonsRow}>
-              {!isTransportPhase && (
-                <>
+                {/* Status Advancement Primary CTA */}
+                {currentMission.status === 'on_scene' && (
                   <TouchableOpacity
-                    style={[styles.dockBtn, styles.callBtn]}
-                    onPress={() => handleCallVictim(currentMission.victim_phone)}
-                  >
-                    <Phone size={15} color={colors.white} />
-                    <Text style={styles.dockBtnText}>Call Victim</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.dockBtn, styles.smsBtn]}
+                    style={[styles.dockBtn, styles.transportBtn, { flex: 2 }]}
                     onPress={() =>
-                      handleSmsVictim(
-                        currentMission.victim_phone,
-                        currentMission.victim_name,
-                        currentMission.barangay
-                      )
+                      updateStatusMutation.mutate({
+                        id: currentMission.id,
+                        status: 'transporting',
+                        target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
+                      })
                     }
+                    disabled={updateStatusMutation.isPending}
                   >
-                    <MessageSquare size={15} color={colors.white} />
-                    <Text style={styles.dockBtnText}>Quick SMS</Text>
+                    <Shield size={16} color={colors.white} />
+                    <Text style={styles.dockBtnTextBold}>START TRANSPORT TO SHELTER</Text>
                   </TouchableOpacity>
-                </>
-              )}
+                )}
 
-              {/* Status Advancement Primary CTA */}
-              {currentMission.status === 'on_scene' && (
+                {currentMission.status === 'transporting' && (
+                  <TouchableOpacity
+                    style={[styles.dockBtn, styles.completeBtn, { flex: 2 }]}
+                    onPress={() => setShowShelterArrivalModal(true)}
+                    disabled={updateStatusMutation.isPending}
+                  >
+                    <CheckCircle2 size={16} color={colors.white} />
+                    <Text style={styles.dockBtnTextBold}>INTAKE HANDOVER</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* External Google Maps Button */}
                 <TouchableOpacity
-                  style={[styles.dockBtn, styles.transportBtn, { flex: 2 }]}
-                  onPress={() =>
-                    updateStatusMutation.mutate({
-                      id: currentMission.id,
-                      status: 'transporting',
-                      target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
-                    })
-                  }
-                  disabled={updateStatusMutation.isPending}
+                  style={[styles.dockBtn, styles.externalBtn]}
+                  onPress={handleOpenGoogleMaps}
+                  accessibilityLabel="Open External Google Maps"
                 >
-                  <Shield size={16} color={colors.white} />
-                  <Text style={styles.dockBtnTextBold}>START TRANSPORT TO SHELTER</Text>
+                  <Navigation size={15} color="#94a3b8" />
                 </TouchableOpacity>
-              )}
-
-              {currentMission.status === 'transporting' && (
-                <TouchableOpacity
-                  style={[styles.dockBtn, styles.completeBtn, { flex: 2 }]}
-                  onPress={() => setShowShelterArrivalModal(true)}
-                  disabled={updateStatusMutation.isPending}
-                >
-                  <CheckCircle2 size={16} color={colors.white} />
-                  <Text style={styles.dockBtnTextBold}>INTAKE HANDOVER</Text>
-                </TouchableOpacity>
-              )}
-
-              {/* External Google Maps Button */}
-              <TouchableOpacity
-                style={[styles.dockBtn, styles.externalBtn]}
-                onPress={handleOpenGoogleMaps}
-                accessibilityLabel="Open External Google Maps"
-              >
-                <Navigation size={15} color="#94a3b8" />
-              </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        ) : (
-          <View style={styles.noMissionDock}>
-            <LifeBuoy size={24} color="#34d399" />
-            <Text style={styles.noMissionText}>
-              Unit on Active Standby • Listening for incoming CDRRMO dispatch orders
-            </Text>
-          </View>
-        )}
-      </View>
+          ) : (
+            <View style={styles.noMissionDock}>
+              <LifeBuoy size={24} color="#34d399" />
+              <Text style={styles.noMissionText}>
+                Unit on Active Standby • Listening for incoming CDRRMO dispatch orders
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* ─── MODAL: 20-METER VICTIM ARRIVAL CONFIRMATION ─── */}
       <Modal
@@ -1264,11 +1508,35 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.3)',
   },
+  phaseBadgeStandby: {
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    borderColor: 'rgba(59, 130, 246, 0.35)',
+  },
   phaseBadgeText: {
     color: '#34d399',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  standbyHudCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(15, 23, 42, 0.94)',
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.25)',
+  },
+  standbyHudTitle: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  standbyHudSub: {
+    color: '#94a3b8',
+    fontSize: 11,
+    marginTop: 2,
   },
   mapStyleBtn: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -1342,6 +1610,34 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  tacticalStrategyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radii.sm,
+    backgroundColor: 'rgba(30, 41, 59, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 6,
+    alignItems: 'center',
+  },
+  tacticalBadgeWater: {
+    backgroundColor: 'rgba(6, 182, 212, 0.18)',
+    borderColor: '#06b6d4',
+  },
+  tacticalBadgeWading: {
+    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+    borderColor: '#f59e0b',
+  },
+  tacticalBadgeDetour: {
+    backgroundColor: 'rgba(239, 68, 68, 0.18)',
+    borderColor: '#ef4444',
+  },
+  tacticalStrategyText: {
+    color: '#ffffff',
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
 
   /* ─── FLOATING CONTROLS ─── */
   floatingControls: {
@@ -1369,69 +1665,245 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
   },
 
-  /* ─── DEMO TOOLBAR ─── */
-  demoToolbar: {
+  /* ─── GUIDED 5-STEP SIMULATION FOCUS DOCK ─── */
+  guidedSimContainer: {
     position: 'absolute',
-    left: 10,
-    right: 10,
-    bottom: 200,
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: '#f59e0b',
-    padding: spacing.sm,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(10, 15, 29, 0.97)',
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
+    borderTopWidth: 1.5,
+    borderTopColor: '#f59e0b',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    shadowColor: '#000',
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    elevation: 8,
   },
-  demoToolbarHeader: {
+  guidedSimHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  demoToolbarTitle: {
+  guidedSimTitle: {
     color: '#fbbf24',
     fontSize: 11,
     fontWeight: '900',
+    letterSpacing: 0.5,
   },
-  demoCloseText: {
+  guidedSimCloseBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radii.sm,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  guidedSimCloseText: {
     color: '#94a3b8',
-    fontSize: 14,
-    fontWeight: '700',
-    paddingHorizontal: 4,
+    fontSize: 12,
+    fontWeight: '800',
   },
-  demoSubText: {
-    color: '#cbd5e1',
-    fontSize: 10,
+
+  /* Multi-mission switcher */
+  missionSwitcherBox: {
     marginBottom: 8,
+    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    borderRadius: radii.md,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  demoButtonsRow: {
+  missionSwitcherLabel: {
+    color: '#94a3b8',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+    marginLeft: 2,
+  },
+  missionChipScroll: {
     flexDirection: 'row',
     gap: 6,
   },
-  demoBtn: {
-    flex: 1,
-    paddingVertical: 7,
-    borderRadius: radii.sm,
+  missionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: radii.full,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  missionChipActive: {
+    backgroundColor: '#d97706',
+    borderColor: '#f59e0b',
+  },
+  missionChipText: {
+    color: '#cbd5e1',
+    fontSize: 11,
+    fontWeight: '700',
+    maxWidth: 160,
+  },
+  missionChipTextActive: {
+    color: '#ffffff',
+    fontWeight: '900',
+  },
+
+  /* Stepper strip */
+  stepperProgressStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    paddingHorizontal: 4,
+  },
+  stepNode: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#1e293b',
+    borderWidth: 1.5,
+    borderColor: '#475569',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  demoBtnAmber: {
-    backgroundColor: '#d97706',
+  stepNodeCurrent: {
+    borderColor: '#38bdf8',
+    backgroundColor: '#0284c7',
+    transform: [{ scale: 1.15 }],
   },
-  demoBtnCyan: {
+  stepNodePast: {
+    backgroundColor: '#059669',
+    borderColor: '#10b981',
+  },
+  stepNodeText: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  stepNodeTextCurrent: {
+    color: '#ffffff',
+    fontWeight: '900',
+  },
+  stepConnector: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#334155',
+    marginHorizontal: 3,
+  },
+  stepConnectorPast: {
+    backgroundColor: '#10b981',
+  },
+  stepConnectorCurrent: {
+    backgroundColor: '#38bdf8',
+  },
+
+  /* Step focus card */
+  stepFocusCard: {
+    backgroundColor: 'rgba(30, 41, 59, 0.75)',
+    borderRadius: radii.md,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 8,
+  },
+  stepFocusHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  stepNumberBadge: {
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.4)',
+  },
+  stepNumberBadgeText: {
+    color: '#38bdf8',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  stepFocusStageName: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+    flex: 1,
+  },
+  stepFocusDescription: {
+    color: '#94a3b8',
+    fontSize: 11,
+    lineHeight: 15,
+    marginBottom: 10,
+  },
+
+  /* Primary Action Button */
+  stepPrimaryActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 11,
+    borderRadius: radii.md,
+    marginBottom: 6,
+  },
+  stepPrimaryActionBtnText: {
+    color: '#ffffff',
+    fontSize: 12.5,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+  },
+  btnBlue: {
     backgroundColor: '#0284c7',
   },
-  demoBtnGreen: {
+  btnAmber: {
+    backgroundColor: '#d97706',
+  },
+  btnCyan: {
+    backgroundColor: '#0891b2',
+  },
+  btnIndigo: {
+    backgroundColor: '#4f46e5',
+  },
+  btnGreen: {
     backgroundColor: '#059669',
   },
-  demoBtnDark: {
-    backgroundColor: '#334155',
-    flex: 0.4,
+
+  /* Telemetry & footer */
+  simTelemetryRow: {
+    paddingVertical: 4,
+    alignItems: 'center',
   },
-  demoBtnText: {
-    color: '#ffffff',
-    fontSize: 9.5,
-    fontWeight: '800',
-    textAlign: 'center',
+  simTelemetryText: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  simFooterActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 2,
+  },
+  simUtilityBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  simUtilityBtnText: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '700',
   },
 
   /* ─── BOTTOM MISSION CONTROL DOCK ─── */

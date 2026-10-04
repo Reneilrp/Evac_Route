@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Truck, X, Plus, Trash2, ShieldAlert } from 'lucide-react';
 import api from '../services/api';
 
@@ -18,6 +18,16 @@ export default function PrePopulatedDispatchModal({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
 
   const addRow = () => setManifest([...manifest, { inventory_item_id: '', quantity: 1 }]);
   const removeRow = (i) => setManifest(manifest.filter((_, idx) => idx !== i));
@@ -76,7 +86,10 @@ export default function PrePopulatedDispatchModal({
   const destShelter = shelters.find(s => String(s.id) === String(shelterId));
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div 
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"
+    >
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto border border-gray-100 dark:border-slate-800">
         <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800">
           <div>

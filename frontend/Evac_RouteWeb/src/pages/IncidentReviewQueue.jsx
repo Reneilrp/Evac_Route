@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 
@@ -25,6 +25,17 @@ export default function IncidentReviewQueue() {
   const [isFixedFloodSpot, setIsFixedFloodSpot] = useState(false);
   const [radiusMeters, setRadiusMeters] = useState(75);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (reviewModal) setReviewModal(null);
+        if (activePhotoModal) setActivePhotoModal(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [reviewModal, activePhotoModal]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['incidents', activeTab],
@@ -238,8 +249,11 @@ export default function IncidentReviewQueue() {
 
       {/* Review Modal */}
       {reviewModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 w-full max-w-md p-6">
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setReviewModal(null); }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[100] p-4 animate-in fade-in duration-150"
+        >
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-1 capitalize">
               {reviewModal.action} Incident
             </h2>
@@ -330,7 +344,7 @@ export default function IncidentReviewQueue() {
 
       {/* Full Photo Modal */}
       {activePhotoModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setActivePhotoModal(null)}>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={() => setActivePhotoModal(null)}>
           <div className="relative max-w-3xl max-h-[90vh] overflow-hidden rounded-xl bg-black">
             <img src={activePhotoModal} alt="Full view" className="max-w-full max-h-[85vh] object-contain" />
             <button

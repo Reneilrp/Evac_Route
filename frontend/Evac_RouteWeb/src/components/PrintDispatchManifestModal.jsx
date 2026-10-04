@@ -1,8 +1,18 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { Printer, X, Shield, Truck } from 'lucide-react';
 
 export default function PrintDispatchManifestModal({ order, shelterDetails, onCancel }) {
   const printableRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
 
   const orderCreatedAt = order?.created_at;
   const orderDate = useMemo(() => (orderCreatedAt ? new Date(orderCreatedAt) : new Date()), [orderCreatedAt]);
@@ -25,7 +35,10 @@ export default function PrintDispatchManifestModal({ order, shelterDetails, onCa
   });
 
   return (
-    <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:static">
+    <div 
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+      className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:static"
+    >
       <style>{`
         @media print {
           body * {

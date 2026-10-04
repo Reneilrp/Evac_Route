@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Package, ClipboardList, Plus, AlertCircle, X, Trash2, Truck, CheckCircle, Clock, MapPin, Printer, ShieldAlert } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
@@ -19,34 +19,37 @@ function AddStockModal({ onCancel, onAdd }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-        <div className="flex justify-between items-center p-5 border-b border-gray-100">
-          <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+    <div 
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+    >
+      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800">
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
             <Package size={20} className="text-blue-500" /> Receive New Delivery
           </h3>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition"><X size={22} /></button>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition"><X size={22} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Item Name</label>
-            <input type="text" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Item Name</label>
+            <input type="text" className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               placeholder="e.g. Rice (25kg sack)" value={itemName} onChange={e => setItemName(e.target.value)} required autoFocus />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
-              <input type="number" min="1" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Quantity</label>
+              <input type="number" min="1" className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                 placeholder="e.g. 500" value={stock} onChange={e => setStock(e.target.value)} required />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Unit</label>
-              <input type="text" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Unit</label>
+              <input type="text" className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                 placeholder="e.g. sacks, pcs" value={unit} onChange={e => setUnit(e.target.value)} required />
             </div>
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg font-semibold text-sm transition">Cancel</button>
+            <button type="button" onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-2.5 rounded-lg font-semibold text-sm transition">Cancel</button>
             <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm transition">Add to Inventory</button>
           </div>
         </form>
@@ -88,21 +91,24 @@ function RationTemplateForm({ items, onCancel, onCreate }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-y-auto max-h-[90vh]">
-        <div className="flex justify-between items-center p-5 border-b border-gray-100">
-          <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+    <div 
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+    >
+      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-lg overflow-y-auto max-h-[90vh]">
+        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800">
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
             <ClipboardList size={20} className="text-blue-500" /> New Ration Template
           </h3>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition"><X size={22} /></button>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition"><X size={22} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Template Name</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Template Name</label>
             <input
               type="text"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               placeholder="e.g. Level 1 Flood Kit"
               value={templateName}
               onChange={e => setTemplateName(e.target.value)}
@@ -115,19 +121,19 @@ function RationTemplateForm({ items, onCancel, onCreate }) {
             <input
               id="is-active"
               type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-blue-600"
+              className="h-4 w-4 rounded border-gray-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500"
               checked={isActive}
               onChange={e => setIsActive(e.target.checked)}
             />
-            <label htmlFor="is-active" className="text-sm font-medium text-gray-700">
-              Set as Active Template <span className="text-gray-400 font-normal">(deactivates all others)</span>
+            <label htmlFor="is-active" className="text-sm font-medium text-gray-700 dark:text-slate-300">
+              Set as Active Template <span className="text-gray-400 dark:text-slate-500 font-normal">(deactivates all others)</span>
             </label>
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-semibold text-gray-700">Items Per Head</label>
-              <button type="button" onClick={addRow} className="text-blue-600 hover:text-blue-700 text-xs font-bold flex items-center gap-1">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300">Items Per Head</label>
+              <button type="button" onClick={addRow} className="text-blue-600 dark:text-blue-400 hover:text-blue-700 text-xs font-bold flex items-center gap-1">
                 <Plus size={14} /> Add Item
               </button>
             </div>
@@ -135,7 +141,7 @@ function RationTemplateForm({ items, onCancel, onCreate }) {
               {rationItems.map((row, index) => (
                 <div key={index} className="flex gap-2 items-center">
                   <select
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                     value={row.inventory_item_id}
                     onChange={e => updateRow(index, 'inventory_item_id', e.target.value)}
                     required
@@ -148,7 +154,7 @@ function RationTemplateForm({ items, onCancel, onCreate }) {
                   <input
                     type="number"
                     min="1"
-                    className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-20 px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                     value={row.quantity_per_head}
                     onChange={e => updateRow(index, 'quantity_per_head', e.target.value)}
                     placeholder="Qty"
@@ -163,8 +169,8 @@ function RationTemplateForm({ items, onCancel, onCreate }) {
             </div>
           </div>
 
-          <div className="flex gap-3 pt-2 border-t border-gray-100">
-            <button type="button" onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg font-semibold text-sm transition">
+          <div className="flex gap-3 pt-2 border-t border-gray-100 dark:border-slate-800">
+            <button type="button" onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-2.5 rounded-lg font-semibold text-sm transition">
               Cancel
             </button>
             <button type="submit" disabled={isSubmitting} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm transition disabled:opacity-60">
@@ -197,46 +203,49 @@ function AdjustStockModal({ item, onCancel, onAdjust }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-        <div className="flex justify-between items-center p-5 border-b border-gray-100">
-          <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+    <div 
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+    >
+      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800">
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
             <Package size={20} className="text-blue-500" /> Adjust Stock — {item.item_name}
           </h3>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition"><X size={22} /></button>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition"><X size={22} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-semibold">
+            <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-lg text-red-700 dark:text-red-300 text-xs font-semibold">
               {error}
             </div>
           )}
-          <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs space-y-1">
-            <div className="flex justify-between text-gray-600">
+          <div className="bg-gray-50 dark:bg-slate-950 p-3 rounded-lg border border-gray-200 dark:border-slate-800 text-xs space-y-1">
+            <div className="flex justify-between text-gray-600 dark:text-slate-400">
               <span>Current Physical Stock:</span>
-              <span className="font-bold text-gray-800">{item.total_stock} {item.unit_type}</span>
+              <span className="font-bold text-gray-800 dark:text-slate-200">{item.total_stock} {item.unit_type}</span>
             </div>
-            <div className="flex justify-between text-amber-700">
+            <div className="flex justify-between text-amber-700 dark:text-amber-400">
               <span>Reserved in Dispatch Orders:</span>
               <span className="font-bold">{reserved} {item.unit_type}</span>
             </div>
-            <div className="flex justify-between text-blue-700 pt-1 border-t border-gray-200">
+            <div className="flex justify-between text-blue-700 dark:text-blue-400 pt-1 border-t border-gray-200 dark:border-slate-800">
               <span>Available to Promise (ATP):</span>
               <span className="font-bold">{avail} {item.unit_type}</span>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">New Total Stock Count ({item.unit_type})</label>
-            <input type="number" min={reserved} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">New Total Stock Count ({item.unit_type})</label>
+            <input type="number" min={reserved} className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               value={stock} onChange={e => { setStock(e.target.value); setError(''); }} required autoFocus />
             {reserved > 0 && (
-              <p className="text-[11px] text-gray-400 mt-1">
+              <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">
                 Minimum {reserved} {item.unit_type} required to fulfill pending/in-transit reservations.
               </p>
             )}
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg font-semibold text-sm transition">Cancel</button>
+            <button type="button" onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-2.5 rounded-lg font-semibold text-sm transition">Cancel</button>
             <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm transition">Save Changes</button>
           </div>
         </form>
@@ -256,6 +265,20 @@ export default function InventoryManager() {
   const [adjustingItem, setAdjustingItem] = useState(null);
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [printingOrder, setPrintingOrder] = useState(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (showAddStockModal) setShowAddStockModal(false);
+        if (showTemplateForm) setShowTemplateForm(false);
+        if (adjustingItem) setAdjustingItem(null);
+        if (showDispatchModal) setShowDispatchModal(false);
+        if (printingOrder) setPrintingOrder(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showAddStockModal, showTemplateForm, adjustingItem, showDispatchModal, printingOrder]);
 
   // Fetch consolidated inventory and ration templates
   const { data: inventoryDashboardData, isLoading } = useQuery({
@@ -865,20 +888,23 @@ function CreateDispatchModal({ inventoryItems, shelters, onCancel, onCreated }) 
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-5 border-b border-gray-100">
-          <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+    <div 
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+    >
+      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800">
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
             <Truck size={20} className="text-blue-500" /> New Dispatch Order
           </h3>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition"><X size={22} /></button>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition"><X size={22} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-5">
-          {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
+          {error && <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 text-sm rounded-lg px-4 py-3">{error}</div>}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Destination Shelter</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Destination Shelter</label>
             <select
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               value={shelterId} onChange={e => setShelterId(e.target.value)} required
             >
               <option value="">Select a shelter…</option>
@@ -886,7 +912,7 @@ function CreateDispatchModal({ inventoryItems, shelters, onCancel, onCreated }) 
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Manifest</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Manifest</label>
             <div className="space-y-2">
               {manifest.map((row, i) => {
                 const selectedItem = inventoryItems.find(it => String(it.id) === String(row.inventory_item_id));
@@ -895,7 +921,7 @@ function CreateDispatchModal({ inventoryItems, shelters, onCancel, onCreated }) 
                 return (
                   <div key={i} className="flex gap-2 items-center">
                     <select
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                       value={row.inventory_item_id} onChange={e => updateRow(i, 'inventory_item_id', e.target.value)}
                     >
                       <option value="">Select item…</option>
@@ -910,7 +936,7 @@ function CreateDispatchModal({ inventoryItems, shelters, onCancel, onCreated }) 
                     </select>
                     <input
                       type="number" min="1" max={itemAvail !== null ? itemAvail : undefined} placeholder="Qty"
-                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-24 px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                       value={row.quantity} onChange={e => updateRow(i, 'quantity', e.target.value)}
                     />
                     {manifest.length > 1 && (
@@ -922,20 +948,20 @@ function CreateDispatchModal({ inventoryItems, shelters, onCancel, onCreated }) 
                 );
               })}
             </div>
-            <button type="button" onClick={addRow} className="mt-2 text-blue-600 text-sm font-semibold hover:underline flex items-center gap-1">
+            <button type="button" onClick={addRow} className="mt-2 text-blue-600 dark:text-blue-400 text-sm font-semibold hover:underline flex items-center gap-1">
               <Plus size={14} /> Add Item
             </button>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Instructions for Staff (optional)</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Instructions for Staff (optional)</label>
             <textarea
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               rows={2} placeholder="e.g. Priority delivery — shelter at 85% capacity"
               value={notes} onChange={e => setNotes(e.target.value)}
             />
           </div>
           <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg font-semibold text-sm transition">
+            <button type="button" onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-2.5 rounded-lg font-semibold text-sm transition">
               Cancel
             </button>
             <button type="submit" disabled={isSubmitting} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm transition disabled:opacity-60 flex items-center justify-center gap-2">

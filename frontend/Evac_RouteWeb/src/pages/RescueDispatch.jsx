@@ -32,6 +32,19 @@ export default function RescueDispatch() {
   const [stagingHandoverMission, setStagingHandoverMission] = useState(null); // Mission undergoing radio shoreline handover
   const [isAddUnitOpen, setIsAddUnitOpen] = useState(false); // Modal to register new rescue vehicle/unit
 
+  // Escape key handler to close active modals
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (dispatchModalData) setDispatchModalData(null);
+        if (stagingHandoverMission) setStagingHandoverMission(null);
+        if (isAddUnitOpen) setIsAddUnitOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [dispatchModalData, stagingHandoverMission, isAddUnitOpen]);
+
   // 1. Fetch rescue fleet units
   const { data: unitsData, refetch: refetchUnits } = useQuery({
     queryKey: ['rescue-units'],
@@ -725,7 +738,7 @@ function DispatchUnitModal({ initialData, availableUnits, shelters, onClose, onS
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-xs z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-slate-800">
         <div className="bg-red-600 text-white p-5 flex justify-between items-center">
           <div className="flex items-center gap-2.5">
@@ -905,8 +918,8 @@ function StagingHandoverModal({ mission, shelters, onClose, onConfirm, isSubmitt
   const [selectedPointId, setSelectedPointId] = useState(availablePoints[0]?.id || '');
 
   return (
-    <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-xs z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 dark:border-slate-800 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
         <div className="bg-teal-700 text-white p-5 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <span className="text-xl">🌊</span>
@@ -999,8 +1012,8 @@ function RegisterRescueUnitModal({ staff = [], onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-100 dark:border-slate-800 overflow-hidden">
+    <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-xs z-[100] flex items-center justify-center p-4 animate-in fade-in duration-150" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-100 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-5 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Truck size={20} />

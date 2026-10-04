@@ -11,6 +11,7 @@ export default function StaffScannerScreen() {
   const { user, logout } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [manualOnlyMode, setManualOnlyMode] = useState(false);
   
   const [scanned, setScanned] = useState(false);
   const [manualHash, setManualHash] = useState('');
@@ -107,7 +108,22 @@ export default function StaffScannerScreen() {
 
   const executeCheckIn = async () => {
     const assignedShelter = user?.assigned_shelter || user?.assignedShelter;
-    const targetShelterId = user?.assigned_shelter_id || assignedShelter?.id;
+    let targetShelterId = user?.assigned_shelter_id || assignedShelter?.id;
+    let sName = assignedShelter?.name;
+
+    if (!targetShelterId) {
+      try {
+        const shelterRes = await api.get('/shelters');
+        const list = shelterRes.data?.data || shelterRes.data || [];
+        if (list.length > 0) {
+          targetShelterId = list[0].id;
+          sName = list[0].name;
+        }
+      } catch (_e) {
+        // Fallback check below
+      }
+    }
+
     if (!targetShelterId) {
       setError("No evacuation shelter assigned to your marshal profile. Please contact CSWDO supervisor.");
       return;
@@ -122,17 +138,17 @@ export default function StaffScannerScreen() {
       });
 
       Vibration.vibrate([0, 200, 100, 200]);
-      const sName = response.data?.shelter?.name || assignedShelter?.name || 'Assigned Shelter';
+      const admittedShelter = response.data?.shelter?.name || sName || 'Assigned Shelter';
       setCheckInSuccess({
-        shelterName: sName,
-        message: `Resident admitted to ${sName}.`,
+        shelterName: admittedShelter,
+        message: `Resident admitted to ${admittedShelter}.`,
       });
 
       // Update scanResult state to checkedIn
       setScanResult(prev => ({
         ...prev,
         checkedIn: true,
-        shelter: sName,
+        shelter: admittedShelter,
       }));
     } catch (err) {
       Vibration.vibrate([0, 100, 100, 100]);
@@ -152,7 +168,7 @@ export default function StaffScannerScreen() {
     );
   }
 
-  if (!permission.granted) {
+  if (!permission.granted && !manualOnlyMode) {
     // Camera permissions are not granted yet
     return (
       <View style={styles.permissionContainer}>
@@ -163,6 +179,9 @@ export default function StaffScannerScreen() {
         </Text>
         <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
           <Text style={styles.permissionButtonText}>Enable Camera Access</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.manualEntryAltBtn} onPress={() => setManualOnlyMode(true)}>
+          <Text style={styles.manualEntryAltBtnText}>Enter QR Code Hash Manually</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.logoutButtonTop} onPress={() => setShowLogoutModal(true)}>
           <LogOut size={20} color={colors.dangerLight} />
@@ -204,25 +223,44 @@ export default function StaffScannerScreen() {
         {/* Camera Scanner or Status Details */}
         <View style={styles.displayCard}>
           {!scanned ? (
-            <View style={styles.cameraOuter}>
-              <View style={styles.cameraWrapper}>
-                <CameraView
-                  style={StyleSheet.absoluteFillObject}
-                  onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-                  barcodeScannerSettings={{
-                    barcodeTypes: ['qr'],
+            manualOnlyMode || !permission?.granted ? (
+              <View style={styles.manualModeNotice}>
+                <QrCode size={48} color={colors.primary} />
+                <Text style={styles.manualModeTitle}>Manual Input Mode Active</Text>
+                <Text style={styles.manualModeSubtitle}>
+                  Camera scanner is inactive. Type or paste resident QR code hash below to lookup status.
+                </Text>
+                <TouchableOpacity
+                  style={styles.enableCamSmallBtn}
+                  onPress={() => {
+                    setManualOnlyMode(false);
+                    requestPermission();
                   }}
-                />
-                {/* Aiming Reticle Overlay */}
-                <View style={styles.overlayFrame}>
-                  <View style={styles.reticleCornerTopLeft} />
-                  <View style={styles.reticleCornerTopRight} />
-                  <View style={styles.reticleCornerBottomLeft} />
-                  <View style={styles.reticleCornerBottomRight} />
-                </View>
+                >
+                  <Text style={styles.enableCamSmallBtnText}>Enable Camera Scanner</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.scannerHelperText}>Align resident&apos;s QR code within the frame</Text>
-            </View>
+            ) : (
+              <View style={styles.cameraOuter}>
+                <View style={styles.cameraWrapper}>
+                  <CameraView
+                    style={StyleSheet.absoluteFillObject}
+                    onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+                    barcodeScannerSettings={{
+                      barcodeTypes: ['qr'],
+                    }}
+                  />
+                  {/* Aiming Reticle Overlay */}
+                  <View style={styles.overlayFrame}>
+                    <View style={styles.reticleCornerTopLeft} />
+                    <View style={styles.reticleCornerTopRight} />
+                    <View style={styles.reticleCornerBottomLeft} />
+                    <View style={styles.reticleCornerBottomRight} />
+                  </View>
+                </View>
+                <Text style={styles.scannerHelperText}>Align resident&apos;s QR code within the frame</Text>
+              </View>
+            )
           ) : (
             <View style={styles.resultContainer}>
               {loading && (
@@ -355,7 +393,7 @@ export default function StaffScannerScreen() {
                       </TouchableOpacity>
                     ) : null}
 
-                    {(!scanResult.checkedIn || scanResult.rationClaimed || claimSuccess) && (
+                    {(!scanResult.checkedIn || (scanResult.rationClaimed && !claimSuccess)) && (
                       <View style={styles.statusWarningBox}>
                         <AlertTriangle size={18} color={colors.warning} />
                         <Text style={styles.warningBoxText}>
@@ -865,5 +903,56 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  manualEntryAltBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radii.md,
+    width: '100%',
+    marginTop: spacing.md,
+  },
+  manualEntryAltBtnText: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  manualModeNotice: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.md,
+  },
+  manualModeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  manualModeSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: spacing.md,
+  },
+  enableCamSmallBtn: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.sm,
+    backgroundColor: colors.primary,
+  },
+  enableCamSmallBtnText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

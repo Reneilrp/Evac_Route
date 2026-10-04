@@ -67,6 +67,16 @@ export default function QuickDispatchModal({
     }
   }, [dispatchMode, bundleCount, singleQty, selectedInvItem, shelter.name, shelter.barangay, activeTemplate.name, basePax, bufferPercent]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
+
   // Buffer and sizing controls
   const handleSelectBuffer = (pct) => {
     setBufferPercent(pct);
@@ -227,7 +237,10 @@ export default function QuickDispatchModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div 
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"
+    >
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto border border-gray-100 dark:border-slate-800">
         {/* Header */}
         <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gradient-to-r from-blue-50/70 to-indigo-50/50 dark:from-slate-950/60 dark:to-slate-900/60">
