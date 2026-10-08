@@ -281,14 +281,47 @@ function getHazardCostMultiplier(geometryCoords, hazardsWithBounds, transportati
         ) {
           const dist = getDistanceMeters(edgeLat, edgeLng, h.lat, h.lng);
           if (dist <= h.radius) {
-            if (h.hazard_type === 'earthquake' || h.hazard_type === 'maintenance' || h.hazard_type === 'siege' || h.hazard_type === 'chemical_spill' || h.severity_level === 'high') {
+            // Absolute blocks: Non-flood hazards
+            if (['earthquake', 'maintenance', 'siege', 'chemical_spill'].includes(h.hazard_type)) {
               return 99999;
             }
+            
+            // Phase 4: Susceptibility Zones vs Active Hazards Matrix
             if (h.hazard_type === 'flood') {
+              
+              // Passive Flood Susceptibility / Prone Areas (Not an active emergency)
+              if (h.is_fixed_flood_spot && !h.is_active) {
+                if (transportationMode === 'high_clearance_truck' || transportationMode === 'water_rescue') {
+                  return 1; // Heavy trucks/boats ignore passive prone areas entirely
+                }
+                // Standard ambulances and civilians get a slight 20% penalty to naturally avoid it if possible
+                maxMultiplier = Math.max(maxMultiplier, 1.2);
+                continue;
+              }
+
+              // Active Emergency Flood Hazards
+              if (h.severity_level === 'high') {
+                if (transportationMode === 'water_rescue') {
+                  return 1; // Boats can travel smoothly on high floods!
+                }
+                return 99999; // Standard ambulances and 4x4 trucks are completely blocked
+              }
+
               if (h.severity_level === 'medium') {
-                if (transportationMode === 'pedestrian' || transportationMode === '2_wheel') return 99999;
-                maxMultiplier = Math.max(maxMultiplier, 2.5);
-              } else if (h.severity_level === 'low') {
+                if (transportationMode === 'water_rescue') return 99999; // Water too shallow for boats
+                if (transportationMode === 'high_clearance_truck') {
+                  maxMultiplier = Math.max(maxMultiplier, 1.5); // 4x4s wade through slowly
+                  continue;
+                }
+                return 99999; // Civilians, pedestrians, medical ambulances blocked
+              }
+
+              if (h.severity_level === 'low') {
+                if (transportationMode === 'water_rescue') return 99999; // Water too shallow for boats
+                if (transportationMode === 'high_clearance_truck') return 1; // 4x4 ignores low floods completely
+                if (transportationMode === 'medical_ambulance' || transportationMode === 'car') {
+                  return 99999; // Standard ambulances/cars blocked
+                }
                 if (transportationMode === 'pedestrian') return 99999;
                 maxMultiplier = Math.max(maxMultiplier, 1.5);
               }

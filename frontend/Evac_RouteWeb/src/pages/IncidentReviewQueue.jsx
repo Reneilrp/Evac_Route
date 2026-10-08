@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 const STATUS_TABS = ['pending', 'approved', 'rejected'];
@@ -18,6 +19,7 @@ const SEVERITY_COLORS = {
 };
 
 export default function IncidentReviewQueue() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('pending');
   const [reviewModal, setReviewModal] = useState(null); // { id, action: 'approve'|'reject', evaluation }
   const [activePhotoModal, setActivePhotoModal] = useState(null); // URL of full photo
@@ -207,6 +209,14 @@ export default function IncidentReviewQueue() {
 
               {/* Actions Footer */}
               <div className="p-4 pt-0">
+                <div className="mb-3">
+                  <button
+                    onClick={() => navigate(`/admin/map?focusLat=${incident.latitude}&focusLng=${incident.longitude}`)}
+                    className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-xs border border-slate-200 dark:border-slate-700"
+                  >
+                    📍 Locate on Live Map
+                  </button>
+                </div>
                 {activeTab === 'pending' && (
                   <div className="flex gap-2">
                     <button

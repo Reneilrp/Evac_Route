@@ -225,10 +225,12 @@ export default function RescueMapScreen({ navigation, route }) {
 
   // Current Target Mode: 'victim' (during en_route / on_scene) or 'shelter' (during transporting)
   const isTransportPhase = currentMission?.status === 'transporting';
-  const activeTargetLngLat = isTransportPhase ? shelterLngLat : victimLngLat;
-  const activeTargetName = isTransportPhase
+  const incidentHazType = currentMission?.incident?.hazard_type;
+  const isSuppressionMission = ['building_fire', 'active_shooter', 'siege', 'chemical_spill'].includes(incidentHazType);
+  const activeTargetLngLat = isTransportPhase && !isSuppressionMission ? shelterLngLat : victimLngLat;
+  const activeTargetName = isTransportPhase && !isSuppressionMission
     ? currentMission?.target_shelter?.name || shelters[0]?.name || 'Baliwasan Gym Evacuation Center'
-    : currentMission?.victim_name || 'Distress Victim';
+    : (isSuppressionMission ? 'Hazard Epicenter' : (currentMission?.victim_name || 'Distress Victim'));
 
   // Route calculation state
   const [routeData, setRouteData] = useState(null);
@@ -725,7 +727,8 @@ export default function RescueMapScreen({ navigation, route }) {
               </View>
               <View style={styles.shelterCallout}>
                 <Text style={styles.shelterCalloutText} numberOfLines={1}>
-                  🏢 {currentMission?.target_shelter?.name || shelters[0]?.name || 'Baliwasan Gym'}
+                  {currentMission?.target_shelter?.type === 'primary' ? '⭐ ' : '🏠 '} 
+                  {currentMission?.target_shelter?.name || shelters[0]?.name || 'Baliwasan Gym'}
                 </Text>
               </View>
             </View>
@@ -1242,17 +1245,27 @@ export default function RescueMapScreen({ navigation, route }) {
               style={styles.modalActionPrimaryBtn}
               onPress={() => {
                 setShowVictimArrivalModal(false);
-                // Prompt user to extract and commence transport
-                updateStatusMutation.mutate({
-                  id: currentMission.id,
-                  status: 'transporting',
-                  target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
-                });
+                if (isSuppressionMission) {
+                  // If it's a suppression mission, it completes here. No shelter.
+                  updateStatusMutation.mutate({
+                    id: currentMission.id,
+                    status: 'completed',
+                  });
+                } else {
+                  // Standard Evacuation: Proceed to Shelter Transport Phase
+                  updateStatusMutation.mutate({
+                    id: currentMission.id,
+                    status: 'transporting',
+                    target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
+                  });
+                }
               }}
             >
               <Shield size={18} color={colors.white} />
               <Text style={styles.modalActionPrimaryText}>
-                LOAD VICTIMS &amp; COMMENCE SHELTER TRANSPORT
+                {isSuppressionMission 
+                  ? 'MARK THREAT NEUTRALIZED (COMPLETE)' 
+                  : 'LOAD VICTIMS & COMMENCE SHELTER TRANSPORT'}
               </Text>
             </TouchableOpacity>
 

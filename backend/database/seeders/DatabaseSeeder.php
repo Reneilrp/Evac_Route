@@ -47,6 +47,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Shelter Scanner 1',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
+            'operator_type' => 'scanner',
             'status' => 'active',
         ]);
 
@@ -54,6 +55,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'CSWDO Logistics Officer',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
+            'operator_type' => 'logistics',
             'status' => 'active',
         ]);
 
@@ -61,6 +63,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Rescue Unit Alpha Operator',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
+            'operator_type' => 'rescue',
             'status' => 'active',
         ]);
 
@@ -100,48 +103,18 @@ class DatabaseSeeder extends Seeder
             'capacity_persons' => 15,
         ]);
 
-        // 2. Create Shelters (in Zamboanga City area coords)
-        $shelter1 = Shelter::create([
-            'name' => 'Tetuan Covered Court',
-            'latitude' => 6.9185,
-            'longitude' => 122.0882,
-            'elevation_meters' => 12,
-            'amenities' => 'Overnight Beds, Drinking Water, Medical Station, Rations Desk',
-            'barangay' => 'Tetuan',
-            'max_capacity' => 150,
-            'current_occupancy' => 45,
-            'status' => 'open',
-            'facility_type' => 'evacuation_center',
-            'pinned_by' => $admin->id,
-        ]);
+        // 2. Call Official Shelters Seeder
+        $this->call(OfficialSheltersSeeder::class);
 
-        $shelter2 = Shelter::create([
-            'name' => 'Baliwasan Gym',
-            'latitude' => 6.9126,
-            'longitude' => 122.0573,
-            'elevation_meters' => 8,
-            'amenities' => 'Overnight Beds, Food Rations, First Aid',
-            'barangay' => 'Baliwasan',
-            'max_capacity' => 200,
-            'current_occupancy' => 18,
-            'status' => 'open',
-            'facility_type' => 'evacuation_center',
-            'pinned_by' => $admin->id,
-        ]);
+        // Fetch official shelters to use for the demo data below
+        $shelter1 = Shelter::where('barangay', 'like', '%Tetuan%')->where('type', 'secondary')->first() 
+            ?? Shelter::where('type', 'secondary')->first();
+            
+        $shelter2 = Shelter::where('barangay', 'like', '%Baliwasan%')->where('type', 'secondary')->first() 
+            ?? Shelter::where('type', 'secondary')->skip(1)->first();
+            
+        $shelter3 = Shelter::where('type', 'primary')->first(); // Fetch a primary cluster
 
-        $shelter3 = Shelter::create([
-            'name' => 'Tugbungan Elementary School',
-            'latitude' => 6.9312,
-            'longitude' => 122.0954,
-            'elevation_meters' => 15,
-            'amenities' => 'Classroom Beds, Water Tanks',
-            'barangay' => 'Tugbungan',
-            'max_capacity' => 100,
-            'current_occupancy' => 0,
-            'status' => 'closed',
-            'facility_type' => 'evacuation_center',
-            'pinned_by' => $admin->id,
-        ]);
 
         // 2b. Create Law Enforcement, Military, Hospital & Fire Station Facilities (REV-02 & REV-03)
         $police = Shelter::create([
@@ -281,7 +254,7 @@ class DatabaseSeeder extends Seeder
             'location' => \DB::getDriverName() !== 'sqlite' ? \DB::raw("ST_GeomFromText('POINT(6.9410 122.0780)', 4326)") : null,
             'radius_meters' => 500,
             'estimated_duration_hours' => 24,
-            'is_active' => false,
+            'is_active' => true,
             'disaster_category' => 'man_made',
             'hazard_type' => 'siege',
             'severity_level' => 'high',

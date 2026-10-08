@@ -88,6 +88,7 @@ export default function EvacMapScreen({ navigation, route }) {
 
   // Map style switcher
   const [mapStyleMode, setMapStyleMode] = useState('dark');
+  const [currentZoom, setCurrentZoom] = useState(14);
   const MAP_STYLE_URLS = {
     dark:      Mapbox?.StyleURL?.Dark || 'mapbox://styles/mapbox/dark-v11',
     satellite: Mapbox?.StyleURL?.SatelliteStreet || 'mapbox://styles/mapbox/satellite-streets-v12',
@@ -897,9 +898,29 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
 
 
 
-  const hazardsGeoJSON = {
+  const activeHazardsGeoJSON = {
     type: 'FeatureCollection',
-    features: filteredHazards.map(hazard => {
+    features: filteredHazards.filter(h => h.is_active && !h.is_fixed_flood_spot).map(hazard => {
+      const polygon = createCirclePolygon(
+        [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
+        parseFloat(hazard.radius_meters || 50)
+      );
+      return {
+        ...polygon,
+        properties: {
+          id: hazard.id,
+          name: hazard.name,
+          radius: parseFloat(hazard.radius_meters ?? 0),
+          hazard_type: hazard.hazard_type ?? 'hazard',
+          severity: hazard.severity_level ?? 'medium',
+        },
+      };
+    })
+  };
+
+  const susceptibleGeoJSON = {
+    type: 'FeatureCollection',
+    features: filteredHazards.filter(h => h.is_fixed_flood_spot && !h.is_active).map(hazard => {
       const polygon = createCirclePolygon(
         [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
         parseFloat(hazard.radius_meters || 50)
@@ -977,6 +998,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           logoEnabled={false}
           attributionEnabled={false}
           zoomEnabled={true}
+          onCameraChanged={(e) => setCurrentZoom(e.properties.zoom)}
           scrollEnabled={true}
           pitchEnabled={true}
           rotateEnabled={true}
@@ -1008,15 +1030,34 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
             const sLat = parseFloat(shelter.latitude);
             const sLng = parseFloat(shelter.longitude);
             
+            // --- OPTION 1A & 1B: Smart Map Rendering Rules ---
+            if (shelter.type === 'secondary' || shelter.facility_type === 'evacuation_center') {
+              // Rule 1: Hide secondary shelters when zoomed out (city-level overview)
+              if (currentZoom < 12) return null;
+              
+              // Rule 2: Hide secondary shelters that are too far (> 5km) from the resident
+              if (activeUserLocation) {
+                const distToUser = getDistanceMeters(activeUserLocation[1], activeUserLocation[0], sLat, sLng);
+                if (distToUser > 5000) return null; // Outside 5km radius
+              }
+            }
+            // -------------------------------------------------
+
             let pinBg = colors.successLight;
             let pinIcon = '🏠';
-            if (shelter.facility_type === 'safe_zone') { pinBg = '#16a34a'; pinIcon = '🛡️'; }
+
+            if (shelter.type === 'primary') {
+              pinBg = '#2563eb'; // Bright blue for primary clusters
+              pinIcon = '⭐';
+            } else if (shelter.facility_type === 'safe_zone') { pinBg = '#16a34a'; pinIcon = '🛡️'; }
             else if (shelter.facility_type === 'assembly_point') { pinBg = '#f97316'; pinIcon = '🚩'; }
             else if (shelter.facility_type === 'police_station' || shelter.facility_type === 'military_base') { pinBg = '#1d4ed8'; pinIcon = '👮'; }
             else if (shelter.facility_type === 'hospital') { pinBg = '#dc2626'; pinIcon = '🏥'; }
             else if (shelter.facility_type === 'fire_station') { pinBg = '#ea580c'; pinIcon = '🚒'; }
 
-            if (shelter.status === 'closed') pinBg = '#64748b';
+            if (shelter.status === 'closed') {
+              pinBg = '#64748b'; // Gray out closed shelters (like secondary courts)
+            }
 
             return (
               <Mapbox.PointAnnotation
@@ -1045,8 +1086,8 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
             );
           })}
 
-        {/* Hazards: Real Geographical Meter Polygon Fill & Crisp Red Line Outline */}
-        <Mapbox.ShapeSource id="hazardsSource" shape={hazardsGeoJSON}>
+        {/* Active Emergency Hazards: Solid Red Polygon Fill & Crisp Red Line Outline */}
+        <Mapbox.ShapeSource id="hazardsSource" shape={activeHazardsGeoJSON}>
           <Mapbox.FillLayer
             id="hazardsFillLayer"
             style={{
@@ -1083,6 +1124,25 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
               textTranslate: [0, -20],
               textFont: ['DIN Pro Bold', 'Arial Unicode MS Bold'],
               textTransform: 'uppercase',
+            }}
+          />
+        </Mapbox.ShapeSource>
+
+        {/* Flood Susceptibility Zones (Prone Areas / Passive): Dashed Light Blue */}
+        <Mapbox.ShapeSource id="susceptibleSource" shape={susceptibleGeoJSON}>
+          <Mapbox.FillLayer
+            id="susceptibleFillLayer"
+            style={{
+              fillColor: '#38bdf8',
+              fillOpacity: 0.15,
+            }}
+          />
+          <Mapbox.LineLayer
+            id="susceptibleOutlineLayer"
+            style={{
+              lineColor: '#7dd3fc',
+              lineWidth: 2,
+              lineDasharray: [4, 4],
             }}
           />
         </Mapbox.ShapeSource>
@@ -2217,7 +2277,10 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
               {activeSubTab === 'info' ? (
                 <View style={styles.routingInfo}>
                   <Text style={[styles.destinationLabel, isHighContrast && { color: '#FFFF00', fontSize: 11, fontWeight: '900' }]}>NEAREST OPEN SHELTER:</Text>
-                  <Text style={[styles.destinationName, isHighContrast && { color: '#FFFF00', fontSize: 18, fontWeight: '900' }]}>{nearestShelter.name}</Text>
+                  <Text style={[styles.destinationName, isHighContrast && { color: '#FFFF00', fontSize: 18, fontWeight: '900' }]}>
+                    {nearestShelter.type === 'primary' ? '⭐ ' : '🏠 '}
+                    {nearestShelter.name}
+                  </Text>
 
                   {/* ETA + Distance */}
                   <Text style={[styles.etaText, isHighContrast && { color: '#FFFF00', fontSize: 15, fontWeight: '900' }]}>
@@ -2496,10 +2559,10 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           <View style={{ gap: 10 }}>
             <View style={{ backgroundColor: '#1e293b', padding: 10, borderRadius: 10 }}>
               <Text style={{ color: '#22c55e', fontSize: 12, fontWeight: 'bold', marginBottom: 2 }}>
-                🏠 Evacuation Centers & Safe Zones: {shelters.length} Open
+                ⭐ {shelters.filter(s => s.type === 'primary').length} Primary Clusters & 🏠 {shelters.filter(s => s.type === 'secondary').length} Secondary Courts
               </Text>
               <Text style={{ color: '#cbd5e1', fontSize: 11 }}>
-                All active shelters in Zamboanga City are equipped with medical stations and food rations.
+                Primary clusters are fully-equipped disaster hubs. Secondary courts open during overflow.
               </Text>
             </View>
 

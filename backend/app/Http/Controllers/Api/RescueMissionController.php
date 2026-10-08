@@ -298,20 +298,22 @@ class RescueMissionController extends Controller
             'situation' => 'nullable|string|max:1000',
             'contact_number' => 'nullable|string|max:50',
             'name' => 'nullable|string|max:255',
+            'hazard_type' => 'nullable|string|max:50',
         ]);
 
         $user = $request->user();
         $callerName = $validated['name'] ?? $user?->name ?? 'Stranded Citizen';
         $contactNumber = $validated['contact_number'] ?? $user?->familyProfile?->contact_number ?? null;
+        $hazardType = $validated['hazard_type'] ?? 'flood';
 
         $incident = PendingIncident::create([
             'reported_by' => $user ? $user->id : 1, // Fallback to system admin if guest
             'name' => "EMERGENCY SOS: {$callerName} ({$validated['headcount']} people)",
             'latitude' => $validated['latitude'],
             'longitude' => $validated['longitude'],
-            'hazard_type' => 'flood',
+            'hazard_type' => $hazardType,
             'severity_level' => 'high',
-            'description' => $validated['situation'] ?? 'Emergency water rescue requested via Mobile App.',
+            'description' => $validated['situation'] ?? 'Emergency SOS dispatch requested via Mobile App.',
             'status' => 'pending',
         ]);
 

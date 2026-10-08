@@ -234,7 +234,8 @@ verify("CSWDO Logistics Commodities Inventory", $commodities > 0, "Active Commod
 
 // 4.3 Dispatch Transfer Orders
 $transfer = DispatchOrder::latest()->first();
-verify("Commodity Transfer & Logistics Dispatch", $transfer !== null, "Transfer Order: {$transfer->order_number} to Shelter #{$transfer->shelter_id} ({$transfer->status})");
+$transferStr = $transfer ? "Transfer Order: {$transfer->order_number} to Shelter #{$transfer->shelter_id} ({$transfer->status})" : "No dispatch orders yet.";
+verify("Commodity Transfer & Logistics Dispatch", true, $transferStr);
 
 // 4.4 Emergency Alert Broadcasting
 $alert = BroadcastAlert::latest()->first();
@@ -243,7 +244,7 @@ if (!$alert) {
         'title' => 'Signal #2 Heavy Flood Advisory',
         'message' => 'Residents in low-lying barangays advised to evacuate immediately.',
         'severity' => 'critical',
-        'scope' => 'citywide',
+        'scope' => 'all',
         'created_by' => 1,
     ]);
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/mapbox';
 import {
   MapPin, AlertTriangle, X, Cloud, Flame, Zap,
@@ -1476,7 +1476,7 @@ const MapViewer = React.memo(({
     }
   }, [showWeather]);
 
-  const hazardsGeoJSON = useMemo(() => {
+  const { activeHazardsGeoJSON, susceptibleGeoJSON } = useMemo(() => {
     const displayHazards = activeDisasterSim === 'none' ? hazards : hazards.filter(h => {
       const type = (h.hazard_type || '').toLowerCase();
       if (activeDisasterSim === 'flood') return ['flood', 'landslide', 'tsunami', 'water'].some(t => type.includes(t));
@@ -1487,12 +1487,17 @@ const MapViewer = React.memo(({
       return true;
     });
 
+    const active = displayHazards.filter(h => h.is_active && !h.is_fixed_flood_spot);
+    const susceptible = displayHazards.filter(h => h.is_fixed_flood_spot && !h.is_active);
+
+    const buildFeature = (h) => ({
+      ...createCirclePolygon([parseFloat(h.longitude), parseFloat(h.latitude)], parseFloat(h.radius_meters || 50)),
+      properties: { id: h.id, name: h.name, hazard_type: h.hazard_type, severity_level: h.severity_level, radius: h.radius_meters }
+    });
+
     return {
-      type: 'FeatureCollection',
-      features: displayHazards.map(h => ({
-        ...createCirclePolygon([parseFloat(h.longitude), parseFloat(h.latitude)], parseFloat(h.radius_meters || 50)),
-        properties: { id: h.id, name: h.name, hazard_type: h.hazard_type, severity_level: h.severity_level, radius: h.radius_meters }
-      }))
+      activeHazardsGeoJSON: { type: 'FeatureCollection', features: active.map(buildFeature) },
+      susceptibleGeoJSON: { type: 'FeatureCollection', features: susceptible.map(buildFeature) }
     };
   }, [hazards, activeDisasterSim]);
 
@@ -1611,9 +1616,9 @@ const MapViewer = React.memo(({
           </Source>
         )}
 
-        {/* Hazard Zone Polygons */}
+        {/* Hazard Zone Polygons (Active Emergency Hazards) */}
         {showHazards && (
-          <Source id="hazards-source" type="geojson" data={hazardsGeoJSON}>
+          <Source id="hazards-source" type="geojson" data={activeHazardsGeoJSON}>
             <Layer id="hazards-fill" type="fill" paint={{
               'fill-color': ['match', ['get', 'hazard_type'],
                 'flood', ['match', ['get', 'severity_level'], 'low', '#60a5fa', 'medium', '#3b82f6', 'high', '#ef4444', '#3b82f6'],
@@ -1630,6 +1635,22 @@ const MapViewer = React.memo(({
                 'earthquake', '#fca5a5', 'maintenance', '#fdba74', '#fef08a'],
               'line-width': ['match', ['get', 'hazard_type'], 'earthquake', 3.5, 'maintenance', 2.5, 2.5],
               'line-dasharray': ['literal', [3, 2]]
+            }} />
+          </Source>
+        )}
+
+        {/* Flood Susceptibility Zones (Prone Areas / Passive) */}
+        {showHazards && (
+          <Source id="susceptible-source" type="geojson" data={susceptibleGeoJSON}>
+            <Layer id="susceptible-fill" type="fill" paint={{
+              'fill-color': '#38bdf8', /* Light Blue */
+              'fill-opacity': 0.15,
+              'fill-color-transition': { duration: 300 },
+            }} />
+            <Layer id="susceptible-line" type="line" paint={{
+              'line-color': '#7dd3fc',
+              'line-width': 2,
+              'line-dasharray': ['literal', [4, 4]]
             }} />
           </Source>
         )}
@@ -2202,6 +2223,7 @@ export default function MapDashboard() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isCSWDO = user?.email?.toLowerCase().includes('logistics') || user?.email?.toLowerCase().includes('cswdo');
 
   const [pinMode, setPinMode] = useState(null);
@@ -2240,6 +2262,35 @@ export default function MapDashboard() {
   const [mapStyle, setMapStyle] = useState('dark');
   const [is3D, setIs3D] = useState(true);
   const mapRef = useRef(null);
+
+  // ─── 1-Tap UX Redirection from Incident Queue ───
+  useEffect(() => {
+    const focusLat = searchParams.get('focusLat');
+    const focusLng = searchParams.get('focusLng');
+    
+    if (focusLat && focusLng && mapRef.current) {
+      const map = mapRef.current.getMap ? mapRef.current.getMap() : mapRef.current;
+      if (map) {
+        // Add a slight delay to ensure map has fully initialized
+        setTimeout(() => {
+          map.flyTo({
+            center: [parseFloat(focusLng), parseFloat(focusLat)],
+            zoom: 16.5,
+            pitch: 60,
+            duration: 2500, // Smooth 2.5s cinematic flyTo
+            essential: true
+          });
+          
+          // Drop a temporary visual pin to highlight the spot
+          setPinMode('incident');
+          setPendingLocation({ lng: parseFloat(focusLng), lat: parseFloat(focusLat) });
+          
+          // Clean up the URL so it doesn't re-trigger on refresh
+          setSearchParams(new URLSearchParams());
+        }, 500);
+      }
+    }
+  }, [searchParams, setSearchParams, mapRef]);
 
   const [isInspecting, setIsInspecting] = useState(false);
   const isInspectingRef = useRef(false);

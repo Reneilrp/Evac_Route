@@ -261,6 +261,8 @@ export default function RescueDutyScreen({ navigation }) {
   };
 
   const isTransportPhase = currentMission?.status === 'transporting';
+  const incidentHazType = currentMission?.incident?.hazard_type;
+  const isSuppressionMission = ['building_fire', 'active_shooter', 'siege', 'chemical_spill'].includes(incidentHazType);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -413,14 +415,18 @@ export default function RescueDutyScreen({ navigation }) {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.heroCtaTitle}>
-                  {isTransportPhase
-                    ? 'START ROUTE TO SHELTER (MAP)'
-                    : 'START ROUTE TO FAMILY (MAP)'}
+                  {isSuppressionMission 
+                    ? 'START TACTICAL ROUTING (MAP)' 
+                    : (isTransportPhase
+                      ? 'START ROUTE TO SHELTER (MAP)'
+                      : 'START ROUTE TO FAMILY (MAP)')}
                 </Text>
                 <Text style={styles.heroCtaSub}>
-                  {isTransportPhase
-                    ? `Navigating to ${currentMission.target_shelter?.name || 'Safe Shelter'}`
-                    : `Turn-by-turn routing to ${currentMission.victim_name || 'Target'}`}
+                  {isSuppressionMission
+                    ? `Navigating to Incident Epicenter`
+                    : (isTransportPhase
+                      ? `Navigating to ${currentMission.target_shelter?.name || 'Safe Shelter'}`
+                      : `Turn-by-turn routing to ${currentMission.victim_name || 'Target'}`)}
                 </Text>
               </View>
               <ChevronRight size={22} color="#ffffff" />
@@ -430,7 +436,9 @@ export default function RescueDutyScreen({ navigation }) {
             <View style={styles.familyCard}>
               <View style={styles.cardHeaderRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cardEyebrow}>DISTRESS VICTIM / FAMILY</Text>
+                  <Text style={styles.cardEyebrow}>
+                    {isSuppressionMission ? 'TARGET INCIDENT' : 'DISTRESS VICTIM / FAMILY'}
+                  </Text>
                   <Text style={styles.victimName} numberOfLines={1}>
                     {currentMission.victim_name}
                   </Text>
@@ -438,7 +446,9 @@ export default function RescueDutyScreen({ navigation }) {
 
                 <View style={styles.headcountBadge}>
                   <Users size={14} color="#38bdf8" />
-                  <Text style={styles.headcountText}>{currentMission.headcount} Persons</Text>
+                  <Text style={styles.headcountText}>
+                    {isSuppressionMission ? 'Hostile Area' : `${currentMission.headcount} Persons`}
+                  </Text>
                 </View>
               </View>
 

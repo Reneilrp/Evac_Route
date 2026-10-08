@@ -64,3 +64,11 @@ auth.json
 Homestead.json
 Homestead.yaml
 _ide_helper.php
+
+# Python Scripts, Virtualenv & Guidance Artifacts
+venv/
+guidelines/
+extract_shelters.py
+generate_shelter_excel.py
+geocode_shelters.py
+

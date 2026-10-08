@@ -87,12 +87,36 @@ export default function ReportIncidentScreen({ navigation }) {
     setConfirmModal(prev => ({ ...prev, visible: false, loading: false }));
   };
 
-  const handleTriggerSOS = () => {
+  const handleTriggerSOS = (sosType = 'flood') => {
+    
+    let modalTitle = 'Request Emergency Rescue?';
+    let modalMessage = 'This will broadcast an urgent Search & Rescue SOS to CDRRMO EOC with your live GPS location for immediate boat/truck dispatch.';
+    let detailMsg = 'Quick Response Teams (QRT) will be mobilized.';
+    let situationMsg = 'Emergency flood rescue requested via Resident Mobile App SOS button.';
+    let successTitle = '🚨 RESCUE SOS DISPATCHED';
+    let successMessage = 'Your distress signal has been received by CDRRMO EOC. Quick Response Teams (QRT) have been alerted and will be dispatched to your location.';
+
+    if (sosType === 'building_fire') {
+      modalTitle = 'Call Fire Department?';
+      modalMessage = 'This will immediately alert the Fire Department to dispatch a firetruck directly to your live GPS coordinates.';
+      detailMsg = 'Fire Suppression units will be mobilized.';
+      situationMsg = 'Emergency Fire Response requested via Mobile App SOS.';
+      successTitle = '🚒 FIRETRUCK DISPATCHED';
+      successMessage = 'Your fire alert has been received. Firetrucks are en route to your location.';
+    } else if (sosType === 'active_shooter' || sosType === 'siege') {
+      modalTitle = 'Report Security Threat?';
+      modalMessage = 'This will silently alert the LGU and Police Tactical Units to a hostile situation at your live GPS coordinates.';
+      detailMsg = 'Police/SWAT units will be mobilized.';
+      situationMsg = 'Emergency Security Threat/Siege reported via Mobile App SOS.';
+      successTitle = '🚓 POLICE DISPATCHED';
+      successMessage = 'Security forces have been alerted to your location. Stay hidden and safe.';
+    }
+
     setConfirmModal({
       visible: true,
-      title: 'Request Emergency Rescue?',
-      message: 'This will broadcast an urgent Search & Rescue SOS to CDRRMO EOC with your live GPS location for immediate boat/truck dispatch.',
-      detail: 'Quick Response Teams (QRT) will be mobilized.',
+      title: modalTitle,
+      message: modalMessage,
+      detail: detailMsg,
       confirmText: 'CONFIRM & SEND SOS',
       cancelText: 'Cancel',
       variant: 'danger',
@@ -113,17 +137,14 @@ export default function ReportIncidentScreen({ navigation }) {
           await api.post('/rescue/sos', {
             latitude: lat,
             longitude: lng,
-            headcount: 4,
-            situation: 'Emergency flood rescue requested via Resident Mobile App SOS button.',
+            headcount: 1,
+            situation: situationMsg,
+            hazard_type: sosType, // Pass the specific type to the backend!
           });
 
           queryClient.invalidateQueries({ queryKey: ['my-incidents'] });
           closeConfirmModal();
-          Alert.alert(
-            '🚨 RESCUE SOS DISPATCHED',
-            'Your distress signal has been received by CDRRMO EOC. Quick Response Teams (QRT) have been alerted and will be dispatched to your location.',
-            [{ text: 'OK' }]
-          );
+          Alert.alert(successTitle, successMessage, [{ text: 'OK' }]);
         } catch (err) {
           closeConfirmModal();
           Alert.alert('Error', err?.response?.data?.message || 'Failed to transmit SOS signal.');
@@ -642,7 +663,7 @@ export default function ReportIncidentScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Emergency Rescue SOS Banner */}
+      {/* --- EMERGENCY SOS QUICK ACTIONS --- */}
       <View style={{
         marginHorizontal: 16,
         marginTop: 12,
@@ -652,41 +673,82 @@ export default function ReportIncidentScreen({ navigation }) {
         borderColor: '#dc2626',
         borderRadius: 14,
         padding: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
         elevation: 3,
       }}>
-        <View style={{ flex: 1, paddingRight: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-            <LifeBuoy color="#fca5a5" size={16} />
-            <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 }}>
-              TRAPPED OR NEED RESCUE?
-            </Text>
-          </View>
-          <Text style={{ color: '#fecaca', fontSize: 11, lineHeight: 15 }}>
-            Send an instant emergency distress SOS with your exact GPS to CDRRMO Quick Response Teams.
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, justifyContent: 'center' }}>
+          <LifeBuoy color="#fca5a5" size={16} />
+          <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '900', letterSpacing: 0.5, textAlign: 'center' }}>
+            URGENT EMERGENCY SOS DISPATCH
           </Text>
         </View>
 
-        <TouchableOpacity
-          onPress={handleTriggerSOS}
-          disabled={isSendingSOS}
-          style={{
-            backgroundColor: '#dc2626',
-            paddingVertical: 10,
-            paddingHorizontal: 14,
-            borderRadius: 10,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: '#fca5a5',
-          }}
-        >
-          <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '900', letterSpacing: 0.5 }}>
-            {isSendingSOS ? 'SENDING...' : '🚨 CALL SOS'}
-          </Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'column', gap: 8 }}>
+          {/* Rescue Evacuation Button */}
+          <TouchableOpacity
+            onPress={() => handleTriggerSOS('flood')}
+            disabled={isSendingSOS}
+            style={{
+              backgroundColor: '#dc2626',
+              paddingVertical: 10,
+              borderRadius: 10,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              borderWidth: 1,
+              borderColor: '#fca5a5',
+            }}
+          >
+            <Text style={{ fontSize: 16 }}>🚑</Text>
+            <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '900', letterSpacing: 0.5 }}>
+              {isSendingSOS ? 'SENDING...' : 'REQUEST MEDICAL / EVACUATION'}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {/* Firetruck Button */}
+            <TouchableOpacity
+              onPress={() => handleTriggerSOS('building_fire')}
+              disabled={isSendingSOS}
+              style={{
+                flex: 1,
+                backgroundColor: '#ea580c',
+                paddingVertical: 10,
+                borderRadius: 10,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                borderWidth: 1,
+                borderColor: '#fdba74',
+              }}
+            >
+              <Text style={{ fontSize: 14 }}>🚒</Text>
+              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '900' }}>CALL FIRE DEPT</Text>
+            </TouchableOpacity>
+
+            {/* Police Button */}
+            <TouchableOpacity
+              onPress={() => handleTriggerSOS('active_shooter')}
+              disabled={isSendingSOS}
+              style={{
+                flex: 1,
+                backgroundColor: '#1d4ed8',
+                paddingVertical: 10,
+                borderRadius: 10,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                borderWidth: 1,
+                borderColor: '#93c5fd',
+              }}
+            >
+              <Text style={{ fontSize: 14 }}>🚓</Text>
+              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '900' }}>CALL POLICE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
 
       {/* Archive Active Notification Bar (shown when viewing archive) */}

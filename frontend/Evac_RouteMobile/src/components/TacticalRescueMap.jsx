@@ -370,7 +370,8 @@ export default function TacticalRescueMap({
                 </View>
                 <View style={styles.shelterCallout}>
                   <Text style={styles.shelterCalloutText} numberOfLines={1}>
-                    🏢 {shelterName}
+                    {shelterName?.includes('Cluster') ? '⭐ ' : '🏠 '} 
+                    {shelterName}
                   </Text>
                 </View>
               </View>

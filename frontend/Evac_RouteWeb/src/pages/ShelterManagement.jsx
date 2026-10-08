@@ -207,15 +207,17 @@ export default function ShelterManagement() {
       </div>
 
       {/* Filter / Search Bar */}
-      <div className="relative w-64 mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-        <input 
-          type="text" 
-          placeholder="Search shelters..." 
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+      <div className="flex items-center gap-4 mb-6">
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input 
+            type="text" 
+            placeholder="Search shelters..." 
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
       </div>
 
       {/* Tab 1: Shelters & Capacities */}
@@ -266,7 +268,11 @@ export default function ShelterManagement() {
                           <td className="py-4 px-6">
                             <div className="font-semibold text-gray-800 dark:text-slate-200 flex items-center gap-2 flex-wrap">
                               <MapPin size={16} className="text-gray-400 dark:text-slate-500" />
-                              <span>{shelter.name}</span>
+                              {shelter.type === 'primary' ? (
+                                <span className="font-bold flex items-center gap-1">⭐ <span className="text-blue-600 dark:text-blue-400">{shelter.name}</span></span>
+                              ) : (
+                                <span>{shelter.name}</span>
+                              )}
                               {shelter.facility_type === 'police_station' && (
                                 <span className="text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                                   👮 Police HQ
