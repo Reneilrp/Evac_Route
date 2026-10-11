@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import toast, { Toaster } from 'react-hot-toast';
 import { Bell, ShieldAlert, CheckCircle, TrendingUp, AlertCircle, AlertTriangle, RefreshCw, LayoutDashboard, Map, Building2, Package, FileText, Flag, Users, LogOut, Sun, Moon, Contact, Settings, X, User, MapPin, Volume2, Database, Megaphone, LifeBuoy, Activity } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import RoleGuard from './components/common/RoleGuard';
 import api from './services/api';
@@ -133,22 +134,7 @@ function DashboardLayout({ children }) {
     return () => clearInterval(interval);
   }, [checkTimeDrift]);
 
-  const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem('theme') === 'dark' || 
-      (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  });
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [darkMode]);
-
-  const toggleDarkMode = () => setDarkMode(prev => !prev);
+  const { darkMode, toggleDarkMode } = useTheme();
 
   const handleConfirmLogout = async () => {
     setIsLogoutOpen(false);
@@ -882,7 +868,8 @@ const PageLoader = () => (
 
 function App() {
   return (
-    <AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
       <Toaster 
         position="top-right" 
         reverseOrder={false}
@@ -954,6 +941,7 @@ function App() {
         </Suspense>
       </Router>
     </AuthProvider>
+    </ThemeProvider>
   );
 }
 

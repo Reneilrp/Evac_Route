@@ -5,7 +5,7 @@
  * Import from this file instead of hardcoding values in style files.
  */
 
-export const colors = {
+export const darkColors = {
   // Backgrounds
   background:       '#0f172a',
   surface:          '#1e293b',
@@ -61,6 +61,68 @@ export const colors = {
   hazardStroke:     'rgba(239, 68, 68, 0.8)',
   routeLine:        '#eab308',
 };
+
+export const lightColors = {
+  // Backgrounds
+  background:       '#f8fafc',
+  surface:          '#ffffff',
+  surfaceElevated:  '#f1f5f9',
+  
+  // Borders
+  border:           '#e2e8f0',
+  borderLight:      '#cbd5e1',
+
+  // Text
+  textPrimary:      '#0f172a',
+  textSecondary:    '#475569',
+  textMuted:        '#94a3b8',
+  textInverse:      '#ffffff',
+
+  // Brand / Primary
+  primary:          '#0284c7',
+  primaryDark:      '#0369a1',
+  primaryDarker:    '#075985',
+  primaryGlow:      'rgba(2, 132, 199, 0.25)',
+
+  // Semantic: Danger
+  danger:           '#dc2626',
+  dangerLight:      '#ef4444',
+  dangerBg:         '#fee2e2',
+  dangerText:       '#991b1b',
+  dangerGlow:       'rgba(220, 38, 38, 0.3)',
+
+  // Semantic: Success
+  success:          '#16a34a',
+  successLight:     '#22c55e',
+  successBg:        '#dcfce7',
+  successText:      '#166534',
+
+  // Semantic: Warning
+  warning:          '#d97706',
+  warningLight:     '#f59e0b',
+  warningBg:        '#fef3c7',
+  warningText:      '#92400e',
+
+  // Overlays
+  overlayDark:      'rgba(248, 250, 252, 0.95)',
+  overlayMedium:    'rgba(255, 255, 255, 0.95)',
+  overlayLight:     'rgba(0, 0, 0, 0.4)',
+
+  // Misc
+  white:            '#ffffff',
+  black:            '#000000',
+  transparent:      'transparent',
+
+  // Hazard map specific
+  hazardFill:       'rgba(239, 68, 68, 0.3)',
+  hazardStroke:     'rgba(239, 68, 68, 0.7)',
+  routeLine:        '#d97706',
+};
+
+// Default export backward compatibility (dark mode default)
+export const colors = darkColors;
+
+export const getThemeColors = (isDarkMode) => (isDarkMode ? darkColors : lightColors);
 
 export const spacing = {
   xs:   4,

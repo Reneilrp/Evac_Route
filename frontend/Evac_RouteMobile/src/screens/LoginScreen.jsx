@@ -12,13 +12,15 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { ShieldAlert, Eye, EyeOff, Sparkles } from 'lucide-react-native';
+import { ShieldAlert, Eye, EyeOff, Sparkles, Sun, Moon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import styles from '../styles/LoginScreen.styles';
 
 export default function LoginScreen({ navigation }) {
   const { loginWithCredentials } = useAuth();
+  const { isDarkMode, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const passwordInputRef = useRef(null);
 
@@ -84,12 +86,32 @@ export default function LoginScreen({ navigation }) {
 
   const backgroundColor = bgAnimRef.current.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#090d16', '#0f172a'],
+    outputRange: isDarkMode ? ['#090d16', '#0f172a'] : ['#f1f5f9', '#f8fafc'],
   });
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <Animated.View style={[styles.container, { backgroundColor }]}>
+        {/* Top Right Dark/Light Theme Icon Button */}
+        <View style={[styles.topRightThemeContainer, { top: insets.top + (Platform.OS === 'ios' ? 8 : 14) }]}>
+          <TouchableOpacity
+            onPress={toggleTheme}
+            activeOpacity={0.7}
+            style={[
+              styles.themeToggleBtn,
+              isDarkMode ? styles.themeToggleBtnDark : styles.themeToggleBtnLight,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {isDarkMode ? (
+              <Sun size={20} color="#fbbf24" />
+            ) : (
+              <Moon size={20} color="#1e293b" />
+            )}
+          </TouchableOpacity>
+        </View>
+
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoid}
@@ -97,7 +119,7 @@ export default function LoginScreen({ navigation }) {
           <ScrollView
             contentContainerStyle={[
               styles.scrollContent,
-              { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 20 },
+              { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 },
             ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -107,64 +129,66 @@ export default function LoginScreen({ navigation }) {
               <Animated.View
                 style={[
                   styles.iconRing,
+                  !isDarkMode && styles.iconRingLight,
                   {
                     transform: [{ translateY: floatAnimRef.current }],
                   },
                 ]}
               >
-                <ShieldAlert size={48} color="#38bdf8" />
+                <ShieldAlert size={48} color={isDarkMode ? "#38bdf8" : "#0284c7"} />
               </Animated.View>
-              <Text style={styles.title}>EVAC-ROUTE</Text>
-              <Text style={styles.subtitle}>Emergency Evacuation System</Text>
-              <View style={styles.cityBadge}>
-                <Text style={styles.cityLabel}>ZAMBOANGA CITY</Text>
+              <Text style={[styles.title, !isDarkMode && styles.titleLight]}>EVAC-ROUTE</Text>
+              <Text style={[styles.subtitle, !isDarkMode && styles.subtitleLight]}>Emergency Evacuation System</Text>
+              <View style={[styles.cityBadge, !isDarkMode && styles.cityBadgeLight]}>
+                <Text style={[styles.cityLabel, !isDarkMode && styles.cityLabelLight]}>ZAMBOANGA CITY</Text>
               </View>
             </View>
 
             {/* Auth Card */}
-            <Animated.View style={[styles.card, { opacity: fadeAnimRef.current }]}>
+            <Animated.View style={[styles.card, !isDarkMode && styles.cardLight, { opacity: fadeAnimRef.current }]}>
               {/* Quick Test Account Select */}
               <View style={styles.quickChipsHeader}>
-                <Text style={styles.quickChipsTitle}>Quick Select Test Account</Text>
-                <Sparkles size={12} color="#64748b" />
+                <Text style={[styles.quickChipsTitle, !isDarkMode && styles.quickChipsTitleLight]}>Quick Select Test Account</Text>
+                <Sparkles size={12} color={isDarkMode ? "#64748b" : "#94a3b8"} />
               </View>
 
               <View style={styles.quickChipsRow}>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => handleQuickSelect('rescue1@lgu.gov.ph', 'password')}
-                  style={[styles.quickChip, styles.quickChipRescue]}
+                  style={[styles.quickChip, styles.quickChipRescue, !isDarkMode && styles.quickChipRescueLight]}
                 >
-                  <Text style={[styles.quickChipText, { color: '#f87171' }]}>🚤 Rescue QRT</Text>
+                  <Text style={[styles.quickChipText, { color: isDarkMode ? '#f87171' : '#dc2626' }]}>🚤 Rescue QRT</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => handleQuickSelect('scanner1@lgu.gov.ph', 'password')}
-                  style={[styles.quickChip, styles.quickChipScanner]}
+                  style={[styles.quickChip, styles.quickChipScanner, !isDarkMode && styles.quickChipScannerLight]}
                 >
-                  <Text style={[styles.quickChipText, { color: '#38bdf8' }]}>📋 Scanner</Text>
+                  <Text style={[styles.quickChipText, { color: isDarkMode ? '#38bdf8' : '#0284c7' }]}>📋 Scanner</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => handleQuickSelect('pheinz@evacroute.local', 'password')}
-                  style={[styles.quickChip, styles.quickChipResident]}
+                  style={[styles.quickChip, styles.quickChipResident, !isDarkMode && styles.quickChipResidentLight]}
                 >
-                  <Text style={[styles.quickChipText, { color: '#34d399' }]}>👤 Resident</Text>
+                  <Text style={[styles.quickChipText, { color: isDarkMode ? '#34d399' : '#16a34a' }]}>👤 Resident</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Form Section */}
               <View style={styles.formSection}>
-                <Text style={styles.inputLabel}>Email</Text>
+                <Text style={[styles.inputLabel, !isDarkMode && styles.inputLabelLight]}>Email</Text>
                 <TextInput
                   style={[
                     styles.textInput,
-                    isEmailFocused && styles.textInputFocused,
+                    !isDarkMode && styles.textInputLight,
+                    isEmailFocused && (isDarkMode ? styles.textInputFocused : styles.textInputFocusedLight),
                   ]}
                   placeholder="name@example.com"
-                  placeholderTextColor="#475569"
+                  placeholderTextColor={isDarkMode ? "#475569" : "#94a3b8"}
                   value={email}
                   onChangeText={(val) => {
                     setEmail(val);
@@ -180,18 +204,19 @@ export default function LoginScreen({ navigation }) {
                   editable={!loading}
                 />
 
-                <Text style={styles.inputLabel}>Password</Text>
+                <Text style={[styles.inputLabel, !isDarkMode && styles.inputLabelLight]}>Password</Text>
                 <View
                   style={[
                     styles.passwordInputContainer,
-                    isPasswordFocused && styles.passwordInputContainerFocused,
+                    !isDarkMode && styles.passwordInputContainerLight,
+                    isPasswordFocused && (isDarkMode ? styles.passwordInputContainerFocused : styles.passwordInputContainerFocusedLight),
                   ]}
                 >
                   <TextInput
                     ref={passwordInputRef}
-                    style={styles.passwordInput}
+                    style={[styles.passwordInput, !isDarkMode && styles.passwordInputLight]}
                     placeholder="••••••••"
-                    placeholderTextColor="#475569"
+                    placeholderTextColor={isDarkMode ? "#475569" : "#94a3b8"}
                     value={password}
                     onChangeText={(val) => {
                       setPassword(val);
@@ -212,9 +237,9 @@ export default function LoginScreen({ navigation }) {
                     activeOpacity={0.7}
                   >
                     {showPassword ? (
-                      <EyeOff size={18} color="#94a3b8" />
+                      <EyeOff size={18} color={isDarkMode ? "#94a3b8" : "#64748b"} />
                     ) : (
-                      <Eye size={18} color="#94a3b8" />
+                      <Eye size={18} color={isDarkMode ? "#94a3b8" : "#64748b"} />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -240,19 +265,19 @@ export default function LoginScreen({ navigation }) {
                 </TouchableOpacity>
 
                 {/* Need to evacuate? Register as Evacuee */}
-                <View style={styles.registerPrompt}>
-                  <Text style={styles.registerPromptText}>Need to evacuate household?</Text>
+                <View style={[styles.registerPrompt, !isDarkMode && styles.registerPromptLight]}>
+                  <Text style={[styles.registerPromptText, !isDarkMode && styles.registerPromptTextLight]}>Need to evacuate household?</Text>
                   <TouchableOpacity
                     onPress={() => navigation.navigate('SetupProfile')}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.registerLinkText}>Register as Evacuee</Text>
+                    <Text style={[styles.registerLinkText, !isDarkMode && styles.registerLinkTextLight]}>Register as Evacuee</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             </Animated.View>
 
-            <Text style={styles.versionText}>EVAC_ROUTE MOBILE • v1.0.1</Text>
+            <Text style={[styles.versionText, !isDarkMode && styles.versionTextLight]}>EVAC_ROUTE MOBILE • v1.0.1</Text>
           </ScrollView>
         </KeyboardAvoidingView>
       </Animated.View>

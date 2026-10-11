@@ -243,6 +243,123 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     letterSpacing: 1.5,
   },
+
+  // Top right theme toggle button
+  topRightThemeContainer: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 100,
+  },
+  themeToggleBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  themeToggleBtnDark: {
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  themeToggleBtnLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    shadowColor: '#64748b',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+
+  // Light Mode Overrides
+  iconRingLight: {
+    backgroundColor: 'rgba(2, 132, 199, 0.08)',
+    borderColor: 'rgba(2, 132, 199, 0.25)',
+    shadowColor: '#0284c7',
+    shadowOpacity: 0.2,
+  },
+  titleLight: {
+    color: '#0f172a',
+  },
+  subtitleLight: {
+    color: '#475569',
+  },
+  cityBadgeLight: {
+    backgroundColor: 'rgba(2, 132, 199, 0.08)',
+    borderColor: 'rgba(2, 132, 199, 0.2)',
+  },
+  cityLabelLight: {
+    color: '#0284c7',
+  },
+  cardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    shadowColor: '#64748b',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  quickChipsTitleLight: {
+    color: '#64748b',
+  },
+  quickChipRescueLight: {
+    borderColor: 'rgba(244, 63, 94, 0.25)',
+    backgroundColor: '#fff1f2',
+  },
+  quickChipScannerLight: {
+    borderColor: 'rgba(2, 132, 199, 0.25)',
+    backgroundColor: '#f0f9ff',
+  },
+  quickChipResidentLight: {
+    borderColor: 'rgba(22, 163, 74, 0.25)',
+    backgroundColor: '#f0fdf4',
+  },
+  inputLabelLight: {
+    color: '#334155',
+  },
+  textInputLight: {
+    backgroundColor: '#f8fafc',
+    color: '#0f172a',
+    borderColor: '#cbd5e1',
+  },
+  textInputFocusedLight: {
+    borderColor: '#0284c7',
+    backgroundColor: '#ffffff',
+    shadowColor: '#0284c7',
+    shadowOpacity: 0.15,
+  },
+  passwordInputContainerLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#cbd5e1',
+  },
+  passwordInputContainerFocusedLight: {
+    borderColor: '#0284c7',
+    backgroundColor: '#ffffff',
+    shadowColor: '#0284c7',
+    shadowOpacity: 0.15,
+  },
+  passwordInputLight: {
+    color: '#0f172a',
+  },
+  registerPromptLight: {
+    borderTopColor: '#e2e8f0',
+  },
+  registerPromptTextLight: {
+    color: '#64748b',
+  },
+  registerLinkTextLight: {
+    color: '#0284c7',
+  },
+  versionTextLight: {
+    color: '#94a3b8',
+  },
 });
 
 export default styles;
