@@ -628,20 +628,27 @@ export default function RescueDutyScreen({ navigation }) {
               {currentMission.status === 'on_scene' && (
                 <View style={{ gap: 10 }}>
                   <TouchableOpacity
-                    style={[styles.stepperActionBtn, styles.btnCyan]}
-                    onPress={() =>
-                      updateStatusMutation.mutate({
-                        id: currentMission.id,
-                        status: 'transporting',
-                        target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
-                      })
-                    }
+                    style={[styles.stepperActionBtn, isSuppressionMission ? styles.btnGreen : styles.btnCyan]}
+                    onPress={() => {
+                      if (isSuppressionMission) {
+                        updateStatusMutation.mutate({
+                          id: currentMission.id,
+                          status: 'completed',
+                        });
+                      } else {
+                        updateStatusMutation.mutate({
+                          id: currentMission.id,
+                          status: 'transporting',
+                          target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
+                        });
+                      }
+                    }}
                     disabled={updateStatusMutation.isPending}
                     activeOpacity={0.85}
                   >
                     <Shield size={18} color="#ffffff" />
                     <Text style={styles.stepperActionBtnText}>
-                      3. START TRANSPORT TO SHELTER
+                      {isSuppressionMission ? '3. MARK THREAT NEUTRALIZED (COMPLETE)' : '3. START TRANSPORT TO SHELTER'}
                     </Text>
                   </TouchableOpacity>
 

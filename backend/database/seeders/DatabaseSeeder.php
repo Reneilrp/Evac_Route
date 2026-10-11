@@ -103,8 +103,9 @@ class DatabaseSeeder extends Seeder
             'capacity_persons' => 15,
         ]);
 
-        // 2. Call Official Shelters Seeder
+        // 2. Call Official Shelters Seeder & Emergency Infrastructure Seeder
         $this->call(OfficialSheltersSeeder::class);
+        $this->call(EmergencyInfrastructureSeeder::class);
 
         // Fetch official shelters to use for the demo data below
         $shelter1 = Shelter::where('barangay', 'like', '%Tetuan%')->where('type', 'secondary')->first() 
@@ -115,75 +116,8 @@ class DatabaseSeeder extends Seeder
             
         $shelter3 = Shelter::where('type', 'primary')->first(); // Fetch a primary cluster
 
-
-        // 2b. Create Law Enforcement, Military, Hospital & Fire Station Facilities (REV-02 & REV-03)
-        $police = Shelter::create([
-            'name' => 'Zamboanga Police Station 11 (Central HQ)',
-            'latitude' => 6.9155,
-            'longitude' => 122.0790,
-            'elevation_meters' => 14,
-            'amenities' => 'Armed Security, Ballistic Armor, Emergency Dispatch',
-            'barangay' => 'Zone 3',
-            'max_capacity' => 200,
-            'current_occupancy' => 12,
-            'status' => 'open',
-            'facility_type' => 'police_station',
-            'is_secured_facility' => true,
-            'emergency_contact' => '0917-POLICE-911',
-            'pinned_by' => $admin->id,
-        ]);
-
-        $military = Shelter::create([
-            'name' => 'WESTMINCOM Military Command Outpost',
-            'latitude' => 6.9240,
-            'longitude' => 122.0620,
-            'elevation_meters' => 18,
-            'amenities' => 'Heavy Armed Guards, Fortified Bunker, Helicopter Pad',
-            'barangay' => 'Canelar',
-            'max_capacity' => 500,
-            'current_occupancy' => 40,
-            'status' => 'open',
-            'facility_type' => 'military_base',
-            'is_secured_facility' => true,
-            'emergency_contact' => '0917-MILITARY-01',
-            'pinned_by' => $admin->id,
-        ]);
-
-        $hospital = Shelter::create([
-            'name' => 'Zamboanga City Medical Center (ZCMC)',
-            'latitude' => 6.9210,
-            'longitude' => 122.0750,
-            'elevation_meters' => 16,
-            'amenities' => 'ICU Trauma Center, Decontamination Unit, Emergency Ward',
-            'barangay' => 'Zone 4',
-            'max_capacity' => 300,
-            'current_occupancy' => 180,
-            'status' => 'open',
-            'facility_type' => 'hospital',
-            'is_secured_facility' => false,
-            'emergency_contact' => '0917-ZCMC-999',
-            'pinned_by' => $admin->id,
-        ]);
-
-        $fireStation = Shelter::create([
-            'name' => 'Central Fire Station & Rescue Depot',
-            'latitude' => 6.9140,
-            'longitude' => 122.0810,
-            'elevation_meters' => 12,
-            'amenities' => 'Search & Rescue Truck, Chemical Hose Decontam',
-            'barangay' => 'Zone 1',
-            'max_capacity' => 150,
-            'current_occupancy' => 5,
-            'status' => 'open',
-            'facility_type' => 'fire_station',
-            'is_secured_facility' => false,
-            'emergency_contact' => '0917-FIRE-160',
-            'pinned_by' => $admin->id,
-        ]);
-
         // Explicit Safe Zones (REV-03)
-        $safeZone1 = Shelter::create([
-            'name' => 'Pasonanca Park High-Ground Safe Zone',
+        $safeZone1 = Shelter::firstOrCreate(['name' => 'Pasonanca Park High-Ground Safe Zone'], [
             'latitude' => 6.9450,
             'longitude' => 122.0700,
             'elevation_meters' => 45,
@@ -197,8 +131,7 @@ class DatabaseSeeder extends Seeder
             'pinned_by' => $admin->id,
         ]);
 
-        $safeZone2 = Shelter::create([
-            'name' => 'Tetuan Elevated Ridge Open Field',
+        $safeZone2 = Shelter::firstOrCreate(['name' => 'Tetuan Elevated Ridge Open Field'], [
             'latitude' => 6.9195,
             'longitude' => 122.0895,
             'elevation_meters' => 22,
@@ -213,8 +146,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Explicit Assembly Points (REV-03)
-        $assembly1 = Shelter::create([
-            'name' => 'Barangay Tetuan Hall Pick-up Assembly Point',
+        $assembly1 = Shelter::firstOrCreate(['name' => 'Barangay Tetuan Hall Pick-up Assembly Point'], [
             'latitude' => 6.9165,
             'longitude' => 122.0840,
             'elevation_meters' => 11,
@@ -229,8 +161,7 @@ class DatabaseSeeder extends Seeder
             'pinned_by' => $admin->id,
         ]);
 
-        $assembly2 = Shelter::create([
-            'name' => 'Guiwan Staging & Pick-up Assembly Point',
+        $assembly2 = Shelter::firstOrCreate(['name' => 'Guiwan Staging & Pick-up Assembly Point'], [
             'latitude' => 6.9260,
             'longitude' => 122.0910,
             'elevation_meters' => 14,

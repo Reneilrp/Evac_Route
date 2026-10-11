@@ -23,13 +23,13 @@ class OfficialSheltersSeeder extends Seeder
         $header = fgetcsv($file); // name,location,latitude,longitude,max_capacity,type
 
         $imported = 0;
+        $updated = 0;
         while (($row = fgetcsv($file)) !== false) {
             $data = array_combine($header, $row);
             
-            // Check if shelter already exists by exact name
-            $exists = Shelter::where('name', $data['name'])->first();
+            $shelter = Shelter::where('name', $data['name'])->first();
             
-            if (!$exists) {
+            if (!$shelter) {
                 Shelter::create([
                     'name' => $data['name'],
                     'barangay' => $data['location'],
@@ -43,10 +43,19 @@ class OfficialSheltersSeeder extends Seeder
                     'is_secured_facility' => $data['type'] === 'primary' ? 1 : 0,
                 ]);
                 $imported++;
+            } else {
+                $shelter->update([
+                    'barangay' => $data['location'],
+                    'latitude' => $data['latitude'],
+                    'longitude' => $data['longitude'],
+                    'max_capacity' => $data['max_capacity'],
+                    'type' => $data['type'],
+                ]);
+                $updated++;
             }
         }
         fclose($file);
         
-        $this->command->info("Successfully seeded {$imported} official shelters!");
+        $this->command->info("Successfully seeded: {$imported} created, {$updated} updated.");
     }
 }

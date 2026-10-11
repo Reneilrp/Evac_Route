@@ -1130,14 +1130,14 @@ export default function RescueMapScreen({ navigation, route }) {
               </View>
 
               {/* Tactical Action Buttons Row */}
-              <View style={styles.dockButtonsRow}>
+                {/* Row 1: Communications & Utility Buttons */}
                 {!isTransportPhase && (
-                  <>
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: (currentMission.status === 'on_scene' || currentMission.status === 'transporting') ? 6 : 0 }}>
                     <TouchableOpacity
                       style={[styles.dockBtn, styles.callBtn]}
                       onPress={() => handleCallVictim(currentMission.victim_phone)}
                     >
-                      <Phone size={15} color={colors.white} />
+                      <Phone size={14} color={colors.white} />
                       <Text style={styles.dockBtnText}>Call Victim</Text>
                     </TouchableOpacity>
 
@@ -1151,50 +1151,68 @@ export default function RescueMapScreen({ navigation, route }) {
                         )
                       }
                     >
-                      <MessageSquare size={15} color={colors.white} />
+                      <MessageSquare size={14} color={colors.white} />
                       <Text style={styles.dockBtnText}>Quick SMS</Text>
                     </TouchableOpacity>
-                  </>
+
+                    <TouchableOpacity
+                      style={[styles.dockBtn, styles.externalBtn]}
+                      onPress={handleOpenGoogleMaps}
+                      accessibilityLabel="Open External Google Maps"
+                    >
+                      <Navigation size={14} color="#94a3b8" />
+                      <Text style={[styles.dockBtnText, { color: '#94a3b8' }]}>Maps</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
 
-                {/* Status Advancement Primary CTA */}
+                {/* Row 2: Status Advancement Primary CTA (Full Width, Large, High-Contrast) */}
                 {currentMission.status === 'on_scene' && (
                   <TouchableOpacity
-                    style={[styles.dockBtn, styles.transportBtn, { flex: 2 }]}
-                    onPress={() =>
-                      updateStatusMutation.mutate({
-                        id: currentMission.id,
-                        status: 'transporting',
-                        target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
-                      })
-                    }
+                    style={[styles.dockBtn, styles.transportBtn, { width: '100%', paddingVertical: 12 }]}
+                    onPress={() => {
+                      if (isSuppressionMission) {
+                        updateStatusMutation.mutate({
+                          id: currentMission.id,
+                          status: 'completed',
+                        });
+                      } else {
+                        updateStatusMutation.mutate({
+                          id: currentMission.id,
+                          status: 'transporting',
+                          target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
+                        });
+                      }
+                    }}
                     disabled={updateStatusMutation.isPending}
                   >
                     <Shield size={16} color={colors.white} />
-                    <Text style={styles.dockBtnTextBold}>START TRANSPORT TO SHELTER</Text>
+                    <Text style={styles.dockBtnTextBold}>
+                      {isSuppressionMission ? 'MARK THREAT NEUTRALIZED (COMPLETE)' : 'START TRANSPORT TO SHELTER'}
+                    </Text>
                   </TouchableOpacity>
                 )}
 
                 {currentMission.status === 'transporting' && (
-                  <TouchableOpacity
-                    style={[styles.dockBtn, styles.completeBtn, { flex: 2 }]}
-                    onPress={() => setShowShelterArrivalModal(true)}
-                    disabled={updateStatusMutation.isPending}
-                  >
-                    <CheckCircle2 size={16} color={colors.white} />
-                    <Text style={styles.dockBtnTextBold}>INTAKE HANDOVER</Text>
-                  </TouchableOpacity>
-                )}
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                      style={[styles.dockBtn, styles.completeBtn, { flex: 1, paddingVertical: 12 }]}
+                      onPress={() => setShowShelterArrivalModal(true)}
+                      disabled={updateStatusMutation.isPending}
+                    >
+                      <CheckCircle2 size={16} color={colors.white} />
+                      <Text style={styles.dockBtnTextBold}>CONFIRM CSWDO INTAKE HANDOVER</Text>
+                    </TouchableOpacity>
 
-                {/* External Google Maps Button */}
-                <TouchableOpacity
-                  style={[styles.dockBtn, styles.externalBtn]}
-                  onPress={handleOpenGoogleMaps}
-                  accessibilityLabel="Open External Google Maps"
-                >
-                  <Navigation size={15} color="#94a3b8" />
-                </TouchableOpacity>
-              </View>
+                    <TouchableOpacity
+                      style={[styles.dockBtn, styles.externalBtn, { paddingHorizontal: 12 }]}
+                      onPress={handleOpenGoogleMaps}
+                      accessibilityLabel="Open External Google Maps"
+                    >
+                      <Navigation size={14} color="#94a3b8" />
+                    </TouchableOpacity>
+                  </View>
+                )}
             </View>
           ) : (
             <View style={styles.noMissionDock}>
