@@ -39,6 +39,7 @@ export default function LandingPage() {
   const { darkMode, toggleDarkMode } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   const [activeResidentScreen, setActiveResidentScreen] = useState('map'); // 'map' | 'report' | 'profile'
   const [householdStats, setHouseholdStats] = useState({
@@ -47,6 +48,17 @@ export default function LandingPage() {
     loaded: false,
   });
   const [downloading, setDownloading] = useState(false);
+
+  // Platform detection for mobile touch & iOS HIG styling
+  useEffect(() => {
+    if (typeof navigator !== 'undefined') {
+      const userAgent = navigator.userAgent || '';
+      const isApple =
+        /iPad|iPhone|iPod/.test(userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      setIsIOS(isApple);
+    }
+  }, []);
 
   // Interactive phone preview states
   const [isNavigating, setIsNavigating] = useState(false);
@@ -59,10 +71,10 @@ export default function LandingPage() {
   const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0, opacity: 0 });
 
   const navItems = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'protection', label: 'How It Protects You' },
-    { id: 'shelters', label: 'Safe Shelters' },
-    { id: 'install-guide', label: 'Installation Guide' },
+    { id: 'overview', label: 'Overview', shortLabel: 'Overview', icon: Smartphone },
+    { id: 'protection', label: 'How It Protects You', shortLabel: 'Protection', icon: ShieldCheck },
+    { id: 'shelters', label: 'Safe Shelters', shortLabel: 'Shelters', icon: Building2 },
+    { id: 'install-guide', label: 'Installation Guide', shortLabel: 'Install', icon: Download },
   ];
 
   const residentProtectionStats = [
@@ -319,34 +331,35 @@ export default function LandingPage() {
           </nav>
 
           {/* Action CTAs: Focused Exclusively on Citizen Download & Theme Toggle */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {/* Dark / Light Mode Toggle */}
             <button
               onClick={toggleDarkMode}
-              className="p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition shadow-sm cursor-pointer"
+              className="p-2 sm:p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition shadow-sm cursor-pointer shrink-0"
               title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
               aria-label="Toggle theme"
             >
-              {darkMode ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-slate-700" />}
+              {darkMode ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-slate-700" />}
             </button>
 
             {/* Direct Citizen Download CTA Button */}
             <button
               onClick={handleDownload}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 tracking-wide cursor-pointer"
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 tracking-wide cursor-pointer shrink-0"
             >
-              <Download size={15} />
-              <span>Download APK</span>
-              <span className="hidden sm:inline-block text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-bold">v1.0.1</span>
+              <Download size={14} className="shrink-0" />
+              <span className="hidden sm:inline">Download APK</span>
+              <span className="sm:hidden">APK</span>
+              <span className="hidden md:inline-block text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-bold">v1.0.1</span>
             </button>
 
             {/* Mobile Hamburger Menu Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2.5 md:hidden rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+              className="p-2 sm:p-2.5 md:hidden rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0"
               aria-label="Toggle mobile menu"
             >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
         </div>
@@ -385,16 +398,16 @@ export default function LandingPage() {
       </header>
 
       {/* ── SECTION 1: CITIZEN PLATFORM OVERVIEW (UNIFIED HERO FOLD) ── */}
-      <section id="overview" className="relative min-h-screen lg:h-[100dvh] pt-20 pb-4 lg:pt-24 lg:pb-6 flex items-center overflow-hidden">
+      <section id="overview" className="relative min-h-[calc(100svh-4rem)] pt-20 pb-8 sm:py-14 md:py-16 lg:py-20 flex items-center overflow-x-clip">
         {/* Glow ambient background effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-blue-500/10 dark:bg-blue-600/15 blur-[140px] rounded-full pointer-events-none" />
         <div className="absolute top-1/3 -right-20 w-[400px] h-[400px] bg-emerald-500/10 dark:bg-emerald-600/10 blur-[130px] rounded-full pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full h-full flex items-center">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 xl:gap-10 items-center w-full my-auto">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-8 lg:gap-10 xl:gap-12 items-center w-full my-auto">
             
             {/* Left Column: Refined Headline, Subtitle, CTA, Trust Badges, and Hotline Footer */}
-            <div className="lg:col-span-7 xl:col-span-7 space-y-4 lg:space-y-5 text-center lg:text-left my-auto">
+            <div className="md:col-span-7 xl:col-span-7 space-y-4 lg:space-y-5 text-center md:text-left my-auto">
               
               {/* Group 1: Official Resident Safety Badge */}
               <div>
@@ -409,17 +422,17 @@ export default function LandingPage() {
 
               {/* Group 2: Scaled Headline & Concise Subtitle */}
               <div className="space-y-2 lg:space-y-2.5">
-                <h1 className="text-2xl sm:text-3xl lg:text-3xl xl:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug lg:leading-tight">
+                <h1 className="text-[clamp(1.65rem,3.8vw,2.5rem)] font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug lg:leading-tight">
                   Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
                 </h1>
-                <p className="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-300 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
+                <p className="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-300 max-w-xl mx-auto md:mx-0 leading-relaxed font-normal">
                   Real-time flood evasion routing to safe high-ground shelters and offline family passes.
                 </p>
               </div>
 
               {/* Group 3: Direct APK Download, Action Buttons & Micro Trust Row */}
               <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-3.5">
+                <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 sm:gap-3.5">
                   <button
                     onClick={handleDownload}
                     disabled={downloading}
@@ -441,7 +454,7 @@ export default function LandingPage() {
                 </div>
 
                 {/* Micro Citizen Trust Row */}
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3.5 sm:gap-5 text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3.5 sm:gap-5 text-xs text-slate-500 dark:text-slate-400">
                   <div className="flex items-center gap-1.5 font-medium">
                     <ShieldCheck size={14} className="text-emerald-500" />
                     <span>SHA-256 Clean</span>
@@ -458,7 +471,7 @@ export default function LandingPage() {
               </div>
 
               {/* Group 4: Compact Emergency Hotline & Live Protection Footer */}
-              <div className="pt-3 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col sm:flex-row items-center justify-center lg:justify-between gap-2.5 text-xs text-slate-500 dark:text-slate-400">
+              <div className="pt-3 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col sm:flex-row items-center justify-center md:justify-between gap-2.5 text-xs text-slate-500 dark:text-slate-400">
                 <div className="flex items-center gap-2">
                   <PhoneCall size={13} className="text-red-500 shrink-0 animate-pulse" />
                   <span className="font-medium text-slate-600 dark:text-slate-300">Emergency:</span>
@@ -493,16 +506,16 @@ export default function LandingPage() {
             </div>
 
             {/* Right: Responsive Dual-Mode Mockup / App Preview Card */}
-            <div className="lg:col-span-5 xl:col-span-5 flex justify-center lg:justify-end relative w-full my-auto">
-              {/* Responsive Container: 3D Smartphone on Desktop (lg), Clean App Card on Mobile (<lg) */}
-              <div className="relative w-full max-w-[320px] sm:max-w-[340px] lg:w-[320px] xl:w-[335px] rounded-[24px] sm:rounded-[32px] lg:rounded-[44px] bg-slate-900 dark:bg-slate-950 p-2 sm:p-2.5 lg:p-3 shadow-2xl border border-slate-300 dark:border-slate-800/80 lg:border-[5px] lg:border-slate-300 dark:lg:border-slate-800 lg:ring-1 lg:ring-slate-400/30 dark:lg:ring-slate-700/50 transition-colors duration-300">
-                {/* Phone Speaker Notch (Desktop Only - hidden on mobile/tablet) */}
-                <div className="hidden lg:flex absolute top-5 left-1/2 -translate-x-1/2 w-24 h-3.5 bg-slate-900 dark:bg-slate-950 rounded-full z-30 items-center justify-center transition-colors">
+            <div className="md:col-span-5 xl:col-span-5 flex justify-center md:justify-end relative w-full my-auto">
+              {/* Responsive Container: 3D Smartphone on Desktop (md+), Clean App Card on Mobile (<md) */}
+              <div className="relative w-full max-w-[285px] xs:max-w-[310px] sm:max-w-[330px] md:w-[295px] lg:w-[320px] xl:w-[335px] rounded-[24px] sm:rounded-[32px] lg:rounded-[42px] bg-slate-900 dark:bg-slate-950 p-2 sm:p-2.5 lg:p-3 shadow-2xl border border-slate-300 dark:border-slate-800/80 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-1 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300">
+                {/* Phone Speaker Notch (Tablet & Desktop - hidden on small mobile) */}
+                <div className="hidden md:flex absolute top-5 left-1/2 -translate-x-1/2 w-24 h-3.5 bg-slate-900 dark:bg-slate-950 rounded-full z-30 items-center justify-center transition-colors">
                   <div className="w-10 h-1 bg-slate-700 dark:bg-slate-800 rounded-full" />
                 </div>
 
                 {/* Inner Screen Container - fills full vertical space dynamically */}
-                <div className="w-full rounded-[18px] sm:rounded-[24px] lg:rounded-[34px] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden flex flex-col h-[460px] sm:h-[480px] lg:h-[calc(100dvh-13rem)] lg:max-h-[580px] lg:min-h-[460px] border border-slate-200 dark:border-slate-800 relative shadow-inner transition-colors duration-300">
+                <div className="w-full rounded-[18px] sm:rounded-[24px] lg:rounded-[34px] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden flex flex-col h-[420px] xs:h-[450px] sm:h-[480px] md:h-[460px] lg:h-[500px] xl:h-[540px] border border-slate-200 dark:border-slate-800 relative shadow-inner transition-colors duration-300">
                   
                   {/* Status Bar */}
                   <div className="pt-2 lg:pt-2.5 px-3.5 lg:px-5 pb-1 flex justify-between items-center text-[10px] text-slate-500 dark:text-slate-400 font-semibold select-none z-30 bg-white/90 dark:bg-slate-950/80 backdrop-blur-sm border-b border-slate-100 dark:border-transparent transition-colors">
@@ -1062,7 +1075,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 2: HOW EVACROUTE PROTECTS YOUR HOUSEHOLD ── */}
-      <section id="protection" className="py-12 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="protection" className="py-10 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-2">
             <Zap size={13} /> Resident Protection
@@ -1075,7 +1088,7 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           
           {/* Card 1 */}
           <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex flex-col">
@@ -1146,32 +1159,32 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── SECTION 4: 112 OFFICIAL SAFE SHELTERS DIRECTORY ── */}
-      <section id="shelters" className="py-20 bg-slate-100/70 dark:bg-slate-900/60 border-y border-slate-200 dark:border-slate-800 transition-colors">
+      {/* ── SECTION 3: 112 OFFICIAL SAFE SHELTERS DIRECTORY ── */}
+      <section id="shelters" className="py-12 sm:py-16 lg:py-20 bg-slate-100/70 dark:bg-slate-900/60 border-y border-slate-200 dark:border-slate-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             
-            <div className="space-y-6">
+            <div className="lg:col-span-6 space-y-5 sm:space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold uppercase tracking-wider">
                 <MapPin size={14} /> Citywide Coverage
               </div>
-              <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
                 Know Your Nearest High-Ground Haven Before Disaster Strikes
               </h2>
-              <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
+              <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm lg:text-base leading-relaxed">
                 Zamboanga City has 112 official evacuation shelters calibrated into the EvacRoute mobile network. The app automatically identifies your closest safe haven based on your location and road conditions.
               </p>
 
-              <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2">
                 <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-                  <div className="text-emerald-500 font-bold text-lg mb-1 flex items-center gap-2">
+                  <div className="text-emerald-500 font-bold text-base sm:text-lg mb-1 flex items-center gap-2">
                     <MapPin size={18} /> High-Ground Havens
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Pasonanca Park, Tetuan Elevated Ridge, and safe high hills.</p>
                 </div>
 
                 <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-                  <div className="text-blue-500 font-bold text-lg mb-1 flex items-center gap-2">
+                  <div className="text-blue-500 font-bold text-base sm:text-lg mb-1 flex items-center gap-2">
                     <Building2 size={18} /> Primary Centers
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Equipped with clean water, solar backup, and medical stations.</p>
@@ -1180,7 +1193,7 @@ export default function LandingPage() {
             </div>
 
             {/* Quick Resident Shelter Reference Card */}
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
+            <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-5 sm:p-7 lg:p-8 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-5 sm:space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
                 <div>
                   <h3 className="text-lg font-black text-slate-900 dark:text-white">Sample Verified High-Ground Shelters</h3>
@@ -1224,7 +1237,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── SECTION 4: 3-STEP INSTALLATION GUIDE ── */}
-      <section id="install-guide" className="py-12 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="install-guide" className="py-10 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-2">
             <Download size={13} /> Direct Android Download
@@ -1237,7 +1250,7 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
           
           <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-center relative shadow-sm">
             <div className="w-10 h-10 rounded-xl bg-blue-600 text-white font-extrabold text-base flex items-center justify-center mx-auto mb-3.5 shadow-md shadow-blue-500/20">
@@ -1272,7 +1285,7 @@ export default function LandingPage() {
         </div>
 
         {/* Download Banner CTA */}
-        <div className="mt-8 sm:mt-10 p-6 sm:p-8 lg:p-10 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 text-center shadow-sm relative overflow-hidden">
+        <div className="mt-8 sm:mt-10 p-5 sm:p-8 lg:p-10 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 text-center shadow-sm relative overflow-hidden">
           <div className="relative z-10 max-w-2xl mx-auto space-y-4">
             <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
               Protect Your Household Today
@@ -1303,9 +1316,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── Footer with City Hotlines & Discreet Staff Link ── */}
-      <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 py-12 transition-colors">
+      <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 pt-10 sm:pt-14 pb-28 md:pb-12 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 pb-8 border-b border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-8 pb-8 border-b border-slate-800">
             
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-white font-black text-lg">
@@ -1366,6 +1379,59 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* ── Mobile Bottom Navigation Bar (iOS Frosted Glass / Android M3 Elevation) ── */}
+      <nav
+        aria-label="Mobile bottom navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex justify-center px-4"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}
+      >
+        <div
+          className={`flex items-center justify-around px-2 pt-2 pb-1.5 w-full max-w-sm rounded-2xl border transition-all duration-200 ${
+            isIOS
+              ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border-slate-200/60 dark:border-slate-800/60 shadow-2xl shadow-black/20 ring-1 ring-inset ring-white/10'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-[0_8px_30px_rgba(0,0,0,0.25)]'
+          }`}
+        >
+          {navItems.map((item) => {
+            const isActive = activeSection === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => scrollToSection(item.id)}
+                aria-label={`Jump to ${item.label}`}
+                className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl transition-all duration-150 cursor-pointer ${
+                  isIOS ? 'active:scale-90' : 'active:scale-95 active:bg-slate-100 dark:active:bg-slate-800'
+                }`}
+              >
+                <div
+                  className={`flex items-center justify-center transition-all duration-200 ${
+                    isIOS
+                      ? isActive
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-slate-400 dark:text-slate-500'
+                      : isActive
+                        ? 'px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400'
+                        : 'px-3 py-1 rounded-full text-slate-400 dark:text-slate-500'
+                  }`}
+                >
+                  <Icon size={18} className={isActive && !isIOS ? 'scale-105' : ''} />
+                </div>
+                <span
+                  className={`text-[10px] tracking-tight mt-0.5 transition-colors ${
+                    isActive
+                      ? 'font-bold text-blue-600 dark:text-blue-400'
+                      : 'font-medium text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  {item.shortLabel || item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
     </div>
   );
