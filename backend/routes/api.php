@@ -37,6 +37,22 @@ Route::get('/hazards', [HazardController::class, 'getActiveHazards']);
 // Road Network (public — mobile can sync without auth)
 Route::get('/road-network', [RoadNetworkController::class, 'index']);
 
+// Public Landing Page Platform Statistics (No Auth Required)
+Route::get('/public-stats', function () {
+    $households = \App\Models\FamilyProfile::count();
+    $residents = \App\Models\User::where('role', 'resident')->count();
+    $shelters = \App\Models\Shelter::count();
+
+    return response()->json([
+        'status' => 'success',
+        'data' => [
+            'households' => $households,
+            'residents' => $residents,
+            'shelters' => $shelters,
+        ],
+    ]);
+});
+
 // --- PROTECTED ROUTES (Sanctum + Active Status) ---
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/user', function (Request $request) {

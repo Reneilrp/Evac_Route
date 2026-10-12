@@ -33,6 +33,7 @@ import {
   PhoneCall,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import api from '../services/api';
 
 export default function LandingPage() {
   const { darkMode, toggleDarkMode } = useTheme();
@@ -40,7 +41,11 @@ export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   const [activeResidentScreen, setActiveResidentScreen] = useState('map'); // 'map' | 'report' | 'profile'
-  const [downloadCount, setDownloadCount] = useState(1420);
+  const [householdStats, setHouseholdStats] = useState({
+    households: 0,
+    residents: 0,
+    loaded: false,
+  });
   const [downloading, setDownloading] = useState(false);
 
   // Interactive phone preview states
@@ -117,9 +122,30 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Fetch real database household & resident statistics on mount
+  useEffect(() => {
+    let isMounted = true;
+    api
+      .get('/public-stats')
+      .then((res) => {
+        if (isMounted && res.data?.data) {
+          setHouseholdStats({
+            households: res.data.data.households || 0,
+            residents: res.data.data.residents || 0,
+            loaded: true,
+          });
+        }
+      })
+      .catch(() => {
+        // Fallback gracefully without throwing errors
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleDownload = () => {
     setDownloading(true);
-    setDownloadCount(prev => prev + 1);
     
     // Direct browser download
     const link = document.createElement('a');
@@ -314,9 +340,9 @@ export default function LandingPage() {
                 Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
               </h1>
 
-              {/* Resident Subtitle */}
+              {/* Resident Subtitle (Option A: Punchy 1-Liner) */}
               <p className="text-xs sm:text-sm md:text-base xl:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
-                Never get trapped by rising floodwaters or blocked roads. Evac_Route automatically calculates safe escape paths away from active disasters to the nearest high-ground shelter, provides 1-tap SOS rescue alerts, and keeps your family pass ready offline.
+                Real-time flood evasion routing to safe high-ground shelters and offline family passes.
               </p>
 
               {/* Direct APK Download & Explore Buttons */}
@@ -374,8 +400,23 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Over <strong className="text-slate-900 dark:text-white">{downloadCount.toLocaleString()}</strong> households protected across Zamboanga City.
+              {/* Live Verified Citizen Protection Counter */}
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center justify-center lg:justify-start gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span>
+                  {householdStats.loaded && householdStats.households > 0 ? (
+                    <>
+                      <strong className="text-slate-900 dark:text-white font-bold">{householdStats.households.toLocaleString()}</strong> registered {householdStats.households === 1 ? 'household' : 'households'}
+                      {householdStats.residents > 0 && (
+                        <span> ({householdStats.residents.toLocaleString()} {householdStats.residents === 1 ? 'resident' : 'residents'})</span>
+                      )} protected across Zamboanga City.
+                    </>
+                  ) : (
+                    <>
+                      Official emergency protection across <strong className="text-slate-900 dark:text-white font-bold">98 Barangays</strong> in Zamboanga City.
+                    </>
+                  )}
+                </span>
               </div>
 
             </div>
