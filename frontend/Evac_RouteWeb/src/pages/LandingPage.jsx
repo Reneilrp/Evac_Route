@@ -481,8 +481,8 @@ export default function LandingPage() {
               <div className="w-full min-w-full shrink-0 md:min-w-0 md:shrink md:w-auto md:col-span-7 xl:col-span-7 flex flex-col items-center md:items-start justify-evenly md:justify-center gap-[clamp(0.6rem,2vh,1.5rem)] md:gap-5 text-center md:text-left my-auto px-2 sm:px-4 md:px-0">
                 
                 {/* Scaled Headline & Concise Subtitle */}
-                <div className="space-y-2 sm:space-y-3 w-full">
-                  <h1 className="text-[clamp(1.65rem,5.6vw,2.75rem)] sm:text-4xl md:text-3xl lg:text-4xl xl:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.14] sm:leading-[1.12] w-full max-w-sm sm:max-w-xl md:max-w-none mx-auto md:mx-0">
+                <div className="w-full">
+                  <h1 className="text-[clamp(1.65rem,5.6vw,2.75rem)] sm:text-4xl md:text-3xl lg:text-4xl xl:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.14] sm:leading-[1.12] w-full max-w-sm sm:max-w-xl md:max-w-none mx-auto md:mx-0 mb-2.5 sm:mb-3">
                     Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
                   </h1>
                   <p className="text-[clamp(0.82rem,2.4vw,0.98rem)] sm:text-base lg:text-lg text-slate-600 dark:text-slate-300 w-full max-w-[22rem] sm:max-w-lg md:max-w-xl mx-auto md:mx-0 leading-[1.55] font-medium">
@@ -491,7 +491,7 @@ export default function LandingPage() {
                 </div>
 
                 {/* Micro Citizen Trust Row - Positioned directly above Download APK */}
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1.5 text-[clamp(0.7rem,2.3vw,0.82rem)] text-slate-500 dark:text-slate-400">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1.5 text-[clamp(0.7rem,2.3vw,0.82rem)] text-slate-500 dark:text-slate-400 mb-2 sm:mb-1">
                   <div className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-slate-300">
                     <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
                     <span>SHA-256 Clean</span>
