@@ -317,7 +317,7 @@ export default function LandingPage() {
       {/* ── Fixed Navigation Bar (Resident-Focused, No Public Admin Buttons) ── */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          overviewSlide === 1 ? '-translate-y-full md:translate-y-0 pointer-events-none md:pointer-events-auto' : 'translate-y-0'
+          overviewSlide === 1 ? 'hidden md:block' : 'block'
         } ${
           scrolled
             ? 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 shadow-md py-3'
@@ -474,26 +474,30 @@ export default function LandingPage() {
         id="overview"
         className={`relative h-[100svh] min-h-[100svh] md:h-screen md:min-h-screen ${
           overviewSlide === 1
-            ? 'pt-2 pb-0 px-0'
-            : 'pt-14 pb-20 px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]'
-        } md:pt-16 md:pb-6 md:px-6 lg:px-8 flex flex-col justify-between overflow-hidden transition-all duration-300`}
+            ? 'p-0 overflow-hidden'
+            : 'pt-14 pb-20 px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] overflow-hidden'
+        } md:pt-16 md:pb-6 md:px-6 lg:px-8 flex flex-col justify-between transition-all duration-300`}
       >
         {/* Glow ambient background effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-blue-500/10 dark:bg-blue-600/15 blur-[140px] rounded-full pointer-events-none" />
         <div className="absolute top-1/3 -right-20 w-[400px] h-[400px] bg-emerald-500/10 dark:bg-emerald-600/10 blur-[130px] rounded-full pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto relative z-10 w-full flex-1 min-h-0 flex flex-col justify-between">
+        <div className={`max-w-7xl mx-auto relative z-10 w-full flex-1 min-h-0 flex flex-col ${overviewSlide === 1 ? 'h-full justify-stretch' : 'justify-between'}`}>
           
           {/* Responsive Slide Track Container */}
           <div
-            className="w-full overflow-hidden touch-pan-y my-auto flex-1 min-h-0 flex flex-col justify-center"
+            className={`w-full overflow-hidden touch-pan-y flex-1 min-h-0 flex flex-col ${
+              overviewSlide === 1 ? 'h-full my-0 justify-stretch' : 'my-auto justify-center'
+            }`}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
             <div
-              className={`flex md:grid md:grid-cols-12 md:gap-8 lg:gap-10 xl:gap-12 items-center w-full my-auto transition-transform duration-300 ease-out ${
-                overviewSlide === 1 ? '-translate-x-full md:translate-x-0' : 'translate-x-0'
+              className={`flex md:grid md:grid-cols-12 md:gap-8 lg:gap-10 xl:gap-12 w-full transition-transform duration-300 ease-out ${
+                overviewSlide === 1
+                  ? '-translate-x-full md:translate-x-0 h-full flex-1 items-stretch md:items-center my-0 md:my-auto'
+                  : 'translate-x-0 items-center my-auto'
               }`}
             >
               {/* Column 1 / Slide 0: Dynamic Viewport Fitting & Proportional Spacing (from GURO-App) */}
@@ -598,32 +602,32 @@ export default function LandingPage() {
               </div>
 
               {/* Column 2 / Slide 1: Responsive Dual-Mode Mockup / App Preview Card */}
-              <div className="w-full min-w-full shrink-0 md:min-w-0 md:shrink md:w-auto md:col-span-5 xl:col-span-5 flex flex-col items-center justify-between md:justify-center relative my-auto px-0 md:px-0 h-full md:h-auto">
+              <div className="w-full min-w-full shrink-0 md:min-w-0 md:shrink md:w-auto md:col-span-5 xl:col-span-5 flex flex-col items-center justify-between md:justify-center relative my-0 md:my-auto px-0 md:px-0 h-full md:h-auto flex-1 md:flex-initial">
                 {/* Mobile Back Button & Live Badge Bar (Visible on mobile when in Slide 1) */}
-                <div className="flex md:hidden items-center justify-between w-full px-3 sm:px-4 pt-1 mb-2">
+                <div className="flex md:hidden items-center justify-between w-full px-3.5 pt-[max(0.6rem,env(safe-area-inset-top))] pb-2 shrink-0 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 z-20">
                   <button
                     type="button"
                     onClick={() => setOverviewSlide(0)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs font-bold shadow-md border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs font-bold shadow-sm border border-slate-200 dark:border-slate-800 active:scale-95 transition cursor-pointer"
                   >
                     <ArrowLeft size={14} className="text-blue-600 dark:text-blue-400" />
                     <span>Back to Overview</span>
                   </button>
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-900 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-800 shadow-xs">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     <span>Interactive Preview</span>
                   </div>
                 </div>
 
                 {/* Responsive Container: 3D Smartphone on Desktop (md+), Native Full-Width on Mobile (<md) */}
-                <div className="relative w-full max-w-none md:w-[295px] lg:w-[320px] xl:w-[335px] rounded-none md:rounded-[42px] bg-transparent md:bg-slate-900 dark:md:bg-slate-950 p-0 md:p-2.5 lg:p-3 shadow-none md:shadow-2xl border-0 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-0 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300 flex-1 md:flex-initial flex flex-col justify-center">
+                <div className="relative w-full max-w-none md:w-[295px] lg:w-[320px] xl:w-[335px] rounded-none md:rounded-[42px] bg-transparent md:bg-slate-900 dark:md:bg-slate-950 p-0 md:p-2.5 lg:p-3 shadow-none md:shadow-2xl border-0 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-0 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300 flex-1 md:flex-initial flex flex-col justify-stretch md:justify-center overflow-hidden md:overflow-visible h-full md:h-auto">
                   {/* Phone Speaker Notch (Tablet & Desktop - hidden on small mobile) */}
                   <div className="hidden md:flex absolute top-5 left-1/2 -translate-x-1/2 w-24 h-3.5 bg-slate-900 dark:bg-slate-950 rounded-full z-30 items-center justify-center transition-colors">
                     <div className="w-10 h-1 bg-slate-700 dark:bg-slate-800 rounded-full" />
                   </div>
 
                   {/* Inner Screen Container - Native Edge-to-Edge on Mobile, Bezel Card on Desktop */}
-                  <div className="w-full flex-1 rounded-none md:rounded-[34px] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden flex flex-col h-[calc(100svh-3.75rem)] max-h-[calc(100svh-3.75rem)] md:h-[460px] lg:h-[500px] xl:h-[540px] border-0 md:border md:border-slate-200 dark:md:border-slate-800 relative shadow-none md:shadow-inner transition-colors duration-300">
+                  <div className="w-full flex-1 min-h-0 rounded-none md:rounded-[34px] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden flex flex-col h-full md:h-[460px] lg:h-[500px] xl:h-[540px] border-0 md:border md:border-slate-200 dark:md:border-slate-800 relative shadow-none md:shadow-inner transition-colors duration-300">
                   
                   {/* Status Bar */}
                   <div className="pt-2 lg:pt-2.5 px-3.5 lg:px-5 pb-1 flex justify-between items-center text-[10px] text-slate-500 dark:text-slate-400 font-semibold select-none z-30 bg-white/90 dark:bg-slate-950/80 backdrop-blur-sm border-b border-slate-100 dark:border-transparent transition-colors">
@@ -1070,7 +1074,7 @@ export default function LandingPage() {
                   {/* ─────────────────────────────────────────────────────────────
                       AUTHENTIC RESIDENT BOTTOM TAB BAR (MATCHING APPNAVIGATOR)
                      ───────────────────────────────────────────────────────────── */}
-                  <div className="mt-auto bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 px-2 pt-2 pb-2 z-30 transition-colors">
+                  <div className="mt-auto bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 px-2 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] z-30 transition-colors shrink-0">
                     <div className="grid grid-cols-3 gap-1">
                       {/* Tab 1: Evacuation Map */}
                       <button
@@ -1125,9 +1129,7 @@ export default function LandingPage() {
         </div>
 
         {/* Mobile Pagination Indicator Dots - docked at the very edge of the bottom navigation bar */}
-        <div className={`flex md:hidden items-center justify-center gap-2.5 mt-auto pt-2 pb-1 select-none transition-opacity duration-300 ${
-          overviewSlide === 1 ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        }`}>
+        <div className={`${overviewSlide === 1 ? 'hidden' : 'flex md:hidden'} items-center justify-center gap-2.5 mt-auto pt-2 pb-1 select-none transition-opacity duration-300`}>
           <button
             type="button"
             onClick={() => setOverviewSlide(0)}
@@ -1529,9 +1531,7 @@ export default function LandingPage() {
       {/* ── Mobile Bottom Navigation Bar (iOS Frosted Glass / Android M3 Elevation) ── */}
       <nav
         aria-label="Mobile bottom navigation"
-        className={`md:hidden fixed bottom-0 left-0 right-0 z-40 flex justify-center px-4 transition-transform duration-300 ease-in-out ${
-          overviewSlide === 1 ? 'translate-y-full pointer-events-none' : 'translate-y-0'
-        }`}
+        className={`${overviewSlide === 1 ? 'hidden' : 'md:hidden fixed'} bottom-0 left-0 right-0 z-40 flex justify-center px-4 transition-transform duration-300 ease-in-out`}
         style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}
       >
         <div
