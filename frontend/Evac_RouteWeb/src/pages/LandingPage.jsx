@@ -289,12 +289,12 @@ export default function LandingPage() {
       </header>
 
       {/* ── SECTION 1: CITIZEN PLATFORM OVERVIEW (UNIFIED HERO FOLD) ── */}
-      <section id="overview" className="relative pt-20 pb-8 sm:pt-24 sm:pb-10 lg:pt-24 lg:pb-8 xl:pt-28 xl:pb-12 min-h-[calc(100dvh-4.5rem)] flex flex-col justify-center overflow-hidden">
+      <section id="overview" className="relative pt-24 pb-8 sm:pt-28 sm:pb-10 lg:pt-28 lg:pb-12 overflow-hidden">
         {/* Glow ambient background effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-blue-500/10 dark:bg-blue-600/15 blur-[140px] rounded-full pointer-events-none" />
         <div className="absolute top-1/3 -right-20 w-[400px] h-[400px] bg-emerald-500/10 dark:bg-emerald-600/10 blur-[130px] rounded-full pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full my-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
             
             {/* Left Column: Headline, Description, Download CTA, Trust Badges, Emergency Hotlines */}
@@ -917,7 +917,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Resident Protection Metrics Strip ── */}
-      <section className="py-14 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800 transition-colors">
+      <section className="py-8 sm:py-10 lg:py-12 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             
