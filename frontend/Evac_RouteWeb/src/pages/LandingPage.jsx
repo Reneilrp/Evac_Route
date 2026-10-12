@@ -1197,7 +1197,9 @@ export default function LandingPage() {
               </button>
             </div>
             <p className="text-xs text-blue-200 pt-2 font-medium">
-              Over {downloadCount.toLocaleString()} installations recorded · Verified Android Build
+              {householdStats.loaded && householdStats.households > 0
+                ? `Protecting ${householdStats.households.toLocaleString()} registered households · Verified Android Build`
+                : "Official City Emergency Tool · Verified Android Build"}
             </p>
           </div>
         </div>
