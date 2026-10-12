@@ -409,7 +409,7 @@ export default function LandingPage() {
               Designed for Immediate Action in Crises
             </h2>
             <p className="text-slate-600 dark:text-slate-300 text-base mt-4 leading-relaxed">
-              When disaster strikes, every second matters. Explore the three main resident features below to see how Evac_Route guides your household step-by-step.
+              When disaster strikes, every second matters. Tap the bottom navigation tabs in the phone preview below to explore how Evac_Route guides your household step-by-step.
             </p>
           </div>
 
@@ -511,38 +511,18 @@ export default function LandingPage() {
                     </div>
                   </div>
 
-                  {/* Resident Feature Tabs Switcher (NO RESCUE OR CSWDO BUTTONS) */}
-                  <div className="mx-3 mt-1 mb-2 bg-slate-800/90 p-1 rounded-xl border border-slate-700 flex gap-1">
-                    <button
-                      onClick={() => setActiveResidentScreen('route')}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
-                        activeResidentScreen === 'route'
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      Safe Route
-                    </button>
-                    <button
-                      onClick={() => setActiveResidentScreen('sos')}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
-                        activeResidentScreen === 'sos'
-                          ? 'bg-red-600 text-white shadow-sm'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      Emergency SOS
-                    </button>
-                    <button
-                      onClick={() => setActiveResidentScreen('qr')}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
-                        activeResidentScreen === 'qr'
-                          ? 'bg-emerald-600 text-white shadow-sm'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      Family Pass
-                    </button>
+                  {/* Phone App Header */}
+                  <div className="px-4 py-2 mb-1 border-b border-slate-800/80 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 rounded-md bg-blue-600 flex items-center justify-center text-white">
+                        <ShieldAlert size={12} />
+                      </div>
+                      <span className="text-[11px] font-black text-white tracking-wide">EVAC_ROUTE</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-800/90 border border-slate-700/70 text-[9px] font-bold text-slate-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Tetuan Live</span>
+                    </div>
                   </div>
 
                   {/* Dynamic Resident Screen Content */}
@@ -678,11 +658,49 @@ export default function LandingPage() {
 
                   </div>
 
-                  {/* Mock Phone Bottom Bar */}
-                  <div className="mt-auto px-6 py-2.5 border-t border-slate-800 flex justify-around text-slate-400 text-[9px]">
-                    <span className={activeResidentScreen === 'route' ? 'text-blue-400 font-bold' : ''}>Safe Route</span>
-                    <span className={activeResidentScreen === 'sos' ? 'text-red-400 font-bold' : ''}>SOS Alert</span>
-                    <span className={activeResidentScreen === 'qr' ? 'text-emerald-400 font-bold' : ''}>Family Pass</span>
+                  {/* Interactive Resident Bottom Navigation Bar */}
+                  <div className="mt-auto bg-slate-950/95 border-t border-slate-800/90 px-2 pt-2 pb-2.5 backdrop-blur z-20">
+                    <div className="grid grid-cols-3 gap-1">
+                      <button
+                        onClick={() => setActiveResidentScreen('route')}
+                        className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
+                          activeResidentScreen === 'route'
+                            ? 'bg-blue-600/20 text-blue-400 font-bold border border-blue-500/30'
+                            : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                        }`}
+                      >
+                        <Navigation size={17} className={activeResidentScreen === 'route' ? 'text-blue-400 scale-110 transition-transform' : 'transition-transform'} />
+                        <span className="text-[9px] mt-1 font-semibold">Safe Route</span>
+                      </button>
+
+                      <button
+                        onClick={() => setActiveResidentScreen('sos')}
+                        className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all cursor-pointer relative ${
+                          activeResidentScreen === 'sos'
+                            ? 'bg-red-600/20 text-red-400 font-bold border border-red-500/30'
+                            : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                        }`}
+                      >
+                        <Radio size={17} className={activeResidentScreen === 'sos' ? 'text-red-400 scale-110 animate-pulse transition-transform' : 'transition-transform'} />
+                        <span className="text-[9px] mt-1 font-semibold">SOS Alert</span>
+                        <span className="absolute top-1 right-2.5 w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                      </button>
+
+                      <button
+                        onClick={() => setActiveResidentScreen('qr')}
+                        className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
+                          activeResidentScreen === 'qr'
+                            ? 'bg-emerald-600/20 text-emerald-400 font-bold border border-emerald-500/30'
+                            : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                        }`}
+                      >
+                        <QrCode size={17} className={activeResidentScreen === 'qr' ? 'text-emerald-400 scale-110 transition-transform' : 'transition-transform'} />
+                        <span className="text-[9px] mt-1 font-semibold">Family Pass</span>
+                      </button>
+                    </div>
+
+                    {/* Smartphone Home Indicator Bar */}
+                    <div className="w-20 h-1 bg-slate-700/80 rounded-full mx-auto mt-2.5" />
                   </div>
 
                 </div>
