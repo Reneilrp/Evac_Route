@@ -320,100 +320,101 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full h-full flex items-center">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 xl:gap-10 items-center w-full my-auto">
             
-            {/* Left Column: Headline, Description, Download CTA, Trust Badges, Emergency Hotlines */}
-            <div className="lg:col-span-7 xl:col-span-7 space-y-3.5 sm:space-y-4 xl:space-y-5 text-center lg:text-left my-auto">
+            {/* Left Column: Refined Headline, Subtitle, CTA, Trust Badges, and Hotline Footer */}
+            <div className="lg:col-span-7 xl:col-span-7 space-y-4 lg:space-y-5 text-center lg:text-left my-auto">
               
-              {/* Resident Safety Badge */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold tracking-wide shadow-sm">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
-                </span>
-                <span>Official Citizen Safety App · Zamboanga City DRRM</span>
-              </div>
-
-              {/* Major Resident Headline */}
-              <h1 className="text-3xl sm:text-4xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.12]">
-                Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
-              </h1>
-
-              {/* Resident Subtitle (Option A: Punchy 1-Liner) */}
-              <p className="text-xs sm:text-sm md:text-base xl:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
-                Real-time flood evasion routing to safe high-ground shelters and offline family passes.
-              </p>
-
-              {/* Direct APK Download & Explore Buttons */}
-              <div className="pt-1 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4">
-                <button
-                  onClick={handleDownload}
-                  disabled={downloading}
-                  className="w-full sm:w-auto px-7 py-3.5 xl:px-8 xl:py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black text-sm sm:text-base rounded-2xl shadow-xl shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-3 cursor-pointer group"
-                >
-                  <Download size={20} className="group-hover:translate-y-0.5 transition-transform" />
-                  <span>{downloading ? "Preparing Download..." : "Download Evac_Route APK"}</span>
-                  <span className="text-xs font-semibold py-0.5 px-2 bg-white/20 rounded-md">90+ MB</span>
-                </button>
-
-                <button
-                  onClick={() => scrollToSection('protection')}
-                  className="w-full sm:w-auto px-6 py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <ShieldCheck size={18} className="text-emerald-500" />
-                  <span>How It Protects</span>
-                  <ArrowDown size={14} className="text-slate-400" />
-                </button>
-              </div>
-
-              {/* Citizen Trust Badges */}
-              <div className="pt-1 flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 text-xs text-slate-500 dark:text-slate-400">
-                <div className="flex items-center gap-1.5 font-semibold">
-                  <ShieldCheck size={16} className="text-emerald-500" />
-                  <span>SHA-256 Verified Clean</span>
-                </div>
-                <div className="flex items-center gap-1.5 font-semibold">
-                  <CheckCircle2 size={16} className="text-blue-500" />
-                  <span>100% Free · No Ads</span>
-                </div>
-                <div className="flex items-center gap-1.5 font-semibold">
-                  <QrCode size={16} className="text-emerald-500" />
-                  <span>Works 100% Offline</span>
+              {/* Group 1: Official Resident Safety Badge */}
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold tracking-wide shadow-sm">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
+                  </span>
+                  <span>Official Citizen Safety App · Zamboanga City DRRM</span>
                 </div>
               </div>
 
-              {/* Emergency Hotline Alert Strip */}
-              <div className="p-2.5 sm:p-3 bg-red-50/80 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2 font-bold text-red-700 dark:text-red-300">
-                  <PhoneCall size={16} className="text-red-600 animate-pulse" />
-                  <span>Emergency Hotlines:</span>
+              {/* Group 2: Scaled Headline & Concise Subtitle */}
+              <div className="space-y-2 lg:space-y-2.5">
+                <h1 className="text-2xl sm:text-3xl lg:text-3xl xl:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug lg:leading-tight">
+                  Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
+                </h1>
+                <p className="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-300 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
+                  Real-time flood evasion routing to safe high-ground shelters and offline family passes.
+                </p>
+              </div>
+
+              {/* Group 3: Direct APK Download, Action Buttons & Micro Trust Row */}
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-3.5">
+                  <button
+                    onClick={handleDownload}
+                    disabled={downloading}
+                    className="w-full sm:w-auto px-6 py-3 xl:px-7 xl:py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer group"
+                  >
+                    <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
+                    <span>{downloading ? "Preparing Download..." : "Download Evac_Route APK"}</span>
+                    <span className="text-xs font-semibold py-0.5 px-2 bg-white/20 rounded-md">90+ MB</span>
+                  </button>
+
+                  <button
+                    onClick={() => scrollToSection('protection')}
+                    className="w-full sm:w-auto px-5 py-3 xl:py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <ShieldCheck size={16} className="text-emerald-500" />
+                    <span>How It Protects</span>
+                    <ArrowDown size={14} className="text-slate-400" />
+                  </button>
                 </div>
-                <div className="flex items-center gap-3">
+
+                {/* Micro Citizen Trust Row */}
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3.5 sm:gap-5 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <ShieldCheck size={14} className="text-emerald-500" />
+                    <span>SHA-256 Clean</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <CheckCircle2 size={14} className="text-blue-500" />
+                    <span>100% Free · No Ads</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <QrCode size={14} className="text-emerald-500" />
+                    <span>Works 100% Offline</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Group 4: Compact Emergency Hotline & Live Protection Footer */}
+              <div className="pt-3 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col sm:flex-row items-center justify-center lg:justify-between gap-2.5 text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-2">
+                  <PhoneCall size={13} className="text-red-500 shrink-0 animate-pulse" />
+                  <span className="font-medium text-slate-600 dark:text-slate-300">Emergency:</span>
                   <a href="tel:911" className="font-extrabold text-red-600 dark:text-red-400 hover:underline">
                     Dial 911
                   </a>
                   <span className="text-slate-300 dark:text-slate-700">|</span>
-                  <a href="tel:0629923181" className="font-bold text-slate-700 dark:text-slate-300 hover:underline">
-                    CDRRMO: (062) 992-3181
+                  <a href="tel:0629923181" className="font-semibold text-slate-700 dark:text-slate-300 hover:underline">
+                    (062) 992-3181
                   </a>
                 </div>
-              </div>
 
-              {/* Live Verified Citizen Protection Counter */}
-              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center justify-center lg:justify-start gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span>
-                  {householdStats.loaded && householdStats.households > 0 ? (
-                    <>
-                      <strong className="text-slate-900 dark:text-white font-bold">{householdStats.households.toLocaleString()}</strong> registered {householdStats.households === 1 ? 'household' : 'households'}
-                      {householdStats.residents > 0 && (
-                        <span> ({householdStats.residents.toLocaleString()} {householdStats.residents === 1 ? 'resident' : 'residents'})</span>
-                      )} protected across Zamboanga City.
-                    </>
-                  ) : (
-                    <>
-                      Official emergency protection across <strong className="text-slate-900 dark:text-white font-bold">98 Barangays</strong> in Zamboanga City.
-                    </>
-                  )}
-                </span>
+                <div className="flex items-center gap-1.5 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <span>
+                    {householdStats.loaded && householdStats.households > 0 ? (
+                      <>
+                        <strong className="text-slate-900 dark:text-white font-bold">{householdStats.households.toLocaleString()}</strong> {householdStats.households === 1 ? 'household' : 'households'}
+                        {householdStats.residents > 0 && (
+                          <span> ({householdStats.residents.toLocaleString()} residents)</span>
+                        )} protected
+                      </>
+                    ) : (
+                      <>
+                        Covering <strong className="text-slate-900 dark:text-white font-bold">98 Barangays</strong> in Zamboanga City
+                      </>
+                    )}
+                  </span>
+                </div>
               </div>
 
             </div>
