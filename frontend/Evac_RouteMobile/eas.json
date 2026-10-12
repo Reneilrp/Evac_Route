@@ -23,7 +23,9 @@
         "EXPO_PUBLIC_ECHO_HOST": "inculcative-carina-atomistical.ngrok-free.dev",
         "EXPO_PUBLIC_ECHO_PORT": "443",
         "EXPO_PUBLIC_ECHO_SCHEME": "https",
-        "EXPO_PUBLIC_REVERB_APP_KEY": "w4k7x9m2p5n8v3b6"
+        "EXPO_PUBLIC_REVERB_APP_KEY": "w4k7x9m2p5n8v3b6",
+        "ORG_GRADLE_PROJECT_reactNativeArchitectures": "armeabi-v7a,arm64-v8a",
+        "reactNativeArchitectures": "armeabi-v7a,arm64-v8a"
       },
       "android": {
         "buildType": "apk"
