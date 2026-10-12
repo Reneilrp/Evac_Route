@@ -457,17 +457,17 @@ export default function LandingPage() {
       {/* ── SECTION 1: CITIZEN PLATFORM OVERVIEW (UNIFIED HERO FOLD - FITS SCREEN ONLY) ── */}
       <section
         id="overview"
-        className="relative h-[100svh] min-h-[100svh] md:h-screen md:min-h-screen pt-14 pb-20 md:pt-16 md:pb-6 flex flex-col justify-between overflow-hidden"
+        className="relative h-[100svh] min-h-[100svh] md:h-screen md:min-h-screen pt-14 pb-20 md:pt-16 md:pb-6 px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 lg:px-8 flex flex-col justify-between overflow-hidden"
       >
         {/* Glow ambient background effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-blue-500/10 dark:bg-blue-600/15 blur-[140px] rounded-full pointer-events-none" />
         <div className="absolute top-1/3 -right-20 w-[400px] h-[400px] bg-emerald-500/10 dark:bg-emerald-600/10 blur-[130px] rounded-full pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10 w-full flex-1 flex flex-col justify-between">
+        <div className="max-w-7xl mx-auto relative z-10 w-full flex-1 min-h-0 flex flex-col justify-between">
           
           {/* Responsive Slide Track Container */}
           <div
-            className="w-full overflow-hidden touch-pan-y my-auto flex-1 flex flex-col justify-center"
+            className="w-full overflow-hidden touch-pan-y my-auto flex-1 min-h-0 flex flex-col justify-center"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -477,44 +477,44 @@ export default function LandingPage() {
                 overviewSlide === 1 ? '-translate-x-full md:translate-x-0' : 'translate-x-0'
               }`}
             >
-              {/* Column 1 / Slide 0: Refined Headline, Subtitle, CTA, and Trust Badges */}
-              <div className="w-full shrink-0 md:shrink md:w-auto md:col-span-7 xl:col-span-7 space-y-3.5 sm:space-y-4 lg:space-y-5 text-center md:text-left my-auto px-1 sm:px-2 md:px-0 flex flex-col justify-center">
+              {/* Column 1 / Slide 0: Dynamic Viewport Fitting & Proportional Spacing (from GURO-App) */}
+              <div className="w-full shrink-0 md:shrink md:w-auto md:col-span-7 xl:col-span-7 flex-1 min-h-0 flex flex-col items-center md:items-start justify-evenly md:justify-center gap-[clamp(0.6rem,2vh,1.5rem)] md:gap-5 text-center md:text-left my-auto px-1 sm:px-2 md:px-0">
                 
-                {/* Scaled Headline & Concise Subtitle (At the Top) */}
-                <div className="space-y-2 sm:space-y-2.5">
-                  <h1 className="text-[clamp(1.45rem,5.2vw,2.5rem)] md:text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-[1.18]">
+                {/* Scaled Headline & Concise Subtitle */}
+                <div className="space-y-2 sm:space-y-3 w-full">
+                  <h1 className="text-[clamp(1.65rem,5.6vw,2.75rem)] sm:text-4xl md:text-3xl lg:text-4xl xl:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.14] sm:leading-[1.12] w-full max-w-sm sm:max-w-xl md:max-w-none mx-auto md:mx-0">
                     Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
                   </h1>
-                  <p className="text-[clamp(0.8rem,2.6vw,1rem)] text-slate-600 dark:text-slate-300 max-w-lg mx-auto md:mx-0 leading-relaxed font-normal">
+                  <p className="text-[clamp(0.82rem,2.4vw,0.98rem)] sm:text-base lg:text-lg text-slate-600 dark:text-slate-300 w-full max-w-[22rem] sm:max-w-lg md:max-w-xl mx-auto md:mx-0 leading-[1.55] font-medium">
                     Real-time flood evasion routing to safe high-ground shelters and offline family passes.
                   </p>
                 </div>
 
                 {/* Micro Citizen Trust Row - Positioned directly above Download APK */}
-                <div className="pt-0.5 flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1 text-[clamp(0.68rem,2.2vw,0.8rem)] text-slate-500 dark:text-slate-400">
-                  <div className="flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-300">
-                    <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1.5 text-[clamp(0.7rem,2.3vw,0.82rem)] text-slate-500 dark:text-slate-400">
+                  <div className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-slate-300">
+                    <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
                     <span>SHA-256 Clean</span>
                   </div>
                   <span className="text-slate-300 dark:text-slate-700 hidden xs:inline">•</span>
-                  <div className="flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-300">
-                    <CheckCircle2 size={13} className="text-blue-500 shrink-0" />
+                  <div className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-slate-300">
+                    <CheckCircle2 size={14} className="text-blue-500 shrink-0" />
                     <span>100% Free · No Ads</span>
                   </div>
                   <span className="text-slate-300 dark:text-slate-700 hidden xs:inline">•</span>
-                  <div className="flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-300">
-                    <QrCode size={13} className="text-emerald-500 shrink-0" />
+                  <div className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-slate-300">
+                    <QrCode size={14} className="text-emerald-500 shrink-0" />
                     <span>Works 100% Offline</span>
                   </div>
                 </div>
 
                 {/* Direct APK Download & Action Buttons */}
-                <div className="pt-0.5 space-y-2.5 sm:space-y-3">
-                  <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2.5 sm:gap-3.5">
+                <div className="w-full max-w-[20rem] sm:max-w-none mx-auto md:mx-0">
+                  <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2.5 sm:gap-4 w-full">
                     <button
                       onClick={handleDownload}
                       disabled={downloading}
-                      className="w-full sm:w-auto px-5 py-2.5 sm:px-6 sm:py-3 xl:px-7 xl:py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold text-xs sm:text-sm lg:text-base rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer group"
+                      className="w-full sm:w-auto px-6 sm:px-7 py-3 sm:py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-extrabold text-xs sm:text-sm lg:text-base rounded-2xl shadow-xl shadow-blue-600/25 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer group"
                     >
                       <Download size={16} className="group-hover:translate-y-0.5 transition-transform" />
                       <span>{downloading ? "Preparing Download..." : "Download APK"}</span>
@@ -523,7 +523,7 @@ export default function LandingPage() {
 
                     <button
                       onClick={() => scrollToSection('protection')}
-                      className="w-full sm:w-auto px-4 py-2.5 sm:px-5 sm:py-3 xl:py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                     >
                       <ShieldCheck size={15} className="text-emerald-500" />
                       <span>How It Protects</span>
@@ -533,7 +533,7 @@ export default function LandingPage() {
                 </div>
 
                 {/* Group 4: Compact Emergency Hotline & Live Protection Footer */}
-                <div className="pt-2.5 sm:pt-3.5 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col sm:flex-row items-center justify-center md:justify-between gap-1.5 sm:gap-2.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                <div className="pt-2 sm:pt-3 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col sm:flex-row items-center justify-center md:justify-between gap-1.5 sm:gap-2.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 w-full max-w-[24rem] sm:max-w-none mx-auto md:mx-0">
                   <div className="flex items-center gap-2">
                     <PhoneCall size={12} className="text-red-500 shrink-0 animate-pulse" />
                     <span className="font-medium text-slate-600 dark:text-slate-300">Emergency:</span>
