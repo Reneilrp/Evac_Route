@@ -31,6 +31,8 @@ import {
   Camera,
   Layers,
   PhoneCall,
+  ArrowRight,
+  ChevronLeft,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
@@ -64,6 +66,32 @@ export default function LandingPage() {
   const [isNavigating, setIsNavigating] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [passSaved, setPassSaved] = useState(false);
+
+  // Mobile Overview 2-Slide State (0: Overview, 1: Mobile UI Showcasing)
+  const [overviewSlide, setOverviewSlide] = useState(0);
+  const touchStartXRef = useRef(null);
+  const touchEndXRef = useRef(null);
+
+  const handleTouchStart = (e) => {
+    touchStartXRef.current = e.targetTouches[0].clientX;
+    touchEndXRef.current = null;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndXRef.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartXRef.current || !touchEndXRef.current) return;
+    const distance = touchStartXRef.current - touchEndXRef.current;
+    if (distance > 45) {
+      // Swiped left -> slide to Mobile UI Showcasing
+      setOverviewSlide(1);
+    } else if (distance < -45) {
+      // Swiped right -> slide back to Overview
+      setOverviewSlide(0);
+    }
+  };
 
   const navRefs = useRef({});
   const isClickScrollingRef = useRef(false);
@@ -428,115 +456,177 @@ export default function LandingPage() {
       )}
 
       {/* ── SECTION 1: CITIZEN PLATFORM OVERVIEW (UNIFIED HERO FOLD) ── */}
-      <section id="overview" className="relative min-h-[calc(100svh-4rem)] pt-20 pb-8 sm:py-14 md:py-16 lg:py-20 flex items-center overflow-x-clip">
+      <section id="overview" className="relative min-h-[calc(100svh-4rem)] pt-16 pb-4 sm:py-12 md:py-14 lg:py-20 flex items-center overflow-x-clip">
         {/* Glow ambient background effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-blue-500/10 dark:bg-blue-600/15 blur-[140px] rounded-full pointer-events-none" />
         <div className="absolute top-1/3 -right-20 w-[400px] h-[400px] bg-emerald-500/10 dark:bg-emerald-600/10 blur-[130px] rounded-full pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full h-full flex items-center">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-8 lg:gap-10 xl:gap-12 items-center w-full my-auto">
-            
-            {/* Left Column: Refined Headline, Subtitle, CTA, Trust Badges, and Hotline Footer */}
-            <div className="md:col-span-7 xl:col-span-7 space-y-4 lg:space-y-5 text-center md:text-left my-auto">
-              
-              {/* Group 1: Official Resident Safety Badge */}
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold tracking-wide shadow-sm">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
-                  </span>
-                  <span>Official Citizen Safety App · Zamboanga City DRRM</span>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10 w-full flex flex-col justify-center">
+          
+          {/* Mobile-Only Slide Switcher Header Pill */}
+          <div className="flex md:hidden items-center justify-center gap-1.5 p-1 bg-slate-200/80 dark:bg-slate-800/80 backdrop-blur-md rounded-full mb-3 mx-auto shadow-inner select-none">
+            <button
+              type="button"
+              onClick={() => setOverviewSlide(0)}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                overviewSlide === 0
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Overview
+            </button>
+            <button
+              type="button"
+              onClick={() => setOverviewSlide(1)}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                overviewSlide === 1
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <span>Mobile UI Preview</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </button>
+          </div>
+
+          {/* Responsive Slide Track Container */}
+          <div
+            className="w-full overflow-hidden touch-pan-y"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div
+              className={`flex md:grid md:grid-cols-12 gap-6 md:gap-8 lg:gap-10 xl:gap-12 items-center w-full my-auto transition-transform duration-300 ease-out ${
+                overviewSlide === 1 ? '-translate-x-full md:translate-x-0' : 'translate-x-0'
+              }`}
+            >
+              {/* Column 1 / Slide 0: Refined Headline, Subtitle, CTA, Trust Badges, and Hotline Footer */}
+              <div className="w-full shrink-0 md:shrink md:w-auto md:col-span-7 xl:col-span-7 space-y-3 sm:space-y-4 lg:space-y-5 text-center md:text-left my-auto px-1 sm:px-2 md:px-0 flex flex-col justify-center">
+                
+                {/* Group 1: Official Resident Safety Badge */}
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold tracking-wide shadow-sm">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
+                    </span>
+                    <span>Official Citizen Safety App · Zamboanga City DRRM</span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Group 2: Scaled Headline & Concise Subtitle */}
-              <div className="space-y-2 lg:space-y-2.5">
-                <h1 className="text-[clamp(1.65rem,3.8vw,2.5rem)] font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug lg:leading-tight">
-                  Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
-                </h1>
-                <p className="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-300 max-w-xl mx-auto md:mx-0 leading-relaxed font-normal">
-                  Real-time flood evasion routing to safe high-ground shelters and offline family passes.
-                </p>
-              </div>
+                {/* Group 2: Scaled Headline & Concise Subtitle */}
+                <div className="space-y-1.5 sm:space-y-2 lg:space-y-2.5">
+                  <h1 className="text-2xl sm:text-3xl md:text-2xl lg:text-3xl xl:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug lg:leading-tight">
+                    Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
+                  </h1>
+                  <p className="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-300 max-w-xl mx-auto md:mx-0 leading-relaxed font-normal">
+                    Real-time flood evasion routing to safe high-ground shelters and offline family passes.
+                  </p>
+                </div>
 
-              {/* Group 3: Direct APK Download, Action Buttons & Micro Trust Row */}
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 sm:gap-3.5">
+                {/* Group 3: Direct APK Download, Action Buttons & Micro Trust Row */}
+                <div className="space-y-2.5 sm:space-y-3">
+                  <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2.5 sm:gap-3.5">
+                    <button
+                      onClick={handleDownload}
+                      disabled={downloading}
+                      className="w-full sm:w-auto px-5 py-2.5 sm:px-6 sm:py-3 xl:px-7 xl:py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold text-xs sm:text-sm lg:text-base rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer group"
+                    >
+                      <Download size={16} className="group-hover:translate-y-0.5 transition-transform" />
+                      <span>{downloading ? "Preparing Download..." : "Download EvacRoute APK"}</span>
+                      <span className="text-[10px] sm:text-xs font-semibold py-0.5 px-2 bg-white/20 rounded-md">90+ MB</span>
+                    </button>
+
+                    <button
+                      onClick={() => scrollToSection('protection')}
+                      className="w-full sm:w-auto px-4 py-2.5 sm:px-5 sm:py-3 xl:py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <ShieldCheck size={15} className="text-emerald-500" />
+                      <span>How It Protects</span>
+                      <ArrowDown size={13} className="text-slate-400" />
+                    </button>
+                  </div>
+
+                  {/* Micro Citizen Trust Row */}
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                    <div className="flex items-center gap-1 font-medium">
+                      <ShieldCheck size={13} className="text-emerald-500" />
+                      <span>SHA-256 Clean</span>
+                    </div>
+                    <div className="flex items-center gap-1 font-medium">
+                      <CheckCircle2 size={13} className="text-blue-500" />
+                      <span>100% Free · No Ads</span>
+                    </div>
+                    <div className="flex items-center gap-1 font-medium">
+                      <QrCode size={13} className="text-emerald-500" />
+                      <span>Works 100% Offline</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Group 4: Compact Emergency Hotline & Live Protection Footer */}
+                <div className="pt-2 sm:pt-3 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col sm:flex-row items-center justify-center md:justify-between gap-2 sm:gap-2.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                  <div className="flex items-center gap-2">
+                    <PhoneCall size={12} className="text-red-500 shrink-0 animate-pulse" />
+                    <span className="font-medium text-slate-600 dark:text-slate-300">Emergency:</span>
+                    <a href="tel:911" className="font-extrabold text-red-600 dark:text-red-400 hover:underline">
+                      Dial 911
+                    </a>
+                    <span className="text-slate-300 dark:text-slate-700">|</span>
+                    <a href="tel:0629923181" className="font-semibold text-slate-700 dark:text-slate-300 hover:underline">
+                      (062) 992-3181
+                    </a>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span>
+                      {householdStats.loaded && householdStats.households > 0 ? (
+                        <>
+                          <strong className="text-slate-900 dark:text-white font-bold">{householdStats.households.toLocaleString()}</strong> households protected
+                        </>
+                      ) : (
+                        <>
+                          Covering <strong className="text-slate-900 dark:text-white font-bold">98 Barangays</strong> in Zamboanga City
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Mobile Slide Hint Button */}
+                <div className="pt-1 md:hidden">
                   <button
-                    onClick={handleDownload}
-                    disabled={downloading}
-                    className="w-full sm:w-auto px-6 py-3 xl:px-7 xl:py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer group"
+                    type="button"
+                    onClick={() => setOverviewSlide(1)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-100 dark:hover:bg-blue-900/50 active:scale-95 transition-all cursor-pointer shadow-xs"
                   >
-                    <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
-                    <span>{downloading ? "Preparing Download..." : "Download EvacRoute APK"}</span>
-                    <span className="text-xs font-semibold py-0.5 px-2 bg-white/20 rounded-md">90+ MB</span>
-                  </button>
-
-                  <button
-                    onClick={() => scrollToSection('protection')}
-                    className="w-full sm:w-auto px-5 py-3 xl:py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <ShieldCheck size={16} className="text-emerald-500" />
-                    <span>How It Protects</span>
-                    <ArrowDown size={14} className="text-slate-400" />
+                    <Smartphone size={13} />
+                    <span>Slide right for Mobile UI preview</span>
+                    <ArrowRight size={13} className="animate-pulse" />
                   </button>
                 </div>
 
-                {/* Micro Citizen Trust Row */}
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3.5 sm:gap-5 text-xs text-slate-500 dark:text-slate-400">
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <ShieldCheck size={14} className="text-emerald-500" />
-                    <span>SHA-256 Clean</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <CheckCircle2 size={14} className="text-blue-500" />
-                    <span>100% Free · No Ads</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <QrCode size={14} className="text-emerald-500" />
-                    <span>Works 100% Offline</span>
-                  </div>
-                </div>
               </div>
 
-              {/* Group 4: Compact Emergency Hotline & Live Protection Footer */}
-              <div className="pt-3 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col sm:flex-row items-center justify-center md:justify-between gap-2.5 text-xs text-slate-500 dark:text-slate-400">
-                <div className="flex items-center gap-2">
-                  <PhoneCall size={13} className="text-red-500 shrink-0 animate-pulse" />
-                  <span className="font-medium text-slate-600 dark:text-slate-300">Emergency:</span>
-                  <a href="tel:911" className="font-extrabold text-red-600 dark:text-red-400 hover:underline">
-                    Dial 911
-                  </a>
-                  <span className="text-slate-300 dark:text-slate-700">|</span>
-                  <a href="tel:0629923181" className="font-semibold text-slate-700 dark:text-slate-300 hover:underline">
-                    (062) 992-3181
-                  </a>
-                </div>
-
-                <div className="flex items-center gap-1.5 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  <span>
-                    {householdStats.loaded && householdStats.households > 0 ? (
-                      <>
-                        <strong className="text-slate-900 dark:text-white font-bold">{householdStats.households.toLocaleString()}</strong> {householdStats.households === 1 ? 'household' : 'households'}
-                        {householdStats.residents > 0 && (
-                          <span> ({householdStats.residents.toLocaleString()} residents)</span>
-                        )} protected
-                      </>
-                    ) : (
-                      <>
-                        Covering <strong className="text-slate-900 dark:text-white font-bold">98 Barangays</strong> in Zamboanga City
-                      </>
-                    )}
+              {/* Column 2 / Slide 1: Responsive Dual-Mode Mockup / App Preview Card */}
+              <div className="w-full shrink-0 md:shrink md:w-auto md:col-span-5 xl:col-span-5 flex flex-col items-center justify-center md:justify-end relative my-auto px-1 sm:px-2 md:px-0">
+                {/* Mobile Return to Overview Chip */}
+                <div className="flex md:hidden items-center justify-between w-full max-w-[285px] xs:max-w-[310px] mb-2 px-1">
+                  <button
+                    type="button"
+                    onClick={() => setOverviewSlide(0)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                  >
+                    <ChevronLeft size={14} />
+                    <span>Back to Overview</span>
+                  </button>
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                    Interactive Live App
                   </span>
                 </div>
-              </div>
-
-            </div>
-
-            {/* Right: Responsive Dual-Mode Mockup / App Preview Card */}
-            <div className="md:col-span-5 xl:col-span-5 flex justify-center md:justify-end relative w-full my-auto">
               {/* Responsive Container: 3D Smartphone on Desktop (md+), Clean App Card on Mobile (<md) */}
               <div className="relative w-full max-w-[285px] xs:max-w-[310px] sm:max-w-[330px] md:w-[295px] lg:w-[320px] xl:w-[335px] rounded-[24px] sm:rounded-[32px] lg:rounded-[42px] bg-slate-900 dark:bg-slate-950 p-2 sm:p-2.5 lg:p-3 shadow-2xl border border-slate-300 dark:border-slate-800/80 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-1 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300">
                 {/* Phone Speaker Notch (Tablet & Desktop - hidden on small mobile) */}
@@ -1043,8 +1133,29 @@ export default function LandingPage() {
               </div>
 
             </div>
-
           </div>
+        </div>
+
+        {/* Slide Indicator Dots (Mobile Only) */}
+          <div className="flex md:hidden items-center justify-center gap-2 mt-3 select-none">
+            <button
+              type="button"
+              onClick={() => setOverviewSlide(0)}
+              aria-label="Overview slide"
+              className={`h-2 rounded-full transition-all cursor-pointer ${
+                overviewSlide === 0 ? 'w-6 bg-blue-600 dark:bg-blue-400' : 'w-2 bg-slate-300 dark:bg-slate-700'
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => setOverviewSlide(1)}
+              aria-label="Mobile UI slide"
+              className={`h-2 rounded-full transition-all cursor-pointer ${
+                overviewSlide === 1 ? 'w-6 bg-blue-600 dark:bg-blue-400' : 'w-2 bg-slate-300 dark:bg-slate-700'
+              }`}
+            />
+          </div>
+
         </div>
       </section>
 
