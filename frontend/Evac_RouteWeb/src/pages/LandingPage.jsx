@@ -330,12 +330,12 @@ export default function LandingPage() {
             />
           </nav>
 
-          {/* Action CTAs: Focused Exclusively on Citizen Download & Theme Toggle */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Desktop Right Action Buttons (hidden on phone, visible md+) */}
+          <div className="hidden md:flex items-center gap-2.5 shrink-0">
             {/* Dark / Light Mode Toggle */}
             <button
               onClick={toggleDarkMode}
-              className="p-2 sm:p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition shadow-sm cursor-pointer shrink-0"
+              className="p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition shadow-sm cursor-pointer shrink-0"
               title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
               aria-label="Toggle theme"
             >
@@ -345,57 +345,87 @@ export default function LandingPage() {
             {/* Direct Citizen Download CTA Button */}
             <button
               onClick={handleDownload}
-              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 tracking-wide cursor-pointer shrink-0"
+              className="inline-flex items-center gap-2 px-4 lg:px-5 py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 tracking-wide cursor-pointer shrink-0"
             >
               <Download size={14} className="shrink-0" />
-              <span className="hidden sm:inline">Download APK</span>
-              <span className="sm:hidden">APK</span>
-              <span className="hidden md:inline-block text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-bold">v1.0.1</span>
+              <span>Download APK</span>
+              <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-bold">v1.0.1</span>
             </button>
+          </div>
 
-            {/* Mobile Hamburger Menu Toggle */}
+          {/* Mobile Header Menu Trigger (Phone only) */}
+          <div className="flex md:hidden items-center gap-2">
             <button
+              type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 sm:p-2.5 md:hidden rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0"
-              aria-label="Toggle mobile menu"
+              aria-label={mobileMenuOpen ? 'Close quick action menu' : 'Open quick action menu'}
+              className={`p-2 rounded-xl transition-all cursor-pointer relative ${
+                mobileMenuOpen ? 'z-[60]' : 'z-10'
+              } ${
+                isIOS
+                  ? 'border border-slate-200/60 dark:border-slate-800/60 bg-white/60 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 active:scale-90'
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 shadow-sm border border-slate-200 dark:border-slate-800 active:scale-95'
+              }`}
             >
-              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>
-
-        {/* Mobile Dropdown Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 pt-3 pb-6 space-y-1.5 animate-enter shadow-xl">
-            {navItems.map((item, idx) => {
-              const isActive = activeSection === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => scrollToSection(item.id)}
-                  className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-between cursor-pointer ${
-                    isActive
-                      ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold border-l-4 border-blue-600 dark:border-blue-400 shadow-sm'
-                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border-l-4 border-transparent'
-                  }`}
-                >
-                  <span>{`${idx + 1}. ${item.label}`}</span>
-                  {isActive && (
-                    <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 shadow-sm shadow-blue-500/50" />
-                  )}
-                </button>
-              );
-            })}
-            <button
-              onClick={handleDownload}
-              className="w-full flex items-center justify-center gap-2 mt-4 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-95 text-white font-bold text-sm shadow-md transition cursor-pointer"
-            >
-              <Download size={16} />
-              <span>Download EvacRoute APK · 90+ MB</span>
-            </button>
-          </div>
-        )}
       </header>
+
+      {/* ── Mobile Top-Right Quick Action Menu (Download App & Theme Toggle Only) ── */}
+      {mobileMenuOpen && (
+        <>
+          {/* Backdrop overlay — dims top header, hero content, and bottom nav */}
+          <div
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs md:hidden animate-enter"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Floating Quick Action Dropdown Menu (40-50% screen width, right-aligned) */}
+          <div
+            data-testid="mobile-top-action-menu"
+            className={`fixed top-[calc(3.75rem+env(safe-area-inset-top,0px))] right-[max(0.75rem,env(safe-area-inset-right))] w-[50%] min-w-[175px] max-w-[220px] z-[60] p-2 rounded-2xl border shadow-2xl md:hidden animate-enter ${
+              isIOS
+                ? 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border-slate-200/70 dark:border-slate-800/70 ring-1 ring-white/10 shadow-black/25'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-[0_12px_32px_rgba(0,0,0,0.35)]'
+            }`}
+          >
+            <div className="flex flex-col gap-1">
+              {/* Download App */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleDownload();
+                }}
+                className="flex items-center gap-2.5 w-full px-2.5 py-2.5 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer text-left"
+              >
+                <Download size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="truncate">Download App</span>
+              </button>
+
+              {/* Theme Toggle (Light / Dark mode) */}
+              <button
+                type="button"
+                onClick={() => {
+                  toggleDarkMode();
+                  setMobileMenuOpen(false);
+                }}
+                className="flex items-center gap-2.5 w-full px-2.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left"
+              >
+                {darkMode ? (
+                  <Sun size={15} className="text-amber-400 shrink-0" />
+                ) : (
+                  <Moon size={15} className="text-blue-600 shrink-0" />
+                )}
+                <span className="truncate">{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── SECTION 1: CITIZEN PLATFORM OVERVIEW (UNIFIED HERO FOLD) ── */}
       <section id="overview" className="relative min-h-[calc(100svh-4rem)] pt-20 pb-8 sm:py-14 md:py-16 lg:py-20 flex items-center overflow-x-clip">
