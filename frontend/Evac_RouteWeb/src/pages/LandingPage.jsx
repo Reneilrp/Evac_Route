@@ -80,26 +80,63 @@ export default function LandingPage() {
 
   useEffect(() => {
     updateUnderline();
+    const rafId = requestAnimationFrame(updateUnderline);
     window.addEventListener('resize', updateUnderline);
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener('resize', updateUnderline);
-      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     };
   }, [updateUnderline]);
+
+  // Clean up any pending scroll timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
+  }, []);
+
+  // Cancel programmatic smooth scroll lock immediately when user manually scrolls or touches
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      if (isClickScrollingRef.current) {
+        isClickScrollingRef.current = false;
+        if (scrollTimeoutRef.current) {
+          clearTimeout(scrollTimeoutRef.current);
+          scrollTimeoutRef.current = null;
+        }
+      }
+    };
+
+    window.addEventListener('wheel', handleUserInteraction, { passive: true });
+    window.addEventListener('touchstart', handleUserInteraction, { passive: true });
+    window.addEventListener('keydown', handleUserInteraction, { passive: true });
+    return () => {
+      window.removeEventListener('wheel', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+      window.removeEventListener('keydown', handleUserInteraction);
+    };
+  }, []);
 
   // Monitor scroll for blurred header transition & active section spy
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
+      const scrollY = window.scrollY;
+      setScrolled(scrollY > 20);
 
-      // Prevent scroll-spy from jittering through intermediate sections while smoothly scrolling
+      // Prevent scroll-spy from jittering through intermediate sections while smoothly scrolling programmatically
       if (isClickScrollingRef.current) return;
 
       const sectionIds = ['overview', 'protection', 'shelters', 'install-guide'];
       const scrollThreshold = 140; // pixel offset below header
 
+      // At or near very top of page activates overview
+      if (scrollY < 80) {
+        setActiveSection('overview');
+        return;
+      }
+
       // Near bottom of page activates the last section
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 50) {
+      if (window.innerHeight + scrollY >= document.documentElement.scrollHeight - 50) {
         setActiveSection(sectionIds[sectionIds.length - 1]);
         return;
       }
@@ -167,22 +204,31 @@ export default function LandingPage() {
 
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
     }
 
-    const element = document.getElementById(id);
-    if (element) {
-      const headerOffset = 80;
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+    if (id === 'overview') {
       window.scrollTo({
-        top: offsetPosition,
+        top: 0,
         behavior: 'smooth',
       });
+    } else {
+      const element = document.getElementById(id);
+      if (element) {
+        const headerOffset = 80;
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+        window.scrollTo({
+          top: Math.max(0, offsetPosition),
+          behavior: 'smooth',
+        });
+      }
     }
 
     // Release programmatic scroll lock once smooth scroll completes
     scrollTimeoutRef.current = setTimeout(() => {
       isClickScrollingRef.current = false;
+      scrollTimeoutRef.current = null;
     }, 850);
   };
 
