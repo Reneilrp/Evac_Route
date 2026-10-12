@@ -3,10 +3,9 @@ import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-// On Android Emulator, 10.0.2.2 routes directly to host PC port 8000
-const BASE_URL = Platform.OS === 'android'
-  ? 'http://10.0.2.2:8000/api'
-  : (Constants.expoConfig?.extra?.apiBaseUrl || 'http://localhost:8000/api');
+// Prioritize configured API Base URL (from .env / app.config.js); fallback to 10.0.2.2 on Android emulator
+const configuredBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl;
+const BASE_URL = configuredBaseUrl || (Platform.OS === 'android' ? 'http://10.0.2.2:8000/api' : 'http://localhost:8000/api');
 
 console.log('[API] Target API Base URL:', BASE_URL);
 
