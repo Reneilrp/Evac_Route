@@ -37,6 +37,8 @@ export default function LandingPage() {
   const [downloading, setDownloading] = useState(false);
 
   const navRefs = useRef({});
+  const isClickScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef(null);
   const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0, opacity: 0 });
 
   const navItems = [
@@ -51,7 +53,7 @@ export default function LandingPage() {
   const updateUnderline = useCallback(() => {
     const activeEl = navRefs.current[activeSection];
     if (activeEl) {
-      const inset = 8;
+      const inset = 6;
       setUnderlineStyle({
         left: activeEl.offsetLeft + inset,
         width: Math.max(0, activeEl.offsetWidth - (inset * 2)),
@@ -63,13 +65,19 @@ export default function LandingPage() {
   useEffect(() => {
     updateUnderline();
     window.addEventListener('resize', updateUnderline);
-    return () => window.removeEventListener('resize', updateUnderline);
+    return () => {
+      window.removeEventListener('resize', updateUnderline);
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
   }, [updateUnderline]);
 
   // Monitor scroll for blurred header transition & active section spy
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
+
+      // Prevent scroll-spy from jittering through intermediate sections while smoothly scrolling
+      if (isClickScrollingRef.current) return;
 
       const sectionIds = ['overview', 'app-preview', 'protection', 'shelters', 'install-guide'];
       const scrollThreshold = 140; // pixel offset below header
@@ -118,6 +126,12 @@ export default function LandingPage() {
   const scrollToSection = (id) => {
     setMobileMenuOpen(false);
     setActiveSection(id);
+    isClickScrollingRef.current = true;
+
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+
     const element = document.getElementById(id);
     if (element) {
       const headerOffset = 80;
@@ -128,6 +142,11 @@ export default function LandingPage() {
         behavior: 'smooth',
       });
     }
+
+    // Release programmatic scroll lock once smooth scroll completes
+    scrollTimeoutRef.current = setTimeout(() => {
+      isClickScrollingRef.current = false;
+    }, 850);
   };
 
   return (
@@ -170,9 +189,9 @@ export default function LandingPage() {
                   key={item.id}
                   ref={(el) => { navRefs.current[item.id] = el; }}
                   onClick={() => scrollToSection(item.id)}
-                  className={`px-3 py-2 text-xs font-bold transition-colors duration-200 cursor-pointer ${
+                  className={`px-3 py-2 text-xs font-bold transition-colors duration-200 cursor-pointer select-none ${
                     isActive
-                      ? 'text-blue-600 dark:text-blue-400 font-extrabold'
+                      ? 'text-blue-600 dark:text-blue-400'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
