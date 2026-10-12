@@ -479,8 +479,8 @@ export default function LandingPage() {
                 
                 {/* Group 1: Official Resident Safety Badge */}
                 <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold tracking-wide shadow-sm">
-                    <span className="relative flex h-2 w-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-[11px] sm:text-xs font-bold tracking-tight shadow-sm">
+                    <span className="relative flex h-2 w-2 shrink-0">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
                     </span>
@@ -489,17 +489,35 @@ export default function LandingPage() {
                 </div>
 
                 {/* Group 2: Scaled Headline & Concise Subtitle */}
-                <div className="space-y-1.5 sm:space-y-2 lg:space-y-2.5">
-                  <h1 className="text-2xl sm:text-3xl md:text-2xl lg:text-3xl xl:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug lg:leading-tight">
+                <div className="space-y-2 lg:space-y-2.5">
+                  <h1 className="text-[22px] xs:text-2xl sm:text-3xl md:text-2xl lg:text-3xl xl:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug lg:leading-tight">
                     Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
                   </h1>
-                  <p className="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-300 max-w-xl mx-auto md:mx-0 leading-relaxed font-normal">
+                  <p className="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-300 max-w-lg mx-auto md:mx-0 leading-relaxed font-normal">
                     Real-time flood evasion routing to safe high-ground shelters and offline family passes.
                   </p>
                 </div>
 
-                {/* Group 3: Direct APK Download, Action Buttons & Micro Trust Row */}
-                <div className="space-y-2.5 sm:space-y-3">
+                {/* Micro Citizen Trust Row - Positioned directly above Download APK */}
+                <div className="pt-0.5 flex flex-wrap items-center justify-center md:justify-start gap-2 sm:gap-4 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                  <div className="flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-300">
+                    <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
+                    <span>SHA-256 Clean</span>
+                  </div>
+                  <span className="text-slate-300 dark:text-slate-700 hidden xs:inline">•</span>
+                  <div className="flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-300">
+                    <CheckCircle2 size={13} className="text-blue-500 shrink-0" />
+                    <span>100% Free · No Ads</span>
+                  </div>
+                  <span className="text-slate-300 dark:text-slate-700 hidden xs:inline">•</span>
+                  <div className="flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-300">
+                    <QrCode size={13} className="text-emerald-500 shrink-0" />
+                    <span>Works 100% Offline</span>
+                  </div>
+                </div>
+
+                {/* Group 3: Direct APK Download & Action Buttons */}
+                <div className="pt-0.5 space-y-2.5 sm:space-y-3">
                   <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2.5 sm:gap-3.5">
                     <button
                       onClick={handleDownload}
@@ -520,26 +538,10 @@ export default function LandingPage() {
                       <ArrowDown size={13} className="text-slate-400" />
                     </button>
                   </div>
-
-                  {/* Micro Citizen Trust Row */}
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                    <div className="flex items-center gap-1 font-medium">
-                      <ShieldCheck size={13} className="text-emerald-500" />
-                      <span>SHA-256 Clean</span>
-                    </div>
-                    <div className="flex items-center gap-1 font-medium">
-                      <CheckCircle2 size={13} className="text-blue-500" />
-                      <span>100% Free · No Ads</span>
-                    </div>
-                    <div className="flex items-center gap-1 font-medium">
-                      <QrCode size={13} className="text-emerald-500" />
-                      <span>Works 100% Offline</span>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Group 4: Compact Emergency Hotline & Live Protection Footer */}
-                <div className="pt-2 sm:pt-3 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col sm:flex-row items-center justify-center md:justify-between gap-2 sm:gap-2.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                <div className="pt-2.5 sm:pt-3.5 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col sm:flex-row items-center justify-center md:justify-between gap-1.5 sm:gap-2.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                   <div className="flex items-center gap-2">
                     <PhoneCall size={12} className="text-red-500 shrink-0 animate-pulse" />
                     <span className="font-medium text-slate-600 dark:text-slate-300">Emergency:</span>
@@ -569,7 +571,7 @@ export default function LandingPage() {
                 </div>
 
                 {/* Mobile Slide Hint Button */}
-                <div className="pt-1 md:hidden">
+                <div className="pt-1.5 md:hidden">
                   <button
                     type="button"
                     onClick={() => setOverviewSlide(1)}
