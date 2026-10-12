@@ -455,16 +455,16 @@ export default function LandingPage() {
       )}
 
       {/* ── SECTION 1: CITIZEN PLATFORM OVERVIEW (UNIFIED HERO FOLD) ── */}
-      <section id="overview" className="relative min-h-[calc(100svh-4rem)] pt-16 pb-4 sm:py-12 md:py-14 lg:py-20 flex items-center overflow-x-clip">
+      <section id="overview" className="relative min-h-[calc(100svh-4rem)] pt-16 pb-20 md:py-12 lg:py-16 flex flex-col justify-between overflow-x-clip">
         {/* Glow ambient background effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-blue-500/10 dark:bg-blue-600/15 blur-[140px] rounded-full pointer-events-none" />
         <div className="absolute top-1/3 -right-20 w-[400px] h-[400px] bg-emerald-500/10 dark:bg-emerald-600/10 blur-[130px] rounded-full pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10 w-full flex flex-col justify-center">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10 w-full flex-1 flex flex-col justify-between">
           
           {/* Responsive Slide Track Container */}
           <div
-            className="w-full overflow-hidden touch-pan-y"
+            className="w-full overflow-hidden touch-pan-y my-auto flex-1 flex flex-col justify-center"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -474,32 +474,21 @@ export default function LandingPage() {
                 overviewSlide === 1 ? '-translate-x-full md:translate-x-0' : 'translate-x-0'
               }`}
             >
-              {/* Column 1 / Slide 0: Refined Headline, Subtitle, CTA, Trust Badges, and Hotline Footer */}
-              <div className="w-full shrink-0 md:shrink md:w-auto md:col-span-7 xl:col-span-7 space-y-4 sm:space-y-5 lg:space-y-6 text-center md:text-left my-auto px-1 sm:px-2 md:px-0 flex flex-col justify-center">
+              {/* Column 1 / Slide 0: Refined Headline, Subtitle, CTA, and Trust Badges */}
+              <div className="w-full shrink-0 md:shrink md:w-auto md:col-span-7 xl:col-span-7 space-y-3.5 sm:space-y-4 lg:space-y-5 text-center md:text-left my-auto px-1 sm:px-2 md:px-0 flex flex-col justify-center">
                 
-                {/* Group 1: Official Resident Safety Badge */}
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-[11px] sm:text-xs font-bold tracking-tight shadow-sm">
-                    <span className="relative flex h-2 w-2 shrink-0">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
-                    </span>
-                    <span>Official Citizen Safety App · Zamboanga City DRRM</span>
-                  </div>
-                </div>
-
-                {/* Group 2: Scaled Headline & Concise Subtitle */}
-                <div className="space-y-2.5 sm:space-y-3 lg:space-y-3.5">
-                  <h1 className="text-2xl xs:text-[26px] sm:text-3xl md:text-2xl lg:text-3xl xl:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+                {/* Scaled Headline & Concise Subtitle (At the Top) */}
+                <div className="space-y-2 sm:space-y-2.5">
+                  <h1 className="text-[clamp(1.45rem,5.2vw,2.5rem)] md:text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-[1.18]">
                     Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
                   </h1>
-                  <p className="text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-300 max-w-lg mx-auto md:mx-0 leading-relaxed font-normal">
+                  <p className="text-[clamp(0.8rem,2.6vw,1rem)] text-slate-600 dark:text-slate-300 max-w-lg mx-auto md:mx-0 leading-relaxed font-normal">
                     Real-time flood evasion routing to safe high-ground shelters and offline family passes.
                   </p>
                 </div>
 
                 {/* Micro Citizen Trust Row - Positioned directly above Download APK */}
-                <div className="pt-1 sm:pt-1.5 flex flex-wrap items-center justify-center md:justify-start gap-2.5 sm:gap-4 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                <div className="pt-0.5 flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1 text-[clamp(0.68rem,2.2vw,0.8rem)] text-slate-500 dark:text-slate-400">
                   <div className="flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-300">
                     <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
                     <span>SHA-256 Clean</span>
@@ -516,8 +505,8 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Group 3: Direct APK Download & Action Buttons */}
-                <div className="pt-1 sm:pt-1.5 space-y-2.5 sm:space-y-3">
+                {/* Direct APK Download & Action Buttons */}
+                <div className="pt-0.5 space-y-2.5 sm:space-y-3">
                   <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2.5 sm:gap-3.5">
                     <button
                       onClick={handleDownload}
@@ -537,36 +526,6 @@ export default function LandingPage() {
                       <span>How It Protects</span>
                       <ArrowDown size={13} className="text-slate-400" />
                     </button>
-                  </div>
-                </div>
-
-                {/* Group 4: Compact Emergency Hotline & Live Protection Footer */}
-                <div className="pt-3 sm:pt-4 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col sm:flex-row items-center justify-center md:justify-between gap-2 sm:gap-2.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                  <div className="flex items-center gap-2">
-                    <PhoneCall size={12} className="text-red-500 shrink-0 animate-pulse" />
-                    <span className="font-medium text-slate-600 dark:text-slate-300">Emergency:</span>
-                    <a href="tel:911" className="font-extrabold text-red-600 dark:text-red-400 hover:underline">
-                      Dial 911
-                    </a>
-                    <span className="text-slate-300 dark:text-slate-700">|</span>
-                    <a href="tel:0629923181" className="font-semibold text-slate-700 dark:text-slate-300 hover:underline">
-                      (062) 992-3181
-                    </a>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span>
-                      {householdStats.loaded && householdStats.households > 0 ? (
-                        <>
-                          <strong className="text-slate-900 dark:text-white font-bold">{householdStats.households.toLocaleString()}</strong> households protected
-                        </>
-                      ) : (
-                        <>
-                          Covering <strong className="text-slate-900 dark:text-white font-bold">98 Barangays</strong> in Zamboanga City
-                        </>
-                      )}
-                    </span>
                   </div>
                 </div>
 
@@ -1083,36 +1042,68 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Slide Indicator Dots (Mobile Only) */}
-        <div className="flex md:hidden items-center justify-center gap-2.5 mt-3 select-none">
-          <button
-            type="button"
-            onClick={() => setOverviewSlide(0)}
-            aria-label="Overview slide"
-            className="p-1 cursor-pointer focus:outline-none"
-          >
-            <span
-              className={`block h-2 rounded-full transition-all duration-300 ${
-                overviewSlide === 0
-                  ? 'w-7 bg-blue-600 dark:bg-blue-400 shadow-sm shadow-blue-500/30'
-                  : 'w-2.5 bg-slate-300 dark:bg-slate-700'
-              }`}
-            />
-          </button>
-          <button
-            type="button"
-            onClick={() => setOverviewSlide(1)}
-            aria-label="Mobile UI slide"
-            className="p-1 cursor-pointer focus:outline-none"
-          >
-            <span
-              className={`block h-2 rounded-full transition-all duration-300 ${
-                overviewSlide === 1
-                  ? 'w-7 bg-blue-600 dark:bg-blue-400 shadow-sm shadow-blue-500/30'
-                  : 'w-2.5 bg-slate-300 dark:bg-slate-700'
-              }`}
-            />
-          </button>
+        {/* Dynamic Bottom Bar: Emergency Hotlines, Barangay Coverage, and Pagination near bottom navigation */}
+        <div className="w-full pt-3 sm:pt-4 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col items-center gap-2 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-auto select-none">
+          <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-2">
+              <PhoneCall size={12} className="text-red-500 shrink-0 animate-pulse" />
+              <span className="font-medium text-slate-600 dark:text-slate-300">Emergency:</span>
+              <a href="tel:911" className="font-extrabold text-red-600 dark:text-red-400 hover:underline">
+                Dial 911
+              </a>
+              <span className="text-slate-300 dark:text-slate-700">|</span>
+              <a href="tel:0629923181" className="font-semibold text-slate-700 dark:text-slate-300 hover:underline">
+                (062) 992-3181
+              </a>
+            </div>
+
+            <div className="flex items-center gap-1.5 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span>
+                {householdStats.loaded && householdStats.households > 0 ? (
+                  <>
+                    <strong className="text-slate-900 dark:text-white font-bold">{householdStats.households.toLocaleString()}</strong> households protected
+                  </>
+                ) : (
+                  <>
+                    Covering <strong className="text-slate-900 dark:text-white font-bold">98 Barangays</strong> in Zamboanga City
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+
+          {/* Mobile Pagination Indicator Dots - positioned closest to bottom navigation */}
+          <div className="flex md:hidden items-center justify-center gap-2.5 pt-0.5">
+            <button
+              type="button"
+              onClick={() => setOverviewSlide(0)}
+              aria-label="Overview slide"
+              className="p-1 cursor-pointer focus:outline-none"
+            >
+              <span
+                className={`block h-2 rounded-full transition-all duration-300 ${
+                  overviewSlide === 0
+                    ? 'w-7 bg-blue-600 dark:bg-blue-400 shadow-sm shadow-blue-500/30'
+                    : 'w-2.5 bg-slate-300 dark:bg-slate-700'
+                }`}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => setOverviewSlide(1)}
+              aria-label="Mobile UI slide"
+              className="p-1 cursor-pointer focus:outline-none"
+            >
+              <span
+                className={`block h-2 rounded-full transition-all duration-300 ${
+                  overviewSlide === 1
+                    ? 'w-7 bg-blue-600 dark:bg-blue-400 shadow-sm shadow-blue-500/30'
+                    : 'w-2.5 bg-slate-300 dark:bg-slate-700'
+                }`}
+              />
+            </button>
+          </div>
         </div>
 
         </div>
