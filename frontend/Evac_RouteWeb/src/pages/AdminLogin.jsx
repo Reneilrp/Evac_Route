@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { ShieldAlert, Sun, Moon } from 'lucide-react';
+import { ShieldAlert, Sun, Moon, ArrowLeft } from 'lucide-react';
 import { showSuccess, showError } from '../utils/toast';
 
 export default function AdminLogin() {
@@ -29,6 +29,17 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors duration-200 relative p-4">
+      {/* Top Left Back to Home Button */}
+      <div className="absolute top-5 left-5 sm:top-8 sm:left-8 z-20">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur transition shadow-sm"
+        >
+          <ArrowLeft size={14} />
+          <span>Back to Home</span>
+        </Link>
+      </div>
+
       {/* Top Right Dark/Light Theme Icon Button */}
       <div className="absolute top-5 right-5 sm:top-8 sm:right-8 z-20">
         <button

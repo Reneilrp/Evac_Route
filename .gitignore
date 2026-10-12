@@ -73,3 +73,6 @@ generate_shelter_excel.py
 geocode_shelters.py
 UI_UX_DESIGN_GUIDELINES.md
 
+# App Binaries
+*.apk
+public/downloads/

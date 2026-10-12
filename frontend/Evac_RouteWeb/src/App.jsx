@@ -13,6 +13,7 @@ import { playNotificationSound } from './services/sound';
 import LogoutConfirmModal from './components/common/LogoutConfirmModal';
 
 // Lazy loaded Pages
+const LandingPage = lazy(() => import('./pages/LandingPage'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const MapDashboard = lazy(() => import('./pages/MapDashboard'));
 const InventoryManager = lazy(() => import('./pages/InventoryManager'));
@@ -903,9 +904,10 @@ function App() {
       <Router>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* Base URL now points directly to Admin Login */}
-            <Route path="/" element={<AdminLogin />} />
-            <Route path="/admin/login" element={<Navigate to="/" replace />} />
+            {/* Base URL is now Public Landing Page with Mobile Showcase & Direct APK Download */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/login" element={<Navigate to="/admin/login" replace />} />
 
             {/* Protected LGU Admin/Staff General & Tactical Routes */}
             <Route element={<ProtectedRoute allowedRoles={['admin', 'lgu_staff']} />}>

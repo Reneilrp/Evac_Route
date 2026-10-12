@@ -11,7 +11,7 @@ export default function ProtectedRoute({ allowedRoles, allowedOperatorTypes }) {
 
   // Not logged in
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
 
   // Logged in, but doesn't have the right role (e.g. Resident trying to access Web)
@@ -29,7 +29,7 @@ export default function ProtectedRoute({ allowedRoles, allowedOperatorTypes }) {
           <p className="text-xl text-gray-400 font-medium border border-gray-700 bg-gray-800 p-6 rounded-xl shadow-lg max-w-lg">
             Resident accounts must use the <span className="text-blue-400 font-bold">EVAC-ROUTE Mobile Application</span>.
           </p>
-          <a href="/" className="mt-8 text-blue-500 hover:text-blue-400 underline font-medium">Return to Login</a>
+          <a href="/admin/login" className="mt-8 text-blue-500 hover:text-blue-400 underline font-medium">Return to Login</a>
         </div>
       );
     }
