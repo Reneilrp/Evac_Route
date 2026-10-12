@@ -149,8 +149,8 @@ export default function LandingPage() {
     
     // Direct browser download
     const link = document.createElement('a');
-    link.href = '/downloads/Evac_Route.apk';
-    link.setAttribute('download', 'Evac_Route.apk');
+    link.href = '/downloads/EvacRoute.apk';
+    link.setAttribute('download', 'EvacRoute.apk');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -209,7 +209,7 @@ export default function LandingPage() {
             </div>
             <div>
               <span className="text-lg font-black tracking-wider text-slate-900 dark:text-white">
-                EVAC_ROUTE
+                EvacRoute
               </span>
             </div>
           </a>
@@ -305,7 +305,7 @@ export default function LandingPage() {
               className="w-full flex items-center justify-center gap-2 mt-4 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-95 text-white font-bold text-sm shadow-md transition cursor-pointer"
             >
               <Download size={16} />
-              <span>Download Evac_Route APK · 90+ MB</span>
+              <span>Download EvacRoute APK · 90+ MB</span>
             </button>
           </div>
         )}
@@ -353,7 +353,7 @@ export default function LandingPage() {
                     className="w-full sm:w-auto px-6 py-3 xl:px-7 xl:py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer group"
                   >
                     <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
-                    <span>{downloading ? "Preparing Download..." : "Download Evac_Route APK"}</span>
+                    <span>{downloading ? "Preparing Download..." : "Download EvacRoute APK"}</span>
                     <span className="text-xs font-semibold py-0.5 px-2 bg-white/20 rounded-md">90+ MB</span>
                   </button>
 
@@ -434,7 +434,7 @@ export default function LandingPage() {
                   {/* Status Bar */}
                   <div className="pt-2 lg:pt-2.5 px-3.5 lg:px-5 pb-1 flex justify-between items-center text-[10px] text-slate-400 font-semibold select-none z-30 bg-slate-950/80 backdrop-blur-sm">
                     <span className="font-bold text-slate-300">9:41 AM</span>
-                    <span className="text-[9px] font-bold text-blue-400 uppercase tracking-wider lg:hidden">Evac_Route Live</span>
+                    <span className="text-[9px] font-bold text-blue-400 uppercase tracking-wider lg:hidden">EvacRoute Live</span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[9px]">5G</span>
                       <span>100%</span>
@@ -965,85 +965,85 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── SECTION 2: HOW EVAC_ROUTE PROTECTS YOUR HOUSEHOLD ── */}
-      <section id="protection" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-3">
-            <Zap size={14} /> Resident Protection
+      {/* ── SECTION 2: HOW EVACROUTE PROTECTS YOUR HOUSEHOLD ── */}
+      <section id="protection" className="py-12 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-2">
+            <Zap size={13} /> Resident Protection
           </div>
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-            How Evac_Route Keeps Your Family Safe
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            How EvacRoute Keeps Your Family Safe
           </h2>
-          <p className="text-slate-600 dark:text-slate-300 text-base mt-4">
+          <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm mt-2 max-w-xl mx-auto leading-relaxed">
             Built specifically to solve real-world emergency hurdles faced by Zamboanga City residents during severe typhoons, storm surges, and fires.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           
           {/* Card 1 */}
-          <div className="p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-6">
-              <Navigation size={24} />
+          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex flex-col">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3.5 shrink-0">
+              <Navigation size={20} />
             </div>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">Smart Threat-Avoidance Routing</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Standard GPS maps can lead you directly into flooded streets or collapsed bridges. Evac_Route dynamically recalculates safe escape paths that steer your family around active hazard zones.
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">Smart Threat-Avoidance Routing</h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              Standard GPS maps can lead you into flooded streets or blocked bridges. EvacRoute dynamically steers your family around active hazard zones to safe high ground.
             </p>
           </div>
 
           {/* Card 2 */}
-          <div className="p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-950/80 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 flex items-center justify-center mb-6">
-              <Radio size={24} />
+          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex flex-col">
+            <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/80 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 flex items-center justify-center mb-3.5 shrink-0">
+              <Radio size={20} />
             </div>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">Instant Emergency SOS</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              If water is rising fast or family members are trapped, tap the Emergency SOS button. Your exact coordinates and household headcount are immediately dispatched to nearby rescue teams.
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">Instant Emergency SOS</h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              If floodwaters rise or family members are trapped, tap Emergency SOS. Your exact GPS coordinates and household headcount are immediately dispatched to CDRRMO rescue units.
             </p>
           </div>
 
           {/* Card 3 */}
-          <div className="p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-6">
-              <QrCode size={24} />
+          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex flex-col">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3.5 shrink-0">
+              <QrCode size={20} />
             </div>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">Offline Family QR Passports</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              During blackouts or cell network failures, your digital family pass remains safely stored on your device. Shelter staff scan your QR code for rapid entry and relief goods without paperwork.
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">Offline Family QR Passports</h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              During blackouts or cell network failures, your digital pass remains ready offline. Shelter staff scan your QR code for rapid entry and relief goods without manual forms.
             </p>
           </div>
 
           {/* Card 4 */}
-          <div className="p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-cyan-50 dark:bg-cyan-950/80 border border-cyan-200 dark:border-cyan-800 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mb-6">
-              <Building2 size={24} />
+          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex flex-col">
+            <div className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-950/80 border border-cyan-200 dark:border-cyan-800 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mb-3.5 shrink-0">
+              <Building2 size={20} />
             </div>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">112 Official Safe Shelters</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Find the nearest verified evacuation center in your barangay with live open/closed status, current occupancy levels, elevation meters, and available amenities.
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">112 Official Safe Shelters</h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              Find verified evacuation centers in your barangay with live open/closed status, current occupancy levels, elevation meters, and available relief amenities.
             </p>
           </div>
 
           {/* Card 5 */}
-          <div className="p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-6">
-              <AlertCircle size={24} />
+          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex flex-col">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-3.5 shrink-0">
+              <AlertCircle size={20} />
             </div>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">Authoritative Neighborhood Alerts</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">Authoritative Neighborhood Alerts</h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
               Receive verified emergency alerts directly from Zamboanga City DRRM without false social media rumors or delayed text advisories.
             </p>
           </div>
 
           {/* Card 6 */}
-          <div className="p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-6">
-              <Users size={24} />
+          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex flex-col">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-3.5 shrink-0">
+              <Users size={20} />
             </div>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">Household Profile Preparedness</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Pre-register family members, infant formula needs, elderly mobility requirements, and emergency contacts so responders and camp managers know your exact household needs.
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">Household Profile Preparedness</h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              Pre-register family members, infant needs, and elderly mobility requirements so rescue teams and camp managers understand your exact household needs.
             </p>
           </div>
 
@@ -1063,7 +1063,7 @@ export default function LandingPage() {
                 Know Your Nearest High-Ground Haven Before Disaster Strikes
               </h2>
               <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
-                Zamboanga City has 112 official evacuation shelters calibrated into the Evac_Route mobile network. The app automatically identifies your closest safe haven based on your location and road conditions.
+                Zamboanga City has 112 official evacuation shelters calibrated into the EvacRoute mobile network. The app automatically identifies your closest safe haven based on your location and road conditions.
               </p>
 
               <div className="grid grid-cols-2 gap-4 pt-2">
@@ -1088,7 +1088,7 @@ export default function LandingPage() {
               <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
                 <div>
                   <h3 className="text-lg font-black text-slate-900 dark:text-white">Sample Verified High-Ground Shelters</h3>
-                  <p className="text-xs text-slate-500">Available offline in the Evac_Route app</p>
+                  <p className="text-xs text-slate-500">Available offline in the EvacRoute app</p>
                 </div>
                 <span className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-xs font-black rounded-lg">
                   VERIFIED
@@ -1127,74 +1127,74 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── SECTION 5: 3-STEP INSTALLATION GUIDE ── */}
-      <section id="install-guide" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-3">
-            <Download size={14} /> Direct Android Download
+      {/* ── SECTION 4: 3-STEP INSTALLATION GUIDE ── */}
+      <section id="install-guide" className="py-12 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-2">
+            <Download size={13} /> Direct Android Download
           </div>
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-            How to Install Evac_Route on Your Phone
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            How to Install EvacRoute on Your Phone
           </h2>
-          <p className="text-slate-600 dark:text-slate-300 text-base mt-3">
+          <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm mt-2">
             Install the official application in 3 simple steps directly on your Android device.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
           
-          <div className="p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 text-center relative">
-            <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white font-black text-xl flex items-center justify-center mx-auto mb-6 shadow-md shadow-blue-500/20">
+          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-center relative shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white font-extrabold text-base flex items-center justify-center mx-auto mb-3.5 shadow-md shadow-blue-500/20">
               1
             </div>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">1. Download the APK</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Tap the button below. Your browser will download the verified <span className="font-bold text-blue-600 dark:text-blue-400">Evac_Route.apk</span> (~90 MB) directly to your phone.
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">1. Download the APK</h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              Tap the download button to save the verified <span className="font-bold text-blue-600 dark:text-blue-400">EvacRoute.apk</span> (~90 MB) directly to your phone.
             </p>
           </div>
 
-          <div className="p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 text-center relative">
-            <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white font-black text-xl flex items-center justify-center mx-auto mb-6 shadow-md shadow-blue-500/20">
+          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-center relative shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white font-extrabold text-base flex items-center justify-center mx-auto mb-3.5 shadow-md shadow-blue-500/20">
               2
             </div>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">2. Allow Unknown Sources</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">2. Allow Unknown Sources</h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
               When prompted by Android, tap <span className="font-semibold text-slate-800 dark:text-slate-200">Settings</span> and toggle on <span className="font-semibold text-slate-800 dark:text-slate-200">"Install apps from this source"</span>.
             </p>
           </div>
 
-          <div className="p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 text-center relative">
-            <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white font-black text-xl flex items-center justify-center mx-auto mb-6 shadow-md shadow-blue-500/20">
+          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-center relative shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white font-extrabold text-base flex items-center justify-center mx-auto mb-3.5 shadow-md shadow-blue-500/20">
               3
             </div>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">3. Open &amp; Register Household</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">3. Open &amp; Register Household</h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
               Tap <span className="font-semibold text-slate-800 dark:text-slate-200">Install</span>. Launch the app and register your household profile to generate your offline family pass!
             </p>
           </div>
 
         </div>
 
-        {/* Big Download Banner CTA */}
-        <div className="mt-16 p-8 sm:p-12 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl text-white text-center shadow-2xl relative overflow-hidden">
-          <div className="relative z-10 max-w-2xl mx-auto space-y-6">
-            <h3 className="text-2xl sm:text-3xl font-black tracking-tight">
+        {/* Download Banner CTA */}
+        <div className="mt-8 sm:mt-10 p-6 sm:p-8 lg:p-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl sm:rounded-3xl text-white text-center shadow-xl relative overflow-hidden">
+          <div className="relative z-10 max-w-2xl mx-auto space-y-4">
+            <h3 className="text-xl sm:text-2xl font-black tracking-tight">
               Protect Your Household Today
             </h3>
-            <p className="text-blue-100 text-sm sm:text-base leading-relaxed">
-              Download the official Evac_Route app now. Always free, zero telemetry tracking, and built to safeguard every family in Zamboanga City.
+            <p className="text-blue-100 text-xs sm:text-sm leading-relaxed max-w-xl mx-auto">
+              Download the official EvacRoute app now. Always free, zero telemetry tracking, and built to safeguard every family in Zamboanga City.
             </p>
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="pt-1 flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
                 onClick={handleDownload}
                 disabled={downloading}
-                className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-slate-100 text-blue-700 font-black text-base rounded-2xl shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition duration-200 flex items-center justify-center gap-3 cursor-pointer"
+                className="w-full sm:w-auto px-7 py-3.5 bg-white hover:bg-slate-100 text-blue-700 font-bold text-sm sm:text-base rounded-xl shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition duration-200 flex items-center justify-center gap-2.5 cursor-pointer"
               >
-                <Download size={20} className="text-blue-700" />
-                <span>{downloading ? "Downloading..." : "Download Evac_Route.apk (v1.0.1)"}</span>
+                <Download size={18} className="text-blue-700" />
+                <span>{downloading ? "Downloading..." : "Download EvacRoute.apk (v1.0.1)"}</span>
               </button>
             </div>
-            <p className="text-xs text-blue-200 pt-2 font-medium">
+            <p className="text-[11px] sm:text-xs text-blue-200 font-medium">
               {householdStats.loaded && householdStats.households > 0
                 ? `Protecting ${householdStats.households.toLocaleString()} registered households · Verified Android Build`
                 : "Official City Emergency Tool · Verified Android Build"}
@@ -1211,7 +1211,7 @@ export default function LandingPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-white font-black text-lg">
                 <ShieldAlert size={22} className="text-blue-500" />
-                <span>EVAC_ROUTE</span>
+                <span>EvacRoute</span>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed">
                 Smart hazard-aware emergency evacuation planning and family protection platform for the citizens of Zamboanga City.
@@ -1252,7 +1252,7 @@ export default function LandingPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-            <p>© 2026 EVAC_ROUTE • City Disaster Risk Reduction &amp; Management Office (CDRRMO), Zamboanga City.</p>
+            <p>© 2026 EvacRoute • City Disaster Risk Reduction &amp; Management Office (CDRRMO), Zamboanga City.</p>
             <div className="flex items-center gap-4">
               <span>Version 1.0.1</span>
               <span>•</span>
