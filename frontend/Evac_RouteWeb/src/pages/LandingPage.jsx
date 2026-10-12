@@ -529,6 +529,36 @@ export default function LandingPage() {
                   </div>
                 </div>
 
+                {/* Group 4: Compact Emergency Hotline & Live Protection Footer */}
+                <div className="pt-2.5 sm:pt-3.5 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col sm:flex-row items-center justify-center md:justify-between gap-1.5 sm:gap-2.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                  <div className="flex items-center gap-2">
+                    <PhoneCall size={12} className="text-red-500 shrink-0 animate-pulse" />
+                    <span className="font-medium text-slate-600 dark:text-slate-300">Emergency:</span>
+                    <a href="tel:911" className="font-extrabold text-red-600 dark:text-red-400 hover:underline">
+                      Dial 911
+                    </a>
+                    <span className="text-slate-300 dark:text-slate-700">|</span>
+                    <a href="tel:0629923181" className="font-semibold text-slate-700 dark:text-slate-300 hover:underline">
+                      (062) 992-3181
+                    </a>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span>
+                      {householdStats.loaded && householdStats.households > 0 ? (
+                        <>
+                          <strong className="text-slate-900 dark:text-white font-bold">{householdStats.households.toLocaleString()}</strong> households protected
+                        </>
+                      ) : (
+                        <>
+                          Covering <strong className="text-slate-900 dark:text-white font-bold">98 Barangays</strong> in Zamboanga City
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </div>
+
               </div>
 
               {/* Column 2 / Slide 1: Responsive Dual-Mode Mockup / App Preview Card */}
@@ -1042,68 +1072,36 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Dynamic Bottom Bar: Emergency Hotlines, Barangay Coverage, and Pagination near bottom navigation */}
-        <div className="w-full pt-3 sm:pt-4 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col items-center gap-2 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-auto select-none">
-          <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2">
-            <div className="flex items-center gap-2">
-              <PhoneCall size={12} className="text-red-500 shrink-0 animate-pulse" />
-              <span className="font-medium text-slate-600 dark:text-slate-300">Emergency:</span>
-              <a href="tel:911" className="font-extrabold text-red-600 dark:text-red-400 hover:underline">
-                Dial 911
-              </a>
-              <span className="text-slate-300 dark:text-slate-700">|</span>
-              <a href="tel:0629923181" className="font-semibold text-slate-700 dark:text-slate-300 hover:underline">
-                (062) 992-3181
-              </a>
-            </div>
-
-            <div className="flex items-center gap-1.5 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span>
-                {householdStats.loaded && householdStats.households > 0 ? (
-                  <>
-                    <strong className="text-slate-900 dark:text-white font-bold">{householdStats.households.toLocaleString()}</strong> households protected
-                  </>
-                ) : (
-                  <>
-                    Covering <strong className="text-slate-900 dark:text-white font-bold">98 Barangays</strong> in Zamboanga City
-                  </>
-                )}
-              </span>
-            </div>
-          </div>
-
-          {/* Mobile Pagination Indicator Dots - positioned closest to bottom navigation */}
-          <div className="flex md:hidden items-center justify-center gap-2.5 pt-0.5">
-            <button
-              type="button"
-              onClick={() => setOverviewSlide(0)}
-              aria-label="Overview slide"
-              className="p-1 cursor-pointer focus:outline-none"
-            >
-              <span
-                className={`block h-2 rounded-full transition-all duration-300 ${
-                  overviewSlide === 0
-                    ? 'w-7 bg-blue-600 dark:bg-blue-400 shadow-sm shadow-blue-500/30'
-                    : 'w-2.5 bg-slate-300 dark:bg-slate-700'
-                }`}
-              />
-            </button>
-            <button
-              type="button"
-              onClick={() => setOverviewSlide(1)}
-              aria-label="Mobile UI slide"
-              className="p-1 cursor-pointer focus:outline-none"
-            >
-              <span
-                className={`block h-2 rounded-full transition-all duration-300 ${
-                  overviewSlide === 1
-                    ? 'w-7 bg-blue-600 dark:bg-blue-400 shadow-sm shadow-blue-500/30'
-                    : 'w-2.5 bg-slate-300 dark:bg-slate-700'
-                }`}
-              />
-            </button>
-          </div>
+        {/* Mobile Pagination Indicator Dots - docked at the very edge of the bottom navigation bar */}
+        <div className="flex md:hidden items-center justify-center gap-2.5 mt-auto pt-2 pb-1 select-none">
+          <button
+            type="button"
+            onClick={() => setOverviewSlide(0)}
+            aria-label="Overview slide"
+            className="p-1 cursor-pointer focus:outline-none"
+          >
+            <span
+              className={`block h-2 rounded-full transition-all duration-300 ${
+                overviewSlide === 0
+                  ? 'w-7 bg-blue-600 dark:bg-blue-400 shadow-sm shadow-blue-500/30'
+                  : 'w-2.5 bg-slate-300 dark:bg-slate-700'
+              }`}
+            />
+          </button>
+          <button
+            type="button"
+            onClick={() => setOverviewSlide(1)}
+            aria-label="Mobile UI slide"
+            className="p-1 cursor-pointer focus:outline-none"
+          >
+            <span
+              className={`block h-2 rounded-full transition-all duration-300 ${
+                overviewSlide === 1
+                  ? 'w-7 bg-blue-600 dark:bg-blue-400 shadow-sm shadow-blue-500/30'
+                  : 'w-2.5 bg-slate-300 dark:bg-slate-700'
+              }`}
+            />
+          </button>
         </div>
 
         </div>
