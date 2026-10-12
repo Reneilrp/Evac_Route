@@ -462,66 +462,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Interactive Mockup Feature Switcher */}
-              <div className="space-y-2 pt-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 text-left">
-                  Explore App Features In Mockup:
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-left">
-                  <button
-                    onClick={() => setActiveResidentScreen('map')}
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                      activeResidentScreen === 'map'
-                        ? 'bg-blue-50/90 dark:bg-blue-950/50 border-blue-500 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/20 shadow-md'
-                        : 'bg-white dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <MapPin size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />
-                      <span className="text-xs font-black">1. Evac Map</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
-                      Live GPS &amp; flood evasion
-                    </p>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveResidentScreen('report')}
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                      activeResidentScreen === 'report'
-                        ? 'bg-amber-50/90 dark:bg-amber-950/50 border-amber-500 text-amber-700 dark:text-amber-300 ring-2 ring-amber-500/20 shadow-md'
-                        : 'bg-white dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <AlertTriangle size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
-                      <span className="text-xs font-black">2. Hazard Report</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
-                      Citizen incident reports
-                    </p>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveResidentScreen('profile')}
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                      activeResidentScreen === 'profile'
-                        ? 'bg-emerald-50/90 dark:bg-emerald-950/50 border-emerald-500 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500/20 shadow-md'
-                        : 'bg-white dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <QrCode size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span className="text-xs font-black">3. Profile &amp; Pass</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
-                      Offline QR gate pass
-                    </p>
-                  </button>
-                </div>
-              </div>
-
-              <div className="text-xs text-slate-500 dark:text-slate-400 pt-1 font-medium">
+              <div className="text-xs text-slate-500 dark:text-slate-400 pt-2 font-medium">
                 Over <strong className="text-slate-900 dark:text-white">{downloadCount.toLocaleString()}</strong> households protected across Zamboanga City.
               </div>
 
