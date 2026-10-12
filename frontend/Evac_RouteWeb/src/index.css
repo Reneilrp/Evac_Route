@@ -231,3 +231,24 @@ html, body, #root {
 .dark .hover\:border-blue-300:hover {
   border-color: rgba(59, 130, 246, 0.4) !important;
 }
+
+/* Continuous Marquee Animation Moving Right */
+@keyframes marquee-right {
+  0% {
+    transform: translate3d(-50%, 0, 0);
+  }
+  100% {
+    transform: translate3d(0%, 0, 0);
+  }
+}
+
+.animate-marquee-right {
+  display: flex;
+  width: max-content;
+  animation: marquee-right 32s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-right:hover {
+  animation-play-state: paused;
+}

@@ -65,6 +65,33 @@ export default function LandingPage() {
     { id: 'install-guide', label: 'Installation Guide' },
   ];
 
+  const residentProtectionStats = [
+    {
+      stat: '112',
+      color: 'text-blue-600 dark:text-blue-400',
+      title: 'Official Safe Shelters',
+      desc: 'High-ground courts, schools & ridges',
+    },
+    {
+      stat: '0%',
+      color: 'text-emerald-600 dark:text-emerald-400',
+      title: 'Walk into Danger',
+      desc: 'Avoids active flood & fire zones',
+    },
+    {
+      stat: '< 30s',
+      color: 'text-red-600 dark:text-red-400',
+      title: 'SOS Alert Delivery',
+      desc: 'Transmitted directly to rescue units',
+    },
+    {
+      stat: '98',
+      color: 'text-amber-600 dark:text-amber-400',
+      title: 'Barangays Covered',
+      desc: 'Complete Zamboanga City safety net',
+    },
+  ];
+
   // Sliding underline position calculation
   const updateUnderline = useCallback(() => {
     const activeEl = navRefs.current[activeSection];
@@ -978,35 +1005,56 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Resident Protection Metrics Strip ── */}
-      <section className="py-8 sm:py-10 lg:py-12 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            
-            <div className="p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
-              <p className="text-4xl sm:text-5xl font-black text-blue-600 dark:text-blue-400 tracking-tight">112</p>
-              <p className="text-sm font-bold text-slate-900 dark:text-white mt-2">Official Safe Shelters</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">High-ground courts, schools &amp; ridges</p>
-            </div>
+      {/* ── Resident Protection Metrics Infinite Ticker (Rightward Marquee) ── */}
+      <section className="py-2.5 sm:py-3.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-y border-slate-200/80 dark:border-slate-800/80 overflow-hidden relative transition-colors select-none">
+        {/* Left & Right gradient edge fades for smooth entry/exit */}
+        <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-r from-white dark:from-slate-900 to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-l from-white dark:from-slate-900 to-transparent z-10 pointer-events-none" />
 
-            <div className="p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
-              <p className="text-4xl sm:text-5xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">0%</p>
-              <p className="text-sm font-bold text-slate-900 dark:text-white mt-2">Walk into Danger</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Avoids active flood &amp; fire zones</p>
-            </div>
+        {/* Continuous Marquee Track moving right */}
+        <div className="flex animate-marquee-right">
+          {/* Half 1 */}
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0 pr-3 sm:pr-4">
+            {[...residentProtectionStats, ...residentProtectionStats].map((item, idx) => (
+              <div
+                key={`stat-1-${idx}`}
+                className="flex items-center gap-3 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 shadow-xs hover:border-slate-300 dark:hover:border-slate-600 transition shrink-0"
+              >
+                <span className={`text-lg sm:text-xl font-black tracking-tight shrink-0 ${item.color}`}>
+                  {item.stat}
+                </span>
+                <div className="text-left leading-tight">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                    {item.title}
+                  </p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    {item.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
 
-            <div className="p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
-              <p className="text-4xl sm:text-5xl font-black text-red-600 dark:text-red-400 tracking-tight">&lt; 30s</p>
-              <p className="text-sm font-bold text-slate-900 dark:text-white mt-2">SOS Alert Delivery</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Transmitted directly to rescue units</p>
-            </div>
-
-            <div className="p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
-              <p className="text-4xl sm:text-5xl font-black text-amber-600 dark:text-amber-400 tracking-tight">98</p>
-              <p className="text-sm font-bold text-slate-900 dark:text-white mt-2">Barangays Covered</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Complete Zamboanga City safety net</p>
-            </div>
-
+          {/* Half 2 (Exact Duplicate for Infinite Seamless Loop) */}
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0 pr-3 sm:pr-4" aria-hidden="true">
+            {[...residentProtectionStats, ...residentProtectionStats].map((item, idx) => (
+              <div
+                key={`stat-2-${idx}`}
+                className="flex items-center gap-3 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 shadow-xs hover:border-slate-300 dark:hover:border-slate-600 transition shrink-0"
+              >
+                <span className={`text-lg sm:text-xl font-black tracking-tight shrink-0 ${item.color}`}>
+                  {item.stat}
+                </span>
+                <div className="text-left leading-tight">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                    {item.title}
+                  </p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    {item.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
