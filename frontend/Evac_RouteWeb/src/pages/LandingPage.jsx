@@ -475,14 +475,14 @@ export default function LandingPage() {
         className={`relative h-[100svh] min-h-[100svh] md:h-screen md:min-h-screen ${
           overviewSlide === 1
             ? 'p-0 overflow-hidden'
-            : 'pt-14 pb-20 px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] overflow-hidden'
-        } md:pt-16 md:pb-6 md:px-6 lg:px-8 flex flex-col justify-between transition-all duration-300`}
+            : 'pt-14 pb-20 px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:px-0 overflow-hidden'
+        } md:pt-16 md:pb-6 flex flex-col justify-between transition-all duration-300`}
       >
         {/* Glow ambient background effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-blue-500/10 dark:bg-blue-600/15 blur-[140px] rounded-full pointer-events-none" />
         <div className="absolute top-1/3 -right-20 w-[400px] h-[400px] bg-emerald-500/10 dark:bg-emerald-600/10 blur-[130px] rounded-full pointer-events-none" />
 
-        <div className={`max-w-7xl mx-auto relative z-10 w-full flex-1 min-h-0 flex flex-col ${overviewSlide === 1 ? 'h-full justify-stretch' : 'justify-between'}`}>
+        <div className={`max-w-7xl mx-auto relative z-10 w-full flex-1 min-h-0 flex flex-col ${overviewSlide === 1 ? 'px-0 md:px-6 lg:px-8 h-full justify-stretch' : 'px-0 sm:px-0 md:px-6 lg:px-8 justify-between'}`}>
           
           {/* Responsive Slide Track Container */}
           <div
@@ -501,7 +501,7 @@ export default function LandingPage() {
               }`}
             >
               {/* Column 1 / Slide 0: Dynamic Viewport Fitting & Proportional Spacing (from GURO-App) */}
-              <div className="w-full min-w-full shrink-0 md:min-w-0 md:shrink md:w-auto md:col-span-7 xl:col-span-7 flex flex-col items-center md:items-start justify-evenly md:justify-center gap-[clamp(0.75rem,2.2vh,1.65rem)] md:gap-6 text-center md:text-left my-auto px-2 sm:px-4 md:px-0">
+              <div className="w-full min-w-full shrink-0 md:min-w-0 md:w-full md:col-span-7 xl:col-span-7 flex flex-col items-center md:items-start justify-evenly md:justify-center gap-[clamp(0.75rem,2.2vh,1.65rem)] md:gap-6 text-center md:text-left my-auto px-2 sm:px-4 md:px-0">
                 
                 {/* Scaled Headline & Concise Subtitle */}
                 <div className="w-full">
@@ -602,7 +602,7 @@ export default function LandingPage() {
               </div>
 
               {/* Column 2 / Slide 1: Responsive Dual-Mode Mockup / App Preview Card */}
-              <div className="w-full min-w-full shrink-0 md:min-w-0 md:shrink md:w-auto md:col-span-5 xl:col-span-5 flex flex-col items-center md:items-end justify-between md:justify-center relative my-0 md:my-auto px-0 md:px-0 h-full md:h-auto flex-1 md:flex-initial">
+              <div className="w-full min-w-full shrink-0 md:min-w-0 md:w-full md:col-span-5 xl:col-span-5 flex flex-col items-center md:items-end justify-between md:justify-center relative my-0 md:my-auto px-0 md:px-0 h-full md:h-auto flex-1 md:flex-initial">
                 {/* Mobile Back Button & Live Badge Bar (Visible on mobile when in Slide 1) */}
                 <div className="flex md:hidden items-center justify-between w-full px-3.5 pt-[max(0.6rem,env(safe-area-inset-top))] pb-2 shrink-0 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 z-20">
                   <button
@@ -620,14 +620,14 @@ export default function LandingPage() {
                 </div>
 
                 {/* Responsive Container: 3D Smartphone on Desktop (md+), Native Full-Width on Mobile (<md) */}
-                <div className="relative w-full max-w-none md:w-[305px] lg:w-[325px] xl:w-[340px] rounded-none md:rounded-[42px] bg-transparent md:bg-slate-900 dark:md:bg-slate-950 p-0 md:p-2.5 lg:p-3 shadow-none md:shadow-2xl border-0 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-0 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300 flex-1 md:flex-initial flex flex-col justify-stretch md:justify-center overflow-hidden md:overflow-visible h-full md:h-auto">
+                <div className="relative w-full max-w-none md:w-[305px] lg:w-[325px] xl:w-[340px] rounded-none md:rounded-[42px] bg-transparent md:bg-slate-900 dark:md:bg-slate-950 p-0 md:p-2.5 lg:p-3 shadow-none md:shadow-2xl border-0 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-0 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300 flex-1 md:flex-none flex flex-col justify-stretch md:justify-center overflow-hidden md:overflow-visible h-full md:h-auto">
                   {/* Phone Speaker Notch (Tablet & Desktop - hidden on small mobile) */}
                   <div className="hidden md:flex absolute top-5 left-1/2 -translate-x-1/2 w-24 h-3.5 bg-slate-900 dark:bg-slate-950 rounded-full z-30 items-center justify-center transition-colors">
                     <div className="w-10 h-1 bg-slate-700 dark:bg-slate-800 rounded-full" />
                   </div>
 
                   {/* Inner Screen Container - Native Edge-to-Edge on Mobile, Bezel Card on Desktop */}
-                  <div className="w-full flex-1 min-h-0 rounded-none md:rounded-[34px] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden flex flex-col h-full md:h-[510px] lg:h-[555px] xl:h-[585px] border-0 md:border md:border-slate-200 dark:md:border-slate-800 relative shadow-none md:shadow-inner transition-colors duration-300">
+                  <div className="w-full flex-1 min-h-0 md:flex-none rounded-none md:rounded-[34px] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden flex flex-col h-full md:h-[510px] lg:h-[555px] xl:h-[585px] md:min-h-[510px] lg:min-h-[555px] xl:min-h-[585px] md:max-h-[510px] lg:max-h-[555px] xl:max-h-[585px] border-0 md:border md:border-slate-200 dark:md:border-slate-800 relative shadow-none md:shadow-inner transition-colors duration-300">
                   
                   {/* Status Bar */}
                   <div className="pt-2 lg:pt-2.5 px-3.5 lg:px-5 pb-1 flex justify-between items-center text-[10px] text-slate-500 dark:text-slate-400 font-semibold select-none z-30 bg-white/90 dark:bg-slate-950/80 backdrop-blur-sm border-b border-slate-100 dark:border-transparent transition-colors">
@@ -644,7 +644,7 @@ export default function LandingPage() {
                       Displays full-screen map with user's current location pin
                      ───────────────────────────────────────────────────────────── */}
                   {activeResidentScreen === 'map' && (
-                    <div className="relative flex-1 overflow-hidden flex flex-col justify-between animate-enter select-none">
+                    <div className="relative w-full h-full min-h-0 flex-1 overflow-hidden flex flex-col justify-between animate-enter select-none">
                       
                       {/* Full-bleed Map Canvas (SVG) */}
                       <div className="absolute inset-0 w-full h-full">
@@ -901,7 +901,7 @@ export default function LandingPage() {
                       SCREEN 2: REPORT HAZARD (ACTUAL RESIDENT INCIDENT REPORT UI)
                      ───────────────────────────────────────────────────────────── */}
                   {activeResidentScreen === 'report' && (
-                    <div className="flex-1 overflow-y-auto p-3.5 space-y-3 animate-enter text-left bg-slate-50 dark:bg-slate-950 transition-colors">
+                    <div className="w-full h-full min-h-0 flex-1 overflow-y-auto p-3.5 space-y-3 animate-enter text-left bg-slate-50 dark:bg-slate-950 transition-colors">
                       <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                         <div>
                           <p className="text-xs font-black text-slate-900 dark:text-white">Report Emergency Hazard</p>
@@ -995,7 +995,7 @@ export default function LandingPage() {
                       SCREEN 3: PROFILE & PASS (ACTUAL RESIDENT PROFILE QR UI)
                      ───────────────────────────────────────────────────────────── */}
                   {activeResidentScreen === 'profile' && (
-                    <div className="flex-1 overflow-y-auto p-3.5 space-y-3 animate-enter text-left bg-slate-50 dark:bg-slate-950 transition-colors">
+                    <div className="w-full h-full min-h-0 flex-1 overflow-y-auto p-3.5 space-y-3 animate-enter text-left bg-slate-50 dark:bg-slate-950 transition-colors">
                       {/* Resident Identity Header Card */}
                       <div className="p-3 bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-center gap-3 shadow-sm">
                         <div className="relative">
