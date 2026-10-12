@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ShieldAlert,
@@ -36,6 +36,9 @@ export default function LandingPage() {
   const [downloadCount, setDownloadCount] = useState(1420);
   const [downloading, setDownloading] = useState(false);
 
+  const navRefs = useRef({});
+  const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0, opacity: 0 });
+
   const navItems = [
     { id: 'overview', label: 'Overview' },
     { id: 'app-preview', label: 'App Preview' },
@@ -43,6 +46,25 @@ export default function LandingPage() {
     { id: 'shelters', label: 'Safe Shelters' },
     { id: 'install-guide', label: 'Installation Guide' },
   ];
+
+  // Sliding underline position calculation
+  const updateUnderline = useCallback(() => {
+    const activeEl = navRefs.current[activeSection];
+    if (activeEl) {
+      const inset = 8;
+      setUnderlineStyle({
+        left: activeEl.offsetLeft + inset,
+        width: Math.max(0, activeEl.offsetWidth - (inset * 2)),
+        opacity: 1,
+      });
+    }
+  }, [activeSection]);
+
+  useEffect(() => {
+    updateUnderline();
+    window.addEventListener('resize', updateUnderline);
+    return () => window.removeEventListener('resize', updateUnderline);
+  }, [updateUnderline]);
 
   // Monitor scroll for blurred header transition & active section spy
   useEffect(() => {
@@ -139,32 +161,35 @@ export default function LandingPage() {
             </div>
           </a>
 
-          {/* Desktop Navigation Links with Underline Indicator */}
-          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+          {/* Desktop Navigation Links with Sliding Underline Indicator */}
+          <nav className="relative hidden md:flex items-center gap-1 lg:gap-2 py-1">
             {navItems.map((item) => {
               const isActive = activeSection === item.id;
               return (
                 <button
                   key={item.id}
+                  ref={(el) => { navRefs.current[item.id] = el; }}
                   onClick={() => scrollToSection(item.id)}
-                  className={`relative px-3 py-2 text-xs font-bold transition-all duration-200 cursor-pointer group ${
+                  className={`px-3 py-2 text-xs font-bold transition-colors duration-200 cursor-pointer ${
                     isActive
                       ? 'text-blue-600 dark:text-blue-400 font-extrabold'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   <span>{item.label}</span>
-                  {/* Underline highlight bar */}
-                  <span
-                    className={`absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full transition-all duration-300 ${
-                      isActive
-                        ? 'bg-blue-600 dark:bg-blue-400 opacity-100 scale-x-100 shadow-sm shadow-blue-500/50'
-                        : 'bg-transparent opacity-0 scale-x-0 group-hover:bg-slate-300 dark:group-hover:bg-slate-700 group-hover:opacity-60 group-hover:scale-x-75'
-                    }`}
-                  />
                 </button>
               );
             })}
+
+            {/* Sliding Underline Indicator Bar */}
+            <span
+              className="absolute bottom-0 h-[2.5px] bg-blue-600 dark:bg-blue-400 rounded-full shadow-sm shadow-blue-500/50 transition-all duration-300 ease-out pointer-events-none"
+              style={{
+                left: `${underlineStyle.left}px`,
+                width: `${underlineStyle.width}px`,
+                opacity: underlineStyle.opacity,
+              }}
+            />
           </nav>
 
           {/* Action CTAs: Focused Exclusively on Citizen Download & Theme Toggle */}
@@ -239,135 +264,65 @@ export default function LandingPage() {
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-blue-500/10 dark:bg-blue-600/15 blur-[140px] rounded-full pointer-events-none" />
         <div className="absolute top-1/3 -right-20 w-[400px] h-[400px] bg-emerald-500/10 dark:bg-emerald-600/10 blur-[130px] rounded-full pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          <div className="space-y-6 max-w-3xl mx-auto">
             
-            {/* Left Copy: Resident Focus */}
-            <div className="lg:col-span-7 text-center lg:text-left space-y-6">
-              
-              {/* Resident Safety Badge */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800/80 text-blue-700 dark:text-blue-300 text-xs font-bold tracking-wide shadow-sm">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
-                </span>
-                <span>Official Citizen Safety App · Zamboanga City DRRM</span>
-              </div>
-
-              {/* Major Resident Headline */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.1]">
-                Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
-              </h1>
-
-              {/* Resident Subtitle */}
-              <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
-                Never get trapped by rising floodwaters or blocked roads. Evac_Route automatically calculates safe escape paths away from active disasters to the nearest high-ground shelter, provides 1-tap SOS rescue alerts, and keeps your family pass ready offline.
-              </p>
-
-              {/* Resident Action Buttons */}
-              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-                {/* Direct APK Download Button */}
-                <button
-                  onClick={handleDownload}
-                  disabled={downloading}
-                  className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black text-base rounded-2xl shadow-xl shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-3 cursor-pointer group"
-                >
-                  <Download size={22} className="group-hover:translate-y-0.5 transition-transform" />
-                  <span>{downloading ? "Preparing Download..." : "Download Evac_Route APK"}</span>
-                  <span className="text-xs font-semibold py-0.5 px-2 bg-white/20 rounded-md">90+ MB</span>
-                </button>
-
-                {/* Explore Resident App Preview */}
-                <button
-                  onClick={() => scrollToSection('app-preview')}
-                  className="w-full sm:w-auto px-6 py-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-sm rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Smartphone size={18} className="text-blue-600 dark:text-blue-400" />
-                  <span>See How It Works</span>
-                  <ArrowDown size={14} className="text-slate-400" />
-                </button>
-              </div>
-
-              {/* Citizen Trust Badges */}
-              <div className="pt-4 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200/80 dark:border-slate-800/80">
-                <div className="flex items-center gap-1.5 font-medium">
-                  <ShieldCheck size={16} className="text-emerald-500" />
-                  <span>SHA-256 Verified Clean APK</span>
-                </div>
-                <div className="flex items-center gap-1.5 font-medium">
-                  <Heart size={16} className="text-red-500" />
-                  <span>100% Free · No Ads · No Tracking</span>
-                </div>
-                <div className="flex items-center gap-1.5 font-medium">
-                  <QrCode size={16} className="text-blue-500" />
-                  <span>Works Offline in Blackouts</span>
-                </div>
-              </div>
-
+            {/* Resident Safety Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800/80 text-blue-700 dark:text-blue-300 text-xs font-bold tracking-wide shadow-sm">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
+              </span>
+              <span>Official Citizen Safety App · Zamboanga City DRRM</span>
             </div>
 
-            {/* Right: Resident Household Disaster Shield Card */}
-            <div className="lg:col-span-5 flex justify-center">
-              <div className="w-full max-w-md bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 relative overflow-hidden">
-                
-                {/* Header */}
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-2.5 w-2.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-                    </span>
-                    <span className="text-xs font-black tracking-wider text-slate-800 dark:text-slate-200 uppercase">
-                      Citizen Lifeline HUD
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                    CITYWIDE READY
-                  </span>
-                </div>
+            {/* Major Resident Headline */}
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.1]">
+              Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
+            </h1>
 
-                {/* Live Safe Path Highlight */}
-                <div className="p-4 bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 rounded-2xl space-y-2">
-                  <div className="flex justify-between items-center text-xs font-black text-blue-700 dark:text-blue-300">
-                    <span className="flex items-center gap-1.5">
-                      <Navigation size={15} /> Dynamic High-Ground Routing
-                    </span>
-                    <span className="text-[10px] bg-blue-100 dark:bg-blue-900/80 px-2 py-0.5 rounded-full font-bold">SAFE PATH</span>
-                  </div>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                    Automatically recalculates your route around flooded riverbanks and active debris directly to elevated safe havens.
-                  </p>
-                  <div className="pt-1 flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                    <span>Target: Tetuan High-Ground Ridge</span>
-                    <span className="text-emerald-600 dark:text-emerald-400">+22m Above Sea Level</span>
-                  </div>
-                </div>
+            {/* Resident Subtitle */}
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
+              Never get trapped by rising floodwaters or blocked roads. Evac_Route automatically calculates safe escape paths away from active disasters to the nearest high-ground shelter, provides 1-tap SOS rescue alerts, and keeps your family pass ready offline.
+            </p>
 
-                {/* 2 Resident Safety Pillars */}
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700/60">
-                    <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400 font-bold mb-1">
-                      <Radio size={14} className="animate-pulse" /> 1-Tap SOS Beacon
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Directly alerts rescue boats &amp; QRT squads with your exact pin.</p>
-                  </div>
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700/60">
-                    <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold mb-1">
-                      <QrCode size={14} /> Offline Family Pass
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Expedited intake at shelter gates without cellular internet.</p>
-                  </div>
-                </div>
+            {/* Resident Action Buttons */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
+              {/* Direct APK Download Button */}
+              <button
+                onClick={handleDownload}
+                disabled={downloading}
+                className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black text-base rounded-2xl shadow-xl shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-3 cursor-pointer group"
+              >
+                <Download size={22} className="group-hover:translate-y-0.5 transition-transform" />
+                <span>{downloading ? "Preparing Download..." : "Download Evac_Route APK"}</span>
+                <span className="text-xs font-semibold py-0.5 px-2 bg-white/20 rounded-md">90+ MB</span>
+              </button>
 
-                {/* Download CTA Prompt */}
-                <button
-                  onClick={handleDownload}
-                  className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
-                >
-                  <Download size={15} />
-                  <span>Install Evac_Route on Your Phone Now</span>
-                </button>
+              {/* Explore Resident App Preview */}
+              <button
+                onClick={() => scrollToSection('app-preview')}
+                className="w-full sm:w-auto px-6 py-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-sm rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Smartphone size={18} className="text-blue-600 dark:text-blue-400" />
+                <span>See App Preview Below</span>
+                <ArrowDown size={14} className="text-slate-400" />
+              </button>
+            </div>
 
+            {/* Citizen Trust Badges */}
+            <div className="pt-6 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200/80 dark:border-slate-800/80">
+              <div className="flex items-center gap-1.5 font-medium">
+                <ShieldCheck size={16} className="text-emerald-500" />
+                <span>SHA-256 Verified Clean APK</span>
+              </div>
+              <div className="flex items-center gap-1.5 font-medium">
+                <Heart size={16} className="text-red-500" />
+                <span>100% Free · No Ads · No Tracking</span>
+              </div>
+              <div className="flex items-center gap-1.5 font-medium">
+                <QrCode size={16} className="text-blue-500" />
+                <span>Works Offline in Blackouts</span>
               </div>
             </div>
 
