@@ -32,7 +32,6 @@ import {
   Layers,
   PhoneCall,
   ArrowRight,
-  ChevronLeft,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
@@ -463,33 +462,6 @@ export default function LandingPage() {
 
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10 w-full flex flex-col justify-center">
           
-          {/* Mobile-Only Slide Switcher Header Pill */}
-          <div className="flex md:hidden items-center justify-center gap-1.5 p-1 bg-slate-200/80 dark:bg-slate-800/80 backdrop-blur-md rounded-full mb-3 mx-auto shadow-inner select-none">
-            <button
-              type="button"
-              onClick={() => setOverviewSlide(0)}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                overviewSlide === 0
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Overview
-            </button>
-            <button
-              type="button"
-              onClick={() => setOverviewSlide(1)}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                overviewSlide === 1
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <span>Mobile UI Preview</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            </button>
-          </div>
-
           {/* Responsive Slide Track Container */}
           <div
             className="w-full overflow-hidden touch-pan-y"
@@ -613,21 +585,7 @@ export default function LandingPage() {
 
               {/* Column 2 / Slide 1: Responsive Dual-Mode Mockup / App Preview Card */}
               <div className="w-full shrink-0 md:shrink md:w-auto md:col-span-5 xl:col-span-5 flex flex-col items-center justify-center md:justify-end relative my-auto px-1 sm:px-2 md:px-0">
-                {/* Mobile Return to Overview Chip */}
-                <div className="flex md:hidden items-center justify-between w-full max-w-[285px] xs:max-w-[310px] mb-2 px-1">
-                  <button
-                    type="button"
-                    onClick={() => setOverviewSlide(0)}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                  >
-                    <ChevronLeft size={14} />
-                    <span>Back to Overview</span>
-                  </button>
-                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                    Interactive Live App
-                  </span>
-                </div>
-              {/* Responsive Container: 3D Smartphone on Desktop (md+), Clean App Card on Mobile (<md) */}
+                {/* Responsive Container: 3D Smartphone on Desktop (md+), Clean App Card on Mobile (<md) */}
               <div className="relative w-full max-w-[285px] xs:max-w-[310px] sm:max-w-[330px] md:w-[295px] lg:w-[320px] xl:w-[335px] rounded-[24px] sm:rounded-[32px] lg:rounded-[42px] bg-slate-900 dark:bg-slate-950 p-2 sm:p-2.5 lg:p-3 shadow-2xl border border-slate-300 dark:border-slate-800/80 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-1 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300">
                 {/* Phone Speaker Notch (Tablet & Desktop - hidden on small mobile) */}
                 <div className="hidden md:flex absolute top-5 left-1/2 -translate-x-1/2 w-24 h-3.5 bg-slate-900 dark:bg-slate-950 rounded-full z-30 items-center justify-center transition-colors">
