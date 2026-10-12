@@ -473,8 +473,10 @@ export default function LandingPage() {
       <section
         id="overview"
         className={`relative h-[100svh] min-h-[100svh] md:h-screen md:min-h-screen ${
-          overviewSlide === 1 ? 'pt-2 pb-2' : 'pt-14 pb-20'
-        } md:pt-16 md:pb-6 px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 lg:px-8 flex flex-col justify-between overflow-hidden transition-all duration-300`}
+          overviewSlide === 1
+            ? 'pt-2 pb-0 px-0'
+            : 'pt-14 pb-20 px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]'
+        } md:pt-16 md:pb-6 md:px-6 lg:px-8 flex flex-col justify-between overflow-hidden transition-all duration-300`}
       >
         {/* Glow ambient background effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-blue-500/10 dark:bg-blue-600/15 blur-[140px] rounded-full pointer-events-none" />
@@ -596,9 +598,9 @@ export default function LandingPage() {
               </div>
 
               {/* Column 2 / Slide 1: Responsive Dual-Mode Mockup / App Preview Card */}
-              <div className="w-full min-w-full shrink-0 md:min-w-0 md:shrink md:w-auto md:col-span-5 xl:col-span-5 flex flex-col items-center justify-center relative my-auto px-2 sm:px-4 md:px-0">
+              <div className="w-full min-w-full shrink-0 md:min-w-0 md:shrink md:w-auto md:col-span-5 xl:col-span-5 flex flex-col items-center justify-between md:justify-center relative my-auto px-0 md:px-0 h-full md:h-auto">
                 {/* Mobile Back Button & Live Badge Bar (Visible on mobile when in Slide 1) */}
-                <div className="flex md:hidden items-center justify-between w-full max-w-[335px] xs:max-w-[365px] sm:max-w-[385px] mb-2 px-1">
+                <div className="flex md:hidden items-center justify-between w-full px-3 sm:px-4 pt-1 mb-2">
                   <button
                     type="button"
                     onClick={() => setOverviewSlide(0)}
@@ -613,15 +615,15 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Responsive Container: 3D Smartphone on Desktop (md+), Clean App Card on Mobile (<md) */}
-                <div className="relative w-full max-w-[335px] xs:max-w-[365px] sm:max-w-[385px] md:w-[295px] lg:w-[320px] xl:w-[335px] rounded-[28px] xs:rounded-[34px] sm:rounded-[38px] lg:rounded-[42px] bg-slate-900 dark:bg-slate-950 p-2 xs:p-2.5 lg:p-3 shadow-2xl border border-slate-300 dark:border-slate-800/80 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-1 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300">
+                {/* Responsive Container: 3D Smartphone on Desktop (md+), Native Full-Width on Mobile (<md) */}
+                <div className="relative w-full max-w-none md:w-[295px] lg:w-[320px] xl:w-[335px] rounded-none md:rounded-[42px] bg-transparent md:bg-slate-900 dark:md:bg-slate-950 p-0 md:p-2.5 lg:p-3 shadow-none md:shadow-2xl border-0 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-0 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300 flex-1 md:flex-initial flex flex-col justify-center">
                   {/* Phone Speaker Notch (Tablet & Desktop - hidden on small mobile) */}
                   <div className="hidden md:flex absolute top-5 left-1/2 -translate-x-1/2 w-24 h-3.5 bg-slate-900 dark:bg-slate-950 rounded-full z-30 items-center justify-center transition-colors">
                     <div className="w-10 h-1 bg-slate-700 dark:bg-slate-800 rounded-full" />
                   </div>
 
-                  {/* Inner Screen Container - fills full vertical space dynamically */}
-                  <div className="w-full rounded-[22px] xs:rounded-[26px] sm:rounded-[30px] lg:rounded-[34px] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden flex flex-col h-[500px] xs:h-[550px] sm:h-[590px] max-h-[calc(100svh-5rem)] md:h-[460px] lg:h-[500px] xl:h-[540px] border border-slate-200 dark:border-slate-800 relative shadow-inner transition-colors duration-300">
+                  {/* Inner Screen Container - Native Edge-to-Edge on Mobile, Bezel Card on Desktop */}
+                  <div className="w-full flex-1 rounded-none md:rounded-[34px] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden flex flex-col h-[calc(100svh-3.75rem)] max-h-[calc(100svh-3.75rem)] md:h-[460px] lg:h-[500px] xl:h-[540px] border-0 md:border md:border-slate-200 dark:md:border-slate-800 relative shadow-none md:shadow-inner transition-colors duration-300">
                   
                   {/* Status Bar */}
                   <div className="pt-2 lg:pt-2.5 px-3.5 lg:px-5 pb-1 flex justify-between items-center text-[10px] text-slate-500 dark:text-slate-400 font-semibold select-none z-30 bg-white/90 dark:bg-slate-950/80 backdrop-blur-sm border-b border-slate-100 dark:border-transparent transition-colors">
