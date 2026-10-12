@@ -454,8 +454,11 @@ export default function LandingPage() {
         </>
       )}
 
-      {/* ── SECTION 1: CITIZEN PLATFORM OVERVIEW (UNIFIED HERO FOLD) ── */}
-      <section id="overview" className="relative min-h-[calc(100svh-4rem)] pt-16 pb-20 md:py-12 lg:py-16 flex flex-col justify-between overflow-x-clip">
+      {/* ── SECTION 1: CITIZEN PLATFORM OVERVIEW (UNIFIED HERO FOLD - FITS SCREEN ONLY) ── */}
+      <section
+        id="overview"
+        className="relative h-[100svh] min-h-[100svh] md:h-screen md:min-h-screen pt-14 pb-20 md:pt-16 md:pb-6 flex flex-col justify-between overflow-hidden"
+      >
         {/* Glow ambient background effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-blue-500/10 dark:bg-blue-600/15 blur-[140px] rounded-full pointer-events-none" />
         <div className="absolute top-1/3 -right-20 w-[400px] h-[400px] bg-emerald-500/10 dark:bg-emerald-600/10 blur-[130px] rounded-full pointer-events-none" />
@@ -1107,64 +1110,66 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Resident Protection Metrics Infinite Ticker (Rightward Marquee) ── */}
-      <section className="py-4 sm:py-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-y border-slate-200/80 dark:border-slate-800/80 overflow-hidden relative transition-colors select-none">
-        {/* Left & Right gradient edge fades for smooth entry/exit */}
-        <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-r from-white dark:from-slate-900 to-transparent z-10 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-l from-white dark:from-slate-900 to-transparent z-10 pointer-events-none" />
+      {/* ── SECTION 2: HOW EVACROUTE PROTECTS YOUR HOUSEHOLD (NEXT SCREEN) ── */}
+      <section id="protection" className="scroll-mt-14 sm:scroll-mt-16">
+        {/* Resident Protection Metrics Infinite Ticker (Rightward Marquee) - Top of Next Screen */}
+        <div className="py-3.5 sm:py-4.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-y border-slate-200/80 dark:border-slate-800/80 overflow-hidden relative transition-colors select-none">
+          {/* Left & Right gradient edge fades for smooth entry/exit */}
+          <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-r from-white dark:from-slate-900 to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-l from-white dark:from-slate-900 to-transparent z-10 pointer-events-none" />
 
-        {/* Continuous Marquee Track moving right */}
-        <div className="flex animate-marquee-right items-center">
-          {/* Half 1 */}
-          <div className="flex items-center shrink-0">
-            {[...residentProtectionStats, ...residentProtectionStats].map((item, idx) => (
-              <div key={`stat-1-${idx}`} className="flex items-center shrink-0">
-                <div className="flex items-center gap-3 sm:gap-4 px-5 sm:px-8 py-1">
-                  <span className={`text-xl sm:text-2xl font-black tracking-tight shrink-0 ${item.color}`}>
-                    {item.stat}
-                  </span>
-                  <div className="text-left leading-tight">
-                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                      {item.title}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                      {item.desc}
-                    </p>
+          {/* Continuous Marquee Track moving right */}
+          <div className="flex animate-marquee-right items-center">
+            {/* Half 1 */}
+            <div className="flex items-center shrink-0">
+              {[...residentProtectionStats, ...residentProtectionStats].map((item, idx) => (
+                <div key={`stat-1-${idx}`} className="flex items-center shrink-0">
+                  <div className="flex items-center gap-3 sm:gap-4 px-5 sm:px-8 py-1">
+                    <span className={`text-xl sm:text-2xl font-black tracking-tight shrink-0 ${item.color}`}>
+                      {item.stat}
+                    </span>
+                    <div className="text-left leading-tight">
+                      <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                        {item.title}
+                      </p>
+                      <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        {item.desc}
+                      </p>
+                    </div>
                   </div>
+                  {/* Styled vertical divider line between metrics */}
+                  <div className="h-6 sm:h-7 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 dark:via-slate-700 to-transparent shrink-0" />
                 </div>
-                {/* Styled vertical divider line between metrics */}
-                <div className="h-6 sm:h-7 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 dark:via-slate-700 to-transparent shrink-0" />
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* Half 2 (Exact Duplicate for Infinite Seamless Loop) */}
-          <div className="flex items-center shrink-0" aria-hidden="true">
-            {[...residentProtectionStats, ...residentProtectionStats].map((item, idx) => (
-              <div key={`stat-2-${idx}`} className="flex items-center shrink-0">
-                <div className="flex items-center gap-3 sm:gap-4 px-5 sm:px-8 py-1">
-                  <span className={`text-xl sm:text-2xl font-black tracking-tight shrink-0 ${item.color}`}>
-                    {item.stat}
-                  </span>
-                  <div className="text-left leading-tight">
-                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                      {item.title}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                      {item.desc}
-                    </p>
+            {/* Half 2 (Exact Duplicate for Infinite Seamless Loop) */}
+            <div className="flex items-center shrink-0" aria-hidden="true">
+              {[...residentProtectionStats, ...residentProtectionStats].map((item, idx) => (
+                <div key={`stat-2-${idx}`} className="flex items-center shrink-0">
+                  <div className="flex items-center gap-3 sm:gap-4 px-5 sm:px-8 py-1">
+                    <span className={`text-xl sm:text-2xl font-black tracking-tight shrink-0 ${item.color}`}>
+                      {item.stat}
+                    </span>
+                    <div className="text-left leading-tight">
+                      <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                        {item.title}
+                      </p>
+                      <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        {item.desc}
+                      </p>
+                    </div>
                   </div>
+                  {/* Styled vertical divider line between metrics */}
+                  <div className="h-6 sm:h-7 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 dark:via-slate-700 to-transparent shrink-0" />
                 </div>
-                {/* Styled vertical divider line between metrics */}
-                <div className="h-6 sm:h-7 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 dark:via-slate-700 to-transparent shrink-0" />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* ── SECTION 2: HOW EVACROUTE PROTECTS YOUR HOUSEHOLD ── */}
-      <section id="protection" className="py-10 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Protection Content Container */}
+        <div className="py-10 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-2">
             <Zap size={13} /> Resident Protection
@@ -1245,6 +1250,7 @@ export default function LandingPage() {
             </p>
           </div>
 
+        </div>
         </div>
       </section>
 
