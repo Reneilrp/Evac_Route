@@ -473,12 +473,12 @@ export default function LandingPage() {
             onTouchEnd={handleTouchEnd}
           >
             <div
-              className={`flex md:grid md:grid-cols-12 gap-6 md:gap-8 lg:gap-10 xl:gap-12 items-center w-full my-auto transition-transform duration-300 ease-out ${
+              className={`flex md:grid md:grid-cols-12 md:gap-8 lg:gap-10 xl:gap-12 items-center w-full my-auto transition-transform duration-300 ease-out ${
                 overviewSlide === 1 ? '-translate-x-full md:translate-x-0' : 'translate-x-0'
               }`}
             >
               {/* Column 1 / Slide 0: Dynamic Viewport Fitting & Proportional Spacing (from GURO-App) */}
-              <div className="w-full shrink-0 md:shrink md:w-auto md:col-span-7 xl:col-span-7 flex-1 min-h-0 flex flex-col items-center md:items-start justify-evenly md:justify-center gap-[clamp(0.6rem,2vh,1.5rem)] md:gap-5 text-center md:text-left my-auto px-1 sm:px-2 md:px-0">
+              <div className="w-full min-w-full shrink-0 md:min-w-0 md:shrink md:w-auto md:col-span-7 xl:col-span-7 flex flex-col items-center md:items-start justify-evenly md:justify-center gap-[clamp(0.6rem,2vh,1.5rem)] md:gap-5 text-center md:text-left my-auto px-2 sm:px-4 md:px-0">
                 
                 {/* Scaled Headline & Concise Subtitle */}
                 <div className="space-y-2 sm:space-y-3 w-full">
@@ -565,7 +565,7 @@ export default function LandingPage() {
               </div>
 
               {/* Column 2 / Slide 1: Responsive Dual-Mode Mockup / App Preview Card */}
-              <div className="w-full shrink-0 md:shrink md:w-auto md:col-span-5 xl:col-span-5 flex flex-col items-center justify-center md:justify-end relative my-auto px-1 sm:px-2 md:px-0">
+              <div className="w-full min-w-full shrink-0 md:min-w-0 md:shrink md:w-auto md:col-span-5 xl:col-span-5 flex flex-col items-center justify-center md:justify-end relative my-auto px-2 sm:px-4 md:px-0">
                 {/* Responsive Container: 3D Smartphone on Desktop (md+), Clean App Card on Mobile (<md) */}
               <div className="relative w-full max-w-[285px] xs:max-w-[310px] sm:max-w-[330px] md:w-[295px] lg:w-[320px] xl:w-[335px] rounded-[24px] sm:rounded-[32px] lg:rounded-[42px] bg-slate-900 dark:bg-slate-950 p-2 sm:p-2.5 lg:p-3 shadow-2xl border border-slate-300 dark:border-slate-800/80 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-1 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300">
                 {/* Phone Speaker Notch (Tablet & Desktop - hidden on small mobile) */}
