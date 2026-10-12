@@ -16,6 +16,32 @@ export default ({ config }) => {
     process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN = mapboxDownloadToken;
   }
 
+  // Check if build is for standalone preview/production (physical devices only) or development (includes emulators)
+  const isPhysicalOnlyBuild =
+    process.env.EAS_BUILD_PROFILE === 'preview' ||
+    process.env.EAS_BUILD_PROFILE === 'production' ||
+    process.env.APP_ENV === 'preview' ||
+    process.env.APP_ENV === 'production';
+
+  const buildPropertiesConfig = isPhysicalOnlyBuild
+    ? {
+        android: {
+          buildArchs: ['armeabi-v7a', 'arm64-v8a'],
+          packagingOptions: {
+            exclude: [
+              '/lib/x86/**',
+              '/lib/x86_64/**',
+            ],
+          },
+        },
+      }
+    : {
+        android: {
+          // Dev builds retain all ABIs so Android Studio / PC emulators run without errors
+          buildArchs: ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'],
+        },
+      };
+
   return {
     ...config,
     plugins: [
@@ -43,20 +69,7 @@ export default ({ config }) => {
           RNMapboxMapsImpl: 'mapbox',
         },
       ],
-      [
-        'expo-build-properties',
-        {
-          android: {
-            buildArchs: ['armeabi-v7a', 'arm64-v8a'],
-            packagingOptions: {
-              exclude: [
-                '/lib/x86/**',
-                '/lib/x86_64/**',
-              ],
-            },
-          },
-        },
-      ],
+      ['expo-build-properties', buildPropertiesConfig],
     ],
     extra: {
       ...(config.extra || {}),
