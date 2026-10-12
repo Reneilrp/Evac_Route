@@ -466,7 +466,7 @@ export default function LandingPage() {
             </div>
 
             {/* Right: Responsive Dual-Mode Mockup / App Preview Card */}
-            <div className="lg:col-span-5 xl:col-span-5 flex justify-center relative w-full my-auto">
+            <div className="lg:col-span-5 xl:col-span-5 flex justify-center lg:justify-end relative w-full my-auto">
               {/* Responsive Container: 3D Smartphone on Desktop (lg), Clean App Card on Mobile (<lg) */}
               <div className="relative w-full max-w-[320px] sm:max-w-[340px] lg:w-[320px] xl:w-[335px] rounded-[24px] sm:rounded-[32px] lg:rounded-[44px] bg-slate-950 p-2 sm:p-2.5 lg:p-3 shadow-2xl border border-slate-800/80 lg:border-[5px] lg:border-slate-800 lg:ring-1 lg:ring-slate-700/50">
                 {/* Phone Speaker Notch (Desktop Only - hidden on mobile/tablet) */}
