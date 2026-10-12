@@ -211,9 +211,6 @@ export default function LandingPage() {
               <span className="text-lg font-black tracking-wider text-slate-900 dark:text-white">
                 EVAC_ROUTE
               </span>
-              <span className="block text-[10px] font-bold text-blue-600 dark:text-blue-400 tracking-widest uppercase">
-                Zamboanga City Citizen Safety
-              </span>
             </div>
           </a>
 
