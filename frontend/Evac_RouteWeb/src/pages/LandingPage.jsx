@@ -32,6 +32,8 @@ import {
   Layers,
   PhoneCall,
   ArrowRight,
+  ArrowLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
@@ -225,6 +227,17 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Close mobile showcase on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && overviewSlide === 1) {
+        setOverviewSlide(0);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [overviewSlide]);
+
   // Fetch real database household & resident statistics on mount
   useEffect(() => {
     let isMounted = true;
@@ -304,6 +317,8 @@ export default function LandingPage() {
       {/* ── Fixed Navigation Bar (Resident-Focused, No Public Admin Buttons) ── */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          overviewSlide === 1 ? '-translate-y-full md:translate-y-0 pointer-events-none md:pointer-events-auto' : 'translate-y-0'
+        } ${
           scrolled
             ? 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 shadow-md py-3'
             : 'bg-transparent border-b border-transparent py-5'
@@ -457,7 +472,9 @@ export default function LandingPage() {
       {/* ── SECTION 1: CITIZEN PLATFORM OVERVIEW (UNIFIED HERO FOLD - FITS SCREEN ONLY) ── */}
       <section
         id="overview"
-        className="relative h-[100svh] min-h-[100svh] md:h-screen md:min-h-screen pt-14 pb-20 md:pt-16 md:pb-6 px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 lg:px-8 flex flex-col justify-between overflow-hidden"
+        className={`relative h-[100svh] min-h-[100svh] md:h-screen md:min-h-screen ${
+          overviewSlide === 1 ? 'pt-2 pb-2' : 'pt-14 pb-20'
+        } md:pt-16 md:pb-6 px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 lg:px-8 flex flex-col justify-between overflow-hidden transition-all duration-300`}
       >
         {/* Glow ambient background effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-blue-500/10 dark:bg-blue-600/15 blur-[140px] rounded-full pointer-events-none" />
@@ -521,14 +538,28 @@ export default function LandingPage() {
                       <span className="text-[10px] sm:text-xs font-semibold py-0.5 px-2 bg-white/20 rounded-md">90.2 MB</span>
                     </button>
 
-                    <button
-                      onClick={() => scrollToSection('protection')}
-                      className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                    >
-                      <ShieldCheck size={15} className="text-emerald-500" />
-                      <span>How It Protects</span>
-                      <ArrowDown size={13} className="text-slate-400" />
-                    </button>
+                    {/* Secondary Actions Row: On mobile, split between How It Protects and One-Click Interactive Preview */}
+                    <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={() => scrollToSection('protection')}
+                        className="w-full sm:w-auto px-3.5 sm:px-6 py-2.5 sm:py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md transition flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer active:scale-98"
+                      >
+                        <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
+                        <span className="truncate">How It Protects</span>
+                        <ArrowDown size={12} className="text-slate-400 shrink-0 hidden sm:inline" />
+                      </button>
+
+                      {/* One-Click Interactive Mobile App Showcase Trigger (Mobile Only) */}
+                      <button
+                        type="button"
+                        onClick={() => setOverviewSlide(1)}
+                        className="sm:hidden w-full px-3 py-2.5 bg-blue-50/90 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 font-bold text-xs rounded-2xl border border-blue-200/80 dark:border-blue-900/60 shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                      >
+                        <Smartphone size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                        <span className="truncate">App Preview</span>
+                        <ChevronRight size={13} className="text-blue-500/80 shrink-0" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -566,15 +597,31 @@ export default function LandingPage() {
 
               {/* Column 2 / Slide 1: Responsive Dual-Mode Mockup / App Preview Card */}
               <div className="w-full min-w-full shrink-0 md:min-w-0 md:shrink md:w-auto md:col-span-5 xl:col-span-5 flex flex-col items-center justify-center relative my-auto px-2 sm:px-4 md:px-0">
-                {/* Responsive Container: 3D Smartphone on Desktop (md+), Clean App Card on Mobile (<md) */}
-              <div className="relative w-full max-w-[325px] xs:max-w-[355px] sm:max-w-[375px] md:w-[295px] lg:w-[320px] xl:w-[335px] rounded-[28px] xs:rounded-[34px] sm:rounded-[38px] lg:rounded-[42px] bg-slate-900 dark:bg-slate-950 p-2 xs:p-2.5 lg:p-3 shadow-2xl border border-slate-300 dark:border-slate-800/80 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-1 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300">
-                {/* Phone Speaker Notch (Tablet & Desktop - hidden on small mobile) */}
-                <div className="hidden md:flex absolute top-5 left-1/2 -translate-x-1/2 w-24 h-3.5 bg-slate-900 dark:bg-slate-950 rounded-full z-30 items-center justify-center transition-colors">
-                  <div className="w-10 h-1 bg-slate-700 dark:bg-slate-800 rounded-full" />
+                {/* Mobile Back Button & Live Badge Bar (Visible on mobile when in Slide 1) */}
+                <div className="flex md:hidden items-center justify-between w-full max-w-[335px] xs:max-w-[365px] sm:max-w-[385px] mb-2 px-1">
+                  <button
+                    type="button"
+                    onClick={() => setOverviewSlide(0)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs font-bold shadow-md border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition cursor-pointer"
+                  >
+                    <ArrowLeft size={14} className="text-blue-600 dark:text-blue-400" />
+                    <span>Back to Overview</span>
+                  </button>
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-800 shadow-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Interactive Preview</span>
+                  </div>
                 </div>
 
-                {/* Inner Screen Container - fills full vertical space dynamically */}
-                <div className="w-full rounded-[22px] xs:rounded-[26px] sm:rounded-[30px] lg:rounded-[34px] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden flex flex-col h-[470px] xs:h-[510px] sm:h-[540px] md:h-[460px] lg:h-[500px] xl:h-[540px] border border-slate-200 dark:border-slate-800 relative shadow-inner transition-colors duration-300">
+                {/* Responsive Container: 3D Smartphone on Desktop (md+), Clean App Card on Mobile (<md) */}
+                <div className="relative w-full max-w-[335px] xs:max-w-[365px] sm:max-w-[385px] md:w-[295px] lg:w-[320px] xl:w-[335px] rounded-[28px] xs:rounded-[34px] sm:rounded-[38px] lg:rounded-[42px] bg-slate-900 dark:bg-slate-950 p-2 xs:p-2.5 lg:p-3 shadow-2xl border border-slate-300 dark:border-slate-800/80 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-1 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300">
+                  {/* Phone Speaker Notch (Tablet & Desktop - hidden on small mobile) */}
+                  <div className="hidden md:flex absolute top-5 left-1/2 -translate-x-1/2 w-24 h-3.5 bg-slate-900 dark:bg-slate-950 rounded-full z-30 items-center justify-center transition-colors">
+                    <div className="w-10 h-1 bg-slate-700 dark:bg-slate-800 rounded-full" />
+                  </div>
+
+                  {/* Inner Screen Container - fills full vertical space dynamically */}
+                  <div className="w-full rounded-[22px] xs:rounded-[26px] sm:rounded-[30px] lg:rounded-[34px] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden flex flex-col h-[500px] xs:h-[550px] sm:h-[590px] max-h-[calc(100svh-5rem)] md:h-[460px] lg:h-[500px] xl:h-[540px] border border-slate-200 dark:border-slate-800 relative shadow-inner transition-colors duration-300">
                   
                   {/* Status Bar */}
                   <div className="pt-2 lg:pt-2.5 px-3.5 lg:px-5 pb-1 flex justify-between items-center text-[10px] text-slate-500 dark:text-slate-400 font-semibold select-none z-30 bg-white/90 dark:bg-slate-950/80 backdrop-blur-sm border-b border-slate-100 dark:border-transparent transition-colors">
@@ -1076,7 +1123,9 @@ export default function LandingPage() {
         </div>
 
         {/* Mobile Pagination Indicator Dots - docked at the very edge of the bottom navigation bar */}
-        <div className="flex md:hidden items-center justify-center gap-2.5 mt-auto pt-2 pb-1 select-none">
+        <div className={`flex md:hidden items-center justify-center gap-2.5 mt-auto pt-2 pb-1 select-none transition-opacity duration-300 ${
+          overviewSlide === 1 ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}>
           <button
             type="button"
             onClick={() => setOverviewSlide(0)}
@@ -1478,7 +1527,9 @@ export default function LandingPage() {
       {/* ── Mobile Bottom Navigation Bar (iOS Frosted Glass / Android M3 Elevation) ── */}
       <nav
         aria-label="Mobile bottom navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex justify-center px-4"
+        className={`md:hidden fixed bottom-0 left-0 right-0 z-40 flex justify-center px-4 transition-transform duration-300 ease-in-out ${
+          overviewSlide === 1 ? 'translate-y-full pointer-events-none' : 'translate-y-0'
+        }`}
         style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}
       >
         <div
