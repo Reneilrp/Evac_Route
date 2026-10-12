@@ -525,8 +525,8 @@ export default function LandingPage() {
                       className="w-full sm:w-auto px-5 py-2.5 sm:px-6 sm:py-3 xl:px-7 xl:py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold text-xs sm:text-sm lg:text-base rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer group"
                     >
                       <Download size={16} className="group-hover:translate-y-0.5 transition-transform" />
-                      <span>{downloading ? "Preparing Download..." : "Download EvacRoute APK"}</span>
-                      <span className="text-[10px] sm:text-xs font-semibold py-0.5 px-2 bg-white/20 rounded-md">90+ MB</span>
+                      <span>{downloading ? "Preparing Download..." : "Download APK"}</span>
+                      <span className="text-[10px] sm:text-xs font-semibold py-0.5 px-2 bg-white/20 rounded-md">90.2 MB</span>
                     </button>
 
                     <button
@@ -1359,7 +1359,7 @@ export default function LandingPage() {
             </div>
             <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">1. Download the APK</h3>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Tap the download button to save the verified <span className="font-bold text-blue-600 dark:text-blue-400">EvacRoute.apk</span> (~90 MB) directly to your phone.
+              Tap the download button to save the verified <span className="font-bold text-blue-600 dark:text-blue-400">EvacRoute.apk</span> (~90.2 MB) directly to your phone.
             </p>
           </div>
 
