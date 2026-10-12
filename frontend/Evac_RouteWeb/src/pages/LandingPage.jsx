@@ -382,29 +382,6 @@ export default function LandingPage() {
 
             {/* Right: Responsive Dual-Mode Mockup / App Preview Card */}
             <div className="lg:col-span-5 xl:col-span-5 flex justify-center relative w-full my-auto">
-              
-              {/* Floating Badge: Top Right (Wide Desktop Only) */}
-              <div className="hidden 2xl:flex absolute -top-4 -right-2 z-20 items-center gap-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl">
-                <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
-                  <Building2 size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-black text-slate-900 dark:text-white">112 Verified Shelters</p>
-                  <p className="text-[10px] text-slate-500 font-medium">Calibrated high-ground zones</p>
-                </div>
-              </div>
-
-              {/* Floating Badge: Bottom Left (Wide Desktop Only) */}
-              <div className="hidden 2xl:flex absolute -bottom-4 -left-4 z-20 items-center gap-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl">
-                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-black text-slate-900 dark:text-white">Offline Digital Pass</p>
-                  <p className="text-[10px] text-slate-500 font-medium">Instant gate check-in</p>
-                </div>
-              </div>
-
               {/* Responsive Container: 3D Smartphone on Desktop (lg), Clean App Card on Mobile (<lg) */}
               <div className="relative w-full max-w-[320px] sm:max-w-[340px] lg:w-[320px] xl:w-[335px] rounded-[24px] sm:rounded-[32px] lg:rounded-[44px] bg-slate-950 p-2 sm:p-2.5 lg:p-3 shadow-2xl border border-slate-800/80 lg:border-[5px] lg:border-slate-800 lg:ring-1 lg:ring-slate-700/50">
                 {/* Phone Speaker Notch (Desktop Only - hidden on mobile/tablet) */}
