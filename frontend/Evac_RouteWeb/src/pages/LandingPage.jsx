@@ -289,19 +289,19 @@ export default function LandingPage() {
       </header>
 
       {/* ── SECTION 1: CITIZEN PLATFORM OVERVIEW (UNIFIED HERO FOLD) ── */}
-      <section id="overview" className="relative pt-28 pb-16 md:pt-36 md:pb-20 overflow-hidden">
+      <section id="overview" className="relative pt-20 pb-8 sm:pt-24 sm:pb-10 lg:pt-24 lg:pb-8 xl:pt-28 xl:pb-12 min-h-[calc(100dvh-4.5rem)] flex flex-col justify-center overflow-hidden">
         {/* Glow ambient background effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-blue-500/10 dark:bg-blue-600/15 blur-[140px] rounded-full pointer-events-none" />
         <div className="absolute top-1/3 -right-20 w-[400px] h-[400px] bg-emerald-500/10 dark:bg-emerald-600/10 blur-[130px] rounded-full pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full my-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
             
             {/* Left Column: Headline, Description, Download CTA, Trust Badges, Emergency Hotlines */}
-            <div className="lg:col-span-7 xl:col-span-7 space-y-6 text-center lg:text-left">
+            <div className="lg:col-span-7 xl:col-span-7 space-y-3 sm:space-y-4 xl:space-y-5 text-center lg:text-left">
               
               {/* Resident Safety Badge */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold tracking-wide shadow-sm">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold tracking-wide shadow-sm">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
@@ -310,58 +310,58 @@ export default function LandingPage() {
               </div>
 
               {/* Major Resident Headline */}
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.1]">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl xl:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.15]">
                 Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
               </h1>
 
               {/* Resident Subtitle */}
-              <p className="text-sm sm:text-base md:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
+              <p className="text-xs sm:text-sm md:text-base text-slate-600 dark:text-slate-300 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
                 Never get trapped by rising floodwaters or blocked roads. Evac_Route automatically calculates safe escape paths away from active disasters to the nearest high-ground shelter, provides 1-tap SOS rescue alerts, and keeps your family pass ready offline.
               </p>
 
               {/* Direct APK Download & Explore Buttons */}
-              <div className="pt-1 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+              <div className="pt-1 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4">
                 <button
                   onClick={handleDownload}
                   disabled={downloading}
-                  className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black text-base rounded-2xl shadow-xl shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-3 cursor-pointer group"
+                  className="w-full sm:w-auto px-6 py-3 sm:px-7 sm:py-3.5 xl:px-8 xl:py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black text-sm sm:text-base rounded-2xl shadow-xl shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-3 cursor-pointer group"
                 >
-                  <Download size={22} className="group-hover:translate-y-0.5 transition-transform" />
+                  <Download size={20} className="group-hover:translate-y-0.5 transition-transform" />
                   <span>{downloading ? "Preparing Download..." : "Download Evac_Route APK"}</span>
-                  <span className="text-xs font-semibold py-0.5 px-2 bg-white/20 rounded-md">90+ MB</span>
+                  <span className="text-[11px] font-semibold py-0.5 px-2 bg-white/20 rounded-md">90+ MB</span>
                 </button>
 
                 <button
                   onClick={() => scrollToSection('protection')}
-                  className="w-full sm:w-auto px-6 py-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-sm rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full sm:w-auto px-5 py-3 sm:px-6 sm:py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <ShieldCheck size={18} className="text-emerald-500" />
+                  <ShieldCheck size={17} className="text-emerald-500" />
                   <span>How It Protects</span>
-                  <ArrowDown size={14} className="text-slate-400" />
+                  <ArrowDown size={13} className="text-slate-400" />
                 </button>
               </div>
 
               {/* Citizen Trust Badges */}
-              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 text-xs text-slate-500 dark:text-slate-400">
+              <div className="pt-1 flex flex-wrap items-center justify-center lg:justify-start gap-3 sm:gap-5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                 <div className="flex items-center gap-1.5 font-semibold">
-                  <ShieldCheck size={16} className="text-emerald-500" />
+                  <ShieldCheck size={15} className="text-emerald-500" />
                   <span>SHA-256 Verified Clean</span>
                 </div>
                 <div className="flex items-center gap-1.5 font-semibold">
-                  <CheckCircle2 size={16} className="text-blue-500" />
+                  <CheckCircle2 size={15} className="text-blue-500" />
                   <span>100% Free · No Ads</span>
                 </div>
                 <div className="flex items-center gap-1.5 font-semibold">
-                  <QrCode size={16} className="text-emerald-500" />
+                  <QrCode size={15} className="text-emerald-500" />
                   <span>Works 100% Offline</span>
                 </div>
               </div>
 
               {/* Emergency Hotline Alert Strip */}
-              <div className="p-3 bg-red-50/80 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="p-2 sm:p-2.5 bg-red-50/80 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded-xl sm:rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 text-xs">
                 <div className="flex items-center gap-2 font-bold text-red-700 dark:text-red-300">
-                  <PhoneCall size={16} className="text-red-600 animate-pulse" />
-                  <span>Emergency Assistance Hotlines:</span>
+                  <PhoneCall size={15} className="text-red-600 animate-pulse" />
+                  <span>Emergency Hotlines:</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <a href="tel:911" className="font-extrabold text-red-600 dark:text-red-400 hover:underline">
@@ -374,7 +374,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="text-xs text-slate-500 dark:text-slate-400 pt-1 font-medium">
+              <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">
                 Over <strong className="text-slate-900 dark:text-white">{downloadCount.toLocaleString()}</strong> households protected across Zamboanga City.
               </div>
 
@@ -383,8 +383,8 @@ export default function LandingPage() {
             {/* Right: Responsive Dual-Mode Mockup / App Preview Card */}
             <div className="lg:col-span-5 xl:col-span-5 flex justify-center relative w-full">
               
-              {/* Floating Badge: Top Right (Desktop Only) */}
-              <div className="hidden xl:flex absolute -top-4 -right-2 z-20 items-center gap-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl">
+              {/* Floating Badge: Top Right (Wide Desktop Only) */}
+              <div className="hidden 2xl:flex absolute -top-4 -right-2 z-20 items-center gap-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl">
                 <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
                   <Building2 size={18} />
                 </div>
@@ -394,8 +394,8 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Floating Badge: Bottom Left (Desktop Only) */}
-              <div className="hidden xl:flex absolute -bottom-4 -left-4 z-20 items-center gap-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl">
+              {/* Floating Badge: Bottom Left (Wide Desktop Only) */}
+              <div className="hidden 2xl:flex absolute -bottom-4 -left-4 z-20 items-center gap-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl">
                 <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 size={18} />
                 </div>
@@ -406,17 +406,17 @@ export default function LandingPage() {
               </div>
 
               {/* Responsive Container: 3D Smartphone on Desktop (lg), Clean App Card on Mobile (<lg) */}
-              <div className="relative w-full max-w-[340px] sm:max-w-[360px] lg:w-[325px] rounded-[28px] sm:rounded-[36px] lg:rounded-[48px] bg-slate-950 p-2 sm:p-3 lg:p-3.5 shadow-2xl border border-slate-800/80 lg:border-[6px] lg:border-slate-800 lg:ring-1 lg:ring-slate-700/50">
+              <div className="relative w-full max-w-[320px] sm:max-w-[340px] lg:w-[310px] xl:w-[325px] rounded-[24px] sm:rounded-[32px] lg:rounded-[44px] bg-slate-950 p-2 sm:p-2.5 lg:p-3 shadow-2xl border border-slate-800/80 lg:border-[5px] lg:border-slate-800 lg:ring-1 lg:ring-slate-700/50">
                 {/* Phone Speaker Notch (Desktop Only - hidden on mobile/tablet) */}
-                <div className="hidden lg:flex absolute top-6 left-1/2 -translate-x-1/2 w-28 h-4 bg-slate-950 rounded-full z-30 items-center justify-center">
-                  <div className="w-12 h-1 bg-slate-800 rounded-full" />
+                <div className="hidden lg:flex absolute top-5 left-1/2 -translate-x-1/2 w-24 h-3.5 bg-slate-950 rounded-full z-30 items-center justify-center">
+                  <div className="w-10 h-1 bg-slate-800 rounded-full" />
                 </div>
 
                 {/* Inner Screen Container */}
-                <div className="w-full rounded-[22px] sm:rounded-[28px] lg:rounded-[38px] bg-slate-950 text-white overflow-hidden flex flex-col h-[520px] sm:h-[550px] lg:h-[590px] border border-slate-800 relative shadow-inner">
+                <div className="w-full rounded-[18px] sm:rounded-[24px] lg:rounded-[34px] bg-slate-950 text-white overflow-hidden flex flex-col h-[460px] sm:h-[480px] lg:h-[490px] xl:h-[540px] 2xl:h-[580px] border border-slate-800 relative shadow-inner">
                   
                   {/* Status Bar */}
-                  <div className="pt-2.5 lg:pt-3 px-4 lg:px-6 pb-1.5 flex justify-between items-center text-[10px] text-slate-400 font-semibold select-none z-30 bg-slate-950/80 backdrop-blur-sm">
+                  <div className="pt-2 lg:pt-2.5 px-3.5 lg:px-5 pb-1 flex justify-between items-center text-[10px] text-slate-400 font-semibold select-none z-30 bg-slate-950/80 backdrop-blur-sm">
                     <span className="font-bold text-slate-300">9:41 AM</span>
                     <span className="text-[9px] font-bold text-blue-400 uppercase tracking-wider lg:hidden">Evac_Route Live</span>
                     <div className="flex items-center gap-1.5">
