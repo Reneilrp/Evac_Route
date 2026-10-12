@@ -565,16 +565,16 @@ export default function LandingPage() {
               </div>
 
               {/* Column 2 / Slide 1: Responsive Dual-Mode Mockup / App Preview Card */}
-              <div className="w-full min-w-full shrink-0 md:min-w-0 md:shrink md:w-auto md:col-span-5 xl:col-span-5 flex flex-col items-center justify-center md:justify-end relative my-auto px-2 sm:px-4 md:px-0">
+              <div className="w-full min-w-full shrink-0 md:min-w-0 md:shrink md:w-auto md:col-span-5 xl:col-span-5 flex flex-col items-center justify-center relative my-auto px-2 sm:px-4 md:px-0">
                 {/* Responsive Container: 3D Smartphone on Desktop (md+), Clean App Card on Mobile (<md) */}
-              <div className="relative w-full max-w-[285px] xs:max-w-[310px] sm:max-w-[330px] md:w-[295px] lg:w-[320px] xl:w-[335px] rounded-[24px] sm:rounded-[32px] lg:rounded-[42px] bg-slate-900 dark:bg-slate-950 p-2 sm:p-2.5 lg:p-3 shadow-2xl border border-slate-300 dark:border-slate-800/80 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-1 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300">
+              <div className="relative w-full max-w-[325px] xs:max-w-[355px] sm:max-w-[375px] md:w-[295px] lg:w-[320px] xl:w-[335px] rounded-[28px] xs:rounded-[34px] sm:rounded-[38px] lg:rounded-[42px] bg-slate-900 dark:bg-slate-950 p-2 xs:p-2.5 lg:p-3 shadow-2xl border border-slate-300 dark:border-slate-800/80 md:border-[4px] lg:border-[5px] md:border-slate-300 dark:md:border-slate-800 md:ring-1 md:ring-slate-400/30 dark:md:ring-slate-700/50 transition-colors duration-300">
                 {/* Phone Speaker Notch (Tablet & Desktop - hidden on small mobile) */}
                 <div className="hidden md:flex absolute top-5 left-1/2 -translate-x-1/2 w-24 h-3.5 bg-slate-900 dark:bg-slate-950 rounded-full z-30 items-center justify-center transition-colors">
                   <div className="w-10 h-1 bg-slate-700 dark:bg-slate-800 rounded-full" />
                 </div>
 
                 {/* Inner Screen Container - fills full vertical space dynamically */}
-                <div className="w-full rounded-[18px] sm:rounded-[24px] lg:rounded-[34px] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden flex flex-col h-[420px] xs:h-[450px] sm:h-[480px] md:h-[460px] lg:h-[500px] xl:h-[540px] border border-slate-200 dark:border-slate-800 relative shadow-inner transition-colors duration-300">
+                <div className="w-full rounded-[22px] xs:rounded-[26px] sm:rounded-[30px] lg:rounded-[34px] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden flex flex-col h-[470px] xs:h-[510px] sm:h-[540px] md:h-[460px] lg:h-[500px] xl:h-[540px] border border-slate-200 dark:border-slate-800 relative shadow-inner transition-colors duration-300">
                   
                   {/* Status Bar */}
                   <div className="pt-2 lg:pt-2.5 px-3.5 lg:px-5 pb-1 flex justify-between items-center text-[10px] text-slate-500 dark:text-slate-400 font-semibold select-none z-30 bg-white/90 dark:bg-slate-950/80 backdrop-blur-sm border-b border-slate-100 dark:border-transparent transition-colors">
