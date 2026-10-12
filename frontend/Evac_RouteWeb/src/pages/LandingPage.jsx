@@ -31,16 +31,48 @@ export default function LandingPage() {
   const { darkMode, toggleDarkMode } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('overview');
   const [activeResidentScreen, setActiveResidentScreen] = useState('route'); // 'route' | 'sos' | 'qr'
   const [downloadCount, setDownloadCount] = useState(1420);
   const [downloading, setDownloading] = useState(false);
 
-  // Monitor scroll for blurred header transition
+  const navItems = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'app-preview', label: 'App Preview' },
+    { id: 'protection', label: 'How It Protects You' },
+    { id: 'shelters', label: 'Safe Shelters' },
+    { id: 'install-guide', label: 'Installation Guide' },
+  ];
+
+  // Monitor scroll for blurred header transition & active section spy
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
+
+      const sectionIds = ['overview', 'app-preview', 'protection', 'shelters', 'install-guide'];
+      const scrollThreshold = 140; // pixel offset below header
+
+      // Near bottom of page activates the last section
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 50) {
+        setActiveSection(sectionIds[sectionIds.length - 1]);
+        return;
+      }
+
+      for (let i = sectionIds.length - 1; i >= 0; i--) {
+        const el = document.getElementById(sectionIds[i]);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= scrollThreshold) {
+            setActiveSection(sectionIds[i]);
+            return;
+          }
+        }
+      }
+      setActiveSection('overview');
     };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -63,6 +95,7 @@ export default function LandingPage() {
 
   const scrollToSection = (id) => {
     setMobileMenuOpen(false);
+    setActiveSection(id);
     const element = document.getElementById(id);
     if (element) {
       const headerOffset = 80;
@@ -106,38 +139,32 @@ export default function LandingPage() {
             </div>
           </a>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/60 p-1.5 rounded-full border border-slate-200 dark:border-slate-700/60 backdrop-blur">
-            <button
-              onClick={() => scrollToSection('overview')}
-              className="px-4 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-full transition hover:bg-white dark:hover:bg-slate-700/60 cursor-pointer"
-            >
-              Overview
-            </button>
-            <button
-              onClick={() => scrollToSection('app-preview')}
-              className="px-4 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-full transition hover:bg-white dark:hover:bg-slate-700/60 cursor-pointer"
-            >
-              App Preview
-            </button>
-            <button
-              onClick={() => scrollToSection('protection')}
-              className="px-4 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-full transition hover:bg-white dark:hover:bg-slate-700/60 cursor-pointer"
-            >
-              How It Protects You
-            </button>
-            <button
-              onClick={() => scrollToSection('shelters')}
-              className="px-4 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-full transition hover:bg-white dark:hover:bg-slate-700/60 cursor-pointer"
-            >
-              Safe Shelters
-            </button>
-            <button
-              onClick={() => scrollToSection('install-guide')}
-              className="px-4 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-full transition hover:bg-white dark:hover:bg-slate-700/60 cursor-pointer"
-            >
-              Installation Guide
-            </button>
+          {/* Desktop Navigation Links with Underline Indicator */}
+          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+            {navItems.map((item) => {
+              const isActive = activeSection === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id)}
+                  className={`relative px-3 py-2 text-xs font-bold transition-all duration-200 cursor-pointer group ${
+                    isActive
+                      ? 'text-blue-600 dark:text-blue-400 font-extrabold'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  {/* Underline highlight bar */}
+                  <span
+                    className={`absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full transition-all duration-300 ${
+                      isActive
+                        ? 'bg-blue-600 dark:bg-blue-400 opacity-100 scale-x-100 shadow-sm shadow-blue-500/50'
+                        : 'bg-transparent opacity-0 scale-x-0 group-hover:bg-slate-300 dark:group-hover:bg-slate-700 group-hover:opacity-60 group-hover:scale-x-75'
+                    }`}
+                  />
+                </button>
+              );
+            })}
           </nav>
 
           {/* Action CTAs: Focused Exclusively on Citizen Download & Theme Toggle */}
@@ -175,40 +202,29 @@ export default function LandingPage() {
 
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 pt-3 pb-6 space-y-2 animate-enter">
-            <button
-              onClick={() => scrollToSection('overview')}
-              className="w-full text-left px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              1. Overview
-            </button>
-            <button
-              onClick={() => scrollToSection('app-preview')}
-              className="w-full text-left px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              2. App Preview &amp; Download
-            </button>
-            <button
-              onClick={() => scrollToSection('protection')}
-              className="w-full text-left px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              3. How It Protects You
-            </button>
-            <button
-              onClick={() => scrollToSection('shelters')}
-              className="w-full text-left px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              4. Safe Shelters Network
-            </button>
-            <button
-              onClick={() => scrollToSection('install-guide')}
-              className="w-full text-left px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              5. Installation Guide
-            </button>
+          <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 pt-3 pb-6 space-y-1.5 animate-enter shadow-xl">
+            {navItems.map((item, idx) => {
+              const isActive = activeSection === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id)}
+                  className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-between cursor-pointer ${
+                    isActive
+                      ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold border-l-4 border-blue-600 dark:border-blue-400 shadow-sm'
+                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border-l-4 border-transparent'
+                  }`}
+                >
+                  <span>{`${idx + 1}. ${item.label}`}</span>
+                  {isActive && (
+                    <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 shadow-sm shadow-blue-500/50" />
+                  )}
+                </button>
+              );
+            })}
             <button
               onClick={handleDownload}
-              className="w-full flex items-center justify-center gap-2 mt-4 px-4 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-md"
+              className="w-full flex items-center justify-center gap-2 mt-4 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-95 text-white font-bold text-sm shadow-md transition cursor-pointer"
             >
               <Download size={16} />
               <span>Download Evac_Route APK · 90+ MB</span>
