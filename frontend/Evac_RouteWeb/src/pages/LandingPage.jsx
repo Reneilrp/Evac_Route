@@ -24,6 +24,8 @@ import {
   AlertCircle,
   HelpCircle,
   Lock,
+  ArrowUpRight,
+  Check,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -35,6 +37,11 @@ export default function LandingPage() {
   const [activeResidentScreen, setActiveResidentScreen] = useState('route'); // 'route' | 'sos' | 'qr'
   const [downloadCount, setDownloadCount] = useState(1420);
   const [downloading, setDownloading] = useState(false);
+
+  // Interactive phone preview states
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [sosTriggered, setSosTriggered] = useState(false);
+  const [passSaved, setPassSaved] = useState(false);
 
   const navRefs = useRef({});
   const isClickScrollingRef = useRef(false);
@@ -518,89 +525,298 @@ export default function LandingPage() {
                   {/* Dynamic Resident Screen Content */}
                   <div className="px-3.5 flex-1 space-y-3 pb-3 overflow-y-auto">
                     
-                    {/* RESIDENT SCREEN 1: SAFE EVACUATION ROUTE */}
+                    {/* RESIDENT SCREEN 1: SAFE EVACUATION ROUTE & INTERACTIVE MAP */}
                     {activeResidentScreen === 'route' && (
                       <div className="space-y-2.5 animate-enter">
-                        {/* Hazard Warning Pill */}
-                        <div className="p-3 bg-red-950/80 border border-red-500/50 rounded-xl">
-                          <div className="flex items-center gap-2 text-red-400 font-bold text-xs">
-                            <Flame size={14} className="animate-pulse" />
-                            <span>LEVEL 2 FLASH FLOOD WARNING</span>
+                        
+                        {/* Interactive Emergency GPS Map */}
+                        <div className="relative w-full h-[200px] rounded-2xl overflow-hidden bg-slate-950 border border-slate-700/80 shadow-inner group">
+                          <svg viewBox="0 0 320 200" className="w-full h-full select-none" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                              {/* Flood hazard warning gradient */}
+                              <linearGradient id="floodGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity="0.45" />
+                                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.25" />
+                              </linearGradient>
+
+                              {/* Safe route glow */}
+                              <filter id="routeGlow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feGaussianBlur stdDeviation="3" result="blur" />
+                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                              </filter>
+
+                              {/* Subtle map terrain grid */}
+                              <pattern id="mapGrid" width="25" height="25" patternUnits="userSpaceOnUse">
+                                <path d="M 25 0 L 0 0 0 25" fill="none" stroke="#1e293b" strokeWidth="0.5" strokeDasharray="2 2" />
+                              </pattern>
+                            </defs>
+
+                            {/* Base Navigation Map Background */}
+                            <rect width="320" height="200" fill="#080d1a" />
+                            <rect width="320" height="200" fill="url(#mapGrid)" opacity="0.6" />
+
+                            {/* River Basin (Tetuan River Flood Source) */}
+                            <path
+                              d="M -10 130 C 50 140, 100 155, 150 170 C 210 185, 260 195, 330 205"
+                              fill="none"
+                              stroke="#1e3a8a"
+                              strokeWidth="15"
+                              strokeLinecap="round"
+                              opacity="0.85"
+                            />
+                            <path
+                              d="M -10 130 C 50 140, 100 155, 150 170 C 210 185, 260 195, 330 205"
+                              fill="none"
+                              stroke="#38bdf8"
+                              strokeWidth="2"
+                              strokeDasharray="6 8"
+                              opacity="0.6"
+                            />
+
+                            {/* City Street Grid Network */}
+                            <path d="M 20 15 L 20 190" fill="none" stroke="#1e293b" strokeWidth="2.5" />
+                            <path d="M 75 10 L 75 190" fill="none" stroke="#1e293b" strokeWidth="2.5" />
+                            <path d="M 140 10 L 140 190" fill="none" stroke="#1e293b" strokeWidth="2.5" />
+                            <path d="M 220 10 L 220 190" fill="none" stroke="#1e293b" strokeWidth="2.5" />
+                            <path d="M 10 60 L 310 60" fill="none" stroke="#1e293b" strokeWidth="2.5" />
+                            <path d="M 10 120 L 310 120" fill="none" stroke="#1e293b" strokeWidth="2.5" />
+
+                            {/* Street Names */}
+                            <text x="30" y="55" fill="#475569" fontSize="6" fontWeight="600" letterSpacing="0.4">DON ALFARO ST</text>
+                            <text x="85" y="115" fill="#475569" fontSize="6" fontWeight="600" letterSpacing="0.4">GOV. ALVAREZ AVE</text>
+                            <text x="165" y="50" fill="#3b82f6" fontSize="6.5" fontWeight="bold" letterSpacing="0.4">RIDGE HIGH BYPASS</text>
+
+                            {/* Flood Hazard Polygon (Lower Tetuan River Surge) */}
+                            <polygon
+                              points="55,115 180,125 210,185 80,185"
+                              fill="url(#floodGrad)"
+                              stroke="#ef4444"
+                              strokeWidth="1.5"
+                              strokeDasharray="4 2"
+                            />
+                            {/* Flood Warning Pill on Map */}
+                            <g transform="translate(95, 142)">
+                              <rect x="0" y="0" width="80" height="14" rx="7" fill="#450a0a" stroke="#ef4444" strokeWidth="0.8" />
+                              <text x="40" y="9.5" fill="#fca5a5" fontSize="5.5" fontWeight="bold" textAnchor="middle">
+                                ⚠️ FLOOD SURGE ZONE
+                              </text>
+                            </g>
+
+                            {/* Blocked Submerged Road */}
+                            <path
+                              d="M 55 160 L 145 160"
+                              fill="none"
+                              stroke="#ef4444"
+                              strokeWidth="3.5"
+                              strokeDasharray="4 4"
+                              opacity="0.8"
+                            />
+                            <g transform="translate(90, 154)">
+                              <circle cx="6" cy="6" r="6" fill="#ef4444" />
+                              <text x="6" y="9" fill="#ffffff" fontSize="7" fontWeight="bold" textAnchor="middle">⛔</text>
+                            </g>
+
+                            {/* SAFE EVACUATION ROUTE (Avoids Flood, Climbs to High Ground) */}
+                            <path
+                              d="M 45 165 L 45 60 L 165 60 L 255 40"
+                              fill="none"
+                              stroke="#0284c7"
+                              strokeWidth="7"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              opacity="0.35"
+                            />
+                            <path
+                              d="M 45 165 L 45 60 L 165 60 L 255 40"
+                              fill="none"
+                              stroke={isNavigating ? "#38bdf8" : "#2563eb"}
+                              strokeWidth="3.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeDasharray={isNavigating ? "8 5" : "none"}
+                              filter="url(#routeGlow)"
+                            />
+
+                            {/* Directional Waypoint Markers */}
+                            <g fill="#93c5fd" opacity="0.9">
+                              <path d="M 45 125 L 48 130 L 42 130 Z" />
+                              <path d="M 45 90 L 48 95 L 42 95 Z" />
+                              <path d="M 105 60 L 100 57 L 100 63 Z" />
+                              <path d="M 195 55 L 191 52 L 191 58 Z" />
+                            </g>
+
+                            {/* User GPS Location (Tetuan) */}
+                            <g transform="translate(45, 165)">
+                              <circle cx="0" cy="0" r="13" fill="#38bdf8" opacity="0.3" className="animate-ping" />
+                              <circle cx="0" cy="0" r="6" fill="#0284c7" stroke="#ffffff" strokeWidth="1.8" />
+                              <circle cx="0" cy="0" r="2" fill="#ffffff" />
+                              <rect x="-20" y="8" width="40" height="12" rx="3.5" fill="#0f172a" stroke="#334155" strokeWidth="0.8" />
+                              <text x="0" y="16.5" fill="#e2e8f0" fontSize="5.5" fontWeight="bold" textAnchor="middle">YOU (HERE)</text>
+                            </g>
+
+                            {/* Destination Safe Shelter (Tetuan Ridge) */}
+                            <g transform="translate(255, 40)">
+                              <circle cx="0" cy="0" r="14" fill="#10b981" opacity="0.25" className="animate-pulse" />
+                              <circle cx="0" cy="0" r="8" fill="#059669" stroke="#ffffff" strokeWidth="1.8" />
+                              <text x="0" y="2.5" fill="#ffffff" fontSize="7" fontWeight="bold" textAnchor="middle">🏠</text>
+                              <rect x="-38" y="-19" width="76" height="14" rx="4" fill="#064e3b" stroke="#10b981" strokeWidth="0.8" />
+                              <text x="0" y="-9.5" fill="#a7f3d0" fontSize="5.5" fontWeight="bold" textAnchor="middle">TETUAN RIDGE (+22m)</text>
+                            </g>
+
+                            {/* High Ground Contour Badge */}
+                            <g transform="translate(165, 38)">
+                              <rect x="0" y="0" width="50" height="11" rx="5.5" fill="#1e293b" stroke="#3b82f6" strokeWidth="0.7" />
+                              <text x="25" y="7.5" fill="#60a5fa" fontSize="5" fontWeight="bold" textAnchor="middle">⛰️ ELEVATED</text>
+                            </g>
+                          </svg>
+
+                          {/* Floating Map HUD Top Overlay */}
+                          <div className="absolute top-2 left-2 right-2 pointer-events-none">
+                            {isNavigating ? (
+                              <div className="bg-slate-900/95 backdrop-blur-md border border-blue-500/70 p-2 rounded-xl shadow-lg flex items-center justify-between animate-enter">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-5 h-5 rounded-md bg-blue-600 flex items-center justify-center text-white">
+                                    <ArrowUpRight size={13} />
+                                  </div>
+                                  <div>
+                                    <div className="text-[9px] font-black text-white leading-tight">In 120m · Turn Right</div>
+                                    <div className="text-[7.5px] text-blue-300 font-medium leading-tight">Follow Ridge High Bypass</div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[10px] font-black text-emerald-400">14 min</span>
+                                  <span className="block text-[7.5px] text-slate-400">1.2 km left</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700/80 px-2 py-1 rounded-xl flex items-center justify-between shadow-md">
+                                <div className="flex items-center gap-1 text-red-400 text-[8.5px] font-bold">
+                                  <Flame size={11} className="animate-pulse" />
+                                  <span>Flash Flood: Riverbed Submerged</span>
+                                </div>
+                                <span className="text-[7.5px] font-black text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800">
+                                  BYPASS ACTIVE
+                                </span>
+                              </div>
+                            )}
                           </div>
-                          <p className="text-[10px] text-red-200/80 mt-1">Lower Tetuan &amp; Guiwan riverbank active surge. Roads submerged.</p>
+
+                          {/* Map Compass Widget */}
+                          <div className="absolute bottom-2 left-2 bg-slate-900/80 backdrop-blur px-1.5 py-0.5 rounded border border-slate-700 text-[7.5px] text-slate-300 font-bold flex items-center gap-1">
+                            <Compass size={9} className="text-blue-400" />
+                            <span>N 34° W</span>
+                          </div>
+
+                          {/* Live Status Badge */}
+                          <div className="absolute bottom-2 right-2 bg-slate-900/80 backdrop-blur px-1.5 py-0.5 rounded border border-slate-700 text-[7.5px] text-emerald-400 font-bold">
+                            {isNavigating ? "GPS Active · 4.5 km/h" : "Safe Haven Ready"}
+                          </div>
                         </div>
 
-                        {/* Optimal Safe Shelter Path */}
-                        <div className="p-3 bg-slate-800/90 border border-slate-700 rounded-xl space-y-2">
+                        {/* Optimal Safe Shelter Path Summary */}
+                        <div className="p-2.5 bg-slate-800/90 border border-slate-700 rounded-xl space-y-1.5">
                           <div className="flex justify-between items-start">
                             <div>
-                              <span className="text-[9px] uppercase font-bold text-blue-400 tracking-wider">Computed Safe Haven</span>
+                              <span className="text-[8.5px] uppercase font-bold text-blue-400 tracking-wider">Computed Safe Haven</span>
                               <p className="text-xs font-black text-white mt-0.5">Tetuan Elevated Ridge</p>
                             </div>
-                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800">
+                            <span className="text-[9px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800">
                               OPEN · 68%
                             </span>
                           </div>
                           
-                          <div className="flex items-center justify-between text-[10px] text-slate-300 pt-1 border-t border-slate-700/60">
+                          <div className="flex items-center justify-between text-[9.5px] text-slate-300 pt-1 border-t border-slate-700/60">
                             <span>Route: 1.4 km</span>
                             <span>ETA: 18 min walk</span>
                             <span className="text-emerald-400 font-bold">+22m High Ground</span>
                           </div>
                         </div>
 
-                        {/* Navigation Step Card */}
-                        <div className="p-2.5 bg-slate-800/70 border border-slate-700/80 rounded-xl flex items-center gap-3">
-                          <div className="p-2 bg-blue-600/30 rounded-lg text-blue-400 border border-blue-500/40">
-                            <Compass size={20} />
+                        {/* Interactive GPS Navigation Toggle Buttons (No APK download!) */}
+                        {!isNavigating ? (
+                          <button
+                            onClick={() => setIsNavigating(true)}
+                            className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 uppercase tracking-wider transition cursor-pointer"
+                          >
+                            <Navigation size={14} />
+                            <span>Start GPS Navigation</span>
+                          </button>
+                        ) : (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setIsNavigating(false)}
+                              className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold text-xs rounded-xl border border-slate-700 transition cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <X size={13} />
+                              <span>Exit Navigation</span>
+                            </button>
+                            <div className="flex-1 py-2 bg-blue-600/20 border border-blue-500/40 text-blue-400 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+                              <span>Navigating Live</span>
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <p className="text-[11px] font-bold text-white">Avoid Lower Highway 5</p>
-                            <p className="text-[9px] text-emerald-400">Head North toward high ground bypass</p>
-                          </div>
-                        </div>
+                        )}
 
-                        {/* Quick Trigger Button */}
-                        <button
-                          onClick={handleDownload}
-                          className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 uppercase tracking-wider transition cursor-pointer"
-                        >
-                          <Navigation size={14} />
-                          <span>Start GPS Navigation</span>
-                        </button>
                       </div>
                     )}
 
-                    {/* RESIDENT SCREEN 2: EMERGENCY SOS BUTTON */}
+                    {/* RESIDENT SCREEN 2: EMERGENCY SOS BUTTON (Interactive Simulation) */}
                     {activeResidentScreen === 'sos' && (
                       <div className="space-y-3 animate-enter text-center">
                         <div className="p-2.5 bg-red-950/60 border border-red-500/40 rounded-xl">
                           <p className="text-xs font-black text-red-400 uppercase tracking-wide">Emergency Rescue Distress</p>
-                          <p className="text-[10px] text-slate-300 mt-0.5">Trapped or cut off by rising water? Tap below to send your GPS coordinates to rescue squads.</p>
+                          <p className="text-[10px] text-slate-300 mt-0.5">Trapped or cut off by rising water? Tap the SOS button below to simulate sending your GPS beacon.</p>
                         </div>
 
-                        {/* Giant SOS Button */}
+                        {/* Interactive Giant SOS Button (Toggles state, no download!) */}
                         <div className="py-2 flex justify-center">
                           <button
-                            onClick={handleDownload}
-                            className="w-28 h-28 rounded-full bg-gradient-to-br from-red-500 to-red-700 border-4 border-red-400/40 shadow-xl shadow-red-600/50 flex flex-col items-center justify-center active:scale-95 transition-transform cursor-pointer"
+                            onClick={() => setSosTriggered(prev => !prev)}
+                            className={`w-28 h-28 rounded-full border-4 shadow-xl flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer ${
+                              sosTriggered
+                                ? 'bg-gradient-to-br from-red-600 to-red-800 border-red-300 shadow-red-500/70 scale-105'
+                                : 'bg-gradient-to-br from-red-500 to-red-700 border-red-400/40 shadow-red-600/50'
+                            }`}
                           >
-                            <Radio size={28} className="text-white animate-pulse" />
-                            <span className="text-base font-black text-white tracking-widest mt-1">SOS</span>
+                            <Radio size={28} className={`text-white ${sosTriggered ? 'animate-ping' : 'animate-pulse'}`} />
+                            <span className="text-base font-black text-white tracking-widest mt-1">
+                              {sosTriggered ? "ACTIVE" : "SOS"}
+                            </span>
                           </button>
                         </div>
 
-                        {/* Household Headcount details */}
-                        <div className="p-3 bg-slate-800/90 border border-slate-700 rounded-xl text-left space-y-1">
-                          <div className="flex justify-between items-center text-[10px]">
-                            <span className="text-slate-400">Registered Family:</span>
-                            <span className="text-white font-bold">4 Members (1 Infant, 1 Elderly)</span>
+                        {/* SOS Alert Status Banner */}
+                        {sosTriggered ? (
+                          <div className="p-3 bg-red-950/90 border border-red-500 rounded-xl space-y-1.5 text-left animate-enter">
+                            <div className="flex items-center justify-between text-[10px] font-bold text-red-400">
+                              <span className="flex items-center gap-1">
+                                <Radio size={12} className="animate-ping" />
+                                <span>DISTRESS BEACON TRANSMITTED</span>
+                              </span>
+                              <span className="bg-red-800 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">BROADCASTING</span>
+                            </div>
+                            <p className="text-[9.5px] text-slate-200">
+                              GPS pin: <strong className="text-red-300">6.9214° N, 122.0790° E</strong> transmitted to CDRRMO Command &amp; QRT Rescue Squad 4.
+                            </p>
+                            <button
+                              onClick={() => setSosTriggered(false)}
+                              className="w-full mt-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[9.5px] font-bold rounded-lg border border-slate-700 transition cursor-pointer"
+                            >
+                              End Distress Signal
+                            </button>
                           </div>
-                          <div className="flex justify-between items-center text-[10px]">
-                            <span className="text-slate-400">Target Dispatch:</span>
-                            <span className="text-emerald-400 font-bold">CDRRMO QRT Squad &amp; BFP</span>
+                        ) : (
+                          <div className="p-3 bg-slate-800/90 border border-slate-700 rounded-xl text-left space-y-1">
+                            <div className="flex justify-between items-center text-[10px]">
+                              <span className="text-slate-400">Registered Family:</span>
+                              <span className="text-white font-bold">4 Members (1 Infant, 1 Elderly)</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px]">
+                              <span className="text-slate-400">Target Dispatch:</span>
+                              <span className="text-emerald-400 font-bold">CDRRMO QRT Squad &amp; BFP</span>
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <p className="text-[9px] text-slate-400">
                           Encrypted beacon alerts responders within 30 seconds.
@@ -608,7 +824,7 @@ export default function LandingPage() {
                       </div>
                     )}
 
-                    {/* RESIDENT SCREEN 3: OFFLINE FAMILY QR PASS */}
+                    {/* RESIDENT SCREEN 3: OFFLINE FAMILY QR PASS (Interactive Simulation) */}
                     {activeResidentScreen === 'qr' && (
                       <div className="space-y-2.5 animate-enter">
                         <div className="p-3 bg-slate-800/90 border border-slate-700 rounded-xl text-center space-y-2">
@@ -636,12 +852,29 @@ export default function LandingPage() {
                           </div>
                         </div>
 
+                        {/* Interactive Save Pass Button (No APK download!) */}
                         <button
-                          onClick={handleDownload}
-                          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 uppercase tracking-wider transition cursor-pointer"
+                          onClick={() => {
+                            setPassSaved(true);
+                            setTimeout(() => setPassSaved(false), 2500);
+                          }}
+                          className={`w-full py-2.5 font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer ${
+                            passSaved
+                              ? 'bg-emerald-700 text-white shadow-emerald-700/40'
+                              : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-emerald-600/30'
+                          }`}
                         >
-                          <Download size={14} />
-                          <span>Save Pass to Phone</span>
+                          {passSaved ? (
+                            <>
+                              <Check size={14} />
+                              <span>Pass Cached Offline to Device</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download size={14} />
+                              <span>Save Pass Offline</span>
+                            </>
+                          )}
                         </button>
                       </div>
                     )}
