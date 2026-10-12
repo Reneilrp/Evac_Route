@@ -1006,53 +1006,55 @@ export default function LandingPage() {
       </section>
 
       {/* ── Resident Protection Metrics Infinite Ticker (Rightward Marquee) ── */}
-      <section className="py-2.5 sm:py-3.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-y border-slate-200/80 dark:border-slate-800/80 overflow-hidden relative transition-colors select-none">
+      <section className="py-4 sm:py-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-y border-slate-200/80 dark:border-slate-800/80 overflow-hidden relative transition-colors select-none">
         {/* Left & Right gradient edge fades for smooth entry/exit */}
         <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-r from-white dark:from-slate-900 to-transparent z-10 pointer-events-none" />
         <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-l from-white dark:from-slate-900 to-transparent z-10 pointer-events-none" />
 
         {/* Continuous Marquee Track moving right */}
-        <div className="flex animate-marquee-right">
+        <div className="flex animate-marquee-right items-center">
           {/* Half 1 */}
-          <div className="flex items-center gap-3 sm:gap-4 shrink-0 pr-3 sm:pr-4">
+          <div className="flex items-center shrink-0">
             {[...residentProtectionStats, ...residentProtectionStats].map((item, idx) => (
-              <div
-                key={`stat-1-${idx}`}
-                className="flex items-center gap-3 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 shadow-xs hover:border-slate-300 dark:hover:border-slate-600 transition shrink-0"
-              >
-                <span className={`text-lg sm:text-xl font-black tracking-tight shrink-0 ${item.color}`}>
-                  {item.stat}
-                </span>
-                <div className="text-left leading-tight">
-                  <p className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                    {item.title}
-                  </p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                    {item.desc}
-                  </p>
+              <div key={`stat-1-${idx}`} className="flex items-center shrink-0">
+                <div className="flex items-center gap-3 sm:gap-4 px-5 sm:px-8 py-1">
+                  <span className={`text-xl sm:text-2xl font-black tracking-tight shrink-0 ${item.color}`}>
+                    {item.stat}
+                  </span>
+                  <div className="text-left leading-tight">
+                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                      {item.title}
+                    </p>
+                    <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      {item.desc}
+                    </p>
+                  </div>
                 </div>
+                {/* Styled vertical divider line between metrics */}
+                <div className="h-6 sm:h-7 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 dark:via-slate-700 to-transparent shrink-0" />
               </div>
             ))}
           </div>
 
           {/* Half 2 (Exact Duplicate for Infinite Seamless Loop) */}
-          <div className="flex items-center gap-3 sm:gap-4 shrink-0 pr-3 sm:pr-4" aria-hidden="true">
+          <div className="flex items-center shrink-0" aria-hidden="true">
             {[...residentProtectionStats, ...residentProtectionStats].map((item, idx) => (
-              <div
-                key={`stat-2-${idx}`}
-                className="flex items-center gap-3 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 shadow-xs hover:border-slate-300 dark:hover:border-slate-600 transition shrink-0"
-              >
-                <span className={`text-lg sm:text-xl font-black tracking-tight shrink-0 ${item.color}`}>
-                  {item.stat}
-                </span>
-                <div className="text-left leading-tight">
-                  <p className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                    {item.title}
-                  </p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                    {item.desc}
-                  </p>
+              <div key={`stat-2-${idx}`} className="flex items-center shrink-0">
+                <div className="flex items-center gap-3 sm:gap-4 px-5 sm:px-8 py-1">
+                  <span className={`text-xl sm:text-2xl font-black tracking-tight shrink-0 ${item.color}`}>
+                    {item.stat}
+                  </span>
+                  <div className="text-left leading-tight">
+                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                      {item.title}
+                    </p>
+                    <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      {item.desc}
+                    </p>
+                  </div>
                 </div>
+                {/* Styled vertical divider line between metrics */}
+                <div className="h-6 sm:h-7 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 dark:via-slate-700 to-transparent shrink-0" />
               </div>
             ))}
           </div>
