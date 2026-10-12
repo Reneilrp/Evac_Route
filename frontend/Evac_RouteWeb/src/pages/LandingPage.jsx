@@ -1222,7 +1222,6 @@ export default function LandingPage() {
               <p className="text-xs font-bold text-white uppercase tracking-wider mb-3">Quick Navigation</p>
               <ul className="space-y-2 text-xs">
                 <li><button onClick={() => scrollToSection('overview')} className="hover:text-blue-400 transition cursor-pointer">Overview</button></li>
-                <li><button onClick={() => scrollToSection('app-preview')} className="hover:text-blue-400 transition cursor-pointer">App Preview</button></li>
                 <li><button onClick={() => scrollToSection('protection')} className="hover:text-blue-400 transition cursor-pointer">How It Protects You</button></li>
                 <li><button onClick={() => scrollToSection('shelters')} className="hover:text-blue-400 transition cursor-pointer">112 Safe Shelters</button></li>
                 <li><button onClick={() => scrollToSection('install-guide')} className="hover:text-blue-400 transition cursor-pointer">Installation Guide</button></li>
