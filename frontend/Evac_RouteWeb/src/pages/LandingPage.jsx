@@ -1176,29 +1176,32 @@ export default function LandingPage() {
         </div>
 
         {/* Download Banner CTA */}
-        <div className="mt-8 sm:mt-10 p-6 sm:p-8 lg:p-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl sm:rounded-3xl text-white text-center shadow-xl relative overflow-hidden">
+        <div className="mt-8 sm:mt-10 p-6 sm:p-8 lg:p-10 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 text-center shadow-sm relative overflow-hidden">
           <div className="relative z-10 max-w-2xl mx-auto space-y-4">
-            <h3 className="text-xl sm:text-2xl font-black tracking-tight">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
               Protect Your Household Today
             </h3>
-            <p className="text-blue-100 text-xs sm:text-sm leading-relaxed max-w-xl mx-auto">
+            <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm leading-relaxed max-w-xl mx-auto">
               Download the official EvacRoute app now. Always free, zero telemetry tracking, and built to safeguard every family in Zamboanga City.
             </p>
             <div className="pt-1 flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
                 onClick={handleDownload}
                 disabled={downloading}
-                className="w-full sm:w-auto px-7 py-3.5 bg-white hover:bg-slate-100 text-blue-700 font-bold text-sm sm:text-base rounded-xl shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition duration-200 flex items-center justify-center gap-2.5 cursor-pointer"
+                className="w-full sm:w-auto px-7 py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 transition duration-200 flex items-center justify-center gap-2.5 cursor-pointer"
               >
-                <Download size={18} className="text-blue-700" />
-                <span>{downloading ? "Downloading..." : "Download EvacRoute.apk (v1.0.1)"}</span>
+                <Download size={18} />
+                <span>{downloading ? "Preparing Download..." : "Download EvacRoute.apk (v1.0.1)"}</span>
               </button>
             </div>
-            <p className="text-[11px] sm:text-xs text-blue-200 font-medium">
-              {householdStats.loaded && householdStats.households > 0
-                ? `Protecting ${householdStats.households.toLocaleString()} registered households · Verified Android Build`
-                : "Official City Emergency Tool · Verified Android Build"}
-            </p>
+            <div className="flex items-center justify-center gap-1.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span>
+                {householdStats.loaded && householdStats.households > 0
+                  ? `Protecting ${householdStats.households.toLocaleString()} registered households · Verified Android Build`
+                  : "Official City Emergency Tool · Verified Android Build"}
+              </span>
+            </div>
           </div>
         </div>
       </section>
