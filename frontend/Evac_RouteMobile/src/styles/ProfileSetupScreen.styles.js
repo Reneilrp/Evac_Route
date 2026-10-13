@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
-import { colors, spacing, radii, typography } from './theme';
+import { darkColors, spacing, radii, typography } from './theme';
 
-const styles = StyleSheet.create({
+export const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -26,20 +26,20 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   input: {
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.border,
+    backgroundColor: colors.inputBg,
+    borderWidth: 1.5,
+    borderColor: colors.inputBorder,
     borderRadius: radii.lg,
     padding: spacing.base,
     ...typography.subheading,
     color: colors.textPrimary,
   },
   counterBox: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     padding: spacing.xl,
     borderRadius: radii.xl,
-    borderWidth: 2,
-    borderColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: colors.cardBorder,
     marginBottom: spacing['2xl'],
     alignItems: 'center',
   },
@@ -85,4 +85,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default styles;
+export default getStyles(darkColors, true);

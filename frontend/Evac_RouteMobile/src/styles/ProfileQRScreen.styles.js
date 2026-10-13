@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
-import { colors, spacing, radii, typography, shadows } from './theme';
+import { darkColors, spacing, radii, typography, shadows } from './theme';
 
-const styles = StyleSheet.create({
+export const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -60,12 +60,12 @@ const styles = StyleSheet.create({
   quickLinkCard: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.xl,
     padding: spacing.base,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     gap: spacing.sm,
   },
   quickLinkIcon: {
@@ -84,12 +84,12 @@ const styles = StyleSheet.create({
 
   // ─── Small QR Card ───
   qrCardSmall: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii['3xl'],
     padding: spacing.xl,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     ...shadows.md,
   },
   qrCardTitle: {
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   },
   qrWrapper: {
     padding: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: '#ffffff',
     borderRadius: radii.xl,
   },
   qrHashText: {
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   // ─── QR Card (Danger Mode — Full Size) ───
   qrCardFull: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderTopLeftRadius: radii['4xl'],
     borderTopRightRadius: radii['4xl'],
     padding: spacing['2xl'],
@@ -172,4 +172,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default styles;
+export default getStyles(darkColors, true);

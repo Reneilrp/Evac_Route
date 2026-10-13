@@ -15,12 +15,13 @@ import {
 import { ShieldAlert, Eye, EyeOff, Sparkles, Sun, Moon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
-import styles from '../styles/LoginScreen.styles';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
+import { getStyles } from '../styles/LoginScreen.styles';
 
 export default function LoginScreen({ navigation }) {
   const { loginWithCredentials } = useAuth();
-  const { isDarkMode, toggleTheme } = useTheme();
+  const { isDarkMode, toggleTheme, colors } = useTheme();
+  const styles = useThemedStyles(getStyles);
   const insets = useSafeAreaInsets();
   const passwordInputRef = useRef(null);
 
@@ -60,23 +61,33 @@ export default function LoginScreen({ navigation }) {
       ])
     ).start();
 
-    // Fade in content
-    Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
+    // Fade in card entrance
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
-  const handleQuickSelect = (testEmail, testPassword) => {
-    setEmail(testEmail);
-    setPassword(testPassword);
+  const handleQuickSelect = (quickEmail, quickPass) => {
+    setEmail(quickEmail);
+    setPassword(quickPass);
     setError('');
   };
 
   const handleLoginSubmit = async () => {
-    if (!email.trim() || !password.trim()) {
-      setError('Please provide your email and password.');
+    if (!email.trim()) {
+      setError('Please enter your email or identifier.');
       return;
     }
-    setError('');
+    if (!password) {
+      setError('Please enter your password.');
+      return;
+    }
+
     setLoading(true);
+    setError('');
+
     const result = await loginWithCredentials(email.trim().toLowerCase(), password);
     setLoading(false);
     if (!result || !result.success) {
@@ -129,66 +140,64 @@ export default function LoginScreen({ navigation }) {
               <Animated.View
                 style={[
                   styles.iconRing,
-                  !isDarkMode && styles.iconRingLight,
                   {
                     transform: [{ translateY: floatAnimRef.current }],
                   },
                 ]}
               >
-                <ShieldAlert size={48} color={isDarkMode ? "#38bdf8" : "#0284c7"} />
+                <ShieldAlert size={48} color={colors.primary} />
               </Animated.View>
-              <Text style={[styles.title, !isDarkMode && styles.titleLight]}>EVAC-ROUTE</Text>
-              <Text style={[styles.subtitle, !isDarkMode && styles.subtitleLight]}>Emergency Evacuation System</Text>
-              <View style={[styles.cityBadge, !isDarkMode && styles.cityBadgeLight]}>
-                <Text style={[styles.cityLabel, !isDarkMode && styles.cityLabelLight]}>ZAMBOANGA CITY</Text>
+              <Text style={styles.title}>EVAC-ROUTE</Text>
+              <Text style={styles.subtitle}>Emergency Evacuation System</Text>
+              <View style={styles.cityBadge}>
+                <Text style={styles.cityLabel}>ZAMBOANGA CITY</Text>
               </View>
             </View>
 
             {/* Auth Card */}
-            <Animated.View style={[styles.card, !isDarkMode && styles.cardLight, { opacity: fadeAnimRef.current }]}>
+            <Animated.View style={[styles.card, { opacity: fadeAnimRef.current }]}>
               {/* Quick Test Account Select */}
               <View style={styles.quickChipsHeader}>
-                <Text style={[styles.quickChipsTitle, !isDarkMode && styles.quickChipsTitleLight]}>Quick Select Test Account</Text>
-                <Sparkles size={12} color={isDarkMode ? "#64748b" : "#94a3b8"} />
+                <Text style={styles.quickChipsTitle}>Quick Select Test Account</Text>
+                <Sparkles size={12} color={colors.textMuted} />
               </View>
 
               <View style={styles.quickChipsRow}>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => handleQuickSelect('rescue1@lgu.gov.ph', 'password')}
-                  style={[styles.quickChip, styles.quickChipRescue, !isDarkMode && styles.quickChipRescueLight]}
+                  style={[styles.quickChip, styles.quickChipRescue]}
                 >
-                  <Text style={[styles.quickChipText, { color: isDarkMode ? '#f87171' : '#dc2626' }]}>🚤 Rescue QRT</Text>
+                  <Text style={[styles.quickChipText, { color: colors.dangerLight }]}>🚤 Rescue QRT</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => handleQuickSelect('scanner1@lgu.gov.ph', 'password')}
-                  style={[styles.quickChip, styles.quickChipScanner, !isDarkMode && styles.quickChipScannerLight]}
+                  style={[styles.quickChip, styles.quickChipScanner]}
                 >
-                  <Text style={[styles.quickChipText, { color: isDarkMode ? '#38bdf8' : '#0284c7' }]}>📋 Scanner</Text>
+                  <Text style={[styles.quickChipText, { color: colors.primary }]}>📋 Scanner</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => handleQuickSelect('pheinz@evacroute.local', 'password')}
-                  style={[styles.quickChip, styles.quickChipResident, !isDarkMode && styles.quickChipResidentLight]}
+                  style={[styles.quickChip, styles.quickChipResident]}
                 >
-                  <Text style={[styles.quickChipText, { color: isDarkMode ? '#34d399' : '#16a34a' }]}>👤 Resident</Text>
+                  <Text style={[styles.quickChipText, { color: colors.successLight }]}>👤 Resident</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Form Section */}
               <View style={styles.formSection}>
-                <Text style={[styles.inputLabel, !isDarkMode && styles.inputLabelLight]}>Email</Text>
+                <Text style={styles.inputLabel}>Email</Text>
                 <TextInput
                   style={[
                     styles.textInput,
-                    !isDarkMode && styles.textInputLight,
-                    isEmailFocused && (isDarkMode ? styles.textInputFocused : styles.textInputFocusedLight),
+                    isEmailFocused && styles.textInputFocused,
                   ]}
                   placeholder="name@example.com"
-                  placeholderTextColor={isDarkMode ? "#475569" : "#94a3b8"}
+                  placeholderTextColor={colors.textMuted}
                   value={email}
                   onChangeText={(val) => {
                     setEmail(val);
@@ -204,19 +213,18 @@ export default function LoginScreen({ navigation }) {
                   editable={!loading}
                 />
 
-                <Text style={[styles.inputLabel, !isDarkMode && styles.inputLabelLight]}>Password</Text>
+                <Text style={styles.inputLabel}>Password</Text>
                 <View
                   style={[
                     styles.passwordInputContainer,
-                    !isDarkMode && styles.passwordInputContainerLight,
-                    isPasswordFocused && (isDarkMode ? styles.passwordInputContainerFocused : styles.passwordInputContainerFocusedLight),
+                    isPasswordFocused && styles.passwordInputContainerFocused,
                   ]}
                 >
                   <TextInput
                     ref={passwordInputRef}
-                    style={[styles.passwordInput, !isDarkMode && styles.passwordInputLight]}
+                    style={styles.passwordInput}
                     placeholder="••••••••"
-                    placeholderTextColor={isDarkMode ? "#475569" : "#94a3b8"}
+                    placeholderTextColor={colors.textMuted}
                     value={password}
                     onChangeText={(val) => {
                       setPassword(val);
@@ -237,9 +245,9 @@ export default function LoginScreen({ navigation }) {
                     activeOpacity={0.7}
                   >
                     {showPassword ? (
-                      <EyeOff size={18} color={isDarkMode ? "#94a3b8" : "#64748b"} />
+                      <EyeOff size={18} color={colors.textSecondary} />
                     ) : (
-                      <Eye size={18} color={isDarkMode ? "#94a3b8" : "#64748b"} />
+                      <Eye size={18} color={colors.textSecondary} />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -265,19 +273,19 @@ export default function LoginScreen({ navigation }) {
                 </TouchableOpacity>
 
                 {/* Need to evacuate? Register as Evacuee */}
-                <View style={[styles.registerPrompt, !isDarkMode && styles.registerPromptLight]}>
-                  <Text style={[styles.registerPromptText, !isDarkMode && styles.registerPromptTextLight]}>Need to evacuate household?</Text>
+                <View style={styles.registerPrompt}>
+                  <Text style={styles.registerPromptText}>Need to evacuate household?</Text>
                   <TouchableOpacity
                     onPress={() => navigation.navigate('SetupProfile')}
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.registerLinkText, !isDarkMode && styles.registerLinkTextLight]}>Register as Evacuee</Text>
+                    <Text style={styles.registerLinkText}>Register as Evacuee</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             </Animated.View>
 
-            <Text style={[styles.versionText, !isDarkMode && styles.versionTextLight]}>EVAC_ROUTE MOBILE • v1.0.1</Text>
+            <Text style={styles.versionText}>EVAC_ROUTE MOBILE • v1.0.1</Text>
           </ScrollView>
         </KeyboardAvoidingView>
       </Animated.View>

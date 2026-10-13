@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { QrCode } from 'lucide-react-native';
-import { colors, spacing, typography } from '../styles/theme';
+import { spacing, typography } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 
 /**
  * EmptyState — Styled placeholder for when no data is available.
@@ -17,13 +18,15 @@ export default function EmptyState({
   subtitle = '',
   style,
 }) {
+  const { colors } = useTheme();
+
   return (
     <View style={[styles.container, style]}>
-      <View style={styles.iconWrap}>
+      <View style={[styles.iconWrap, { backgroundColor: colors.surfaceElevated }]}>
         {icon || <QrCode size={48} color={colors.textMuted} />}
       </View>
-      <Text style={styles.title}>{title}</Text>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+      {subtitle ? <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text> : null}
     </View>
   );
 }
@@ -36,22 +39,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   iconWrap: {
-    backgroundColor: colors.surfaceElevated,
     padding: spacing.lg,
     borderRadius: 9999,
     marginBottom: spacing.base,
-    opacity: 0.7,
+    opacity: 0.85,
   },
   title: {
     ...typography.bodyBold,
-    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
   subtitle: {
     ...typography.small,
-    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
   },
 });
+

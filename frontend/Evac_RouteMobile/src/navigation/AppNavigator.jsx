@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, Animated } from 'react-native';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet, Animated, StatusBar } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MapPin, QrCode, AlertTriangle, BarChart2, Package, User, LifeBuoy, Navigation } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
-import { colors, typography } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
+import { typography } from '../styles/theme';
 import api from '../services/api';
 
 // Import Screens
@@ -34,6 +35,7 @@ const Stack = createNativeStackNavigator();
 
 // Protected Staff Tabs (Rescue + Scanner + Dispatch + Overview + Profile)
 function StaffTabs({ pendingDispatchCount, user }) {
+  const { colors } = useTheme();
   const isAdmin = user?.role === 'admin';
   const isRescueUser =
     user?.operator_type === 'rescue' ||
@@ -63,8 +65,8 @@ function StaffTabs({ pendingDispatchCount, user }) {
         tabBarInactiveTintColor: colors.textMuted,
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.background,
-          borderTopColor: colors.surface,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
           paddingTop: 4,
           height: 60,
@@ -78,7 +80,7 @@ function StaffTabs({ pendingDispatchCount, user }) {
           component={RescueDutyScreen}
           options={{
             tabBarLabel: 'Rescue Duty',
-            tabBarActiveTintColor: '#ef4444',
+            tabBarActiveTintColor: colors.danger,
           }}
         />
       )}
@@ -98,7 +100,7 @@ function StaffTabs({ pendingDispatchCount, user }) {
           component={StaffScannerScreen}
           options={{
             tabBarLabel: 'Shelter Scanner',
-            tabBarActiveTintColor: '#3b82f6',
+            tabBarActiveTintColor: colors.primary,
           }}
         />
       )}
@@ -109,7 +111,7 @@ function StaffTabs({ pendingDispatchCount, user }) {
           options={{
             tabBarLabel: 'Missions Queue',
             tabBarBadge: pendingDispatchCount > 0 ? pendingDispatchCount : undefined,
-            tabBarBadgeStyle: { backgroundColor: '#ef4444', fontSize: 10 },
+            tabBarBadgeStyle: { backgroundColor: colors.danger, fontSize: 10 },
           }}
         />
       )}
@@ -130,6 +132,8 @@ function StaffTabs({ pendingDispatchCount, user }) {
 
 // Protected Resident Tabs
 function ResidentTabs() {
+  const { colors } = useTheme();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -146,8 +150,8 @@ function ResidentTabs() {
         tabBarInactiveTintColor: colors.textMuted,
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.background,
-          borderTopColor: colors.surface,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
           paddingTop: 4,
           height: 60,
@@ -171,6 +175,7 @@ function ResidentTabs() {
 
 // Animated Splash Screen
 function SplashScreen() {
+  const { colors } = useTheme();
   const fadeAnimRef = useRef(new Animated.Value(0));
   const scaleAnimRef = useRef(new Animated.Value(0.8));
 
@@ -182,10 +187,10 @@ function SplashScreen() {
   }, []);
 
   return (
-    <View style={styles.splashContainer}>
+    <View style={[styles.splashContainer, { backgroundColor: colors.background }]}>
       <Animated.View style={{ opacity: fadeAnimRef.current, transform: [{ scale: scaleAnimRef.current }] }}>
-        <Text style={styles.splashTitle}>EVAC_ROUTE</Text>
-        <Text style={styles.splashSubtitle}>Disaster Response System</Text>
+        <Text style={[styles.splashTitle, { color: colors.textPrimary }]}>EVAC_ROUTE</Text>
+        <Text style={[styles.splashSubtitle, { color: colors.textMuted }]}>Disaster Response System</Text>
       </Animated.View>
       <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 32 }} />
     </View>
@@ -194,7 +199,21 @@ function SplashScreen() {
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
+  const { colors, isDarkMode } = useTheme();
   const [hasOnboarded, setHasOnboarded] = useState(null);
+
+  // Dynamic NavigationContainer theme
+  const navTheme = useMemo(() => ({
+    dark: isDarkMode,
+    colors: {
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.textPrimary,
+      border: colors.border,
+      notification: colors.danger,
+    },
+  }), [isDarkMode, colors]);
 
   // Pending dispatch count for the tab badge — only fetched when logged in as staff
   const isStaff = user?.role === 'admin' || user?.role === 'lgu_staff';
@@ -219,7 +238,11 @@ export default function AppNavigator() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <StatusBar
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+      />
+      <NavigationContainer theme={navTheme}>
         <Stack.Navigator
           screenOptions={{
             headerShown: false,
@@ -287,7 +310,7 @@ export default function AppNavigator() {
                 options={{
                   headerShown: true,
                   title: 'Back',
-                  headerStyle: { backgroundColor: colors.background },
+                  headerStyle: { backgroundColor: colors.surface },
                   headerTintColor: colors.textPrimary,
                   animation: 'slide_from_right',
                 }}
@@ -303,19 +326,16 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   splashContainer: {
     flex: 1,
-    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
   splashTitle: {
     ...typography.hero,
-    color: colors.textPrimary,
     textAlign: 'center',
     letterSpacing: 4,
   },
   splashSubtitle: {
     ...typography.label,
-    color: colors.textMuted,
     letterSpacing: 2,
     marginTop: 8,
     textTransform: 'uppercase',

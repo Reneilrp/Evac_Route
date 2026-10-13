@@ -1,35 +1,38 @@
 import { View, Text, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Phone, Shield, Flame, Anchor, Heart, Building, ArrowLeft } from 'lucide-react-native';
-import { colors } from '../styles/theme';
-import styles from '../styles/EmergencyContactsScreen.styles';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
+import { getStyles } from '../styles/EmergencyContactsScreen.styles';
 
-const EMERGENCY_CONTACTS = [
+const getEmergencyContacts = (colors) => [
   {
     section: 'EMERGENCY HOTLINES',
     contacts: [
-      { name: 'National Emergency', number: '911', icon: Phone, iconBg: 'rgba(239, 68, 68, 0.15)', iconColor: colors.danger },
-      { name: 'CDRRMO Zamboanga', number: '(062) 991-0959', icon: Shield, iconBg: 'rgba(59, 130, 246, 0.15)', iconColor: colors.primary },
-      { name: 'Bureau of Fire Protection', number: '(062) 991-1064', icon: Flame, iconBg: 'rgba(245, 158, 11, 0.15)', iconColor: colors.warning },
-      { name: 'Philippine Coast Guard', number: '(062) 992-2694', icon: Anchor, iconBg: 'rgba(34, 197, 94, 0.15)', iconColor: colors.successLight },
+      { name: 'National Emergency', number: '911', icon: Phone, iconBg: colors.dangerBg, iconColor: colors.danger },
+      { name: 'CDRRMO Zamboanga', number: '(062) 991-0959', icon: Shield, iconBg: colors.primaryGlow, iconColor: colors.primary },
+      { name: 'Bureau of Fire Protection', number: '(062) 991-1064', icon: Flame, iconBg: colors.warningBg, iconColor: colors.warning },
+      { name: 'Philippine Coast Guard', number: '(062) 992-2694', icon: Anchor, iconBg: colors.successBg, iconColor: colors.successLight },
     ],
   },
   {
     section: 'HOSPITALS & MEDICAL',
     contacts: [
-      { name: 'Zamboanga City Medical Center', number: '(062) 991-0573', icon: Heart, iconBg: 'rgba(239, 68, 68, 0.15)', iconColor: colors.dangerLight },
-      { name: 'West Metro Medical Center', number: '(062) 993-1485', icon: Heart, iconBg: 'rgba(239, 68, 68, 0.15)', iconColor: colors.dangerLight },
+      { name: 'Zamboanga City Medical Center', number: '(062) 991-0573', icon: Heart, iconBg: colors.dangerBg, iconColor: colors.dangerLight },
+      { name: 'West Metro Medical Center', number: '(062) 993-1485', icon: Heart, iconBg: colors.dangerBg, iconColor: colors.dangerLight },
     ],
   },
   {
     section: 'LOCAL GOVERNMENT',
     contacts: [
-      { name: "City Mayor's Office", number: '(062) 991-0584', icon: Building, iconBg: 'rgba(59, 130, 246, 0.15)', iconColor: colors.primary },
+      { name: "City Mayor's Office", number: '(062) 991-0584', icon: Building, iconBg: colors.primaryGlow, iconColor: colors.primary },
     ],
   },
 ];
 
 export default function EmergencyContactsScreen({ navigation }) {
+  const { colors, isDarkMode } = useTheme();
+  const styles = useThemedStyles(getStyles);
+  const EMERGENCY_CONTACTS = getEmergencyContacts(colors);
   const handleCall = (number, name) => {
     // Clean number for dialing (remove parentheses, spaces, dashes)
     const cleanNumber = number.replace(/[^0-9+]/g, '');

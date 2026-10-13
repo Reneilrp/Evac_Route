@@ -1,13 +1,14 @@
 import { useState, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, FlatList,
+  View, Text, TouchableOpacity, FlatList, StyleSheet,
   ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Package, Clock, MapPin, ChevronRight, CheckCircle, Truck } from 'lucide-react-native';
 import api from '../services/api';
-import { colors, spacing, typography, radii, shadows } from '../styles/theme';
+import { spacing, typography, radii, shadows } from '../styles/theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 
 const STATUS_CONFIG = {
   pending:    { label: 'PENDING',    color: '#ef4444', bg: 'rgba(239,68,68,0.15)',    icon: Clock },
@@ -31,6 +32,8 @@ const timeAgo = (dateStr) => {
 export default function DispatchQueueScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const { colors, isDarkMode } = useTheme();
+  const styles = useThemedStyles(getStyles);
   const [activeFilter, setActiveFilter] = useState('All');
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -180,7 +183,7 @@ export default function DispatchQueueScreen({ navigation }) {
   );
 }
 
-const styles = {
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
@@ -210,18 +213,22 @@ const styles = {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: radii.full,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
-  filterChipActive: { backgroundColor: colors.primary },
-  filterText: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
-  filterTextActive: { color: '#fff' },
+  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  filterTextActive: { color: '#ffffff' },
   listContent: { paddingHorizontal: spacing.base, paddingBottom: 40 },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.lg,
     padding: spacing.base,
     marginBottom: spacing.sm,
     borderLeftWidth: 4,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     ...shadows.sm,
   },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
@@ -244,6 +251,13 @@ const styles = {
   notes: { color: colors.textMuted, fontSize: 11, marginTop: 6, fontStyle: 'italic' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   emptyText: { color: colors.textMuted, fontSize: 14 },
-  retryBtn: { backgroundColor: colors.surface, borderRadius: radii.md, paddingHorizontal: 20, paddingVertical: 8 },
+  retryBtn: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.md,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
   retryText: { color: colors.primary, fontWeight: '700' },
-};
+});

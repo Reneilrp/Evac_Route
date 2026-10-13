@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors, spacing, radii } from '../styles/theme';
+import { spacing, radii } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 
 /**
  * ChipSelector — Animated chip row for selecting from a list of options.
@@ -16,8 +17,11 @@ export default function ChipSelector({
   value,
   onChange,
   colorMap = null,
-  activeColor = colors.primaryDark,
+  activeColor = null,
 }) {
+  const { colors } = useTheme();
+  const effectiveActiveColor = activeColor || colors.primaryDark;
+
   return (
     <View style={styles.row}>
       {options.map((opt) => {
@@ -25,7 +29,7 @@ export default function ChipSelector({
         const optLabel = typeof opt === 'string' ? opt : opt.label;
         const optIcon = typeof opt === 'object' ? opt.icon : null;
         const isActive = value === optValue;
-        const chipColor = colorMap?.[optValue] || activeColor;
+        const chipColor = colorMap?.[optValue] || effectiveActiveColor;
 
         return (
           <TouchableOpacity
@@ -34,14 +38,17 @@ export default function ChipSelector({
             activeOpacity={0.7}
             style={[
               styles.chip,
-              isActive && { borderColor: chipColor, backgroundColor: chipColor },
+              {
+                backgroundColor: isActive ? chipColor : colors.surfaceElevated,
+                borderColor: isActive ? chipColor : colors.border,
+              },
             ]}
           >
             {optIcon && <View style={{ marginRight: spacing.xs }}>{optIcon}</View>}
             <Text
               style={[
                 styles.chipText,
-                isActive && styles.chipTextActive,
+                { color: isActive ? colors.white : colors.textSecondary },
               ]}
             >
               {optLabel}
@@ -64,18 +71,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: radii['2xl'],
     borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
   },
   chipText: {
-    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
     textTransform: 'capitalize',
   },
-  chipTextActive: {
-    color: colors.white,
-  },
 });
+

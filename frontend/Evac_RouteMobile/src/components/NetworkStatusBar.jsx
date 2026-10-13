@@ -2,12 +2,14 @@ import { useRef, useEffect } from 'react';
 import { Animated, Text, StyleSheet } from 'react-native';
 import { WifiOff } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing, typography } from '../styles/theme';
+import { spacing, typography } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 
 /**
  * NetworkStatusBar — Slides in from top when offline.
  */
 export default function NetworkStatusBar({ isOffline }) {
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const slideAnimRef = useRef(new Animated.Value(-60));
 
@@ -24,13 +26,16 @@ export default function NetworkStatusBar({ isOffline }) {
     <Animated.View
       style={[
         styles.container,
-        { paddingTop: insets.top + spacing.xs },
-        { transform: [{ translateY: slideAnimRef.current }] },
+        {
+          backgroundColor: colors.dangerBg,
+          paddingTop: insets.top + spacing.xs,
+          transform: [{ translateY: slideAnimRef.current }],
+        },
       ]}
       pointerEvents="none"
     >
       <WifiOff size={14} color={colors.dangerText} />
-      <Text style={styles.text}>OFFLINE MODE — Using Cached Data</Text>
+      <Text style={[styles.text, { color: colors.dangerText }]}>OFFLINE MODE — Using Cached Data</Text>
     </Animated.View>
   );
 }
@@ -42,7 +47,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 9999,
-    backgroundColor: colors.dangerBg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -51,8 +55,8 @@ const styles = StyleSheet.create({
   },
   text: {
     ...typography.small,
-    color: colors.dangerText,
     fontWeight: 'bold',
     letterSpacing: 1,
   },
 });
+

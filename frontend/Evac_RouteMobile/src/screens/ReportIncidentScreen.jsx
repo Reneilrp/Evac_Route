@@ -21,8 +21,8 @@ import api from '../services/api';
 import ChipSelector from '../components/ChipSelector';
 import PrimaryButton from '../components/PrimaryButton';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { colors } from '../styles/theme';
-import styles from '../styles/ReportIncidentScreen.styles';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
+import { getStyles } from '../styles/ReportIncidentScreen.styles';
 
 const HAZARD_TYPES = [
   // Natural Hazards
@@ -47,16 +47,18 @@ const SEVERITY_LEVELS = [
   { value: 'high', label: 'HIGH' },
 ];
 
-const SEVERITY_COLORS = {
-  low: colors.successLight,
-  medium: colors.warning,
-  high: colors.danger,
-};
-
 export default function ReportIncidentScreen({ navigation }) {
+  const { colors, isDarkMode } = useTheme();
+  const styles = useThemedStyles(getStyles);
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [historyTab, setHistoryTab] = useState('active'); // 'active' | 'archived'
+
+  const SEVERITY_COLORS = {
+    low: colors.successLight,
+    medium: colors.warning,
+    high: colors.danger,
+  };
 
   // --- Form State ---
   const [name, setName] = useState('');

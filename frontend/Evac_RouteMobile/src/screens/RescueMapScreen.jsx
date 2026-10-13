@@ -36,8 +36,9 @@ import {
   Check,
 } from 'lucide-react-native';
 import api from '../services/api';
-import { colors, spacing, radii } from '../styles/theme';
+import { spacing, radii } from '../styles/theme';
 import { useAuth } from '../context/AuthContext';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import {
   MAPBOX_PUBLIC_TOKEN,
   clampToZamboanga,
@@ -77,6 +78,8 @@ export default function RescueMapScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { colors, isDarkMode } = useTheme();
+  const styles = useThemedStyles(getStyles);
   const cameraRef = useRef(null);
 
   // Initialize Mapbox token
@@ -647,7 +650,9 @@ export default function RescueMapScreen({ navigation, route }) {
           styleURL={
             mapStyleMode === 'satellite'
               ? Mapbox?.StyleURL?.SatelliteStreet || 'mapbox://styles/mapbox/satellite-streets-v12'
-              : Mapbox?.StyleURL?.Dark || 'mapbox://styles/mapbox/dark-v11'
+              : isDarkMode
+                ? Mapbox?.StyleURL?.Dark || 'mapbox://styles/mapbox/dark-v11'
+                : Mapbox?.StyleURL?.Outdoors || Mapbox?.StyleURL?.Street || 'mapbox://styles/mapbox/streets-v12'
           }
           logoEnabled={false}
           attributionEnabled={false}
@@ -1363,10 +1368,10 @@ export default function RescueMapScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0f1d',
+    backgroundColor: colors.background,
   },
 
   /* ─── MAP MARKERS ─── */
@@ -1504,9 +1509,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: spacing.sm,
-    backgroundColor: 'rgba(10, 15, 29, 0.88)',
+    backgroundColor: isDarkMode ? 'rgba(10, 15, 29, 0.88)' : 'rgba(255, 255, 255, 0.94)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: colors.border,
   },
   topHudHeader: {
     flexDirection: 'row',
@@ -1518,13 +1523,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: radii.sm,
   },
   backBtnText: {
-    color: colors.white,
+    color: colors.textPrimary,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1553,24 +1558,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(15, 23, 42, 0.94)',
+    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.94)' : colors.card,
     borderRadius: radii.md,
     padding: spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.25)',
+    borderColor: isDarkMode ? 'rgba(52, 211, 153, 0.25)' : colors.cardBorder,
   },
   standbyHudTitle: {
-    color: '#ffffff',
+    color: colors.textPrimary,
     fontSize: 13,
     fontWeight: 'bold',
   },
   standbyHudSub: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontSize: 11,
     marginTop: 2,
   },
   mapStyleBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
     padding: 7,
     borderRadius: radii.sm,
   },
@@ -1579,11 +1584,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+    backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.95)' : colors.card,
     padding: spacing.sm,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
+    borderColor: isDarkMode ? 'rgba(56, 189, 248, 0.25)' : colors.cardBorder,
   },
   maneuverIconCircle: {
     width: 44,
@@ -1605,7 +1610,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   maneuverInstruction: {
-    color: '#ffffff',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
     marginTop: 2,
@@ -1681,13 +1686,13 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.92)' : colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: colors.border,
     shadowColor: '#000',
-    shadowOpacity: 0.4,
+    shadowOpacity: isDarkMode ? 0.4 : 0.1,
     shadowRadius: 5,
     elevation: 4,
   },
@@ -1702,7 +1707,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(10, 15, 29, 0.97)',
+    backgroundColor: isDarkMode ? 'rgba(10, 15, 29, 0.97)' : colors.surface,
     borderTopLeftRadius: radii.lg,
     borderTopRightRadius: radii.lg,
     borderTopWidth: 1.5,
@@ -1730,10 +1735,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: radii.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
   },
   guidedSimCloseText: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -1741,14 +1746,14 @@ const styles = StyleSheet.create({
   /* Multi-mission switcher */
   missionSwitcherBox: {
     marginBottom: 8,
-    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: colors.cardBorder,
   },
   missionSwitcherLabel: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.5,
@@ -1763,19 +1768,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    backgroundColor: colors.card,
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: radii.full,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: colors.cardBorder,
   },
   missionChipActive: {
     backgroundColor: '#d97706',
     borderColor: '#f59e0b',
   },
   missionChipText: {
-    color: '#cbd5e1',
+    color: colors.textSecondary,
     fontSize: 11,
     fontWeight: '700',
     maxWidth: 160,
@@ -1797,9 +1802,9 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#1e293b',
+    backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0',
     borderWidth: 1.5,
-    borderColor: '#475569',
+    borderColor: isDarkMode ? '#475569' : '#cbd5e1',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1813,7 +1818,7 @@ const styles = StyleSheet.create({
     borderColor: '#10b981',
   },
   stepNodeText: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontSize: 11,
     fontWeight: '800',
   },
@@ -1824,7 +1829,7 @@ const styles = StyleSheet.create({
   stepConnector: {
     flex: 1,
     height: 2,
-    backgroundColor: '#334155',
+    backgroundColor: isDarkMode ? '#334155' : '#cbd5e1',
     marginHorizontal: 3,
   },
   stepConnectorPast: {
@@ -1836,11 +1841,11 @@ const styles = StyleSheet.create({
 
   /* Step focus card */
   stepFocusCard: {
-    backgroundColor: 'rgba(30, 41, 59, 0.75)',
+    backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.75)' : colors.surfaceElevated,
     borderRadius: radii.md,
     padding: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: colors.cardBorder,
     marginBottom: 8,
   },
   stepFocusHeaderRow: {
@@ -1864,13 +1869,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   stepFocusStageName: {
-    color: '#ffffff',
+    color: colors.textPrimary,
     fontSize: 12,
     fontWeight: '800',
     flex: 1,
   },
   stepFocusDescription: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontSize: 11,
     lineHeight: 15,
     marginBottom: 10,
@@ -1943,9 +1948,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.95)' : colors.surface,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.12)',
+    borderTopColor: colors.border,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
   },
@@ -1972,7 +1977,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#06b6d4',
   },
   dockStatusText: {
-    color: colors.white,
+    color: colors.textPrimary,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -1997,12 +2002,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   dockTargetTitle: {
-    color: '#ffffff',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '800',
   },
   dockTargetSub: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontSize: 11,
     marginTop: 2,
   },
@@ -2035,7 +2040,7 @@ const styles = StyleSheet.create({
   },
   externalBtn: {
     flex: 0.35,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
   },
   dockBtnText: {
     color: '#ffffff',
@@ -2056,7 +2061,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   noMissionText: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
     flex: 1,
@@ -2073,12 +2078,12 @@ const styles = StyleSheet.create({
   arrivalModalContent: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.surface,
     borderRadius: radii.lg,
     padding: spacing.lg,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: colors.border,
   },
   arrivalIconCircle: {
     width: 60,
@@ -2095,14 +2100,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#0284c7',
   },
   arrivalTitle: {
-    color: '#ffffff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '900',
     textAlign: 'center',
     marginBottom: 6,
   },
   arrivalSubtitle: {
-    color: '#cbd5e1',
+    color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 18,
     textAlign: 'center',
@@ -2110,19 +2115,19 @@ const styles = StyleSheet.create({
   },
   arrivalDetailsBox: {
     width: '100%',
-    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: spacing.sm,
     marginBottom: spacing.md,
   },
   arrivalDetailsLabel: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   arrivalDetailsVal: {
-    color: '#ffffff',
+    color: colors.textPrimary,
     fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
@@ -2148,7 +2153,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   modalActionSecondaryText: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '600',
   },

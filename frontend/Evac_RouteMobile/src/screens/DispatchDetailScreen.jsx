@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView,
+  View, Text, TouchableOpacity, ScrollView, StyleSheet,
   ActivityIndicator, Alert, Vibration,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,7 +11,8 @@ import {
 } from 'lucide-react-native';
 import api from '../services/api';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { colors, spacing, typography, radii, shadows } from '../styles/theme';
+import { spacing, typography, radii, shadows } from '../styles/theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 
 const STATUS_CONFIG = {
   pending:    { label: 'PENDING',    color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
@@ -24,6 +25,8 @@ export default function DispatchDetailScreen({ route, navigation }) {
   const { orderId } = route.params;
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const { colors, isDarkMode } = useTheme();
+  const styles = useThemedStyles(getStyles);
   const [delivered, setDelivered] = useState(false);
 
   const { data, isLoading } = useQuery({
@@ -320,7 +323,7 @@ export default function DispatchDetailScreen({ route, navigation }) {
   );
 }
 
-const styles = {
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scrollContent: { padding: spacing.base, paddingBottom: 60 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -342,16 +345,17 @@ const styles = {
 
   // Timeline
   timeline: {
-    backgroundColor: colors.surface, borderRadius: radii.lg,
-    padding: spacing.base, marginBottom: spacing.base, gap: 8, ...shadows.sm,
+    backgroundColor: colors.card, borderRadius: radii.lg,
+    padding: spacing.base, marginBottom: spacing.base, gap: 8,
+    borderWidth: 1, borderColor: colors.cardBorder, ...shadows.sm,
   },
   timelineItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   timelineText: { color: colors.textSecondary, fontSize: 13 },
 
   // Notes
   notesBox: {
-    backgroundColor: 'rgba(59,130,246,0.08)', borderRadius: radii.lg,
-    padding: spacing.base, marginBottom: spacing.base,
+    backgroundColor: isDarkMode ? 'rgba(59,130,246,0.08)' : '#eff6ff',
+    borderRadius: radii.lg, padding: spacing.base, marginBottom: spacing.base,
     borderLeftWidth: 3, borderLeftColor: colors.primary,
   },
   notesLabel: { color: colors.primary, fontSize: 10, fontWeight: '900', letterSpacing: 1, marginBottom: 4 },
@@ -363,14 +367,15 @@ const styles = {
     letterSpacing: 1.5, marginBottom: spacing.sm,
   },
   manifest: {
-    backgroundColor: colors.surface, borderRadius: radii.lg,
-    marginBottom: spacing.lg, overflow: 'hidden', ...shadows.sm,
+    backgroundColor: colors.card, borderRadius: radii.lg,
+    marginBottom: spacing.lg, overflow: 'hidden',
+    borderWidth: 1, borderColor: colors.cardBorder, ...shadows.sm,
   },
   manifestRow: {
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', padding: spacing.base,
   },
-  manifestDivider: { borderBottomWidth: 1, borderBottomColor: colors.surfaceElevated },
+  manifestDivider: { borderBottomWidth: 1, borderBottomColor: colors.cardBorder },
   manifestLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   manifestItemName: { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
   manifestUnit: { color: colors.textMuted, fontSize: 11, marginTop: 1 },
@@ -407,7 +412,8 @@ const styles = {
   },
   deliveredText: { color: colors.successLight, fontWeight: '700', fontSize: 15 },
   cancelledBanner: {
-    backgroundColor: colors.surface, borderRadius: radii.lg, padding: spacing.base, alignItems: 'center',
+    backgroundColor: colors.card, borderRadius: radii.lg, padding: spacing.base, alignItems: 'center',
+    borderWidth: 1, borderColor: colors.cardBorder,
   },
   cancelledText: { color: colors.textMuted, fontSize: 14 },
 
@@ -427,14 +433,16 @@ const styles = {
   },
   successSubtitle: { color: colors.textMuted, fontSize: 14, textAlign: 'center', marginBottom: spacing.lg },
   successManifest: {
-    backgroundColor: colors.surface, borderRadius: radii.lg,
-    padding: spacing.base, width: '100%', gap: 8, marginBottom: spacing.lg, ...shadows.sm,
+    backgroundColor: colors.card, borderRadius: radii.lg,
+    padding: spacing.base, width: '100%', gap: 8, marginBottom: spacing.lg,
+    borderWidth: 1, borderColor: colors.cardBorder, ...shadows.sm,
   },
   successItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   successItemText: { color: colors.textSecondary, fontSize: 14 },
   backToQueueBtn: {
-    backgroundColor: colors.surface, borderRadius: radii.lg,
+    backgroundColor: colors.surfaceElevated, borderRadius: radii.lg,
     paddingHorizontal: 28, paddingVertical: 12,
+    borderWidth: 1, borderColor: colors.cardBorder,
   },
   backToQueueText: { color: colors.primary, fontWeight: '900', fontSize: 15 },
-};
+});

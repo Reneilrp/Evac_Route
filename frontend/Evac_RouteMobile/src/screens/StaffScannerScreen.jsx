@@ -3,12 +3,15 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator,
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { QrCode, LogOut, CheckCircle, XCircle, AlertTriangle, RefreshCw, Send, Users, Home } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import ConfirmationModal from '../components/ConfirmationModal';
 import api from '../services/api';
-import { colors, spacing, radii, typography, shadows } from '../styles/theme';
+import { spacing, radii, typography, shadows } from '../styles/theme';
 
 export default function StaffScannerScreen() {
   const { user, logout } = useAuth();
+  const { colors, isDarkMode } = useTheme();
+  const styles = useThemedStyles(getStyles);
   const [permission, requestPermission] = useCameraPermissions();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [manualOnlyMode, setManualOnlyMode] = useState(false);
@@ -424,7 +427,7 @@ export default function StaffScannerScreen() {
               <TextInput
                 style={styles.manualInput}
                 placeholder="Enter QR Code Hash..."
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.textMuted}
                 value={manualHash}
                 onChangeText={setManualHash}
                 autoCapitalize="none"
@@ -457,7 +460,7 @@ export default function StaffScannerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -549,17 +552,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#1e3a8a30',
+    backgroundColor: isDarkMode ? '#1e3a8a30' : '#eff6ff',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: radii.sm,
     alignSelf: 'flex-start',
     marginTop: 5,
     borderWidth: 1,
-    borderColor: '#3b82f640',
+    borderColor: isDarkMode ? '#3b82f640' : '#bfdbfe',
   },
   shelterBadgeText: {
-    color: '#60a5fa',
+    color: isDarkMode ? '#60a5fa' : '#2563eb',
     fontSize: 11,
     fontWeight: '700',
   },
@@ -571,10 +574,10 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   displayCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.xl,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     overflow: 'hidden',
     ...shadows.md,
   },
@@ -715,7 +718,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   successBadgeText: {
-    color: colors.white,
+    color: isDarkMode ? colors.white : colors.textPrimary,
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
@@ -726,7 +729,7 @@ const styles = StyleSheet.create({
   },
   familyName: {
     ...typography.title,
-    color: colors.white,
+    color: colors.textPrimary,
   },
   paxRow: {
     flexDirection: 'row',
@@ -862,10 +865,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   manualCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.xl,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     padding: spacing.lg,
     ...shadows.sm,
   },
@@ -886,13 +889,13 @@ const styles = StyleSheet.create({
   },
   manualInput: {
     flex: 1,
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: colors.inputBg,
     color: colors.textPrimary,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.inputBorder,
     fontFamily: 'monospace',
     fontSize: 14,
   },
@@ -909,9 +912,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     borderRadius: radii.md,

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -16,13 +17,18 @@ import {
   Radio,
   ChevronRight,
   Navigation,
+  Sun,
+  Moon,
 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { colors, spacing, radii, typography, shadows } from '../styles/theme';
+import { spacing, radii, typography, shadows } from '../styles/theme';
 
 export default function StaffProfileScreen({ navigation }) {
   const { user, logout } = useAuth();
+  const { colors, isDarkMode, toggleTheme } = useTheme();
+  const styles = useThemedStyles(getStyles);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const isRescue =
@@ -70,7 +76,7 @@ export default function StaffProfileScreen({ navigation }) {
   const initials = (user?.name || 'Staff')
     .split(' ')
     .filter(Boolean)
-    .map((n) => n[0])
+    .map((w) => w[0])
     .join('')
     .substring(0, 2)
     .toUpperCase();
@@ -82,20 +88,17 @@ export default function StaffProfileScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Top Header */}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Header Title with Active Badge */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>OFFICIAL DUTY PROFILE</Text>
+          <Text style={styles.headerTitle}>OFFICER PROFILE &amp; DISPATCH</Text>
           <View style={styles.dutyBadge}>
             <View style={styles.dutyDot} />
-            <Text style={styles.dutyBadgeText}>ON DUTY</Text>
+            <Text style={styles.dutyBadgeText}>ON ACTIVE DUTY</Text>
           </View>
         </View>
 
-        {/* Profile Identity Card */}
+        {/* Officer Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatarSection}>
             <View
@@ -104,90 +107,72 @@ export default function StaffProfileScreen({ navigation }) {
                 isRescue ? styles.avatarRescue : styles.avatarScanner,
               ]}
             >
-              <Text style={styles.avatarText}>{initials}</Text>
+              {isRescue ? (
+                <LifeBuoy size={28} color="#ef4444" />
+              ) : (
+                <QrCode size={28} color="#38bdf8" />
+              )}
             </View>
             <View style={styles.identityDetails}>
-              <Text style={styles.userName}>{user?.name || 'Official Staff'}</Text>
+              <Text style={styles.userName}>{user?.name || 'Officer'}</Text>
               <Text style={styles.userRoleBadge}>{operationalRole}</Text>
               <View style={styles.emailRow}>
-                <Mail size={13} color={colors.textMuted} />
-                <Text style={styles.userEmail}>{user?.email || 'staff@lgu.gov.ph'}</Text>
+                <Mail size={12} color={colors.textMuted} />
+                <Text style={styles.userEmail}>{user?.email || 'officer@lgu.gov.ph'}</Text>
               </View>
             </View>
           </View>
 
           <View style={styles.divider} />
 
-          {/* Agency & Deployment Info */}
+          {/* Operational Deployment Grid */}
           <View style={styles.deploymentGrid}>
             <View style={styles.deploymentItem}>
-              <Building size={16} color="#38bdf8" />
+              <Building size={14} color={colors.primary} style={{ marginTop: 2 }} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.deploymentLabel}>AGENCY / DIVISION</Text>
+                <Text style={styles.deploymentLabel}>ATTACHED AGENCY</Text>
                 <Text style={styles.deploymentValue}>{agencyName}</Text>
               </View>
             </View>
 
             <View style={styles.deploymentItem}>
-              {isRescue ? (
-                <LifeBuoy size={16} color="#f87171" />
-              ) : (
-                <QrCode size={16} color="#38bdf8" />
-              )}
+              <Navigation size={14} color="#34d399" style={{ marginTop: 2 }} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.deploymentLabel}>ASSIGNED POST / FLEET</Text>
                 <Text style={styles.deploymentValue}>{assignedPost}</Text>
               </View>
             </View>
-
-            <View style={styles.deploymentItem}>
-              <Radio size={16} color="#34d399" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.deploymentLabel}>DUTY CHANNEL</Text>
-                <Text style={styles.deploymentValue}>ZAMBOANGA-EOC-CH7 (ENCRYPTED)</Text>
-              </View>
-            </View>
           </View>
         </View>
 
-        {/* Operational Quick Actions */}
-        <Text style={styles.sectionHeader}>DUTY NAVIGATION</Text>
+        {/* Appearance Theme Switch */}
+        <Text style={styles.sectionHeader}>PREFERENCES</Text>
         <View style={styles.menuContainer}>
-          {isRescue && (
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => navigation.navigate('Rescue')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.menuIconBox, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-                <LifeBuoy size={18} color="#f87171" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.menuTitle}>Rescue Missions Stepper</Text>
-                <Text style={styles.menuSubtitle}>Current mission details, triage badges &amp; citizen coordination</Text>
-              </View>
-              <ChevronRight size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={toggleTheme}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIconBox, { backgroundColor: isDarkMode ? 'rgba(251, 191, 36, 0.15)' : 'rgba(2, 132, 199, 0.15)' }]}>
+              {isDarkMode ? <Sun size={18} color="#fbbf24" /> : <Moon size={18} color="#0284c7" />}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.menuTitle}>Appearance Theme</Text>
+              <Text style={styles.menuSubtitle}>{isDarkMode ? 'Dark Mode (tap to toggle)' : 'Light Mode (tap to toggle)'}</Text>
+            </View>
+            <Switch
+              value={isDarkMode}
+              onValueChange={toggleTheme}
+              trackColor={{ false: '#cbd5e1', true: colors.primaryDark }}
+              thumbColor={isDarkMode ? colors.primary : '#f8fafc'}
+            />
+          </TouchableOpacity>
+        </View>
 
-          {isRescue && (
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => navigation.navigate('RescueMap')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.menuIconBox, { backgroundColor: 'rgba(6, 182, 212, 0.15)' }]}>
-                <Navigation size={18} color="#06b6d4" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.menuTitle}>Turn-by-Turn Rescue Map</Text>
-                <Text style={styles.menuSubtitle}>Tactical Mapbox HUD, automated 20m arrival &amp; shelter re-route</Text>
-              </View>
-              <ChevronRight size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
-
-          {isScanner && (
+        {/* Fast Action Desk Navigators */}
+        <Text style={styles.sectionHeader}>QUICK SHORTCUTS</Text>
+        <View style={styles.menuContainer}>
+          {(isScanner || isAdmin) && (
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => navigation.navigate('Scanner')}
@@ -290,7 +275,7 @@ export default function StaffProfileScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -336,11 +321,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   profileCard: {
-    backgroundColor: 'rgba(30, 41, 59, 0.75)',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: colors.cardBorder,
     marginBottom: spacing.lg,
     ...shadows.md,
   },
@@ -368,7 +353,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#ffffff',
+    color: colors.textPrimary,
     letterSpacing: 1,
   },
   identityDetails: {
@@ -383,7 +368,7 @@ const styles = StyleSheet.create({
   userRoleBadge: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#38bdf8',
+    color: colors.primary,
   },
   emailRow: {
     flexDirection: 'row',
@@ -393,11 +378,11 @@ const styles = StyleSheet.create({
   },
   userEmail: {
     fontSize: 12,
-    color: colors.textMuted,
+    color: colors.textSecondary,
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: colors.border,
     marginVertical: spacing.md,
   },
   deploymentGrid: {
@@ -428,12 +413,12 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   menuContainer: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.lg,
     overflow: 'hidden',
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: colors.cardBorder,
   },
   menuItem: {
     flexDirection: 'row',
@@ -441,7 +426,7 @@ const styles = StyleSheet.create({
     padding: spacing.base,
     gap: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: colors.border,
   },
   menuIconBox: {
     width: 38,
@@ -457,17 +442,17 @@ const styles = StyleSheet.create({
   },
   menuSubtitle: {
     fontSize: 11,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   infoCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.lg,
     padding: spacing.base,
     gap: 10,
     marginBottom: spacing.xl,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: colors.cardBorder,
   },
   infoRow: {
     flexDirection: 'row',
@@ -509,7 +494,7 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 11,
-    color: '#475569',
+    color: colors.textMuted,
     fontWeight: '600',
     textAlign: 'center',
     marginTop: spacing.md,

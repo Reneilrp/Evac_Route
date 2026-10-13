@@ -1,10 +1,10 @@
 import { StyleSheet } from 'react-native';
-import { spacing, radii, shadows } from './theme';
+import { darkColors, spacing, radii, shadows } from './theme';
 
-const styles = StyleSheet.create({
+export const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b1329',
+    backgroundColor: colors.background,
   },
   headerRow: {
     flexDirection: 'row',
@@ -17,20 +17,20 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: colors.border,
   },
   headerTitle: {
-    color: '#ffffff',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '800',
   },
   headerSubtitle: {
-    color: '#38bdf8',
+    color: colors.primary,
     fontSize: 11,
     fontWeight: '600',
   },
@@ -47,42 +47,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: spacing.sm,
     marginBottom: spacing.md,
-    elevation: 6,
+    elevation: 4,
   },
   statusTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#ffffff',
+    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.xs,
     letterSpacing: 1,
   },
   statusSubtitle: {
     fontSize: 13,
-    color: '#cbd5e1',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.xl,
     lineHeight: 18,
     fontWeight: '500',
   },
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.card,
     width: '100%',
     borderRadius: radii['2xl'],
     padding: spacing.xl,
-    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.md,
     marginBottom: spacing.xl,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: colors.border,
     paddingBottom: spacing.md,
     marginBottom: spacing.md,
   },
   iconCircle: {
-    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    backgroundColor: colors.successBg,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -93,12 +95,12 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#0f172a',
+    color: colors.textPrimary,
   },
   cardSubtitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#16a34a',
+    color: colors.successText,
   },
   list: {
     marginBottom: spacing.md,
@@ -109,28 +111,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.xs,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: colors.border,
   },
   itemLabel: {
     fontSize: 13,
-    color: '#334155',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   itemValue: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#0f172a',
+    color: colors.textPrimary,
   },
   instructionBox: {
-    backgroundColor: '#f0fdf4',
+    backgroundColor: colors.successBg,
     padding: spacing.md,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: '#bbf7d0',
+    borderColor: colors.success,
     marginTop: spacing.xs,
   },
   instructionText: {
-    color: '#15803d',
+    color: colors.successText,
     fontWeight: '700',
     textAlign: 'center',
     fontSize: 12,
@@ -143,4 +145,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default styles;
+export default getStyles(darkColors, true);

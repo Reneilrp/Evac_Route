@@ -1,13 +1,16 @@
 import { useRef, useEffect } from 'react';
 import { Text, Animated, StyleSheet } from 'react-native';
 import { AlertTriangle, ShieldCheck } from 'lucide-react-native';
-import { colors, spacing, typography } from '../styles/theme';
+import { spacing, typography } from '../styles/theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 
 /**
  * StatusBanner — Safe-area-aware status banner with pulse animation in danger mode.
  */
 export default function StatusBanner({ status = 'danger', text, icon }) {
   const pulseAnimRef = useRef(new Animated.Value(1));
+  const { colors } = useTheme();
+  const styles = useThemedStyles(getStyles);
 
   useEffect(() => {
     const anim = pulseAnimRef.current;
@@ -29,8 +32,8 @@ export default function StatusBanner({ status = 'danger', text, icon }) {
 
   const defaultText = isDanger ? 'EVACUATION MANDATORY' : 'YOU ARE MARKED AS SAFE';
   const defaultIcon = isDanger
-    ? <AlertTriangle color={colors.white} size={28} style={{ marginRight: 10 }} />
-    : <ShieldCheck color={colors.white} size={28} style={{ marginRight: 10 }} />;
+    ? <AlertTriangle color="#ffffff" size={28} style={{ marginRight: 10 }} />
+    : <ShieldCheck color="#ffffff" size={28} style={{ marginRight: 10 }} />;
 
   return (
     <Animated.View
@@ -46,7 +49,7 @@ export default function StatusBanner({ status = 'danger', text, icon }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   banner: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
@@ -62,7 +65,7 @@ const styles = StyleSheet.create({
   bannerDanger: { backgroundColor: colors.danger },
   bannerSafe: { backgroundColor: colors.success },
   bannerText: {
-    color: colors.white,
+    color: '#ffffff',
     ...typography.heading,
     fontWeight: '900',
     letterSpacing: 1,

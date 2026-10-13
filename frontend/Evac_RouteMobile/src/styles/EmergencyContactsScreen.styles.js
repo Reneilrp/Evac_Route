@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
-import { colors, spacing, radii, typography, shadows } from './theme';
+import { darkColors, spacing, radii, typography, shadows } from './theme';
 
-const styles = StyleSheet.create({
+export const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -28,18 +28,19 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...typography.caption,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     marginBottom: spacing.md,
   },
   contactCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.xl,
     padding: spacing.base,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     marginBottom: spacing.md,
+    ...shadows.sm,
   },
   contactIconCircle: {
     width: 48,
@@ -72,11 +73,12 @@ const styles = StyleSheet.create({
     shadowColor: colors.successLight,
   },
   infoCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.xl,
     padding: spacing.base,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   infoTitle: {
     ...typography.bodyBold,
@@ -90,4 +92,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default styles;
+export default getStyles(darkColors, true);

@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
-import { colors, spacing, radii, typography } from './theme';
+import { darkColors, spacing, radii, typography, shadows } from './theme';
 
-const styles = StyleSheet.create({
+export const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -23,13 +23,14 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   alertCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.xl,
     padding: spacing.base,
     flexDirection: 'row',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     marginBottom: spacing.md,
+    ...shadows.sm,
   },
   alertIconStrip: {
     width: 4,
@@ -68,4 +69,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default styles;
+export default getStyles(darkColors, true);

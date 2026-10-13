@@ -23,6 +23,7 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 import { radii, shadows } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 import {
   MAPBOX_PUBLIC_TOKEN,
   clampToZamboanga,
@@ -58,6 +59,7 @@ export default function TacticalRescueMap({
   onOpenExternalNav,
   onStartTurnByTurn,
 }) {
+  const { isDarkMode } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [navTargetMode, setNavTargetMode] = useState('victim'); // 'victim' | 'shelter'
@@ -292,7 +294,11 @@ export default function TacticalRescueMap({
         ) : (
           <Mapbox.MapView
             style={{ width: '100%', height: isExpanded ? 420 : 240 }}
-            styleURL={Mapbox?.StyleURL?.Dark || 'mapbox://styles/mapbox/dark-v11'}
+            styleURL={
+              isDarkMode
+                ? Mapbox?.StyleURL?.Dark || 'mapbox://styles/mapbox/dark-v11'
+                : Mapbox?.StyleURL?.Outdoors || Mapbox?.StyleURL?.Street || 'mapbox://styles/mapbox/streets-v12'
+            }
             logoEnabled={false}
             attributionEnabled={false}
             compassEnabled={true}

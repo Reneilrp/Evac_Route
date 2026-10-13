@@ -9,7 +9,8 @@ import {
   StyleSheet,
 } from 'react-native';
 import { AlertTriangle, Archive, ArchiveRestore, CheckCircle2 } from 'lucide-react-native';
-import { colors, radii } from '../styles/theme';
+import { radii } from '../styles/theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 
 const VARIANT_CONFIGS = {
   warning: {
@@ -55,6 +56,7 @@ export default function ConfirmationModal({
   icon: CustomIcon,
   loading = false,
 }) {
+  const styles = useThemedStyles(getStyles);
   const config = VARIANT_CONFIGS[variant] || VARIANT_CONFIGS.warning;
   const IconComponent = CustomIcon || config.defaultIcon;
 
@@ -138,10 +140,10 @@ export default function ConfirmationModal({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(5, 10, 20, 0.78)',
+    backgroundColor: colors.modalBackdrop,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
@@ -149,17 +151,17 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 350,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: 24,
     paddingTop: 24,
     paddingBottom: 20,
     paddingHorizontal: 22,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.45,
+    shadowOpacity: 0.25,
     shadowRadius: 18,
     elevation: 14,
     position: 'relative',
@@ -201,7 +203,7 @@ const styles = StyleSheet.create({
   },
   detailContainer: {
     width: '100%',
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -254,3 +256,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 });
+

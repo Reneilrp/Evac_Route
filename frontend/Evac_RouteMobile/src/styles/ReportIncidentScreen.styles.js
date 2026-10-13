@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
-import { colors, spacing, radii, typography } from './theme';
+import { darkColors, spacing, radii, typography } from './theme';
 
-const styles = StyleSheet.create({
+export const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -36,14 +36,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.base,
   },
   input: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.inputBg,
     color: colors.textPrimary,
     borderRadius: radii.lg,
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
     fontSize: 15,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.inputBorder,
   },
   textArea: {
     minHeight: 80,
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.lg,
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.base,
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     ...typography.label,
   },
   photoBtn: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.lg,
     borderWidth: 1.5,
     borderColor: colors.border,
@@ -76,11 +76,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   photoBtnText: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     ...typography.label,
   },
   photoBtnHint: {
-    color: colors.borderLight,
+    color: colors.textMuted,
     ...typography.small,
   },
   photoPreviewContainer: {
@@ -105,11 +105,11 @@ const styles = StyleSheet.create({
   },
   disclaimer: {
     textAlign: 'center',
-    color: colors.borderLight,
+    color: colors.textMuted,
     ...typography.small,
     marginTop: spacing.md,
     lineHeight: 16,
   },
 });
 
-export default styles;
+export default getStyles(darkColors, true);

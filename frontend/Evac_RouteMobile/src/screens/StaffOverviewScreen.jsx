@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, TouchableOpacity,
+  View, Text, TouchableOpacity, StyleSheet,
   ActivityIndicator, Linking, ScrollView, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,7 +10,8 @@ import {
   ExternalLink, RefreshCw,
 } from 'lucide-react-native';
 import api from '../services/api';
-import { colors, spacing, typography, radii, shadows } from '../styles/theme';
+import { spacing, typography, radii, shadows } from '../styles/theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import Constants from 'expo-constants';
 
 // Derive web dashboard URL from the same base the API uses
@@ -19,6 +20,8 @@ const WEB_DASHBOARD_URL = API_BASE.replace('/api', '');
 
 export default function StaffOverviewScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, isDarkMode } = useTheme();
+  const styles = useThemedStyles(getStyles);
   const [expandedShelterId, setExpandedShelterId] = useState(null);
 
   // Shelter overview — same endpoint used by web dashboard
@@ -219,7 +222,7 @@ export default function StaffOverviewScreen() {
   );
 }
 
-const styles = {
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -243,7 +246,9 @@ const styles = {
   refreshBtn: {
     padding: 8,
     borderRadius: radii.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
   headerSub: {
     ...typography.caption,
@@ -283,10 +288,12 @@ const styles = {
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.lg,
     padding: spacing.base,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     ...shadows.sm,
   },
   statValue: {
@@ -307,10 +314,12 @@ const styles = {
     marginBottom: spacing.sm,
   },
   shelterCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.lg,
     padding: spacing.base,
     marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     ...shadows.sm,
   },
   cardHeader: {
@@ -355,7 +364,7 @@ const styles = {
   barTrack: {
     flex: 1,
     height: 6,
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: isDarkMode ? colors.surfaceElevated : '#e2e8f0',
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -378,7 +387,7 @@ const styles = {
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.surfaceElevated,
+    borderTopColor: colors.cardBorder,
     gap: 6,
   },
   detailRow: {
@@ -437,4 +446,4 @@ const styles = {
     marginTop: spacing.base,
     lineHeight: 17,
   },
-};
+});

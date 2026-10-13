@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { darkColors, lightColors } from '../styles/theme';
 
@@ -45,3 +45,13 @@ export function useTheme() {
   }
   return context;
 }
+
+/**
+ * useThemedStyles — Automatically re-creates styles when theme/colors change.
+ * @param {(colors: object, isDarkMode: boolean) => object} stylesFactory
+ */
+export function useThemedStyles(stylesFactory) {
+  const { colors, isDarkMode } = useTheme();
+  return useMemo(() => stylesFactory(colors, isDarkMode), [colors, isDarkMode]);
+}
+

@@ -1,6 +1,7 @@
 import { useRef, useCallback } from 'react';
 import { TouchableOpacity, Text, Animated, ActivityIndicator, Vibration, StyleSheet } from 'react-native';
 import { radii, spacing } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 
 /**
  * PrimaryButton — Animated pressable button with haptic feedback.
@@ -17,6 +18,7 @@ export default function PrimaryButton({
   textStyle,
   haptic = true,
 }) {
+  const { colors, isDarkMode } = useTheme();
   const scaleAnimRef = useRef(new Animated.Value(1));
 
   const handlePressIn = useCallback(() => {
@@ -44,7 +46,7 @@ export default function PrimaryButton({
     onPress?.();
   }, [haptic, onPress]);
 
-  const variantStyles = VARIANT_STYLES[variant] || VARIANT_STYLES.primary;
+  const variantStyles = getVariantStyles(variant, colors, isDarkMode);
   const sizeStyles = SIZE_STYLES[size] || SIZE_STYLES.large;
 
   return (
@@ -86,64 +88,68 @@ export default function PrimaryButton({
   );
 }
 
-const VARIANT_STYLES = {
-  primary: {
-    container: { 
-      backgroundColor: '#0284c7', 
-      borderWidth: 1, 
-      borderColor: 'rgba(56, 189, 248, 0.4)',
-      shadowColor: '#0284c7',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.45,
-      shadowRadius: 10,
-      elevation: 8,
+const getVariantStyles = (variant, colors, isDarkMode) => {
+  const stylesMap = {
+    primary: {
+      container: { 
+        backgroundColor: colors.primaryDark || '#0284c7', 
+        borderWidth: 1, 
+        borderColor: colors.primaryGlow || 'rgba(56, 189, 248, 0.4)',
+        shadowColor: colors.primaryDark || '#0284c7',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+        elevation: 6,
+      },
+      text: { color: '#ffffff', fontWeight: '900', letterSpacing: 0.8 },
+      spinnerColor: '#ffffff',
     },
-    text: { color: '#ffffff', fontWeight: '900', letterSpacing: 0.8 },
-    spinnerColor: '#ffffff',
-  },
-  danger: {
-    container: { 
-      backgroundColor: '#dc2626', 
-      borderWidth: 1, 
-      borderColor: 'rgba(248, 113, 113, 0.4)',
-      shadowColor: '#dc2626',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.45,
-      shadowRadius: 10,
-      elevation: 8,
+    danger: {
+      container: { 
+        backgroundColor: colors.danger || '#dc2626', 
+        borderWidth: 1, 
+        borderColor: colors.dangerLight || 'rgba(248, 113, 113, 0.4)',
+        shadowColor: colors.danger || '#dc2626',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+        elevation: 6,
+      },
+      text: { color: '#ffffff', fontWeight: '900', letterSpacing: 0.8 },
+      spinnerColor: '#ffffff',
     },
-    text: { color: '#ffffff', fontWeight: '900', letterSpacing: 0.8 },
-    spinnerColor: '#ffffff',
-  },
-  success: {
-    container: { 
-      backgroundColor: '#16a34a', 
-      borderWidth: 1, 
-      borderColor: 'rgba(74, 222, 128, 0.4)',
-      shadowColor: '#16a34a',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.45,
-      shadowRadius: 10,
-      elevation: 8,
+    success: {
+      container: { 
+        backgroundColor: colors.success || '#16a34a', 
+        borderWidth: 1, 
+        borderColor: colors.successLight || 'rgba(74, 222, 128, 0.4)',
+        shadowColor: colors.success || '#16a34a',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+        elevation: 6,
+      },
+      text: { color: '#ffffff', fontWeight: '900', letterSpacing: 0.8 },
+      spinnerColor: '#ffffff',
     },
-    text: { color: '#ffffff', fontWeight: '900', letterSpacing: 0.8 },
-    spinnerColor: '#ffffff',
-  },
-  outline: {
-    container: { 
-      backgroundColor: 'rgba(15, 23, 42, 0.6)', 
-      borderWidth: 1.5, 
-      borderColor: 'rgba(255, 255, 255, 0.2)',
-      shadowColor: '#000000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 6,
-      elevation: 4,
+    outline: {
+      container: { 
+        backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.6)' : colors.surface, 
+        borderWidth: 1.5, 
+        borderColor: colors.border,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+      text: { color: colors.textPrimary, fontWeight: '800', letterSpacing: 0.5 },
+      spinnerColor: colors.textPrimary,
     },
-    text: { color: '#e2e8f0', fontWeight: '800', letterSpacing: 0.5 },
-    spinnerColor: '#e2e8f0',
-  },
+  };
+  return stylesMap[variant] || stylesMap.primary;
 };
+
 
 const SIZE_STYLES = {
   large: {

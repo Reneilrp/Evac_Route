@@ -2,11 +2,11 @@ import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Bell, ArrowLeft } from 'lucide-react-native';
 import { useResidentStore } from '../context/useResidentStore';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import EmptyState from '../components/EmptyState';
-import { colors } from '../styles/theme';
-import styles from '../styles/AlertHistoryScreen.styles';
+import { getStyles } from '../styles/AlertHistoryScreen.styles';
 
-const ALERT_TYPE_CONFIG = {
+const getAlertTypeConfig = (colors) => ({
   evacuation: {
     color: colors.danger,
     bgColor: colors.dangerBg,
@@ -21,8 +21,8 @@ const ALERT_TYPE_CONFIG = {
   },
   relief: {
     color: colors.primary,
-    bgColor: 'rgba(59, 130, 246, 0.2)',
-    textColor: '#93c5fd',
+    bgColor: colors.primaryGlow,
+    textColor: colors.primary,
     label: 'RELIEF',
   },
   route_update: {
@@ -37,7 +37,7 @@ const ALERT_TYPE_CONFIG = {
     textColor: colors.textSecondary,
     label: 'INFO',
   },
-};
+});
 
 function formatTimestamp(timestamp) {
   if (!timestamp) return '';
@@ -56,6 +56,9 @@ function formatTimestamp(timestamp) {
 }
 
 export default function AlertHistoryScreen({ navigation }) {
+  const { colors, isDarkMode } = useTheme();
+  const styles = useThemedStyles(getStyles);
+  const ALERT_TYPE_CONFIG = getAlertTypeConfig(colors);
   const alertHistory = useResidentStore(state => state.alertHistory);
 
   const renderAlert = ({ item }) => {

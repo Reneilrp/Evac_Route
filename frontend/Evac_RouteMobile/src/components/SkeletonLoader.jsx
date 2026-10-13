@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
-import { colors, radii } from '../styles/theme';
+import { radii } from '../styles/theme';
+import { useTheme } from '../context/ThemeContext';
 
 /**
  * SkeletonLoader — Animated shimmer placeholder for loading states.
@@ -11,6 +12,7 @@ export default function SkeletonLoader({
   borderRadius = radii.md,
   style,
 }) {
+  const { colors } = useTheme();
   const shimmerAnimRef = useRef(new Animated.Value(0.3));
 
   useEffect(() => {
@@ -28,7 +30,13 @@ export default function SkeletonLoader({
     <Animated.View
       style={[
         styles.skeleton,
-        { width, height, borderRadius, opacity: shimmerAnimRef.current },
+        {
+          backgroundColor: colors.surfaceElevated,
+          width,
+          height,
+          borderRadius,
+          opacity: shimmerAnimRef.current,
+        },
         style,
       ]}
     />
@@ -53,5 +61,6 @@ export function SkeletonGroup({ lines = 3, gap = 10 }) {
 }
 
 const styles = StyleSheet.create({
-  skeleton: { backgroundColor: colors.surfaceElevated },
+  skeleton: {},
 });
+

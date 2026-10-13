@@ -1,9 +1,9 @@
 import { StyleSheet, Dimensions } from 'react-native';
-import { colors, spacing, radii, typography, shadows } from './theme';
+import { darkColors, spacing, radii, typography, shadows } from './theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const styles = StyleSheet.create({
+export const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -121,6 +121,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopLeftRadius: radii['4xl'],
     borderTopRightRadius: radii['4xl'],
+    borderTopWidth: 1,
+    borderColor: colors.border,
     ...shadows.xl,
     minHeight: 120,
     maxHeight: SCREEN_HEIGHT * 0.55,
@@ -133,7 +135,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: colors.borderLight,
   },
   bottomSheetContent: {
     paddingHorizontal: spacing.xl,
@@ -148,7 +150,7 @@ const styles = StyleSheet.create({
   },
   destinationName: {
     ...typography.title,
-    color: colors.white,
+    color: colors.textPrimary,
     marginVertical: spacing.xs,
   },
   etaText: {
@@ -272,16 +274,17 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(30, 41, 59, 0.92)',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: colors.border,
+    ...shadows.sm,
   },
   mapStyleBtnActive: {
-    borderColor: '#3b82f6',
+    borderColor: colors.primary,
     borderWidth: 2,
-    backgroundColor: 'rgba(59, 130, 246, 0.25)',
+    backgroundColor: colors.primaryGlow,
   },
   mapStyleBtnText: {
     fontSize: 18,
@@ -290,7 +293,7 @@ const styles = StyleSheet.create({
   // ─── Occupancy Bar ───
   occupancyBarTrack: {
     height: 5,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: colors.surfaceElevated,
     borderRadius: 3,
     marginTop: 8,
     marginBottom: 4,
@@ -302,10 +305,10 @@ const styles = StyleSheet.create({
   },
   occupancyText: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontWeight: '600',
     marginBottom: 8,
   },
 });
 
-export default styles;
+export default getStyles(darkColors, true);

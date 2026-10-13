@@ -35,14 +35,17 @@ import * as Location from 'expo-location';
 import api from '../services/api';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getEcho } from '../services/echoService';
-import { colors, spacing, radii, shadows } from '../styles/theme';
+import { spacing, radii, shadows } from '../styles/theme';
 import { useAuth } from '../context/AuthContext';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { clampToZamboanga, ZAMBOANGA_RESCUER_BASE } from '../utils/zamboangaGeo';
 
 export default function RescueDutyScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { user, logout } = useAuth();
+  const { colors, isDarkMode } = useTheme();
+  const styles = useThemedStyles(getStyles);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // 1. Fetch active rescue missions
@@ -786,7 +789,7 @@ export default function RescueDutyScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -825,7 +828,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 14,
     fontWeight: '900',
-    color: colors.white,
+    color: colors.textPrimary,
     letterSpacing: 0.5,
   },
   headerSubtitle: {
@@ -842,9 +845,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.95)' : colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    borderBottomColor: colors.border,
   },
   readinessPill: {
     flexDirection: 'row',
@@ -877,7 +880,7 @@ const styles = StyleSheet.create({
   readinessText: {
     fontSize: 10.5,
     fontWeight: '800',
-    color: colors.white,
+    color: colors.textPrimary,
     letterSpacing: 0.5,
   },
   hazardsIndicator: {
@@ -887,7 +890,7 @@ const styles = StyleSheet.create({
   },
   hazardsIndicatorText: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   scrollContent: {
@@ -973,11 +976,11 @@ const styles = StyleSheet.create({
 
   /* Family Distress Card */
   familyCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.xl,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     gap: 12,
   },
   cardHeaderRow: {
@@ -987,13 +990,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   cardEyebrow: {
-    color: '#94a3b8',
+    color: colors.textMuted,
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.8,
   },
   victimName: {
-    color: '#ffffff',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '900',
     marginTop: 2,
@@ -1036,38 +1039,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: colors.surfaceElevated,
     padding: 10,
     borderRadius: radii.md,
   },
   locationTitle: {
-    color: '#ffffff',
+    color: colors.textPrimary,
     fontSize: 12.5,
     fontWeight: '800',
   },
   locationCoordinates: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontSize: 11,
     fontWeight: '600',
     marginTop: 1,
   },
   situationQuoteBox: {
-    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.6)' : '#fffbeb',
     borderLeftWidth: 3,
-    borderLeftColor: '#f59e0b',
+    borderLeftColor: colors.warning,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: radii.sm,
   },
   situationQuoteTitle: {
-    color: '#f59e0b',
+    color: colors.warning,
     fontSize: 9.5,
     fontWeight: '900',
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   situationQuoteText: {
-    color: '#e2e8f0',
+    color: isDarkMode ? '#e2e8f0' : '#78350f',
     fontSize: 12,
     fontStyle: 'italic',
     lineHeight: 18,
@@ -1101,11 +1104,11 @@ const styles = StyleSheet.create({
 
   /* Shelter Card */
   shelterCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.xl,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     gap: 4,
   },
   shelterHeaderRow: {
@@ -1121,12 +1124,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   shelterNameText: {
-    color: '#ffffff',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '800',
   },
   shelterMetaText: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontSize: 11,
     lineHeight: 16,
     marginTop: 2,
@@ -1134,11 +1137,11 @@ const styles = StyleSheet.create({
 
   /* Stepper */
   stepperContainer: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.xl,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     gap: 14,
   },
   stepperHeaderRow: {
@@ -1147,7 +1150,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stepperHeaderTitle: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontSize: 10.5,
     fontWeight: '900',
     letterSpacing: 0.6,
@@ -1173,7 +1176,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#334155',
+    backgroundColor: isDarkMode ? '#334155' : '#cbd5e1',
   },
   milestoneDotActive: {
     backgroundColor: '#38bdf8',
@@ -1181,7 +1184,7 @@ const styles = StyleSheet.create({
   milestoneLine: {
     flex: 1,
     height: 2,
-    backgroundColor: '#334155',
+    backgroundColor: isDarkMode ? '#334155' : '#cbd5e1',
   },
   milestoneLineActive: {
     backgroundColor: '#38bdf8',
@@ -1209,9 +1212,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#16a34a',
   },
   btnDarkOutline: {
-    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: colors.border,
   },
   stepperActionBtnText: {
     color: '#ffffff',
@@ -1220,19 +1223,19 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   stepperActionBtnTextSubtle: {
-    color: '#cbd5e1',
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '700',
   },
 
   /* Standby Card */
   standbyCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: radii.xl,
     padding: spacing.xl,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     marginVertical: spacing.md,
   },
   standbyGlow: {
@@ -1247,7 +1250,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(34, 197, 94, 0.3)',
   },
   standbyTitle: {
-    color: '#ffffff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '900',
     letterSpacing: 1,
@@ -1263,12 +1266,12 @@ const styles = StyleSheet.create({
   },
   standbyInfoBox: {
     width: '100%',
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.lg,
     padding: spacing.md,
     gap: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: colors.cardBorder,
   },
   infoRow: {
     flexDirection: 'row',
@@ -1276,7 +1279,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   infoText: {
-    color: '#cbd5e1',
+    color: colors.textPrimary,
     fontSize: 12,
     fontWeight: '600',
     flex: 1,
@@ -1285,14 +1288,14 @@ const styles = StyleSheet.create({
   /* Multi-mission switcher */
   missionSwitcherBox: {
     marginBottom: 10,
-    backgroundColor: 'rgba(30, 41, 59, 0.75)',
+    backgroundColor: colors.surfaceElevated,
     borderRadius: radii.md,
     padding: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: colors.cardBorder,
   },
   missionSwitcherLabel: {
-    color: '#94a3b8',
+    color: colors.textSecondary,
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
@@ -1307,19 +1310,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: colors.card,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: radii.full,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.35)',
+    borderColor: colors.cardBorder,
   },
   missionChipActive: {
     backgroundColor: '#d97706',
     borderColor: '#f59e0b',
   },
   missionChipText: {
-    color: '#cbd5e1',
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '700',
     maxWidth: 200,

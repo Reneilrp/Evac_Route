@@ -11,21 +11,32 @@ export const darkColors = {
   surface:          '#1e293b',
   surfaceElevated:  '#334155',
   
+  // Cards & Surfaces
+  card:             '#1e293b',
+  cardBorder:       'rgba(255, 255, 255, 0.08)',
+  cardElevated:     '#334155',
+
+  // Inputs
+  inputBg:          '#1e293b',
+  inputBorder:      '#334155',
+  inputBorderFocus: '#38bdf8',
+
   // Borders
   border:           '#334155',
   borderLight:      '#475569',
 
-  // Text
+  // Text (WCAG AA Compliant)
   textPrimary:      '#f8fafc',
   textSecondary:    '#94a3b8',
-  textMuted:        '#64748b',
+  textMuted:        '#94a3b8',
+  textDim:          '#64748b',
   textInverse:      '#0f172a',
 
   // Brand / Primary
-  primary:          '#3b82f6',
-  primaryDark:      '#2563eb',
-  primaryDarker:    '#1d4ed8',
-  primaryGlow:      'rgba(59, 130, 246, 0.3)',
+  primary:          '#38bdf8',
+  primaryDark:      '#0284c7',
+  primaryDarker:    '#0369a1',
+  primaryGlow:      'rgba(56, 189, 248, 0.3)',
 
   // Semantic: Danger
   danger:           '#dc2626',
@@ -46,7 +57,8 @@ export const darkColors = {
   warningBg:        '#78350f',
   warningText:      '#fef3c7',
 
-  // Overlays
+  // Overlays & Modal
+  modalBackdrop:    'rgba(5, 10, 20, 0.78)',
   overlayDark:      'rgba(15, 23, 42, 0.95)',
   overlayMedium:    'rgba(30, 41, 59, 0.95)',
   overlayLight:     'rgba(0, 0, 0, 0.6)',
@@ -68,14 +80,25 @@ export const lightColors = {
   surface:          '#ffffff',
   surfaceElevated:  '#f1f5f9',
   
+  // Cards & Surfaces
+  card:             '#ffffff',
+  cardBorder:       '#e2e8f0',
+  cardElevated:     '#f8fafc',
+
+  // Inputs
+  inputBg:          '#f8fafc',
+  inputBorder:      '#cbd5e1',
+  inputBorderFocus: '#0284c7',
+
   // Borders
   border:           '#e2e8f0',
   borderLight:      '#cbd5e1',
 
-  // Text
+  // Text (WCAG AA Compliant: 4.5:1 min contrast)
   textPrimary:      '#0f172a',
-  textSecondary:    '#475569',
-  textMuted:        '#94a3b8',
+  textSecondary:    '#334155',
+  textMuted:        '#64748b',
+  textDim:          '#94a3b8',
   textInverse:      '#ffffff',
 
   // Brand / Primary
@@ -103,10 +126,11 @@ export const lightColors = {
   warningBg:        '#fef3c7',
   warningText:      '#92400e',
 
-  // Overlays
+  // Overlays & Modal
+  modalBackdrop:    'rgba(15, 23, 42, 0.65)',
   overlayDark:      'rgba(248, 250, 252, 0.95)',
   overlayMedium:    'rgba(255, 255, 255, 0.95)',
-  overlayLight:     'rgba(0, 0, 0, 0.4)',
+  overlayLight:     'rgba(0, 0, 0, 0.3)',
 
   // Misc
   white:            '#ffffff',

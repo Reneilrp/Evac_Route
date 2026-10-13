@@ -7,10 +7,10 @@ import * as Location from 'expo-location';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import api from '../services/api';
-import styles from '../styles/EvacMapScreen.styles';
+import { getStyles } from '../styles/EvacMapScreen.styles';
 import { useResidentStore } from '../context/useResidentStore';
 import PrimaryButton from '../components/PrimaryButton';
-import { colors } from '../styles/theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { getEcho } from '../services/echoService';
 
 import {
@@ -50,6 +50,8 @@ const SHEET_EXPANDED = SCREEN_HEIGHT * 0.45;
 const MAPBOX_TOKEN = Constants.expoConfig?.extra?.mapboxToken || process.env.EXPO_PUBLIC_MAPBOX_TOKEN || '';
 
 export default function EvacMapScreen({ navigation, route }) {
+  const { colors, isDarkMode } = useTheme();
+  const styles = useThemedStyles(getStyles);
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [location, setLocation] = useState(null);

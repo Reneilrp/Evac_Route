@@ -4,17 +4,17 @@ import { QrCode, Map, Radio } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import PrimaryButton from '../components/PrimaryButton';
-import { colors } from '../styles/theme';
-import styles from '../styles/OnboardingScreen.styles';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
+import { getStyles } from '../styles/OnboardingScreen.styles';
 
 const { width } = Dimensions.get('window');
 
-const SLIDES = [
+const getSlides = (colors) => [
   {
     icon: QrCode,
     iconColor: colors.primary,
-    iconBg: 'rgba(59, 130, 246, 0.15)',
-    iconBorder: 'rgba(59, 130, 246, 0.3)',
+    iconBg: colors.primaryGlow,
+    iconBorder: colors.primary,
     title: 'Your Family, Protected',
     subtitle:
       'Register your family once and get a unique QR code. Staff at evacuation shelters scan it to instantly check you in — no paperwork, no delays.',
@@ -22,8 +22,8 @@ const SLIDES = [
   {
     icon: Map,
     iconColor: colors.successLight,
-    iconBg: 'rgba(34, 197, 94, 0.15)',
-    iconBorder: 'rgba(34, 197, 94, 0.3)',
+    iconBg: colors.successBg,
+    iconBorder: colors.success,
     title: 'Real-Time Hazard Maps',
     subtitle:
       'See active flood zones, blocked roads, and safe evacuation routes on a live map — even offline. The system finds the safest path for your transport type.',
@@ -31,8 +31,8 @@ const SLIDES = [
   {
     icon: Radio,
     iconColor: colors.warning,
-    iconBg: 'rgba(245, 158, 11, 0.15)',
-    iconBorder: 'rgba(245, 158, 11, 0.3)',
+    iconBg: colors.warningBg,
+    iconBorder: colors.warning,
     title: 'LGU Connected',
     subtitle:
       'Your city\'s Disaster Response team tracks family safety status in real-time. They know exactly who is safe and who needs rescue — because of you.',
@@ -40,9 +40,12 @@ const SLIDES = [
 ];
 
 export default function OnboardingScreen({ navigation }) {
+  const { colors, isDarkMode } = useTheme();
+  const styles = useThemedStyles(getStyles);
   const insets = useSafeAreaInsets();
   const [currentSlide, setCurrentSlide] = useState(0);
   const scrollRef = useRef(null);
+  const SLIDES = getSlides(colors);
 
   // Store animated values as arrays of refs (not .current)
   const fadeAnimsRef = useRef(SLIDES.map(() => new Animated.Value(0)));

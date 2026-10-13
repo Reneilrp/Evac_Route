@@ -1,9 +1,9 @@
 import { StyleSheet, Dimensions } from 'react-native';
-import { colors, spacing, typography } from './theme';
+import { darkColors, spacing, typography } from './theme';
 
 const { width } = Dimensions.get('window');
 
-const styles = StyleSheet.create({
+export const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     ...typography.label,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.base,
   },
@@ -79,4 +79,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default styles;
+export default getStyles(darkColors, true);

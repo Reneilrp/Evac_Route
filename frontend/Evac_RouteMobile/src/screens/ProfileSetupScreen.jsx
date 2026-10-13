@@ -8,10 +8,12 @@ import { useResidentStore } from '../context/useResidentStore';
 import PrimaryButton from '../components/PrimaryButton';
 import ChipSelector from '../components/ChipSelector';
 import BarangayAutocomplete from '../components/BarangayAutocomplete';
-import { colors } from '../styles/theme';
-import styles from '../styles/ProfileSetupScreen.styles';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
+import { getStyles } from '../styles/ProfileSetupScreen.styles';
 
 export default function ProfileSetupScreen() {
+  const { colors, isDarkMode } = useTheme();
+  const styles = useThemedStyles(getStyles);
   const { login } = useAuth();
   const setProfileData = useResidentStore((state) => state.setProfileData);
 

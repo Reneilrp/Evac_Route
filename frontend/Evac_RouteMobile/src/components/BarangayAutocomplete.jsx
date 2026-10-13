@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { MapPin, ChevronDown, Check } from 'lucide-react-native';
-import { colors, radii } from '../styles/theme';
+import { radii } from '../styles/theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 
 export const ZAMBOANGA_BARANGAYS = [
   'Tetuan',
@@ -67,6 +68,8 @@ export const ZAMBOANGA_BARANGAYS = [
 ];
 
 export default function BarangayAutocomplete({ value, onChangeText, placeholder = 'Search or type Barangay...' }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(getStyles);
   const [isOpen, setIsOpen] = useState(false);
 
   // Filter & prioritize barangays that START with the input query, then those that contain it
@@ -153,7 +156,7 @@ export default function BarangayAutocomplete({ value, onChangeText, placeholder 
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     zIndex: 1000,
     position: 'relative',
@@ -161,16 +164,16 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.inputBg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.inputBorder,
     borderRadius: radii.md,
     paddingHorizontal: 12,
     height: 48,
   },
   inputWrapperFocused: {
     borderColor: colors.primary,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
   leftIcon: {
     marginRight: 8,
@@ -197,7 +200,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 6,
     zIndex: 1000,
   },
@@ -214,7 +217,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   optionRowSelected: {
-    backgroundColor: colors.primaryLight + '20',
+    backgroundColor: colors.primaryGlow,
   },
   optionText: {
     fontSize: 14,
@@ -235,3 +238,4 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 });
+

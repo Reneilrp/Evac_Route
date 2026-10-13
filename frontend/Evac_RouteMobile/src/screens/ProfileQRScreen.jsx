@@ -1,20 +1,23 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, Modal, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, Modal, TextInput, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
-import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X } from 'lucide-react-native';
+import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon } from 'lucide-react-native';
 import { useResidentStore } from '../context/useResidentStore';
 import { useAuth } from '../context/AuthContext';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import PrimaryButton from '../components/PrimaryButton';
 import EmptyState from '../components/EmptyState';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { colors } from '../styles/theme';
-import styles from '../styles/ProfileQRScreen.styles';
+import { getStyles } from '../styles/ProfileQRScreen.styles';
 import * as Crypto from 'expo-crypto';
 
 export default function ProfileQRScreen({ navigation }) {
+  const { colors, isDarkMode, toggleTheme } = useTheme();
+  const styles = useThemedStyles(getStyles);
+
   const profile = useResidentStore(state => state.profile);
   const qrHash = useResidentStore(state => state.qrHash);
   const setSafeStatus = useResidentStore(state => state.setSafeStatus);
@@ -81,35 +84,38 @@ export default function ProfileQRScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <ScrollView style={styles.safeHomeScroll} contentContainerStyle={styles.safeHomeContent}>
 
-        {/* ─── 1. HERO: Family Relief QR Code Card (Top Priority) ─── */}
+        {/* ─── 1. HERO: Family Relief QR Code Card (High Contrast) ─── */}
         <View style={{
-          backgroundColor: '#0f172a',
+          backgroundColor: colors.card,
           borderRadius: 24,
           padding: 20,
           alignItems: 'center',
           marginBottom: 16,
           borderWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.12)',
+          borderColor: colors.cardBorder,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.4,
-          shadowRadius: 8,
-          elevation: 8,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: isDarkMode ? 0.35 : 0.08,
+          shadowRadius: 10,
+          elevation: 4,
         }}>
-          <Text style={{ color: '#38bdf8', fontSize: 12, fontWeight: '900', letterSpacing: 1.5, marginBottom: 14 }}>
+          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '900', letterSpacing: 1.5, marginBottom: 14 }}>
             FAMILY RELIEF QR CODE
           </Text>
 
+          {/* Barcode scanner target container: must ALWAYS remain white background */}
           <View style={{
             padding: 14,
             backgroundColor: '#ffffff',
             borderRadius: 18,
+            borderWidth: 1,
+            borderColor: '#e2e8f0',
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.2,
+            shadowOpacity: 0.15,
             shadowRadius: 6,
             elevation: 4,
           }}>
@@ -124,7 +130,7 @@ export default function ProfileQRScreen({ navigation }) {
           </View>
 
           <Text style={{
-            color: '#94a3b8',
+            color: colors.textSecondary,
             fontSize: 11,
             fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
             marginTop: 12,
@@ -134,7 +140,7 @@ export default function ProfileQRScreen({ navigation }) {
           </Text>
 
           <Text style={{
-            color: '#cbd5e1',
+            color: colors.textMuted,
             fontSize: 11,
             textAlign: 'center',
             marginTop: 12,
@@ -149,13 +155,13 @@ export default function ProfileQRScreen({ navigation }) {
         <View style={{
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: '#0f172a',
+          backgroundColor: colors.card,
           borderRadius: 20,
           padding: 14,
           marginBottom: 16,
           borderWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.1)',
-          elevation: 4,
+          borderColor: colors.cardBorder,
+          elevation: 3,
         }}>
           {/* Avatar Ring */}
           <View style={{ position: 'relative', marginRight: 14 }}>
@@ -163,9 +169,9 @@ export default function ProfileQRScreen({ navigation }) {
               width: 56,
               height: 56,
               borderRadius: 28,
-              backgroundColor: '#0284c7',
+              backgroundColor: colors.primaryDark,
               borderWidth: 2,
-              borderColor: '#38bdf8',
+              borderColor: colors.primary,
               alignItems: 'center',
               justifyContent: 'center',
             }}>
@@ -177,12 +183,12 @@ export default function ProfileQRScreen({ navigation }) {
               position: 'absolute',
               bottom: -2,
               right: -2,
-              backgroundColor: '#16a34a',
+              backgroundColor: colors.success,
               width: 20,
               height: 20,
               borderRadius: 10,
               borderWidth: 2,
-              borderColor: '#0f172a',
+              borderColor: colors.card,
               alignItems: 'center',
               justifyContent: 'center',
             }}>
@@ -193,24 +199,24 @@ export default function ProfileQRScreen({ navigation }) {
           {/* Details */}
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '900', marginBottom: 2 }}>
+              <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '900', marginBottom: 2 }}>
                 {effectiveName}
               </Text>
               <TouchableOpacity
                 onPress={() => setIsHomeModalOpen(true)}
-                style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.3)' }}
+                style={{ backgroundColor: colors.primaryGlow, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: colors.primary }}
               >
-                <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: 'bold' }}>✏️ Edit</Text>
+                <Text style={{ color: colors.primary, fontSize: 10, fontWeight: 'bold' }}>✏️ Edit</Text>
               </TouchableOpacity>
             </View>
-            <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '600', marginBottom: 6 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600', marginBottom: 6 }}>
               ID: RES-{effectiveId.toString().padStart(6, '0')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <Text style={{ backgroundColor: '#1e293b', color: '#38bdf8', fontSize: 10, fontWeight: 'bold', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+              <Text style={{ backgroundColor: colors.surfaceElevated, color: colors.primary, fontSize: 10, fontWeight: 'bold', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
                 📍 Brgy. {effectiveBarangay}
               </Text>
-              <Text style={{ backgroundColor: '#14532d', color: '#4ade80', fontSize: 10, fontWeight: 'bold', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+              <Text style={{ backgroundColor: colors.successBg, color: colors.successText, fontSize: 10, fontWeight: 'bold', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: colors.success }}>
                 👨‍👩‍👧‍👦 Family of {effectiveHeadcount}
               </Text>
             </View>
@@ -219,40 +225,78 @@ export default function ProfileQRScreen({ navigation }) {
 
         {/* ─── 3. Clickable Action Menu List ─── */}
         <View style={{
-          backgroundColor: '#0f172a',
+          backgroundColor: colors.card,
           borderRadius: 20,
           borderWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderColor: colors.cardBorder,
           overflow: 'hidden',
           marginBottom: 20,
         }}>
+          {/* Appearance / Theme Toggle item */}
+          <TouchableOpacity
+            onPress={toggleTheme}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              padding: 14,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
+          >
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: isDarkMode ? 'rgba(251, 191, 36, 0.15)' : 'rgba(2, 132, 199, 0.15)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 12,
+            }}>
+              {isDarkMode ? <Sun size={20} color="#fbbf24" /> : <Moon size={20} color="#0284c7" />}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: 'bold', marginBottom: 2 }}>
+                Appearance Theme
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 10 }}>
+                {isDarkMode ? 'Dark Mode enabled (tap to switch to Light)' : 'Light Mode enabled (tap to switch to Dark)'}
+              </Text>
+            </View>
+            <Switch
+              value={isDarkMode}
+              onValueChange={toggleTheme}
+              trackColor={{ false: '#cbd5e1', true: colors.primaryDark }}
+              thumbColor={isDarkMode ? colors.primary : '#f8fafc'}
+            />
+          </TouchableOpacity>
+
           {[
             {
               title: 'Pinpoint Home Address',
               subtitle: (Array.isArray(homeLocation) && homeLocation.length >= 2) ? `📍 Home set: ${Number(homeLocation[1]).toFixed(4)}, ${Number(homeLocation[0]).toFixed(4)}` : 'Tap to pinpoint home GPS coordinates for A* routing',
-              icon: <MapPin size={20} color="#38bdf8" />,
-              iconBg: 'rgba(56, 189, 248, 0.15)',
+              icon: <MapPin size={20} color={colors.primary} />,
+              iconBg: colors.primaryGlow,
               onPress: () => setIsHomeModalOpen(true),
             },
             {
               title: 'Emergency Contacts',
               subtitle: 'Tap to view emergency hotlines & medical numbers',
               icon: <Phone size={20} color={colors.dangerLight} />,
-              iconBg: 'rgba(239, 68, 68, 0.15)',
+              iconBg: colors.dangerBg,
               onPress: () => navigation.navigate('EmergencyContacts'),
             },
             {
               title: 'Alert History',
               subtitle: 'Past evacuation orders & emergency notifications',
               icon: <Bell size={20} color={colors.warning} />,
-              iconBg: 'rgba(245, 158, 11, 0.15)',
+              iconBg: colors.warningBg,
               onPress: () => navigation.navigate('AlertHistory'),
             },
             {
               title: 'Relief Allocation Receipt',
               subtitle: 'View claimed shelter supplies & active allocations',
               icon: <Users size={20} color={colors.primary} />,
-              iconBg: 'rgba(59, 130, 246, 0.15)',
+              iconBg: colors.primaryGlow,
               onPress: () => navigation.navigate('SafeCheckIn'),
             },
           ].map((item, index, array) => (
@@ -264,7 +308,7 @@ export default function ProfileQRScreen({ navigation }) {
                 alignItems: 'center',
                 padding: 14,
                 borderBottomWidth: index < array.length - 1 ? 1 : 0,
-                borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+                borderBottomColor: colors.border,
               }}
             >
               <View style={{
@@ -279,14 +323,14 @@ export default function ProfileQRScreen({ navigation }) {
                 {item.icon}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: 'bold', marginBottom: 2 }}>
+                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: 'bold', marginBottom: 2 }}>
                   {item.title}
                 </Text>
-                <Text style={{ color: '#94a3b8', fontSize: 10 }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 10 }}>
                   {item.subtitle}
                 </Text>
               </View>
-              <ChevronRight size={18} color="#64748b" />
+              <ChevronRight size={18} color={colors.textMuted} />
             </TouchableOpacity>
           ))}
         </View>
@@ -313,7 +357,7 @@ export default function ProfileQRScreen({ navigation }) {
       >
         <View style={{
           flex: 1,
-          backgroundColor: 'rgba(2, 6, 23, 0.85)',
+          backgroundColor: colors.modalBackdrop,
           justifyContent: 'center',
           alignItems: 'center',
           padding: 20,
@@ -321,39 +365,43 @@ export default function ProfileQRScreen({ navigation }) {
           <View style={{
             width: '100%',
             maxWidth: 380,
-            backgroundColor: '#0f172a',
+            backgroundColor: colors.card,
             borderRadius: 24,
-            borderWidth: 2,
-            borderColor: '#38bdf8',
+            borderWidth: 1.5,
+            borderColor: colors.primary,
             padding: 22,
             elevation: 15,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.3,
+            shadowRadius: 12,
           }}>
             {/* Header */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(56, 189, 248, 0.15)', borderWidth: 1, borderColor: '#38bdf8', alignItems: 'center', justifyContent: 'center' }}>
-                  <MapPin size={22} color="#38bdf8" />
+                <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: colors.primaryGlow, borderWidth: 1, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+                  <MapPin size={22} color={colors.primary} />
                 </View>
                 <View>
-                  <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '900' }}>Pinpoint Home Address</Text>
-                  <Text style={{ color: '#94a3b8', fontSize: 11 }}>A* System Evacuation Starting Point</Text>
+                  <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '900' }}>Pinpoint Home Address</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 11 }}>A* System Evacuation Starting Point</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={() => setIsHomeModalOpen(false)}>
-                <X size={20} color="#94a3b8" />
+                <X size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
             {/* Current Coordinates Badge */}
-            <View style={{ backgroundColor: 'rgba(30, 41, 59, 0.8)', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', marginBottom: 16 }}>
-              <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '900', letterSpacing: 1, marginBottom: 4 }}>CURRENT PINPOINT COORDINATES:</Text>
-              <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '800', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+            <View style={{ backgroundColor: colors.surfaceElevated, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
+              <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '900', letterSpacing: 1, marginBottom: 4 }}>CURRENT PINPOINT COORDINATES:</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '800', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
                 Lat: {customLat} | Lng: {customLng}
               </Text>
             </View>
 
             {/* Barangay Preset Buttons */}
-            <Text style={{ color: '#cbd5e1', fontSize: 11, fontWeight: '800', marginBottom: 8 }}>QUICK BARANGAY PRESET ANCHORS:</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '800', marginBottom: 8 }}>QUICK BARANGAY PRESET ANCHORS:</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
               {[
                 { name: 'Sto. Niño (Triplet)', lat: 6.9050, lng: 122.0720 },
@@ -377,15 +425,15 @@ export default function ProfileQRScreen({ navigation }) {
                     }, effectiveQrHash);
                   }}
                   style={{
-                    backgroundColor: customLat === b.lat.toString() ? '#0284c7' : 'rgba(30, 41, 59, 0.6)',
+                    backgroundColor: customLat === b.lat.toString() ? colors.primaryDark : colors.surfaceElevated,
                     paddingHorizontal: 12,
                     paddingVertical: 7,
                     borderRadius: 10,
                     borderWidth: 1,
-                    borderColor: customLat === b.lat.toString() ? '#38bdf8' : 'rgba(255, 255, 255, 0.1)',
+                    borderColor: customLat === b.lat.toString() ? colors.primary : colors.border,
                   }}
                 >
-                  <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '800' }}>📍 {b.name}</Text>
+                  <Text style={{ color: customLat === b.lat.toString() ? '#ffffff' : colors.textPrimary, fontSize: 11, fontWeight: '800' }}>📍 {b.name}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -393,23 +441,23 @@ export default function ProfileQRScreen({ navigation }) {
             {/* Custom Inputs */}
             <View style={{ gap: 10, marginBottom: 20 }}>
               <View>
-                <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4 }}>Latitude (e.g. 6.9185)</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '700', marginBottom: 4 }}>Latitude (e.g. 6.9185)</Text>
                 <TextInput
                   value={customLat}
                   onChangeText={setCustomLat}
                   keyboardType="numeric"
-                  placeholderTextColor="#64748b"
-                  style={{ backgroundColor: '#1e293b', color: '#ffffff', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, borderWidth: 1, borderColor: '#334155' }}
+                  placeholderTextColor={colors.textMuted}
+                  style={{ backgroundColor: colors.inputBg, color: colors.textPrimary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, borderWidth: 1, borderColor: colors.inputBorder }}
                 />
               </View>
               <View>
-                <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4 }}>Longitude (e.g. 122.0882)</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '700', marginBottom: 4 }}>Longitude (e.g. 122.0882)</Text>
                 <TextInput
                   value={customLng}
                   onChangeText={setCustomLng}
                   keyboardType="numeric"
-                  placeholderTextColor="#64748b"
-                  style={{ backgroundColor: '#1e293b', color: '#ffffff', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, borderWidth: 1, borderColor: '#334155' }}
+                  placeholderTextColor={colors.textMuted}
+                  style={{ backgroundColor: colors.inputBg, color: colors.textPrimary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, borderWidth: 1, borderColor: colors.inputBorder }}
                 />
               </View>
             </View>
@@ -422,7 +470,7 @@ export default function ProfileQRScreen({ navigation }) {
                   navigation.navigate('Evacuation Map', { pinHome: true });
                 }}
                 style={{
-                  backgroundColor: '#16a34a',
+                  backgroundColor: colors.success,
                   paddingVertical: 14,
                   borderRadius: 12,
                   alignItems: 'center',
@@ -430,10 +478,10 @@ export default function ProfileQRScreen({ navigation }) {
                   flexDirection: 'row',
                   gap: 8,
                   borderWidth: 1,
-                  borderColor: 'rgba(74, 222, 128, 0.4)',
-                  shadowColor: '#16a34a',
+                  borderColor: colors.successLight,
+                  shadowColor: colors.success,
                   shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.4,
+                  shadowOpacity: 0.3,
                   shadowRadius: 6,
                   elevation: 6,
                 }}
@@ -459,7 +507,7 @@ export default function ProfileQRScreen({ navigation }) {
                     [{ text: 'OK' }]
                   );
                 }}
-                style={{ backgroundColor: '#0284c7', paddingVertical: 13, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                style={{ backgroundColor: colors.primaryDark, paddingVertical: 13, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
               >
                 <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '800' }}>Save Custom Coordinates</Text>
               </TouchableOpacity>
@@ -471,9 +519,9 @@ export default function ProfileQRScreen({ navigation }) {
                     setIsHomeModalOpen(false);
                     Alert.alert('Reset Home Location', 'Home pinpoint removed. App will default to live GPS signal.');
                   }}
-                  style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                  style={{ backgroundColor: colors.dangerBg, paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.danger }}
                 >
-                  <Text style={{ color: '#f87171', fontSize: 12, fontWeight: '800' }}>Reset to Live GPS Signal</Text>
+                  <Text style={{ color: colors.dangerText, fontSize: 12, fontWeight: '800' }}>Reset to Live GPS Signal</Text>
                 </TouchableOpacity>
               )}
             </View>
