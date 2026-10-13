@@ -235,12 +235,19 @@ export default function AppNavigator() {
     });
   }, []);
 
+  console.log('>>> [AppNavigator] Render:', {
+    loading,
+    hasOnboarded,
+    hasUser: !!user,
+    userRole: user?.role,
+  });
+
   if (loading || hasOnboarded === null) {
     return <SplashScreen />;
   }
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar
         translucent
         backgroundColor="transparent"
@@ -320,7 +327,7 @@ export default function AppNavigator() {
           )}
         </Stack.Navigator>
       </NavigationContainer>
-    </>
+    </View>
   );
 }
 

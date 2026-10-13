@@ -34,6 +34,91 @@ export default function FloatingDock({ state, descriptors, navigation }) {
     }
   };
 
+  const dockContent = (
+    <View style={styles.dockInner}>
+      {state.routes.map((route, index) => {
+        const { options } = descriptors[route.key];
+        const isFocused = state.index === index;
+        const label =
+          options.tabBarLabel !== undefined
+            ? options.tabBarLabel
+            : options.title !== undefined
+            ? options.title
+            : route.name;
+
+        const badge = options.tabBarBadge;
+        const activeColor = options.tabBarActiveTintColor || colors.primary;
+        const inactiveColor = options.tabBarInactiveTintColor || colors.textMuted;
+
+        const onPress = () => {
+          triggerHaptic();
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name, route.params);
+          }
+        };
+
+        const onLongPress = () => {
+          triggerHaptic();
+          navigation.emit({
+            type: 'tabLongPress',
+            target: route.key,
+          });
+        };
+
+        return (
+          <TouchableOpacity
+            key={route.key}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isFocused }}
+            accessibilityLabel={options.tabBarAccessibilityLabel || String(label)}
+            testID={options.tabBarButtonTestID}
+            onPress={onPress}
+            onLongPress={onLongPress}
+            style={[
+              styles.tabItem,
+              isFocused && { backgroundColor: isDarkMode ? `${activeColor}25` : `${activeColor}18` },
+            ]}
+            activeOpacity={0.75}
+          >
+            <View style={styles.iconWrapper}>
+              {options.tabBarIcon &&
+                options.tabBarIcon({
+                  focused: isFocused,
+                  color: isFocused ? activeColor : inactiveColor,
+                  size: 20,
+                })}
+
+              {badge !== undefined && badge !== null && (
+                <View style={styles.badgePill}>
+                  <Text style={styles.badgeText}>
+                    {typeof badge === 'number' && badge > 99 ? '99+' : badge}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <Text
+              style={[
+                styles.tabLabel,
+                { color: isFocused ? activeColor : inactiveColor },
+                isFocused && styles.tabLabelActive,
+              ]}
+              numberOfLines={1}
+            >
+              {label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+
   return (
     <View
       style={[
@@ -43,94 +128,19 @@ export default function FloatingDock({ state, descriptors, navigation }) {
       pointerEvents="box-none"
     >
       <View style={styles.dockShadowWrap}>
-        <BlurView
-          intensity={Platform.OS === 'ios' ? 70 : 50}
-          tint={isDarkMode ? 'dark' : 'light'}
-          style={styles.blurContainer}
-        >
-          <View style={styles.dockInner}>
-            {state.routes.map((route, index) => {
-              const { options } = descriptors[route.key];
-              const isFocused = state.index === index;
-              const label =
-                options.tabBarLabel !== undefined
-                  ? options.tabBarLabel
-                  : options.title !== undefined
-                  ? options.title
-                  : route.name;
-
-              const badge = options.tabBarBadge;
-              const activeColor = options.tabBarActiveTintColor || colors.primary;
-              const inactiveColor = options.tabBarInactiveTintColor || colors.textMuted;
-
-              const onPress = () => {
-                triggerHaptic();
-                const event = navigation.emit({
-                  type: 'tabPress',
-                  target: route.key,
-                  canPreventDefault: true,
-                });
-
-                if (!isFocused && !event.defaultPrevented) {
-                  navigation.navigate(route.name, route.params);
-                }
-              };
-
-              const onLongPress = () => {
-                triggerHaptic();
-                navigation.emit({
-                  type: 'tabLongPress',
-                  target: route.key,
-                });
-              };
-
-              return (
-                <TouchableOpacity
-                  key={route.key}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: isFocused }}
-                  accessibilityLabel={options.tabBarAccessibilityLabel || String(label)}
-                  testID={options.tabBarButtonTestID}
-                  onPress={onPress}
-                  onLongPress={onLongPress}
-                  style={[
-                    styles.tabItem,
-                    isFocused && { backgroundColor: isDarkMode ? `${activeColor}25` : `${activeColor}18` },
-                  ]}
-                  activeOpacity={0.75}
-                >
-                  <View style={styles.iconWrapper}>
-                    {options.tabBarIcon &&
-                      options.tabBarIcon({
-                        focused: isFocused,
-                        color: isFocused ? activeColor : inactiveColor,
-                        size: 20,
-                      })}
-
-                    {badge !== undefined && badge !== null && (
-                      <View style={styles.badgePill}>
-                        <Text style={styles.badgeText}>
-                          {typeof badge === 'number' && badge > 99 ? '99+' : badge}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <Text
-                    style={[
-                      styles.tabLabel,
-                      { color: isFocused ? activeColor : inactiveColor },
-                      isFocused && styles.tabLabelActive,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+        {Platform.OS === 'ios' ? (
+          <BlurView
+            intensity={70}
+            tint={isDarkMode ? 'dark' : 'light'}
+            style={styles.blurContainer}
+          >
+            {dockContent}
+          </BlurView>
+        ) : (
+          <View style={[styles.blurContainer, { backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)' }]}>
+            {dockContent}
           </View>
-        </BlurView>
+        )}
       </View>
     </View>
   );

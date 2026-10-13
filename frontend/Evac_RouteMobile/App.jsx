@@ -199,12 +199,14 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <SafeAreaProvider>
+      <SafeAreaProvider style={{ flex: 1 }}>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <AuthProvider>
-              <NetworkStatusBar isOffline={isOffline} />
-              <AppNavigator />
+              <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+                <NetworkStatusBar isOffline={isOffline} />
+                <AppNavigator />
+              </View>
             </AuthProvider>
           </ThemeProvider>
         </QueryClientProvider>
