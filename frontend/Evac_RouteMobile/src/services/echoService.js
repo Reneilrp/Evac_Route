@@ -10,10 +10,10 @@ export function getEcho() {
   try {
     const extra = Constants.expoConfig?.extra ?? {};
 
-    const wsHost   = extra.reverbHost   || 'localhost';
-    const wsPort   = extra.reverbPort   || 8080;
-    const appKey   = extra.reverbKey    || 'evac-route-key';
-    const useTLS   = (extra.reverbScheme || 'http') === 'https';
+    const wsHost = process.env.EXPO_PUBLIC_ECHO_HOST || process.env.EXPO_PUBLIC_REVERB_HOST || extra.reverbHost || 'evacroute.app';
+    const wsPort = parseInt(process.env.EXPO_PUBLIC_ECHO_PORT || process.env.EXPO_PUBLIC_REVERB_PORT || extra.reverbPort || '443', 10);
+    const appKey = process.env.EXPO_PUBLIC_REVERB_APP_KEY || extra.reverbKey || 'evac-route-key';
+    const useTLS = (process.env.EXPO_PUBLIC_ECHO_SCHEME || process.env.EXPO_PUBLIC_REVERB_SCHEME || extra.reverbScheme || 'https') === 'https';
 
     let EchoClass = typeof Echo === 'function' ? Echo : (Echo?.default || Echo);
     let PusherClass = typeof Pusher === 'function' ? Pusher : (Pusher?.default || Pusher?.Pusher || Pusher);

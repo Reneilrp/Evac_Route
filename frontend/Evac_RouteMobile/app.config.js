@@ -77,7 +77,7 @@ export default ({ config }) => {
       apiBaseUrl:
         process.env.API_BASE_URL ||
         process.env.EXPO_PUBLIC_API_URL ||
-        'http://localhost:8000/api',
+        'https://evacroute.app/api',
       reverbKey:
         process.env.REVERB_APP_KEY ||
         process.env.EXPO_PUBLIC_REVERB_APP_KEY ||
@@ -85,15 +85,15 @@ export default ({ config }) => {
       reverbHost:
         process.env.REVERB_HOST ||
         process.env.EXPO_PUBLIC_ECHO_HOST ||
-        'localhost',
+        'evacroute.app',
       reverbPort: parseInt(
-        process.env.REVERB_PORT || process.env.EXPO_PUBLIC_ECHO_PORT || '8080',
+        process.env.REVERB_PORT || process.env.EXPO_PUBLIC_ECHO_PORT || '443',
         10
       ),
       reverbScheme:
         process.env.REVERB_SCHEME ||
         process.env.EXPO_PUBLIC_ECHO_SCHEME ||
-        'http',
+        'https',
     },
   };
 };
