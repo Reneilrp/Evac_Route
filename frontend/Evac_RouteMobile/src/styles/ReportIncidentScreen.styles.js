@@ -9,7 +9,7 @@ export const getStyles = (colors, isDarkMode) => StyleSheet.create({
   content: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xs,
-    paddingBottom: spacing['4xl'],
+    paddingBottom: 110,
   },
   header: {
     flexDirection: 'row',

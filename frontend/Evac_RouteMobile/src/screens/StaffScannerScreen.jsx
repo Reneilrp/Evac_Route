@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Vibration, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { QrCode, LogOut, CheckCircle, XCircle, AlertTriangle, RefreshCw, Send, Users, Home } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +10,7 @@ import api from '../services/api';
 import { spacing, radii, typography, shadows } from '../styles/theme';
 
 export default function StaffScannerScreen() {
+  const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const styles = useThemedStyles(getStyles);
@@ -197,7 +199,7 @@ export default function StaffScannerScreen() {
   return (
     <View style={styles.container}>
       {/* Top Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(spacing.md, insets.top + spacing.xs) }]}>
         <View style={{ flex: 1, paddingRight: 8 }}>
           <Text style={styles.headerTitle}>CSWDO INTAKE &amp; RELIEF DESK</Text>
           <Text style={styles.headerSubtitle}>Operator: {user?.name || 'Gate Marshal'}</Text>
@@ -530,7 +532,6 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl + 20,
     paddingBottom: spacing.base,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -571,6 +572,7 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.lg,
+    paddingBottom: 110,
     gap: spacing.lg,
   },
   displayCard: {

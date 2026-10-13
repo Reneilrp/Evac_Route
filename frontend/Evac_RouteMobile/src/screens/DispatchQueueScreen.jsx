@@ -220,7 +220,7 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   filterText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
   filterTextActive: { color: '#ffffff' },
-  listContent: { paddingHorizontal: spacing.base, paddingBottom: 40 },
+  listContent: { paddingHorizontal: spacing.base, paddingBottom: 110 },
   card: {
     backgroundColor: colors.card,
     borderRadius: radii.lg,

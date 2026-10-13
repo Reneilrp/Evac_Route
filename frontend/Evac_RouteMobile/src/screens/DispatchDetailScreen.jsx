@@ -11,6 +11,7 @@ import {
 } from 'lucide-react-native';
 import api from '../services/api';
 import ConfirmationModal from '../components/ConfirmationModal';
+import CustomHeader from '../components/CustomHeader';
 import { spacing, typography, radii, shadows } from '../styles/theme';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 
@@ -171,17 +172,16 @@ export default function DispatchDetailScreen({ route, navigation }) {
   };
 
   return (
-    <ScrollView
-      style={[styles.container, { paddingTop: insets.top }]}
-      contentContainerStyle={styles.scrollContent}
-    >
-      {/* Back button */}
-      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-        <ChevronLeft size={20} color={colors.textSecondary} />
-        <Text style={styles.backText}>Dispatch Queue</Text>
-      </TouchableOpacity>
-
-      {/* Header */}
+    <View style={styles.container}>
+      <CustomHeader
+        title={`Order #${orderId}`}
+        subtitle={order.shelter?.name ? `Destination: ${order.shelter.name}` : 'Relief Supply Delivery'}
+        onBack={() => navigation.goBack()}
+      />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Header */}
       <View style={styles.orderHeader}>
         <View>
           <Text style={styles.orderNumber}>Order #{orderId}</Text>
@@ -320,7 +320,8 @@ export default function DispatchDetailScreen({ route, navigation }) {
         onClose={closeConfirmModal}
       />
     </ScrollView>
-  );
+  </View>
+);
 }
 
 const getStyles = (colors, isDarkMode) => StyleSheet.create({

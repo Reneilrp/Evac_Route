@@ -14,7 +14,7 @@ export const getStyles = (colors, isDarkMode) => StyleSheet.create({
   safeHomeContent: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xs,
-    paddingBottom: spacing['3xl'],
+    paddingBottom: 110,
   },
   profileHeader: {
     alignItems: 'center',

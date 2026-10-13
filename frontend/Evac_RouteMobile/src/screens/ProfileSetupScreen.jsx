@@ -8,10 +8,11 @@ import { useResidentStore } from '../context/useResidentStore';
 import PrimaryButton from '../components/PrimaryButton';
 import ChipSelector from '../components/ChipSelector';
 import BarangayAutocomplete from '../components/BarangayAutocomplete';
+import CustomHeader from '../components/CustomHeader';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { getStyles } from '../styles/ProfileSetupScreen.styles';
 
-export default function ProfileSetupScreen() {
+export default function ProfileSetupScreen({ navigation }) {
   const { colors, isDarkMode } = useTheme();
   const styles = useThemedStyles(getStyles);
   const { login } = useAuth();
@@ -103,8 +104,12 @@ export default function ProfileSetupScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <CustomHeader
+        title="Family Registration"
+        subtitle="Evacuee intake credentials"
+        onBack={() => navigation?.goBack?.()}
+      />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Family Profile</Text>
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>First Name</Text>

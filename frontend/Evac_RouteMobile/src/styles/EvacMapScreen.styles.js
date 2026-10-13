@@ -139,7 +139,7 @@ export const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   bottomSheetContent: {
     paddingHorizontal: spacing.xl,
-    paddingBottom: spacing['2xl'],
+    paddingBottom: 95,
   },
   routingInfo: {
     marginBottom: spacing.lg,

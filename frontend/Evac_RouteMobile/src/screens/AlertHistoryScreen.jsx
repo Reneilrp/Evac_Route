@@ -1,6 +1,6 @@
-import { View, Text, FlatList, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, ArrowLeft } from 'lucide-react-native';
+import { View, Text, FlatList } from 'react-native';
+import { Bell } from 'lucide-react-native';
+import CustomHeader from '../components/CustomHeader';
 import { useResidentStore } from '../context/useResidentStore';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import EmptyState from '../components/EmptyState';
@@ -82,25 +82,13 @@ export default function AlertHistoryScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <View style={styles.container}>
+      <CustomHeader
+        title="Broadcast Alerts"
+        subtitle="Past warnings and emergency notices"
+        onBack={() => navigation?.goBack?.()}
+      />
       <View style={styles.scrollContent}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-          <TouchableOpacity
-            onPress={() => navigation?.goBack?.()}
-            style={{
-              padding: 8,
-              borderRadius: 20,
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              marginRight: 12,
-            }}
-          >
-            <ArrowLeft size={20} color="#ffffff" />
-          </TouchableOpacity>
-          <View>
-            <Text style={styles.headerTitle}>Alert History</Text>
-            <Text style={styles.headerSubtitle}>Past alerts and notifications</Text>
-          </View>
-        </View>
 
         {alertHistory && alertHistory.length > 0 ? (
           <FlatList
@@ -117,6 +105,6 @@ export default function AlertHistoryScreen({ navigation }) {
           />
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

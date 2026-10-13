@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../styles/theme';
 import api from '../services/api';
+import FloatingDock from '../components/FloatingDock';
 
 // Import Screens
 import EvacMapScreen from '../screens/EvacMapScreen';
@@ -52,6 +53,7 @@ function StaffTabs({ pendingDispatchCount, user }) {
   return (
     <Tab.Navigator
       initialRouteName={initialRoute}
+      tabBar={(props) => <FloatingDock {...props} />}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => {
           if (route.name === 'Rescue')    return <LifeBuoy   color={color} size={size} />;
@@ -64,14 +66,6 @@ function StaffTabs({ pendingDispatchCount, user }) {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          paddingTop: 4,
-          height: 60,
-        },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       })}
     >
       {(isAdmin || isRescueUser) && (
@@ -79,7 +73,7 @@ function StaffTabs({ pendingDispatchCount, user }) {
           name="Rescue"
           component={RescueDutyScreen}
           options={{
-            tabBarLabel: 'Rescue Duty',
+            tabBarLabel: 'Rescue',
             tabBarActiveTintColor: colors.danger,
           }}
         />
@@ -89,8 +83,9 @@ function StaffTabs({ pendingDispatchCount, user }) {
           name="RescueMap"
           component={RescueMapScreen}
           options={{
-            tabBarLabel: 'Rescue Map',
+            tabBarLabel: 'Map',
             tabBarActiveTintColor: '#06b6d4',
+            tabBarStyle: { display: 'none' },
           }}
         />
       )}
@@ -99,7 +94,7 @@ function StaffTabs({ pendingDispatchCount, user }) {
           name="Scanner"
           component={StaffScannerScreen}
           options={{
-            tabBarLabel: 'Shelter Scanner',
+            tabBarLabel: 'Intake',
             tabBarActiveTintColor: colors.primary,
           }}
         />
@@ -109,14 +104,19 @@ function StaffTabs({ pendingDispatchCount, user }) {
           name="Dispatch"
           component={DispatchQueueScreen}
           options={{
-            tabBarLabel: 'Missions Queue',
+            tabBarLabel: 'Missions',
             tabBarBadge: pendingDispatchCount > 0 ? pendingDispatchCount : undefined,
-            tabBarBadgeStyle: { backgroundColor: colors.danger, fontSize: 10 },
           }}
         />
       )}
       {(isAdmin || !isRescueUser) && (
-        <Tab.Screen name="Overview" component={StaffOverviewScreen} />
+        <Tab.Screen
+          name="Overview"
+          component={StaffOverviewScreen}
+          options={{
+            tabBarLabel: 'Overview',
+          }}
+        />
       )}
       <Tab.Screen
         name="Profile"
@@ -136,6 +136,7 @@ function ResidentTabs() {
 
   return (
     <Tab.Navigator
+      tabBar={(props) => <FloatingDock {...props} />}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => {
           if (route.name === 'Evacuation Map') {
@@ -149,26 +150,26 @@ function ResidentTabs() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          paddingTop: 4,
-          height: 60,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
       })}
     >
-      <Tab.Screen name="Evacuation Map" component={EvacMapScreen} />
+      <Tab.Screen
+        name="Evacuation Map"
+        component={EvacMapScreen}
+        options={{ tabBarLabel: 'Evac Map' }}
+      />
       <Tab.Screen
         name="Report Hazard"
         component={ReportIncidentScreen}
-        options={{ tabBarActiveTintColor: colors.warning }}
+        options={{
+          tabBarLabel: 'Report',
+          tabBarActiveTintColor: colors.warning,
+        }}
       />
-      <Tab.Screen name="Profile" component={ProfileQRScreen} />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileQRScreen}
+        options={{ tabBarLabel: 'My QR' }}
+      />
     </Tab.Navigator>
   );
 }
@@ -239,8 +240,9 @@ export default function AppNavigator() {
   return (
     <SafeAreaProvider>
       <StatusBar
+        translucent
+        backgroundColor="transparent"
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.background}
       />
       <NavigationContainer theme={navTheme}>
         <Stack.Navigator
@@ -308,10 +310,7 @@ export default function AppNavigator() {
                 name="SetupProfile"
                 component={ProfileSetupScreen}
                 options={{
-                  headerShown: true,
-                  title: 'Back',
-                  headerStyle: { backgroundColor: colors.surface },
-                  headerTintColor: colors.textPrimary,
+                  headerShown: false,
                   animation: 'slide_from_right',
                 }}
               />

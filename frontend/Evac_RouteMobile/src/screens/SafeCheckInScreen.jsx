@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { View, Text, Vibration, TouchableOpacity, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { CheckCircle, Package, PackageX, ArrowLeft, ShieldCheck } from 'lucide-react-native';
+import { View, Text, Vibration, ScrollView } from 'react-native';
+import { CheckCircle, Package, PackageX, ShieldCheck } from 'lucide-react-native';
+import CustomHeader from '../components/CustomHeader';
 import { useResidentStore } from '../context/useResidentStore';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import PrimaryButton from '../components/PrimaryButton';
@@ -32,19 +32,13 @@ export default function SafeCheckInScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* ─── Top Header Navigation Bar ─── */}
-      <View style={styles.headerRow}>
-        <TouchableOpacity onPress={handleReturnToProfile} style={styles.backBtn}>
-          <ArrowLeft size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Relief Allocation Receipt</Text>
-          <Text style={styles.headerSubtitle}>
-            {isCheckedIn ? 'Claimed Shelter Supplies & Entry' : 'No Active Relief Allocation'}
-          </Text>
-        </View>
-      </View>
+    <View style={styles.container}>
+      {/* ─── Custom Top Bar ─── */}
+      <CustomHeader
+        title="Relief Allocation Receipt"
+        subtitle={isCheckedIn ? 'Claimed Shelter Supplies & Entry' : 'No Active Relief Allocation'}
+        onBack={handleReturnToProfile}
+      />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {!isCheckedIn ? (
@@ -180,6 +174,6 @@ export default function SafeCheckInScreen({ navigation }) {
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

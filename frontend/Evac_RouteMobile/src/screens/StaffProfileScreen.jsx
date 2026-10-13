@@ -282,7 +282,7 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.base,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   header: {
     flexDirection: 'row',
