@@ -11,6 +11,7 @@ import api from './services/api';
 import echo from './services/echo';
 import { playNotificationSound } from './services/sound';
 import LogoutConfirmModal from './components/common/LogoutConfirmModal';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 // Lazy loaded Pages
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -28,6 +29,7 @@ const RescueDispatch = lazy(() => import('./pages/RescueDispatch'));
 const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 const SituationReport = lazy(() => import('./pages/SituationReport'));
 const SystemHealth = lazy(() => import('./pages/SystemHealth'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 
 function NavLink({ to, children }) {
@@ -902,45 +904,49 @@ function App() {
         }}
       />
       <Router>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            {/* Base URL is now Public Landing Page with Mobile Showcase & Direct APK Download */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/login" element={<Navigate to="/admin/login" replace />} />
+        <ErrorBoundary>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Base URL is now Public Landing Page with Mobile Showcase & Direct APK Download */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/login" element={<Navigate to="/admin/login" replace />} />
 
-            {/* Protected LGU Admin/Staff General & Tactical Routes */}
-            <Route element={<ProtectedRoute allowedRoles={['admin', 'lgu_staff']} />}>
-              <Route path="/admin/dashboard" element={<DashboardLayout><DashboardOverview /></DashboardLayout>} />
-              <Route path="/admin/map" element={<DashboardLayout><MapDashboard /></DashboardLayout>} />
-              <Route path="/admin/reports" element={<DashboardLayout><EvacuationLogs /></DashboardLayout>} />
-              <Route path="/admin/residents" element={<DashboardLayout><ResidentRegistry /></DashboardLayout>} />
-              <Route path="/admin/incidents" element={<DashboardLayout><IncidentReviewQueue /></DashboardLayout>} />
-              <Route path="/admin/alerts" element={<DashboardLayout><EmergencyAlerts /></DashboardLayout>} />
-              <Route path="/admin/rescue-dispatch" element={<DashboardLayout><RescueDispatch /></DashboardLayout>} />
-              <Route path="/admin/relief-desk" element={<Navigate to="/admin/inventory" replace />} />
-            </Route>
+              {/* Protected LGU Admin/Staff General & Tactical Routes */}
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'lgu_staff']} />}>
+                <Route path="/admin/dashboard" element={<DashboardLayout><DashboardOverview /></DashboardLayout>} />
+                <Route path="/admin/map" element={<DashboardLayout><MapDashboard /></DashboardLayout>} />
+                <Route path="/admin/reports" element={<DashboardLayout><EvacuationLogs /></DashboardLayout>} />
+                <Route path="/admin/residents" element={<DashboardLayout><ResidentRegistry /></DashboardLayout>} />
+                <Route path="/admin/incidents" element={<DashboardLayout><IncidentReviewQueue /></DashboardLayout>} />
+                <Route path="/admin/alerts" element={<DashboardLayout><EmergencyAlerts /></DashboardLayout>} />
+                <Route path="/admin/rescue-dispatch" element={<DashboardLayout><RescueDispatch /></DashboardLayout>} />
+                <Route path="/admin/relief-desk" element={<Navigate to="/admin/inventory" replace />} />
+              </Route>
 
-            {/* CSWDO Camp & Relief Inventory Modules (Segregated from DRRM rescue/field operators) */}
-            <Route element={<ProtectedRoute allowedRoles={['admin', 'lgu_staff']} allowedOperatorTypes={['logistics', 'scanner']} />}>
-              <Route path="/admin/shelters" element={<DashboardLayout><ShelterManagement /></DashboardLayout>} />
-              <Route path="/admin/inventory" element={<DashboardLayout><InventoryManager /></DashboardLayout>} />
-            </Route>
+              {/* CSWDO Camp & Relief Inventory Modules (Segregated from DRRM rescue/field operators) */}
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'lgu_staff']} allowedOperatorTypes={['logistics', 'scanner']} />}>
+                <Route path="/admin/shelters" element={<DashboardLayout><ShelterManagement /></DashboardLayout>} />
+                <Route path="/admin/inventory" element={<DashboardLayout><InventoryManager /></DashboardLayout>} />
+              </Route>
 
-            {/* Staff Operator Management (Accessible by both CDRRMO & CSWDO) */}
-            <Route element={<ProtectedRoute allowedRoles={['admin', 'lgu_staff']} />}>
-              <Route path="/admin/staff" element={<DashboardLayout><StaffManagement /></DashboardLayout>} />
-            </Route>
+              {/* Staff Operator Management (Accessible by both CDRRMO & CSWDO) */}
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'lgu_staff']} />}>
+                <Route path="/admin/staff" element={<DashboardLayout><StaffManagement /></DashboardLayout>} />
+              </Route>
 
-            {/* Admin-Only Security, SitRep & Telemetry */}
-            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-              <Route path="/admin/audit-logs" element={<DashboardLayout><AuditLogs /></DashboardLayout>} />
-              <Route path="/admin/sitrep" element={<DashboardLayout><SituationReport /></DashboardLayout>} />
-              <Route path="/admin/system-health" element={<DashboardLayout><SystemHealth /></DashboardLayout>} />
-            </Route>
+              {/* Admin-Only Security, SitRep & Telemetry */}
+              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                <Route path="/admin/audit-logs" element={<DashboardLayout><AuditLogs /></DashboardLayout>} />
+                <Route path="/admin/sitrep" element={<DashboardLayout><SituationReport /></DashboardLayout>} />
+                <Route path="/admin/system-health" element={<DashboardLayout><SystemHealth /></DashboardLayout>} />
+              </Route>
 
-          </Routes>
-        </Suspense>
+              {/* Dedicated 404 Out-of-Route Catch-All */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </Router>
     </AuthProvider>
     </ThemeProvider>
