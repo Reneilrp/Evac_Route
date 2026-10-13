@@ -4,7 +4,7 @@
  * Tests all 5 distinct users and their end-to-end workflows against the live HTTP API.
  */
 
-$baseUrl = 'http://127.0.0.1:8000/api';
+$baseUrl = $argv[1] ?? getenv('API_BASE_URL') ?: 'https://evacroute.app/api';
 
 function color($text, $colorCode) {
     return "\033[{$colorCode}m{$text}\033[0m";

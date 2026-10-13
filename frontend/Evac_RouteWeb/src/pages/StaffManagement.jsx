@@ -112,6 +112,11 @@ export default function StaffManagement() {
   // Dynamic Shelter Scanner field (when operatorType === 'scanner')
   const [assignedShelterId, setAssignedShelterId] = useState('');
 
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingStaff(null);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -225,11 +230,6 @@ export default function StaffManagement() {
     setExistingRescueUnitId(assignedVehicleId ? String(assignedVehicleId) : '');
     setAssignedShelterId(user.assigned_shelter_id ? String(user.assigned_shelter_id) : '');
     setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setEditingStaff(null);
   };
 
   const handleSubmit = (e) => {
