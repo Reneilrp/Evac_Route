@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MapPin, QrCode, AlertTriangle, BarChart2, Package, User, LifeBuoy, Navigation } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
@@ -238,7 +237,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <SafeAreaProvider>
+    <>
       <StatusBar
         translucent
         backgroundColor="transparent"
@@ -318,7 +317,7 @@ export default function AppNavigator() {
           )}
         </Stack.Navigator>
       </NavigationContainer>
-    </SafeAreaProvider>
+    </>
   );
 }
 
