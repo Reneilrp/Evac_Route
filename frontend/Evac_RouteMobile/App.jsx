@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import NetInfo from '@react-native-community/netinfo';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { ThemeProvider } from './src/context/ThemeContext';
@@ -9,6 +10,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { getEcho, disconnectEcho } from './src/services/echoService';
 import { useResidentStore } from './src/context/useResidentStore';
 import api from './src/services/api';
+import ErrorBoundary from './src/components/ErrorBoundary';
+import NetworkStatusBar from './src/components/NetworkStatusBar';
 
 // ─── Global notification handler — show alerts even when app is in foreground ───
 try {
@@ -73,7 +76,14 @@ async function registerForPushNotificationsAsync() {
 }
 
 function App() {
+  const [isOffline, setIsOffline] = useState(false);
+
   useEffect(() => {
+    // ── Network status listener ──
+    const unsubscribeNetInfo = NetInfo.addEventListener(state => {
+      setIsOffline(state.isConnected === false || state.isInternetReachable === false);
+    });
+
     // ── P2: Request permission & register Expo Push Token with backend ──
     registerForPushNotificationsAsync();
 
@@ -178,6 +188,7 @@ function App() {
       });
 
     return () => {
+      unsubscribeNetInfo();
       notificationListener.remove();
       responseListener.remove();
       // P1: Clean up WebSocket connection to avoid stale subscriptions on re-mount
@@ -186,13 +197,16 @@ function App() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <AppNavigator />
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <AuthProvider>
+            <NetworkStatusBar isOffline={isOffline} />
+            <AppNavigator />
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
