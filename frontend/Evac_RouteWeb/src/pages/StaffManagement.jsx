@@ -457,7 +457,7 @@ export default function StaffManagement() {
                                   <>
                                     <span>•</span>
                                     <span className="font-mono font-bold text-gray-800 dark:text-slate-200">
-                                      {(user.assigned_rescue_unit || user.rescue_units?.[0]).call_sign}
+                                      {(user.assigned_rescue_unit || user.rescue_units?.[0])?.call_sign}
                                     </span>
                                   </>
                                 )}
