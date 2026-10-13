@@ -19,9 +19,15 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:5173'],
+    'allowed_origins' => array_filter(array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,https://evacroute.app,https://www.evacroute.app,http://localhost:8000,http://127.0.0.1:8000,http://10.0.2.2:8000')))),
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^https?://(.*\.)?evacroute\.app$#',
+        '#^http://localhost(:\d+)?$#',
+        '#^http://127\.0\.0\.1(:\d+)?$#',
+        '#^http://10\.0\.2\.2(:\d+)?$#',
+        '#^http://192\.168\.\d+\.\d+(:\d+)?$#',
+    ],
 
     'allowed_headers' => ['*'],
 

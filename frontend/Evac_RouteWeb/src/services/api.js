@@ -23,10 +23,10 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Do NOT redirect if the failing request is the logout call itself —
-      // that would create an infinite redirect loop when tokens expire mid-session
-      const isLogoutRequest = error.config?.url?.includes('/logout');
-      if (!isLogoutRequest) {
+      // Do NOT redirect if the failing request is the login or logout call itself —
+      // that allows the login page to handle credential errors cleanly without redirecting to landing
+      const isAuthRequest = error.config?.url?.includes('/logout') || error.config?.url?.includes('/login');
+      if (!isAuthRequest) {
         localStorage.removeItem('auth_token');
         window.location.replace('/');
       }

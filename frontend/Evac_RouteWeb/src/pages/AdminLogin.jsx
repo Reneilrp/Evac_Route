@@ -8,23 +8,56 @@ import { showSuccess, showError } from '../utils/toast';
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { user, login } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    const success = await login(email, password);
-    if (success) {
-      showSuccess("Welcome! Logged in successfully.");
-      if (email.toLowerCase().includes('admin')) {
+  // If already authenticated, redirect directly into the respective command portal
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'admin' && user.operator_type === 'admin') {
         navigate('/admin/staff');
       } else {
         navigate('/admin/dashboard');
       }
-    } else {
-      showError("Login failed. Please check your email and password.");
     }
+  }, [user, navigate]);
+
+  const performLogin = async (targetEmail, targetPassword) => {
+    setLoading(true);
+    try {
+      const success = await login(targetEmail, targetPassword);
+      if (success) {
+        showSuccess("Welcome! Logged in successfully.");
+        if (targetEmail.toLowerCase().includes('admin')) {
+          navigate('/admin/staff');
+        } else {
+          navigate('/admin/dashboard');
+        }
+      } else {
+        showError("Login failed. Please check your email and password.");
+      }
+    } catch {
+      showError("Login failed. Please check your network and credentials.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      showError("Please enter your official email and password.");
+      return;
+    }
+    await performLogin(email, password);
+  };
+
+  const handleQuickRole = async (roleEmail) => {
+    setEmail(roleEmail);
+    setPassword('password');
+    await performLogin(roleEmail, 'password');
   };
 
   return (
@@ -89,9 +122,17 @@ export default function AdminLogin() {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-3.5 px-4 rounded-xl shadow-md hover:shadow-lg transition duration-200 cursor-pointer text-sm tracking-wide"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl shadow-md hover:shadow-lg transition duration-200 cursor-pointer text-sm tracking-wide flex items-center justify-center gap-2"
           >
-            Secure Login
+            {loading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span>Authenticating...</span>
+              </>
+            ) : (
+              <span>Secure Login</span>
+            )}
           </button>
         </form>
 
@@ -102,24 +143,27 @@ export default function AdminLogin() {
           <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
-              onClick={() => { setEmail('admin@lgu.gov.ph'); setPassword('password'); }}
-              className="px-2.5 py-2.5 bg-purple-50 hover:bg-purple-100 dark:bg-gray-700/60 dark:hover:bg-gray-700 border border-purple-200 dark:border-gray-600 rounded-xl text-left transition text-xs group cursor-pointer"
+              disabled={loading}
+              onClick={() => handleQuickRole('admin@lgu.gov.ph')}
+              className="px-2.5 py-2.5 bg-purple-50 hover:bg-purple-100 disabled:opacity-50 dark:bg-gray-700/60 dark:hover:bg-gray-700 border border-purple-200 dark:border-gray-600 rounded-xl text-left transition text-xs group cursor-pointer"
             >
               <div className="font-bold text-purple-700 dark:text-purple-400 group-hover:text-purple-800 dark:group-hover:text-purple-300">⚡ Admin</div>
               <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">admin@lgu.gov.ph</div>
             </button>
             <button
               type="button"
-              onClick={() => { setEmail('drrm@lgu.gov.ph'); setPassword('password'); }}
-              className="px-2.5 py-2.5 bg-blue-50 hover:bg-blue-100 dark:bg-gray-700/60 dark:hover:bg-gray-700 border border-blue-200 dark:border-gray-600 rounded-xl text-left transition text-xs group cursor-pointer"
+              disabled={loading}
+              onClick={() => handleQuickRole('drrm@lgu.gov.ph')}
+              className="px-2.5 py-2.5 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 dark:bg-gray-700/60 dark:hover:bg-gray-700 border border-blue-200 dark:border-gray-600 rounded-xl text-left transition text-xs group cursor-pointer"
             >
               <div className="font-bold text-blue-700 dark:text-blue-400 group-hover:text-blue-800 dark:group-hover:text-blue-300">🛡️ CDRRMO</div>
               <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">drrm@lgu.gov.ph</div>
             </button>
             <button
               type="button"
-              onClick={() => { setEmail('logistics@lgu.gov.ph'); setPassword('password'); }}
-              className="px-2.5 py-2.5 bg-amber-50 hover:bg-amber-100 dark:bg-gray-700/60 dark:hover:bg-gray-700 border border-amber-200 dark:border-gray-600 rounded-xl text-left transition text-xs group cursor-pointer"
+              disabled={loading}
+              onClick={() => handleQuickRole('logistics@lgu.gov.ph')}
+              className="px-2.5 py-2.5 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 dark:bg-gray-700/60 dark:hover:bg-gray-700 border border-amber-200 dark:border-gray-600 rounded-xl text-left transition text-xs group cursor-pointer"
             >
               <div className="font-bold text-amber-700 dark:text-amber-400 group-hover:text-amber-800 dark:group-hover:text-amber-300">📦 CSWDO</div>
               <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">logistics@lgu.gov.ph</div>
