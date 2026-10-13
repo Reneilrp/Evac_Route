@@ -202,10 +202,13 @@ export default function AppNavigator() {
   const { colors, isDarkMode } = useTheme();
   const [hasOnboarded, setHasOnboarded] = useState(null);
 
-  // Dynamic NavigationContainer theme
+  // Dynamic NavigationContainer theme compatible with React Navigation 7
+  const baseTheme = isDarkMode ? DarkTheme : DefaultTheme;
   const navTheme = useMemo(() => ({
+    ...baseTheme,
     dark: isDarkMode,
     colors: {
+      ...baseTheme.colors,
       primary: colors.primary,
       background: colors.background,
       card: colors.surface,
@@ -213,7 +216,7 @@ export default function AppNavigator() {
       border: colors.border,
       notification: colors.danger,
     },
-  }), [isDarkMode, colors]);
+  }), [isDarkMode, colors, baseTheme]);
 
   // Pending dispatch count for the tab badge — only fetched when logged in as staff
   const isStaff = user?.role === 'admin' || user?.role === 'lgu_staff';
