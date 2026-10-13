@@ -320,10 +320,14 @@ class RescueMissionController extends Controller
         $incident->load('reporter.familyProfile');
 
         // Broadcast high-priority alarm
-        event(new RescueSOSAlert($incident, [
-            'contact_number' => $contactNumber,
-            'headcount' => $validated['headcount'],
-        ]));
+        try {
+            event(new RescueSOSAlert($incident, [
+                'contact_number' => $contactNumber,
+                'headcount' => $validated['headcount'],
+            ]));
+        } catch (\Throwable $e) {
+            \Log::warning('RescueSOSAlert broadcast warning: ' . $e->getMessage());
+        }
 
         return response()->json([
             'status' => 'success',

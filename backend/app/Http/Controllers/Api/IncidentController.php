@@ -43,12 +43,14 @@ class IncidentController extends Controller
             $photoPaths[] = $request->file('photo')->store('incidents', 'public');
         }
 
+        $userId = $request->user()?->id ?? auth('sanctum')->id() ?? auth()->id();
+
         $incident = PendingIncident::create([
-            'reported_by' => auth()->id(),
+            'reported_by' => $userId,
             'name' => $validated['name'],
             'latitude' => $validated['latitude'],
             'longitude' => $validated['longitude'],
-            'hazard_type' => $validated['hazard_type'],
+            'hazard_type' => $hazardType = $validated['hazard_type'],
             'severity_level' => $validated['severity_level'],
             'description' => $validated['description'] ?? null,
             'photo_path' => $photoPaths[0] ?? null,
@@ -65,7 +67,11 @@ class IncidentController extends Controller
         );
 
         // Broadcast real-time incident submit to LGU dashboard
-        broadcast(new IncidentSubmitted($incident));
+        try {
+            broadcast(new IncidentSubmitted($incident));
+        } catch (\Throwable $e) {
+            \Log::warning('IncidentSubmitted broadcast warning: ' . $e->getMessage());
+        }
 
         return response()->json([
             'status' => 'success',
@@ -96,7 +102,8 @@ class IncidentController extends Controller
      */
     public function myIncidents(Request $request)
     {
-        $query = PendingIncident::where('reported_by', auth()->id());
+        $userId = $request->user()?->id ?? auth('sanctum')->id() ?? auth()->id();
+        $query = PendingIncident::where('reported_by', $userId);
 
         if ($request->has('archived')) {
             if ($request->boolean('archived')) {
@@ -143,8 +150,9 @@ class IncidentController extends Controller
     public function archive(Request $request, $id)
     {
         $incident = PendingIncident::findOrFail($id);
+        $userId = $request->user()?->id ?? auth('sanctum')->id() ?? auth()->id();
 
-        if ($incident->reported_by !== auth()->id()) {
+        if ((int) $incident->reported_by !== (int) $userId) {
             return response()->json(['message' => 'Unauthorized. You can only archive your own reports.'], 403);
         }
 
@@ -168,8 +176,9 @@ class IncidentController extends Controller
     public function unarchive(Request $request, $id)
     {
         $incident = PendingIncident::findOrFail($id);
+        $userId = $request->user()?->id ?? auth('sanctum')->id() ?? auth()->id();
 
-        if ($incident->reported_by !== auth()->id()) {
+        if ((int) $incident->reported_by !== (int) $userId) {
             return response()->json(['message' => 'Unauthorized. You can only unarchive your own reports.'], 403);
         }
 
@@ -318,13 +327,17 @@ class IncidentController extends Controller
         // Mark incident as approved
         $incident->update([
             'status' => 'approved',
-            'reviewed_by' => auth()->id(),
+            'reviewed_by' => $request->user()?->id ?? auth('sanctum')->id() ?? auth()->id(),
             'reviewed_at' => now(),
             'review_note' => $validated['note'] ?? null,
         ]);
 
         // Broadcast real-time to all map listeners
-        broadcast(new HazardCreated($hazard));
+        try {
+            broadcast(new HazardCreated($hazard));
+        } catch (\Throwable $e) {
+            \Log::warning('HazardCreated broadcast warning: ' . $e->getMessage());
+        }
 
         return response()->json([
             'status' => 'success',
@@ -347,7 +360,7 @@ class IncidentController extends Controller
 
         $incident->update([
             'status' => 'rejected',
-            'reviewed_by' => auth()->id(),
+            'reviewed_by' => $request->user()?->id ?? auth('sanctum')->id() ?? auth()->id(),
             'reviewed_at' => now(),
             'review_note' => $request->input('note', 'Insufficient evidence.'),
         ]);
@@ -362,13 +375,13 @@ class IncidentController extends Controller
      * Serve the incident photo (from local storage).
      * Route: GET /api/incidents/{id}/photo/{index?}
      */
-    public function photo($id, $index = 0)
+    public function photo(Request $request, $id, $index = 0)
     {
         $incident = PendingIncident::findOrFail($id);
-        $user = auth()->user();
+        $user = $request->user() ?? auth('sanctum')->user() ?? auth()->user();
 
         // Residents are strictly restricted to accessing photos from their own reports
-        if ($user && $user->role === 'resident' && $incident->reported_by !== $user->id) {
+        if ($user && $user->role === 'resident' && (int) $incident->reported_by !== (int) $user->id) {
             abort(403, 'Unauthorized. You can only view photos from your own reports.');
         }
 
