@@ -162,25 +162,60 @@ export default function RescueMapScreen({ navigation, route }) {
     return user?.role === 'admin' ? availableMissions[0] || null : null;
   }, [availableMissions, selectedMissionId, missionParamId, assignedUnit, user?.assigned_rescue_unit_id, user?.role]);
 
-  // Guided simulation step 1 to 5 derived from actual mission lifecycle
-  const currentSimulationStep = useMemo(() => {
-    if (!currentMission) return 5;
-    switch (currentMission.status) {
-      case 'dispatched':
-        return 1;
-      case 'en_route':
-        return 2;
-      case 'on_scene':
-        return 3;
-      case 'transporting':
-        return 4;
-      case 'completed':
-      default:
-        return 5;
-    }
-  }, [currentMission]);
-
   const shelters = useMemo(() => sheltersData ?? [], [sheltersData]);
+
+  // Fallback demo mission for presentation/simulation mode if no live mission is assigned
+  const DEMO_MISSION_FALLBACK = useMemo(() => ({
+    id: 'demo-sim-mendoza',
+    victim_name: 'Mendoza Family (Distress)',
+    headcount: 4,
+    barangay: 'Baliwasan Coastal',
+    special_needs: 'Elderly with wheelchair, Infant (6 mos)',
+    situation_description: 'Rising floodwater reached 1.2m on ground floor. Trapped on rooftop with low battery.',
+    victim_latitude: ZAMBOANGA_VICTIM_DEFAULT[1],
+    victim_longitude: ZAMBOANGA_VICTIM_DEFAULT[0],
+    status: 'dispatched',
+    target_shelter_id: shelters[0]?.id || 1,
+    target_shelter: shelters[0] || {
+      id: 1,
+      name: 'Baliwasan Gym Evacuation Center',
+      latitude: ZAMBOANGA_SHELTER_DEFAULT[1],
+      longitude: ZAMBOANGA_SHELTER_DEFAULT[0],
+    },
+    incident: {
+      hazard_type: 'flood',
+    },
+  }), [shelters]);
+
+  const effectiveMission = currentMission || (availableMissions.length > 0 ? availableMissions[0] : DEMO_MISSION_FALLBACK);
+
+  // Guided simulation control & step (starts at Step 1 by default, reliable reset, interactive)
+  const [showDemoControls, setShowDemoControls] = useState(false);
+  const [simulationStep, setSimulationStep] = useState(1);
+  const currentSimulationStep = simulationStep;
+
+  // Sync simulation step if a live mission's status changes from server
+  useEffect(() => {
+    if (currentMission?.status) {
+      switch (currentMission.status) {
+        case 'dispatched':
+          setSimulationStep(1);
+          break;
+        case 'en_route':
+          setSimulationStep(2);
+          break;
+        case 'on_scene':
+          setSimulationStep(3);
+          break;
+        case 'transporting':
+          setSimulationStep(4);
+          break;
+        case 'completed':
+          break;
+      }
+    }
+  }, [currentMission?.status]);
+
   const activeHazards = useMemo(
     () =>
       (hazardsData ?? []).filter(
@@ -198,21 +233,21 @@ export default function RescueMapScreen({ navigation, route }) {
 
   // Target Destination Coords
   const victimLngLat = useMemo(() => {
-    if (currentMission?.victim_latitude && currentMission?.victim_longitude) {
+    if (effectiveMission?.victim_latitude && effectiveMission?.victim_longitude) {
       return clampToZamboanga(
-        [Number(currentMission.victim_longitude), Number(currentMission.victim_latitude)],
+        [Number(effectiveMission.victim_longitude), Number(effectiveMission.victim_latitude)],
         ZAMBOANGA_VICTIM_DEFAULT
       );
     }
-    return currentMission ? ZAMBOANGA_VICTIM_DEFAULT : null;
-  }, [currentMission]);
+    return ZAMBOANGA_VICTIM_DEFAULT;
+  }, [effectiveMission]);
 
   const shelterLngLat = useMemo(() => {
-    if (currentMission?.target_shelter?.latitude && currentMission?.target_shelter?.longitude) {
+    if (effectiveMission?.target_shelter?.latitude && effectiveMission?.target_shelter?.longitude) {
       return clampToZamboanga(
         [
-          Number(currentMission.target_shelter.longitude),
-          Number(currentMission.target_shelter.latitude),
+          Number(effectiveMission.target_shelter.longitude),
+          Number(effectiveMission.target_shelter.latitude),
         ],
         ZAMBOANGA_SHELTER_DEFAULT
       );
@@ -223,23 +258,25 @@ export default function RescueMapScreen({ navigation, route }) {
         ZAMBOANGA_SHELTER_DEFAULT
       );
     }
-    return currentMission ? ZAMBOANGA_SHELTER_DEFAULT : null;
-  }, [currentMission, shelters]);
+    return ZAMBOANGA_SHELTER_DEFAULT;
+  }, [effectiveMission, shelters]);
 
   // Current Target Mode: 'victim' (during en_route / on_scene) or 'shelter' (during transporting)
-  const isTransportPhase = currentMission?.status === 'transporting';
-  const incidentHazType = currentMission?.incident?.hazard_type;
+  const isTransportPhase =
+    effectiveMission?.status === 'transporting' ||
+    (showDemoControls && (simulationStep === 3 || simulationStep === 4));
+  const incidentHazType = effectiveMission?.incident?.hazard_type;
   const isSuppressionMission = ['building_fire', 'active_shooter', 'siege', 'chemical_spill'].includes(incidentHazType);
   const activeTargetLngLat = isTransportPhase && !isSuppressionMission ? shelterLngLat : victimLngLat;
   const activeTargetName = isTransportPhase && !isSuppressionMission
-    ? currentMission?.target_shelter?.name || shelters[0]?.name || 'Baliwasan Gym Evacuation Center'
-    : (isSuppressionMission ? 'Hazard Epicenter' : (currentMission?.victim_name || 'Distress Victim'));
+    ? effectiveMission?.target_shelter?.name || shelters[0]?.name || 'Baliwasan Gym Evacuation Center'
+    : (isSuppressionMission ? 'Hazard Epicenter' : (effectiveMission?.victim_name || 'Distress Victim'));
 
   // Route calculation state
   const [routeData, setRouteData] = useState(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
-  const [mapStyleMode, setMapStyleMode] = useState('dark'); // 'dark' | 'satellite'
+  const [mapStyleMode, setMapStyleMode] = useState('default'); // 'default' | 'satellite'
 
   // Memoize valid GeoJSON FeatureCollection for Mapbox ShapeSource
   const routeFeatureCollection = useMemo(() => {
@@ -266,7 +303,6 @@ export default function RescueMapScreen({ navigation, route }) {
   // Modals
   const [showVictimArrivalModal, setShowVictimArrivalModal] = useState(false);
   const [showShelterArrivalModal, setShowShelterArrivalModal] = useState(false);
-  const [showDemoControls, setShowDemoControls] = useState(false);
 
   // Location watching effect - constrained to Zamboanga City bounds for testing
   useEffect(() => {
@@ -336,14 +372,19 @@ export default function RescueMapScreen({ navigation, route }) {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (!currentMission || !activeTargetLngLat) {
+      // By default on the map, stay at rescuer location without premature routes
+      // Only compute route if simulation is active OR an active live mission exists
+      const hasLiveMission = currentMission && ['dispatched', 'en_route', 'on_scene', 'transporting'].includes(currentMission.status);
+      if (!showDemoControls && !hasLiveMission) {
         setRouteData(null);
-      } else {
+      } else if (showDemoControls && simulationStep === 5) {
+        setRouteData(null);
+      } else if (activeTargetLngLat && activeRescuerLocation) {
         computeRoute(activeRescuerLocation, activeTargetLngLat);
       }
-    }, 0);
+    }, 50);
     return () => clearTimeout(timer);
-  }, [computeRoute, activeRescuerLocation, activeTargetLngLat, isTransportPhase, currentMission]);
+  }, [computeRoute, activeRescuerLocation, activeTargetLngLat, isTransportPhase, currentMission, showDemoControls, simulationStep]);
 
   // Stepper Status Mutation
   const updateStatusMutation = useMutation({
@@ -526,103 +567,193 @@ export default function RescueMapScreen({ navigation, route }) {
 
   // ─── GUIDED 5-STEP SIMULATION HANDLERS ───
   const handleStep1_EnRoute = () => {
-    if (!currentMission) return;
-    safeUpdateMissionStatus({
-      id: currentMission.id,
-      status: 'en_route',
-    });
-    if (activeRescuerLocation) {
-      cameraRef.current?.setCamera({
+    setSimulationStep(1);
+    hasTriggeredVictimArrival.current = false;
+    hasTriggeredShelterArrival.current = false;
+    setSimulatedLocation(null);
+
+    if (currentMission && !currentMission.id?.toString().startsWith('demo-')) {
+      safeUpdateMissionStatus({
+        id: currentMission.id,
+        status: 'en_route',
+      });
+    }
+
+    if (cameraRef.current && activeRescuerLocation && victimLngLat) {
+      const minLng = Math.min(activeRescuerLocation[0], victimLngLat[0]);
+      const maxLng = Math.max(activeRescuerLocation[0], victimLngLat[0]);
+      const minLat = Math.min(activeRescuerLocation[1], victimLngLat[1]);
+      const maxLat = Math.max(activeRescuerLocation[1], victimLngLat[1]);
+
+      cameraRef.current.setCamera({
+        bounds: {
+          ne: [maxLng + 0.003, maxLat + 0.003],
+          sw: [minLng - 0.003, minLat - 0.003],
+          paddingBottom: 240,
+          paddingTop: 140,
+          paddingLeft: 60,
+          paddingRight: 60,
+        },
+        animationDuration: 1000,
+      });
+    } else if (cameraRef.current && activeRescuerLocation) {
+      cameraRef.current.setCamera({
         centerCoordinate: activeRescuerLocation,
         zoomLevel: 15.8,
+        pitch: 35,
         animationDuration: 800,
       });
     }
   };
 
   const handleStep2_SimVictim20m = () => {
-    if (!victimLngLat || !currentMission) return;
+    if (!victimLngLat) return;
+    setSimulationStep(2);
     // 15 meters offset from victim
     const sim = [victimLngLat[0] + 0.0001, victimLngLat[1] + 0.0001];
     hasTriggeredVictimArrival.current = false;
     setSimulatedLocation(sim);
-    cameraRef.current?.setCamera({
-      centerCoordinate: sim,
-      zoomLevel: 17,
-      animationDuration: 800,
-    });
-    safeUpdateMissionStatus({
-      id: currentMission.id,
-      status: 'on_scene',
-    });
+
+    if (cameraRef.current) {
+      cameraRef.current.setCamera({
+        centerCoordinate: sim,
+        zoomLevel: 17.5,
+        pitch: 45,
+        animationDuration: 900,
+      });
+    }
+
+    if (currentMission && !currentMission.id?.toString().startsWith('demo-')) {
+      safeUpdateMissionStatus({
+        id: currentMission.id,
+        status: 'on_scene',
+      });
+    }
+
     Vibration.vibrate([0, 200, 100, 300, 100, 400]);
     setShowVictimArrivalModal(true);
   };
 
   const handleStep3_ExtractAndReRoute = () => {
-    if (!currentMission) return;
-    safeUpdateMissionStatus({
-      id: currentMission.id,
-      status: 'transporting',
-      target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
-    });
+    setSimulationStep(3);
     setShowVictimArrivalModal(false);
+
+    if (currentMission && !currentMission.id?.toString().startsWith('demo-')) {
+      safeUpdateMissionStatus({
+        id: currentMission.id,
+        status: 'transporting',
+        target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
+      });
+    }
+
+    if (cameraRef.current && victimLngLat && shelterLngLat) {
+      const minLng = Math.min(victimLngLat[0], shelterLngLat[0]);
+      const maxLng = Math.max(victimLngLat[0], shelterLngLat[0]);
+      const minLat = Math.min(victimLngLat[1], shelterLngLat[1]);
+      const maxLat = Math.max(victimLngLat[1], shelterLngLat[1]);
+
+      cameraRef.current.setCamera({
+        bounds: {
+          ne: [maxLng + 0.003, maxLat + 0.003],
+          sw: [minLng - 0.003, minLat - 0.003],
+          paddingBottom: 240,
+          paddingTop: 140,
+          paddingLeft: 60,
+          paddingRight: 60,
+        },
+        animationDuration: 1000,
+      });
+    }
   };
 
   const handleStep4_SimShelter20m = () => {
-    if (!shelterLngLat || !currentMission) return;
+    if (!shelterLngLat) return;
+    setSimulationStep(4);
     // 15 meters offset from shelter gate
     const sim = [shelterLngLat[0] + 0.0001, shelterLngLat[1] + 0.0001];
     hasTriggeredShelterArrival.current = false;
     setSimulatedLocation(sim);
-    cameraRef.current?.setCamera({
-      centerCoordinate: sim,
-      zoomLevel: 17,
-      animationDuration: 800,
-    });
+
+    if (cameraRef.current) {
+      cameraRef.current.setCamera({
+        centerCoordinate: sim,
+        zoomLevel: 17.5,
+        pitch: 45,
+        animationDuration: 900,
+      });
+    }
+
     Vibration.vibrate([0, 250, 100, 250, 100, 500]);
     setShowShelterArrivalModal(true);
   };
 
   const handleStep5_HandoverAndStandby = () => {
-    if (!currentMission) return;
-    safeUpdateMissionStatus({
-      id: currentMission.id,
-      status: 'completed',
-      target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
-    });
+    setSimulationStep(5);
     setShowShelterArrivalModal(false);
+
+    if (currentMission && !currentMission.id?.toString().startsWith('demo-')) {
+      safeUpdateMissionStatus({
+        id: currentMission.id,
+        status: 'completed',
+        target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
+      });
+    }
+
     resetSimulation();
   };
 
   const handleTriggerStep = (step) => {
-    if (step === 1) handleStep1_EnRoute();
-    else if (step === 2) handleStep2_SimVictim20m();
-    else if (step === 3) handleStep3_ExtractAndReRoute();
-    else if (step === 4) handleStep4_SimShelter20m();
-    else if (step === 5) handleStep5_HandoverAndStandby();
+    if (step === 1) {
+      handleStep1_EnRoute();
+    } else if (step === 2) {
+      handleStep2_SimVictim20m();
+    } else if (step === 3) {
+      handleStep3_ExtractAndReRoute();
+    } else if (step === 4) {
+      handleStep4_SimShelter20m();
+    } else if (step === 5) {
+      handleStep5_HandoverAndStandby();
+    }
   };
 
   const resetSimulation = () => {
     setSimulatedLocation(null);
     hasTriggeredVictimArrival.current = false;
     hasTriggeredShelterArrival.current = false;
-    if (gpsLocation) {
-      cameraRef.current?.setCamera({
+    if (cameraRef.current && gpsLocation) {
+      cameraRef.current.setCamera({
         centerCoordinate: gpsLocation,
         zoomLevel: 16.5,
+        pitch: 35,
         animationDuration: 800,
       });
     }
   };
 
   const handleResetMissionToDispatched = () => {
-    if (!currentMission) return;
-    safeUpdateMissionStatus({
-      id: currentMission.id,
-      status: 'dispatched',
-    });
-    resetSimulation();
+    setSimulationStep(1);
+    hasTriggeredVictimArrival.current = false;
+    hasTriggeredShelterArrival.current = false;
+    setShowVictimArrivalModal(false);
+    setShowShelterArrivalModal(false);
+    setSimulatedLocation(null);
+
+    if (currentMission && !currentMission.id?.toString().startsWith('demo-')) {
+      safeUpdateMissionStatus({
+        id: currentMission.id,
+        status: 'dispatched',
+      });
+    }
+
+    if (cameraRef.current && gpsLocation) {
+      cameraRef.current.setCamera({
+        centerCoordinate: gpsLocation,
+        zoomLevel: 16.5,
+        pitch: 35,
+        animationDuration: 800,
+      });
+    }
+    Vibration.vibrate(30);
   };
 
   const isExpoGo = Constants.appOwnership === 'expo' || !Mapbox?.MapView;
@@ -803,7 +934,7 @@ export default function RescueMapScreen({ navigation, route }) {
             activeOpacity={0.8}
             accessibilityLabel="Back to Duty Hub"
           >
-            <ArrowLeft size={18} color={colors.white} />
+            <ArrowLeft size={18} color={isDarkMode ? colors.white : colors.textPrimary} />
             <Text style={styles.backBtnText}>Duty Hub</Text>
           </TouchableOpacity>
 
@@ -823,14 +954,6 @@ export default function RescueMapScreen({ navigation, route }) {
               accessibilityLabel="Refresh Missions"
             >
               <RotateCcw size={15} color={colors.textSecondary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.mapStyleBtn}
-              onPress={() => setMapStyleMode(mapStyleMode === 'dark' ? 'satellite' : 'dark')}
-              accessibilityLabel="Toggle Satellite Layer"
-            >
-              <Layers size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -911,10 +1034,40 @@ export default function RescueMapScreen({ navigation, route }) {
 
         <TouchableOpacity
           style={[styles.floatingBtn, showDemoControls && styles.floatingBtnActive]}
-          onPress={() => setShowDemoControls(!showDemoControls)}
+          onPress={() => {
+            const nextState = !showDemoControls;
+            setShowDemoControls(nextState);
+            if (nextState) {
+              handleStep1_EnRoute();
+            } else {
+              resetSimulation();
+            }
+          }}
           accessibilityLabel="Toggle Presentation Simulation Tools"
         >
           <Sliders size={20} color={showDemoControls ? '#f59e0b' : '#94a3b8'} />
+        </TouchableOpacity>
+      </View>
+
+      {/* ─── FLOATING MAP STYLE SWITCHER (BOTTOM-LEFT) ─── */}
+      <View
+        style={[
+          styles.bottomLeftControls,
+          {
+            bottom: (showDemoControls ? 380 : (effectiveMission && !showDemoControls ? 160 : 110)) + Math.max(insets.bottom, 14),
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={[styles.floatingBtn, mapStyleMode === 'satellite' && styles.floatingBtnActive]}
+          onPress={() => {
+            setMapStyleMode((prev) => (prev === 'satellite' ? 'default' : 'satellite'));
+            Vibration.vibrate(25);
+          }}
+          accessibilityLabel="Toggle Satellite Layer"
+          activeOpacity={0.8}
+        >
+          <Layers size={20} color={mapStyleMode === 'satellite' ? '#f59e0b' : colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -927,7 +1080,13 @@ export default function RescueMapScreen({ navigation, route }) {
               <Text style={{ fontSize: 13 }}>⚡</Text>
               <Text style={styles.guidedSimTitle}>GUIDED RESCUE SIMULATION • 5-STEP FOCUS</Text>
             </View>
-            <TouchableOpacity onPress={() => setShowDemoControls(false)} style={styles.guidedSimCloseBtn}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowDemoControls(false);
+                resetSimulation();
+              }}
+              style={styles.guidedSimCloseBtn}
+            >
               <Text style={styles.guidedSimCloseText}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -945,6 +1104,7 @@ export default function RescueMapScreen({ navigation, route }) {
                       style={[styles.missionChip, isSelected && styles.missionChipActive]}
                       onPress={() => {
                         setSelectedMissionId(m.id);
+                        setSimulationStep(1);
                         resetSimulation();
                       }}
                       activeOpacity={0.8}
@@ -1042,7 +1202,23 @@ export default function RescueMapScreen({ navigation, route }) {
                 currentSimulationStep === 4 && styles.btnIndigo,
                 currentSimulationStep === 5 && styles.btnGreen,
               ]}
-              onPress={() => handleTriggerStep(currentSimulationStep)}
+              onPress={() => {
+                if (currentSimulationStep === 1) {
+                  handleStep1_EnRoute();
+                  setSimulationStep(2);
+                } else if (currentSimulationStep === 2) {
+                  handleStep2_SimVictim20m();
+                  setSimulationStep(3);
+                } else if (currentSimulationStep === 3) {
+                  handleStep3_ExtractAndReRoute();
+                  setSimulationStep(4);
+                } else if (currentSimulationStep === 4) {
+                  handleStep4_SimShelter20m();
+                  setSimulationStep(5);
+                } else if (currentSimulationStep === 5) {
+                  handleStep5_HandoverAndStandby();
+                }
+              }}
               disabled={updateStatusMutation.isPending}
               activeOpacity={0.85}
             >
@@ -1280,18 +1456,10 @@ export default function RescueMapScreen({ navigation, route }) {
               onPress={() => {
                 setShowVictimArrivalModal(false);
                 if (isSuppressionMission) {
-                  // If it's a suppression mission, it completes here. No shelter.
-                  safeUpdateMissionStatus({
-                    id: currentMission.id,
-                    status: 'completed',
-                  });
+                  handleStep5_HandoverAndStandby();
                 } else {
-                  // Standard Evacuation: Proceed to Shelter Transport Phase
-                  safeUpdateMissionStatus({
-                    id: currentMission.id,
-                    status: 'transporting',
-                    target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
-                  });
+                  handleStep3_ExtractAndReRoute();
+                  setSimulationStep(4);
                 }
               }}
             >
@@ -1352,11 +1520,7 @@ export default function RescueMapScreen({ navigation, route }) {
               style={[styles.modalActionPrimaryBtn, { backgroundColor: '#10b981' }]}
               onPress={() => {
                 setShowShelterArrivalModal(false);
-                safeUpdateMissionStatus({
-                  id: currentMission.id,
-                  status: 'completed',
-                  target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
-                });
+                handleStep5_HandoverAndStandby();
               }}
               disabled={updateStatusMutation.isPending}
             >
@@ -1533,10 +1697,12 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+    gap: 6,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.05)',
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.12)',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: radii.sm,
   },
   backBtnText: {
@@ -1692,18 +1858,25 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     right: 14,
     top: 170,
     gap: 10,
+    zIndex: 25,
+  },
+  bottomLeftControls: {
+    position: 'absolute',
+    left: 14,
+    zIndex: 25,
   },
   floatingBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.92)' : colors.surface,
+    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255, 255, 255, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)',
     shadowColor: '#000',
-    shadowOpacity: isDarkMode ? 0.4 : 0.1,
+    shadowOpacity: isDarkMode ? 0.4 : 0.15,
+    shadowOffset: { width: 0, height: 3 },
     shadowRadius: 5,
     elevation: 4,
   },
