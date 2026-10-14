@@ -82,14 +82,19 @@ export default function EvacMapScreen({ navigation, route }) {
   const [isRouteBlocked, setIsRouteBlocked] = useState(false);
   const [routeWarnings, setRouteWarnings] = useState([]);
 
-  // Map style switcher
-  const [mapStyleMode, setMapStyleMode] = useState('dark');
+  // Map style switcher (defaults to dark in Dark Mode, standard streets in Light Mode)
+  const [mapStyleMode, setMapStyleMode] = useState(isDarkMode ? 'dark' : 'streets');
   const [currentZoom, setCurrentZoom] = useState(14);
   const MAP_STYLE_URLS = {
     dark:      Mapbox?.StyleURL?.Dark || 'mapbox://styles/mapbox/dark-v11',
     satellite: Mapbox?.StyleURL?.SatelliteStreet || 'mapbox://styles/mapbox/satellite-streets-v12',
     streets:   Mapbox?.StyleURL?.Street || 'mapbox://styles/mapbox/streets-v12',
   };
+
+  // Automatically sync map style when theme changes
+  useEffect(() => {
+    setMapStyleMode(isDarkMode ? 'dark' : 'streets');
+  }, [isDarkMode]);
 
   const isExpoGo = Constants.appOwnership === 'expo' || !Mapbox?.MapView;
 
@@ -1006,7 +1011,8 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           styleURL={MAP_STYLE_URLS[mapStyleMode]}
           logoEnabled={false}
           attributionEnabled={false}
-          scaleBarEnabled={false}
+          scaleBarEnabled={true}
+          scaleBarPosition={{ bottom: SHEET_COLLAPSED + 20, left: 68 }}
           compassEnabled={false}
           zoomEnabled={true}
           onCameraChanged={(e) => setCurrentZoom(e.properties.zoom)}
@@ -2067,19 +2073,19 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
             width: 42,
             height: 42,
             borderRadius: 21,
-            backgroundColor: isHighContrast ? '#000000' : 'rgba(15, 23, 42, 0.92)',
+            backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255, 255, 255, 0.96)'),
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: 1,
-            borderColor: isStyleMenuOpen ? colors.primary : (isHighContrast ? '#FFFF00' : 'rgba(255, 255, 255, 0.2)'),
+            borderColor: isStyleMenuOpen ? colors.primary : (isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.12)')),
             elevation: 6,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
+            shadowOpacity: isDarkMode ? 0.3 : 0.15,
             shadowRadius: 4,
           }}
         >
-          <Layers size={20} color={isStyleMenuOpen ? colors.primary : '#ffffff'} />
+          <Layers size={20} color={isStyleMenuOpen ? colors.primary : colors.textPrimary} />
         </TouchableOpacity>
 
         {/* Expandable Layer Options Menu */}
@@ -2089,15 +2095,15 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
             bottom: 48,
             left: 0,
             width: 140,
-            backgroundColor: isHighContrast ? '#000000' : 'rgba(15, 23, 42, 0.96)',
+            backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.98)'),
             borderRadius: 16,
             padding: 6,
             borderWidth: 1,
-            borderColor: isHighContrast ? '#FFFF00' : 'rgba(255, 255, 255, 0.15)',
+            borderColor: isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'),
             elevation: 10,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.4,
+            shadowOpacity: isDarkMode ? 0.4 : 0.15,
             shadowRadius: 8,
             gap: 4,
           }}>
@@ -2127,7 +2133,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
                 <Text style={{
                   fontSize: 11,
                   fontWeight: 'bold',
-                  color: mapStyleMode === s.key ? (isHighContrast ? '#000000' : '#ffffff') : '#cbd5e1'
+                  color: mapStyleMode === s.key ? (isHighContrast ? '#000000' : '#ffffff') : colors.textSecondary
                 }}>
                   {s.label}
                 </Text>
@@ -2154,7 +2160,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           }}
           style={styles.mapStyleBtn}
         >
-          <Text style={{ color: colors.white, fontSize: 18, fontWeight: 'bold' }}>+</Text>
+          <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: 'bold' }}>+</Text>
         </TouchableOpacity>
 
         {/* Zoom Out */}
@@ -2172,7 +2178,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           }}
           style={styles.mapStyleBtn}
         >
-          <Text style={{ color: colors.white, fontSize: 18, fontWeight: 'bold' }}>−</Text>
+          <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: 'bold' }}>−</Text>
         </TouchableOpacity>
 
         {/* Recenter & Focus Location Button */}
@@ -2189,7 +2195,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           }}
           style={styles.mapStyleBtn}
         >
-          <Navigation size={18} color={colors.white} />
+          <Navigation size={18} color={colors.textPrimary} />
         </TouchableOpacity>
 
         {/* High Contrast Mode Toggle */}
@@ -2205,7 +2211,8 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
         >
           <Text style={[
             styles.mapStyleBtnText,
-            isHighContrast && { color: '#000000', fontWeight: '900' }
+            { color: isHighContrast ? '#000000' : colors.textPrimary },
+            isHighContrast && { fontWeight: '900' }
           ]}>
             {isHighContrast ? '👁' : '🕶'}
           </Text>
