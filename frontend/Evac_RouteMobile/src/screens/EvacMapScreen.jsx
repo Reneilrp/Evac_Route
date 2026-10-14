@@ -28,6 +28,7 @@ import {
   getOfflineRoadMaintenances,
 } from '../services/offlineDb';
 import { calculateOfflineRoute, fetchMapboxDirectionsRoute, determineTargetFacility } from '../utils/astarRouter';
+import { MAPBOX_PUBLIC_TOKEN } from '../utils/zamboangaGeo';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -41,13 +42,18 @@ function getETAMinutes(distanceMeters, mode) {
   return `${minutes} min`;
 }
 
-
-// Bottom sheet snap points
-const SHEET_COLLAPSED = 160;
+// Bottom sheet snap points (230px to cleanly clear floating tab dock)
+const SHEET_COLLAPSED = 230;
 const SHEET_EXPANDED = SCREEN_HEIGHT * 0.45;
 
-// Read Mapbox token from app.json extra config or environment
-const MAPBOX_TOKEN = Constants.expoConfig?.extra?.mapboxToken || process.env.EXPO_PUBLIC_MAPBOX_TOKEN || '';
+// Read Mapbox token from config or fallback, and initialize immediately
+const MAPBOX_TOKEN = MAPBOX_PUBLIC_TOKEN || Constants.expoConfig?.extra?.mapboxToken || process.env.EXPO_PUBLIC_MAPBOX_TOKEN || '';
+if (MAPBOX_TOKEN) {
+  try {
+    Mapbox.setAccessToken(MAPBOX_TOKEN);
+    Mapbox.setTelemetryEnabled(false);
+  } catch (_e) {}
+}
 
 export default function EvacMapScreen({ navigation, route }) {
   const { colors, isDarkMode } = useTheme();
@@ -62,18 +68,6 @@ export default function EvacMapScreen({ navigation, route }) {
       setTimeout(() => setIsPinningHomeMode(true), 0);
     }
   }, [route?.params?.pinHome]);
-
-  useEffect(() => {
-    if (MAPBOX_TOKEN) {
-      try {
-        Mapbox.setAccessToken(MAPBOX_TOKEN);
-      } catch (e) {
-        console.warn('[Mapbox] Failed to set access token:', e);
-      }
-    } else {
-      console.warn('[Mapbox] Access token is missing or empty. Map will not render.');
-    }
-  }, []);
 
   // Local cache fallback state
   const [offlineShelters, setOfflineShelters] = useState([]);
@@ -539,6 +533,19 @@ export default function EvacMapScreen({ navigation, route }) {
     return defaultZamboangaPos;
   }, [location, user, defaultZamboangaPos, homeLocation]);
 
+  // ─── Initial Map Camera Centering (guarantees view centers on Zamboanga City immediately) ───
+  const hasInitialCenteredRef = useRef(false);
+  useEffect(() => {
+    if (!hasInitialCenteredRef.current && cameraRef.current && activeUserLocation) {
+      hasInitialCenteredRef.current = true;
+      cameraRef.current.setCamera({
+        centerCoordinate: activeUserLocation,
+        zoomLevel: 14,
+        animationDuration: 800,
+      });
+    }
+  }, [activeUserLocation]);
+
   // ─── Proximity Hazard & Threat Protocol Analysis ───
   const activeThreatsNearUser = (activeUserLocation && hazards && hazards.length > 0)
     ? hazards.filter(h => {
@@ -999,8 +1006,19 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           styleURL={MAP_STYLE_URLS[mapStyleMode]}
           logoEnabled={false}
           attributionEnabled={false}
+          scaleBarEnabled={false}
+          compassEnabled={false}
           zoomEnabled={true}
           onCameraChanged={(e) => setCurrentZoom(e.properties.zoom)}
+          onDidFinishLoadingMap={() => {
+            if (cameraRef.current && activeUserLocation) {
+              cameraRef.current.setCamera({
+                centerCoordinate: activeUserLocation,
+                zoomLevel: 14,
+                animationDuration: 600,
+              });
+            }
+          }}
           scrollEnabled={true}
           pitchEnabled={true}
           rotateEnabled={true}
@@ -1022,10 +1040,10 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
         >
         <Mapbox.Camera
           ref={cameraRef}
-          defaultSettings={{
-            centerCoordinate: activeUserLocation,
-            zoomLevel: 14,
-          }}
+          centerCoordinate={activeUserLocation}
+          zoomLevel={14}
+          animationMode="flyTo"
+          animationDuration={800}
         />
 
         {filteredShelters.map(shelter => {
@@ -1442,7 +1460,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
       {isNavigating && !isActiveTurnByTurn && (
         <View style={{
           position: 'absolute',
-          bottom: 175,
+          bottom: SHEET_COLLAPSED + 16,
           left: 16,
           right: 16,
           backgroundColor: '#0f172a',
@@ -2039,7 +2057,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
       )}
 
       {/* ─── Google Maps Style Layers FAB (floating, bottom-left) ─── */}
-      <View style={{ position: 'absolute', bottom: 180, left: 16, zIndex: 35 }}>
+      <View style={{ position: 'absolute', bottom: SHEET_COLLAPSED + 16, left: 16, zIndex: 35 }}>
         <TouchableOpacity
           onPress={() => {
             setIsStyleMenuOpen(prev => !prev);
@@ -2119,8 +2137,9 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
         )}
       </View>
 
-      {/* ─── Floating 1-Step Zoom Controls (floating, bottom-right) ─── */}
-      <View style={{ position: 'absolute', bottom: 235, right: 16, zIndex: 30, gap: 6 }}>
+      {/* ─── Floating Action Controls (floating, bottom-right) ─── */}
+      <View style={{ position: 'absolute', bottom: SHEET_COLLAPSED + 16, right: 16, zIndex: 30, gap: 8, alignItems: 'center' }}>
+        {/* Zoom In */}
         <TouchableOpacity
           onPress={() => {
             if (cameraRef.current) {
@@ -2137,6 +2156,8 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
         >
           <Text style={{ color: colors.white, fontSize: 18, fontWeight: 'bold' }}>+</Text>
         </TouchableOpacity>
+
+        {/* Zoom Out */}
         <TouchableOpacity
           onPress={() => {
             if (cameraRef.current) {
@@ -2153,10 +2174,8 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
         >
           <Text style={{ color: colors.white, fontSize: 18, fontWeight: 'bold' }}>−</Text>
         </TouchableOpacity>
-      </View>
 
-      {/* ─── Recenter & Focus Location Button (floating, bottom-right) ─── */}
-      <View style={{ position: 'absolute', bottom: 180, right: 16, zIndex: 30 }}>
+        {/* Recenter & Focus Location Button */}
         <TouchableOpacity
           onPress={() => {
             if (cameraRef.current && activeUserLocation) {
@@ -2172,10 +2191,8 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
         >
           <Navigation size={18} color={colors.white} />
         </TouchableOpacity>
-      </View>
 
-      {/* ─── High Contrast Mode Toggle (floating, bottom-right) ─── */}
-      <View style={{ position: 'absolute', bottom: 180, right: 16, zIndex: 30 }}>
+        {/* High Contrast Mode Toggle */}
         <TouchableOpacity
           onPress={() => {
             setIsHighContrast(o => !o);
