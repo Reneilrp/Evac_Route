@@ -42,6 +42,40 @@ function getETAMinutes(distanceMeters, mode) {
   return `${minutes} min`;
 }
 
+// ─── Circle Polygon Generator (Trigonometric Geodesic Approximator) ───
+function createCirclePolygon(center, radiusInMeters, points = 32) {
+  const [lng, lat] = center;
+  const coords = [];
+  const distanceX = radiusInMeters / (111320 * Math.cos((lat * Math.PI) / 180));
+  const distanceY = radiusInMeters / 110540;
+
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * (2 * Math.PI);
+    const x = distanceX * Math.cos(theta);
+    const y = distanceY * Math.sin(theta);
+    coords.push([lng + x, lat + y]);
+  }
+  coords.push(coords[0]);
+
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [coords],
+    },
+  };
+}
+
+// ─── Dynamic Render Radius based on Height Bar / Map Scale (Zoom Level) ───
+function getScaleRenderRadius(zoom) {
+  if (zoom >= 16) return 1500;  // 1.5 km (~100m - 200m scale bar)
+  if (zoom >= 15) return 2500;  // 2.5 km (~500m scale bar)
+  if (zoom >= 14) return 4500;  // 4.5 km (~1 km scale bar)
+  if (zoom >= 13) return 8000;  // 8 km (~2 km scale bar)
+  if (zoom >= 12) return 16000; // 16 km (~5 km scale bar)
+  return 40000;                 // 40 km (city-wide overview)
+}
+
 // Bottom sheet snap points (230px to cleanly clear floating tab dock)
 const SHEET_COLLAPSED = 230;
 const SHEET_EXPANDED = SCREEN_HEIGHT * 0.45;
@@ -115,6 +149,8 @@ export default function EvacMapScreen({ navigation, route }) {
   // Navigation & Selection states
   const cameraRef = useRef(null);
   const currentZoomRef = useRef(14);
+  const cameraChangeTimerRef = useRef(null);
+  const [mapCenter, setMapCenter] = useState(null);
   const [selectedShelter, setSelectedShelter] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [isSiegeModalVisible, setIsSiegeModalVisible] = useState(false);
@@ -433,8 +469,17 @@ export default function EvacMapScreen({ navigation, route }) {
       );
 
       try {
+        let lastHeading = 0;
+        let lastUpdateTime = 0;
         headingSubscription = await Location.watchHeadingAsync((data) => {
-          setDeviceHeading(data.trueHeading || data.magneticHeading || 0);
+          const newHeading = Math.round(data.trueHeading || data.magneticHeading || 0);
+          const now = Date.now();
+          // Filter sensor noise: only update if rotated >= 3 degrees and at least 250ms elapsed
+          if (Math.abs(newHeading - lastHeading) >= 3 && now - lastUpdateTime >= 250) {
+            lastHeading = newHeading;
+            lastUpdateTime = now;
+            setDeviceHeading(newHeading);
+          }
         });
       } catch (e) {
         console.warn('Failed to start watchHeadingAsync:', e);
@@ -464,37 +509,42 @@ export default function EvacMapScreen({ navigation, route }) {
 
   // Filter active hazards based on Disaster Preset Filter
   const safeHazards = Array.isArray(hazards) ? hazards : [];
-  const filteredHazards = selectedDisasterFilter === 'all' ? safeHazards : safeHazards.filter(h => {
-    if (!h) return false;
-    const hType = (h.hazard_type || '').toLowerCase();
-    if (selectedDisasterFilter === 'flood') return ['flood', 'landslide', 'tsunami', 'water'].some(t => hType.includes(t));
-    if (selectedDisasterFilter === 'fire') return ['fire', 'wildfire', 'explosion', 'smoke'].some(t => hType.includes(t));
-    if (selectedDisasterFilter === 'earthquake') return ['earthquake', 'tremor', 'structural_collapse', 'fault'].some(t => hType.includes(t));
-    if (selectedDisasterFilter === 'siege') return ['siege', 'armed', 'conflict', 'civil_unrest', 'security'].some(t => hType.includes(t));
-    if (selectedDisasterFilter === 'chemical') return ['chemical', 'biohazard', 'gas', 'toxic', 'decontamination'].some(t => hType.includes(t));
-    return true;
-  });
+  const filteredHazards = useMemo(() => {
+    if (selectedDisasterFilter === 'all') return safeHazards;
+    return safeHazards.filter(h => {
+      if (!h) return false;
+      const hType = (h.hazard_type || '').toLowerCase();
+      if (selectedDisasterFilter === 'flood') return ['flood', 'landslide', 'tsunami', 'water'].some(t => hType.includes(t));
+      if (selectedDisasterFilter === 'fire') return ['fire', 'wildfire', 'explosion', 'smoke'].some(t => hType.includes(t));
+      if (selectedDisasterFilter === 'earthquake') return ['earthquake', 'tremor', 'structural_collapse', 'fault'].some(t => hType.includes(t));
+      if (selectedDisasterFilter === 'siege') return ['siege', 'armed', 'conflict', 'civil_unrest', 'security'].some(t => hType.includes(t));
+      if (selectedDisasterFilter === 'chemical') return ['chemical', 'biohazard', 'gas', 'toxic', 'decontamination'].some(t => hType.includes(t));
+      return true;
+    });
+  }, [safeHazards, selectedDisasterFilter]);
 
   // Filter shelters/places based on Category AND Disaster Preset Filter
   const safeShelters = useMemo(() => (Array.isArray(shelters) ? shelters : []), [shelters]);
-  const filteredShelters = safeShelters.filter(shelter => {
-    if (!shelter) return false;
-    // 1. Facility Category Filter
-    if (selectedCategoryFilter === 'shelter' && !(shelter.facility_type === 'evacuation_center' || !shelter.facility_type)) return false;
-    if (selectedCategoryFilter === 'safe_zone' && shelter.facility_type !== 'safe_zone') return false;
-    if (selectedCategoryFilter === 'assembly_point' && shelter.facility_type !== 'assembly_point') return false;
-    if (selectedCategoryFilter === 'security' && !['police_station', 'military_base'].includes(shelter.facility_type)) return false;
+  const filteredShelters = useMemo(() => {
+    return safeShelters.filter(shelter => {
+      if (!shelter) return false;
+      // 1. Facility Category Filter
+      if (selectedCategoryFilter === 'shelter' && !(shelter.facility_type === 'evacuation_center' || !shelter.facility_type)) return false;
+      if (selectedCategoryFilter === 'safe_zone' && shelter.facility_type !== 'safe_zone') return false;
+      if (selectedCategoryFilter === 'assembly_point' && shelter.facility_type !== 'assembly_point') return false;
+      if (selectedCategoryFilter === 'security' && !['police_station', 'military_base'].includes(shelter.facility_type)) return false;
 
-    // 2. Disaster Preset Filter Context
-    if (selectedDisasterFilter === 'all') return true;
-    const fType = (shelter.facility_type || '').toLowerCase();
-    if (selectedDisasterFilter === 'flood') return ['safe_zone', 'evacuation_center', 'hospital'].includes(fType);
-    if (selectedDisasterFilter === 'fire') return ['assembly_point', 'fire_station', 'evacuation_center'].includes(fType);
-    if (selectedDisasterFilter === 'earthquake') return ['assembly_point', 'hospital', 'evacuation_center'].includes(fType);
-    if (selectedDisasterFilter === 'siege') return ['police_station', 'military_base', 'evacuation_center', 'safe_zone'].includes(fType);
-    if (selectedDisasterFilter === 'chemical') return ['hospital', 'safe_zone', 'evacuation_center'].includes(fType);
-    return true;
-  });
+      // 2. Disaster Preset Filter Context
+      if (selectedDisasterFilter === 'all') return true;
+      const fType = (shelter.facility_type || '').toLowerCase();
+      if (selectedDisasterFilter === 'flood') return ['safe_zone', 'evacuation_center', 'hospital'].includes(fType);
+      if (selectedDisasterFilter === 'fire') return ['assembly_point', 'fire_station', 'evacuation_center'].includes(fType);
+      if (selectedDisasterFilter === 'earthquake') return ['assembly_point', 'hospital', 'evacuation_center'].includes(fType);
+      if (selectedDisasterFilter === 'siege') return ['police_station', 'military_base', 'evacuation_center', 'safe_zone'].includes(fType);
+      if (selectedDisasterFilter === 'chemical') return ['hospital', 'safe_zone', 'evacuation_center'].includes(fType);
+      return true;
+    });
+  }, [safeShelters, selectedCategoryFilter, selectedDisasterFilter]);
 
   // Ensure user location defaults to Zamboanga City (Tetuan) if GPS is outside Zamboanga bounds
   const defaultZamboangaPos = useMemo(() => [122.084, 6.918], []);
@@ -552,15 +602,17 @@ export default function EvacMapScreen({ navigation, route }) {
   }, [activeUserLocation]);
 
   // ─── Proximity Hazard & Threat Protocol Analysis ───
-  const activeThreatsNearUser = (activeUserLocation && hazards && hazards.length > 0)
-    ? hazards.filter(h => {
-        const hLat = parseFloat(h.latitude);
-        const hLng = parseFloat(h.longitude);
-        const radius = parseFloat(h.radius_meters || 500);
-        const dist = getDistanceMeters(activeUserLocation[1], activeUserLocation[0], hLat, hLng);
-        return dist <= radius + 300; // Inside hazard zone or 300m buffer
-      })
-    : [];
+  const activeThreatsNearUser = useMemo(() => {
+    return (activeUserLocation && hazards && hazards.length > 0)
+      ? hazards.filter(h => {
+          const hLat = parseFloat(h.latitude);
+          const hLng = parseFloat(h.longitude);
+          const radius = parseFloat(h.radius_meters || 500);
+          const dist = getDistanceMeters(activeUserLocation[1], activeUserLocation[0], hLat, hLng);
+          return dist <= radius + 300; // Inside hazard zone or 300m buffer
+        })
+      : [];
+  }, [activeUserLocation, hazards]);
 
   // ─── Automated Geofence Arrival Detection (<= 80 meters) ───
   useEffect(() => {
@@ -612,29 +664,35 @@ export default function EvacMapScreen({ navigation, route }) {
     }
   };
 
-  const activeSiegeThreat = activeThreatsNearUser.find(h =>
-    ['siege', 'war', 'active_shooter', 'civil_unrest'].includes(h.hazard_type) ||
-    (h.disaster_category === 'man_made' && h.severity_level === 'high')
-  );
+  const activeSiegeThreat = useMemo(() => {
+    return activeThreatsNearUser.find(h =>
+      ['siege', 'war', 'active_shooter', 'civil_unrest'].includes(h.hazard_type) ||
+      (h.disaster_category === 'man_made' && h.severity_level === 'high')
+    );
+  }, [activeThreatsNearUser]);
 
-  const isResidentInsideSiege = (activeUserLocation && hazards && hazards.length > 0)
-    ? hazards.some(h => {
-        if (!['siege', 'war', 'active_shooter', 'civil_unrest'].includes(h.hazard_type) &&
-            !(h.disaster_category === 'man_made' && h.severity_level === 'high')) {
-          return false;
-        }
-        const hLat = parseFloat(h.latitude);
-        const hLng = parseFloat(h.longitude);
-        const radius = parseFloat(h.radius_meters || 500);
-        const dist = getDistanceMeters(activeUserLocation[1], activeUserLocation[0], hLat, hLng);
-        return dist <= radius + 300; // Inside siege zone or 300m crossfire danger buffer
-      })
-    : false;
+  const isResidentInsideSiege = useMemo(() => {
+    return (activeUserLocation && hazards && hazards.length > 0)
+      ? hazards.some(h => {
+          if (!['siege', 'war', 'active_shooter', 'civil_unrest'].includes(h.hazard_type) &&
+              !(h.disaster_category === 'man_made' && h.severity_level === 'high')) {
+            return false;
+          }
+          const hLat = parseFloat(h.latitude);
+          const hLng = parseFloat(h.longitude);
+          const radius = parseFloat(h.radius_meters || 500);
+          const dist = getDistanceMeters(activeUserLocation[1], activeUserLocation[0], hLat, hLng);
+          return dist <= radius + 300; // Inside siege zone or 300m crossfire danger buffer
+        })
+      : false;
+  }, [activeUserLocation, hazards]);
 
-  const activeDisasterNearUser = activeThreatsNearUser.find(h =>
-    ['flood', 'landslide', 'typhoon', 'tsunami', 'fire', 'explosion'].includes(h.hazard_type) ||
-    h.severity_level === 'high' || h.severity_level === 'critical'
-  );
+  const activeDisasterNearUser = useMemo(() => {
+    return activeThreatsNearUser.find(h =>
+      ['flood', 'landslide', 'typhoon', 'tsunami', 'fire', 'explosion'].includes(h.hazard_type) ||
+      h.severity_level === 'high' || h.severity_level === 'critical'
+    );
+  }, [activeThreatsNearUser]);
 
   // Earthquake Broadcast Warning Detector
   const activeEarthquakeHazard = (hazards && hazards.length > 0)
@@ -680,15 +738,49 @@ export default function EvacMapScreen({ navigation, route }) {
 
   const showAlertBanner = Boolean(activeAlertKey && dismissedAlertKey !== activeAlertKey);
 
-  let nearestShelter = null;
-  if (activeUserLocation && filteredShelters.length > 0) {
-    const targetResult = determineTargetFacility(activeUserLocation[1], activeUserLocation[0], filteredShelters, filteredHazards, selectedCategoryFilter);
-    if (targetResult && targetResult.facility) {
-      nearestShelter = targetResult.facility;
+  const nearestShelter = useMemo(() => {
+    if (activeUserLocation && filteredShelters.length > 0) {
+      const targetResult = determineTargetFacility(activeUserLocation[1], activeUserLocation[0], filteredShelters, filteredHazards, selectedCategoryFilter);
+      if (targetResult && targetResult.facility) {
+        return targetResult.facility;
+      }
     }
-  }
+    return null;
+  }, [activeUserLocation, filteredShelters, filteredHazards, selectedCategoryFilter]);
 
   const activeTargetShelter = selectedShelter || nearestShelter;
+
+  // ─── Scope Rendering to Height Bar / Map Scale ───
+  const renderCenter = mapCenter || activeUserLocation;
+  const renderRadius = useMemo(() => getScaleRenderRadius(currentZoom), [currentZoom]);
+
+  // Render only shelters within the scale bar / height bar scope
+  const visibleShelters = useMemo(() => {
+    if (!renderCenter) return filteredShelters;
+    return filteredShelters.filter(s => {
+      // Always retain active target shelter and selected shelter so navigation is never clipped
+      if (activeTargetShelter && s.id === activeTargetShelter.id) return true;
+      if (selectedShelter && s.id === selectedShelter.id) return true;
+      const sLat = parseFloat(s.latitude);
+      const sLng = parseFloat(s.longitude);
+      if (isNaN(sLat) || isNaN(sLng)) return false;
+      const dist = getDistanceMeters(renderCenter[1], renderCenter[0], sLat, sLng);
+      return dist <= renderRadius;
+    });
+  }, [filteredShelters, renderCenter, renderRadius, activeTargetShelter, selectedShelter]);
+
+  // Render only hazards and floods within the scale bar / height bar scope
+  const visibleHazards = useMemo(() => {
+    if (!renderCenter || !filteredHazards) return filteredHazards || [];
+    return filteredHazards.filter(h => {
+      const hLat = parseFloat(h.latitude);
+      const hLng = parseFloat(h.longitude);
+      if (isNaN(hLat) || isNaN(hLng)) return false;
+      const hRadius = parseFloat(h.radius_meters || 50);
+      const dist = getDistanceMeters(renderCenter[1], renderCenter[0], hLat, hLng);
+      return dist <= renderRadius + hRadius;
+    });
+  }, [filteredHazards, renderCenter, renderRadius]);
 
   const targetShelterCoords = activeTargetShelter
     ? [parseFloat(activeTargetShelter.longitude), parseFloat(activeTargetShelter.latitude)]
@@ -882,75 +974,76 @@ export default function EvacMapScreen({ navigation, route }) {
     );
   }
 
-  const routeGeoJSON = cachedRoute ? {
-    type: 'FeatureCollection',
-    features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: cachedRoute } }]
-  } : null;
+  const routeGeoJSON = useMemo(() => {
+    return cachedRoute ? {
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: cachedRoute } }]
+    } : null;
+  }, [cachedRoute]);
 
-function createCirclePolygon(center, radiusInMeters, points = 64) {
-  const [lng, lat] = center;
-  const coords = [];
-  const distanceX = radiusInMeters / (111320 * Math.cos((lat * Math.PI) / 180));
-  const distanceY = radiusInMeters / 110540;
+  const activeHazardsGeoJSON = useMemo(() => {
+    return {
+      type: 'FeatureCollection',
+      features: visibleHazards.filter(h => h.is_active && !h.is_fixed_flood_spot).map(hazard => {
+        const polygon = createCirclePolygon(
+          [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
+          parseFloat(hazard.radius_meters || 50),
+          32
+        );
+        return {
+          ...polygon,
+          properties: {
+            id: hazard.id,
+            name: hazard.name,
+            radius: parseFloat(hazard.radius_meters ?? 0),
+            hazard_type: hazard.hazard_type ?? 'hazard',
+            severity: hazard.severity_level ?? 'medium',
+          },
+        };
+      })
+    };
+  }, [visibleHazards]);
 
-  for (let i = 0; i < points; i++) {
-    const theta = (i / points) * (2 * Math.PI);
-    const x = distanceX * Math.cos(theta);
-    const y = distanceY * Math.sin(theta);
-    coords.push([lng + x, lat + y]);
-  }
-  coords.push(coords[0]);
+  const susceptibleGeoJSON = useMemo(() => {
+    return {
+      type: 'FeatureCollection',
+      features: visibleHazards.filter(h => h.is_fixed_flood_spot && !h.is_active).map(hazard => {
+        const polygon = createCirclePolygon(
+          [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
+          parseFloat(hazard.radius_meters || 50),
+          32
+        );
+        return {
+          ...polygon,
+          properties: {
+            id: hazard.id,
+            name: hazard.name,
+            radius: parseFloat(hazard.radius_meters ?? 0),
+            hazard_type: hazard.hazard_type ?? 'hazard',
+            severity: hazard.severity_level ?? 'medium',
+          },
+        };
+      })
+    };
+  }, [visibleHazards]);
 
-  return {
-    type: 'Feature',
-    geometry: {
-      type: 'Polygon',
-      coordinates: [coords],
-    },
-  };
-}
-
-
-
-  const activeHazardsGeoJSON = {
-    type: 'FeatureCollection',
-    features: filteredHazards.filter(h => h.is_active && !h.is_fixed_flood_spot).map(hazard => {
-      const polygon = createCirclePolygon(
-        [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
-        parseFloat(hazard.radius_meters || 50)
-      );
-      return {
-        ...polygon,
-        properties: {
-          id: hazard.id,
-          name: hazard.name,
-          radius: parseFloat(hazard.radius_meters ?? 0),
-          hazard_type: hazard.hazard_type ?? 'hazard',
-          severity: hazard.severity_level ?? 'medium',
+  const roadMaintenanceGeoJSON = useMemo(() => {
+    if (!maintenances || maintenances.length === 0) return null;
+    return {
+      type: 'FeatureCollection',
+      features: maintenances.map(m => ({
+        type: 'Feature',
+        properties: { description: m.description },
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [parseFloat(m.start_longitude), parseFloat(m.start_latitude)],
+            [parseFloat(m.end_longitude),   parseFloat(m.end_latitude)],
+          ],
         },
-      };
-    })
-  };
-
-  const susceptibleGeoJSON = {
-    type: 'FeatureCollection',
-    features: filteredHazards.filter(h => h.is_fixed_flood_spot && !h.is_active).map(hazard => {
-      const polygon = createCirclePolygon(
-        [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
-        parseFloat(hazard.radius_meters || 50)
-      );
-      return {
-        ...polygon,
-        properties: {
-          id: hazard.id,
-          name: hazard.name,
-          radius: parseFloat(hazard.radius_meters ?? 0),
-          hazard_type: hazard.hazard_type ?? 'hazard',
-          severity: hazard.severity_level ?? 'medium',
-        },
-      };
-    })
-  };
+      }))
+    };
+  }, [maintenances]);
 
   const openExternalNavigation = () => {
     if (!activeTargetShelter) return;
@@ -1015,7 +1108,30 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           scaleBarPosition={{ bottom: SHEET_COLLAPSED + 6, left: 16 }}
           compassEnabled={false}
           zoomEnabled={true}
-          onCameraChanged={(e) => setCurrentZoom(e.properties.zoom)}
+          onCameraChanged={(e) => {
+            const zoom = e?.properties?.zoom;
+            const center = e?.properties?.center;
+            if (zoom != null) {
+              currentZoomRef.current = zoom;
+            }
+            if (cameraChangeTimerRef.current) {
+              clearTimeout(cameraChangeTimerRef.current);
+            }
+            cameraChangeTimerRef.current = setTimeout(() => {
+              if (zoom != null) {
+                const roundedZoom = Math.round(zoom * 2) / 2;
+                setCurrentZoom(prev => (prev !== roundedZoom ? roundedZoom : prev));
+              }
+              if (center && Array.isArray(center) && center.length >= 2) {
+                setMapCenter(prev => {
+                  if (!prev || Math.abs(prev[0] - center[0]) > 0.002 || Math.abs(prev[1] - center[1]) > 0.002) {
+                    return center;
+                  }
+                  return prev;
+                });
+              }
+            }, 180);
+          }}
           onDidFinishLoadingMap={() => {
             if (cameraRef.current && activeUserLocation) {
               cameraRef.current.setCamera({
@@ -1052,7 +1168,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           animationDuration={800}
         />
 
-        {filteredShelters.map(shelter => {
+        {visibleShelters.map(shelter => {
             const sLat = parseFloat(shelter.latitude);
             const sLng = parseFloat(shelter.longitude);
             
@@ -1060,12 +1176,6 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
             if (shelter.type === 'secondary' || shelter.facility_type === 'evacuation_center') {
               // Rule 1: Hide secondary shelters when zoomed out (city-level overview)
               if (currentZoom < 12) return null;
-              
-              // Rule 2: Hide secondary shelters that are too far (> 5km) from the resident
-              if (activeUserLocation) {
-                const distToUser = getDistanceMeters(activeUserLocation[1], activeUserLocation[0], sLat, sLng);
-                if (distToUser > 5000) return null; // Outside 5km radius
-              }
             }
             // -------------------------------------------------
 
@@ -1200,23 +1310,10 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
         )}
 
         {/* P3: Road Maintenance — dashed purple line segments */}
-        {maintenances.length > 0 && (
+        {roadMaintenanceGeoJSON && (
           <Mapbox.ShapeSource
             id="maintenanceSource"
-            shape={{
-              type: 'FeatureCollection',
-              features: maintenances.map(m => ({
-                type: 'Feature',
-                properties: { description: m.description },
-                geometry: {
-                  type: 'LineString',
-                  coordinates: [
-                    [parseFloat(m.start_longitude), parseFloat(m.start_latitude)],
-                    [parseFloat(m.end_longitude),   parseFloat(m.end_latitude)],
-                  ],
-                },
-              }))
-            }}
+            shape={roadMaintenanceGeoJSON}
           >
             <Mapbox.LineLayer
               id="maintenanceLayer"
