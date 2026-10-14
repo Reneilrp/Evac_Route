@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Linking, Alert, Platform, Animated, PanResponder, Vibration, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Linking, Alert, Platform, Animated, PanResponder, Vibration, Modal, Pressable } from 'react-native';
 import { AlertTriangle, Navigation, Phone, X, User, ChevronDown, Info, Layers, ShieldAlert, Activity, CheckCircle2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Mapbox from '@rnmapbox/maps';
@@ -1767,7 +1767,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
         top: Math.max(insets.top + 8, 48),
         left: 16,
         right: 16,
-        zIndex: 40,
+        zIndex: 48,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -1775,7 +1775,10 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
         {/* Left Side: Explicit Live Emergency Status Pill */}
         <TouchableOpacity
           onPress={() => {
-            setShowSituationBrief(true);
+            setShowSituationBrief(prev => !prev);
+            setIsDisasterFilterExpanded(false);
+            setIsFilterExpanded(false);
+            setIsStyleMenuOpen(false);
             Vibration.vibrate(40);
           }}
           style={{
@@ -1786,7 +1789,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
             paddingVertical: 8,
             borderRadius: 24,
             borderWidth: 1,
-            borderColor: isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)'),
+            borderColor: showSituationBrief ? colors.primary : (isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)')),
             elevation: 6,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
@@ -1823,6 +1826,8 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
             onPress={() => {
               setIsDisasterFilterExpanded(prev => !prev);
               setIsFilterExpanded(false);
+              setShowSituationBrief(false);
+              setIsStyleMenuOpen(false);
               Vibration.vibrate(40);
             }}
             style={{
@@ -1868,6 +1873,8 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
             onPress={() => {
               setIsFilterExpanded(prev => !prev);
               setIsDisasterFilterExpanded(false);
+              setShowSituationBrief(false);
+              setIsStyleMenuOpen(false);
               Vibration.vibrate(40);
             }}
             style={{
@@ -1907,6 +1914,27 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* ─── Tap-Outside Dismiss Backdrop for Open Dropdowns & Overlays ─── */}
+      {(isDisasterFilterExpanded || isFilterExpanded || showSituationBrief || isStyleMenuOpen) && (
+        <Pressable
+          onPress={() => {
+            setIsDisasterFilterExpanded(false);
+            setIsFilterExpanded(false);
+            setShowSituationBrief(false);
+            setIsStyleMenuOpen(false);
+          }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 42,
+            backgroundColor: 'transparent',
+          }}
+        />
+      )}
 
       {/* Active Disaster Filter Contextual Notification Banner */}
       {selectedDisasterFilter !== 'all' && (
@@ -2083,10 +2111,13 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
       )}
 
       {/* ─── Google Maps Style Layers FAB (floating, bottom-left) ─── */}
-      <View style={{ position: 'absolute', bottom: SHEET_COLLAPSED + 36, left: 16, zIndex: 35 }}>
+      <View style={{ position: 'absolute', bottom: SHEET_COLLAPSED + 36, left: 16, zIndex: isStyleMenuOpen ? 50 : 35 }}>
         <TouchableOpacity
           onPress={() => {
             setIsStyleMenuOpen(prev => !prev);
+            setIsDisasterFilterExpanded(false);
+            setIsFilterExpanded(false);
+            setShowSituationBrief(false);
             Vibration.vibrate(30);
           }}
           style={{
@@ -2246,14 +2277,14 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
             width: 50,
             height: 50,
             borderRadius: 25,
-            backgroundColor: isHighContrast ? '#000000' : 'rgba(15,23,42,0.85)',
+            backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.95)'),
             borderWidth: 2,
-            borderColor: isHighContrast ? '#FFFF00' : 'rgba(255,255,255,0.15)',
+            borderColor: isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)'),
             alignItems: 'center',
             justifyContent: 'center',
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
+            shadowOpacity: isDarkMode ? 0.3 : 0.15,
             shadowRadius: 4,
             elevation: 5,
           }}>
@@ -2268,13 +2299,20 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           <Text style={{
             fontSize: 8,
             fontWeight: '900',
-            color: isHighContrast ? '#FFFF00' : '#ffffff',
+            color: isHighContrast ? '#FFFF00' : (isDarkMode ? '#ffffff' : colors.textPrimary),
             marginTop: 4,
-            backgroundColor: isHighContrast ? '#000000' : 'rgba(0,0,0,0.6)',
+            backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(0, 0, 0, 0.6)' : 'rgba(255, 255, 255, 0.95)'),
+            borderWidth: isHighContrast ? 1 : (isDarkMode ? 0 : 1),
+            borderColor: isHighContrast ? '#FFFF00' : (isDarkMode ? 'transparent' : 'rgba(0, 0, 0, 0.1)'),
             paddingHorizontal: 6,
             paddingVertical: 2,
             borderRadius: 6,
             overflow: 'hidden',
+            elevation: isDarkMode ? 0 : 2,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: isDarkMode ? 0 : 0.1,
+            shadowRadius: 2,
           }}>
             TO SHELTER
           </Text>
