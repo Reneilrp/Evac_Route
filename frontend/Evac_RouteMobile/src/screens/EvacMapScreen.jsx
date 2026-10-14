@@ -1012,7 +1012,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           logoEnabled={false}
           attributionEnabled={false}
           scaleBarEnabled={true}
-          scaleBarPosition={{ bottom: SHEET_COLLAPSED + 20, left: 68 }}
+          scaleBarPosition={{ bottom: SHEET_COLLAPSED + 6, left: 16 }}
           compassEnabled={false}
           zoomEnabled={true}
           onCameraChanged={(e) => setCurrentZoom(e.properties.zoom)}
@@ -1781,26 +1781,30 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: isHighContrast ? '#000000' : 'rgba(15, 23, 42, 0.92)',
+            backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255, 255, 255, 0.96)'),
             paddingHorizontal: 12,
             paddingVertical: 8,
             borderRadius: 24,
             borderWidth: 1,
-            borderColor: isHighContrast ? '#FFFF00' : 'rgba(255, 255, 255, 0.15)',
+            borderColor: isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)'),
             elevation: 6,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: isDarkMode ? 0.3 : 0.1,
+            shadowRadius: 4,
             gap: 6,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#22c55e' }} />
-            <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: 'bold' }}>{shelters.length} Shelters</Text>
+            <Text style={{ color: isHighContrast ? '#FFFF00' : colors.textPrimary, fontSize: 11, fontWeight: 'bold' }}>{shelters.length} Shelters</Text>
           </View>
           {hazards.length > 0 && (
             <>
-              <View style={{ width: 1, height: 12, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+              <View style={{ width: 1, height: 12, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)' }} />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#ef4444' }} />
-                <Text style={{ color: '#f87171', fontSize: 11, fontWeight: 'bold' }}>{hazards.length} Hazards</Text>
+                <Text style={{ color: isDarkMode ? '#f87171' : '#dc2626', fontSize: 11, fontWeight: 'bold' }}>{hazards.length} Hazards</Text>
               </View>
             </>
           )}
@@ -1809,7 +1813,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
               <Text style={{ color: '#0f172a', fontSize: 8, fontWeight: '900' }}>OFFLINE</Text>
             </View>
           )}
-          <Info size={13} color="#94a3b8" />
+          <Info size={13} color={colors.textMuted} />
         </TouchableOpacity>
 
         {/* Right Side: Dual Dropdown Selector Pills (Disasters & Places) */}
@@ -1824,13 +1828,17 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: selectedDisasterFilter !== 'all' ? '#0284c7' : (isHighContrast ? '#000000' : 'rgba(15, 23, 42, 0.95)'),
+              backgroundColor: selectedDisasterFilter !== 'all' ? '#0284c7' : (isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.96)')),
               paddingHorizontal: 10,
               paddingVertical: 8,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: isDisasterFilterExpanded ? colors.primary : (isHighContrast ? '#FFFF00' : 'rgba(255, 255, 255, 0.2)'),
+              borderColor: isDisasterFilterExpanded ? colors.primary : (isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.12)')),
               elevation: 6,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: isDarkMode ? 0.3 : 0.1,
+              shadowRadius: 4,
               gap: 5,
             }}
           >
@@ -1841,14 +1849,18 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
                selectedDisasterFilter === 'siege' ? '⚔️' :
                selectedDisasterFilter === 'chemical' ? '🧪' : '🌐'}
             </Text>
-            <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: 'bold' }}>
+            <Text style={{
+              color: selectedDisasterFilter !== 'all' ? '#ffffff' : (isHighContrast ? '#FFFF00' : colors.textPrimary),
+              fontSize: 11,
+              fontWeight: 'bold'
+            }}>
               {selectedDisasterFilter === 'flood' ? 'Flood' :
                selectedDisasterFilter === 'fire' ? 'Fire' :
                selectedDisasterFilter === 'earthquake' ? 'Quake' :
                selectedDisasterFilter === 'siege' ? 'Siege' :
                selectedDisasterFilter === 'chemical' ? 'Chem' : 'Disasters'}
             </Text>
-            <ChevronDown size={13} color="#38bdf8" style={{ transform: [{ rotate: isDisasterFilterExpanded ? '180deg' : '0deg' }] }} />
+            <ChevronDown size={13} color={selectedDisasterFilter !== 'all' ? '#ffffff' : colors.primary} style={{ transform: [{ rotate: isDisasterFilterExpanded ? '180deg' : '0deg' }] }} />
           </TouchableOpacity>
 
           {/* Place Category Dropdown Pill */}
@@ -1861,13 +1873,17 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: selectedCategoryFilter !== 'all' ? colors.primary : (isHighContrast ? '#000000' : 'rgba(15, 23, 42, 0.95)'),
+              backgroundColor: selectedCategoryFilter !== 'all' ? colors.primary : (isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.96)')),
               paddingHorizontal: 10,
               paddingVertical: 8,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: isFilterExpanded ? colors.primary : (isHighContrast ? '#FFFF00' : 'rgba(255, 255, 255, 0.2)'),
+              borderColor: isFilterExpanded ? colors.primary : (isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.12)')),
               elevation: 6,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: isDarkMode ? 0.3 : 0.1,
+              shadowRadius: 4,
               gap: 5,
             }}
           >
@@ -1877,13 +1893,17 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
                selectedCategoryFilter === 'assembly_point' ? '🚩' :
                selectedCategoryFilter === 'security' ? '👮' : '📍'}
             </Text>
-            <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: 'bold' }}>
+            <Text style={{
+              color: selectedCategoryFilter !== 'all' ? '#ffffff' : (isHighContrast ? '#FFFF00' : colors.textPrimary),
+              fontSize: 11,
+              fontWeight: 'bold'
+            }}>
               {selectedCategoryFilter === 'shelter' ? 'Shelters' :
                selectedCategoryFilter === 'safe_zone' ? 'Safe' :
                selectedCategoryFilter === 'assembly_point' ? 'Assembly' :
                selectedCategoryFilter === 'security' ? 'Police' : 'Places'}
             </Text>
-            <ChevronDown size={13} color="#38bdf8" style={{ transform: [{ rotate: isFilterExpanded ? '180deg' : '0deg' }] }} />
+            <ChevronDown size={13} color={selectedCategoryFilter !== 'all' ? '#ffffff' : colors.primary} style={{ transform: [{ rotate: isFilterExpanded ? '180deg' : '0deg' }] }} />
           </TouchableOpacity>
         </View>
       </View>
@@ -1950,19 +1970,19 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           top: Math.max(insets.top + 48, 92),
           right: 125,
           width: 175,
-          backgroundColor: isHighContrast ? '#000000' : 'rgba(15, 23, 42, 0.98)',
+          backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255, 255, 255, 0.98)'),
           borderRadius: 16,
           padding: 6,
           borderWidth: 1,
-          borderColor: isHighContrast ? '#FFFF00' : 'rgba(255, 255, 255, 0.15)',
+          borderColor: isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'),
           zIndex: 50,
           elevation: 10,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.4,
+          shadowOpacity: isDarkMode ? 0.4 : 0.15,
           shadowRadius: 8,
         }}>
-          <Text style={{ fontSize: 9, fontWeight: '900', color: '#38bdf8', paddingHorizontal: 8, paddingVertical: 4, textTransform: 'uppercase' }}>
+          <Text style={{ fontSize: 9, fontWeight: '900', color: isDarkMode ? '#38bdf8' : colors.primary, paddingHorizontal: 8, paddingVertical: 4, textTransform: 'uppercase' }}>
             Filter Disaster Event
           </Text>
           {[
@@ -1994,7 +2014,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
               <Text style={{
                 fontSize: 12,
                 fontWeight: '700',
-                color: selectedDisasterFilter === dItem.key ? (isHighContrast ? '#000000' : '#ffffff') : '#cbd5e1'
+                color: selectedDisasterFilter === dItem.key ? (isHighContrast ? '#000000' : '#ffffff') : (isDarkMode ? '#cbd5e1' : colors.textPrimary)
               }}>
                 {dItem.label}
               </Text>
@@ -2010,19 +2030,19 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           top: Math.max(insets.top + 48, 92),
           right: 16,
           width: 175,
-          backgroundColor: isHighContrast ? '#000000' : 'rgba(15, 23, 42, 0.98)',
+          backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255, 255, 255, 0.98)'),
           borderRadius: 16,
           padding: 6,
           borderWidth: 1,
-          borderColor: isHighContrast ? '#FFFF00' : 'rgba(255, 255, 255, 0.15)',
+          borderColor: isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'),
           zIndex: 50,
           elevation: 10,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.4,
+          shadowOpacity: isDarkMode ? 0.4 : 0.15,
           shadowRadius: 8,
         }}>
-          <Text style={{ fontSize: 9, fontWeight: '900', color: '#94a3b8', paddingHorizontal: 8, paddingVertical: 4, textTransform: 'uppercase' }}>
+          <Text style={{ fontSize: 9, fontWeight: '900', color: isDarkMode ? '#94a3b8' : colors.textSecondary, paddingHorizontal: 8, paddingVertical: 4, textTransform: 'uppercase' }}>
             Filter Place Type
           </Text>
           {[
@@ -2053,7 +2073,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
               <Text style={{
                 fontSize: 12,
                 fontWeight: '700',
-                color: selectedCategoryFilter === item.key ? (isHighContrast ? '#000000' : '#ffffff') : '#cbd5e1'
+                color: selectedCategoryFilter === item.key ? (isHighContrast ? '#000000' : '#ffffff') : (isDarkMode ? '#cbd5e1' : colors.textPrimary)
               }}>
                 {item.label}
               </Text>
@@ -2063,7 +2083,7 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
       )}
 
       {/* ─── Google Maps Style Layers FAB (floating, bottom-left) ─── */}
-      <View style={{ position: 'absolute', bottom: SHEET_COLLAPSED + 16, left: 16, zIndex: 35 }}>
+      <View style={{ position: 'absolute', bottom: SHEET_COLLAPSED + 36, left: 16, zIndex: 35 }}>
         <TouchableOpacity
           onPress={() => {
             setIsStyleMenuOpen(prev => !prev);
@@ -2563,57 +2583,57 @@ function createCirclePolygon(center, radiusInMeters, points = 64) {
           top: 100,
           left: 16,
           right: 16,
-          backgroundColor: '#0f172a',
+          backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
           borderRadius: 20,
           padding: 16,
           borderWidth: 1.5,
-          borderColor: '#38bdf8',
+          borderColor: isDarkMode ? '#38bdf8' : colors.primary,
           zIndex: 60,
           elevation: 12,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.5,
+          shadowOpacity: isDarkMode ? 0.5 : 0.15,
           shadowRadius: 10,
         }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <Text style={{ color: '#38bdf8', fontSize: 14, fontWeight: '900' }}>📍 ZAMBOANGA EMERGENCY BRIEFING</Text>
+            <Text style={{ color: isDarkMode ? '#38bdf8' : colors.primary, fontSize: 14, fontWeight: '900' }}>📍 ZAMBOANGA EMERGENCY BRIEFING</Text>
             <TouchableOpacity onPress={() => setShowSituationBrief(false)}>
-              <X size={18} color="#94a3b8" />
+              <X size={18} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
           <View style={{ gap: 10 }}>
-            <View style={{ backgroundColor: '#1e293b', padding: 10, borderRadius: 10 }}>
+            <View style={{ backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc', padding: 10, borderRadius: 10, borderWidth: isDarkMode ? 0 : 1, borderColor: 'rgba(0,0,0,0.06)' }}>
               <Text style={{ color: '#22c55e', fontSize: 12, fontWeight: 'bold', marginBottom: 2 }}>
                 ⭐ {shelters.filter(s => s.type === 'primary').length} Primary Clusters & 🏠 {shelters.filter(s => s.type === 'secondary').length} Secondary Courts
               </Text>
-              <Text style={{ color: '#cbd5e1', fontSize: 11 }}>
+              <Text style={{ color: isDarkMode ? '#cbd5e1' : colors.textSecondary, fontSize: 11 }}>
                 Primary clusters are fully-equipped disaster hubs. Secondary courts open during overflow.
               </Text>
             </View>
 
-            <View style={{ backgroundColor: '#1e293b', padding: 10, borderRadius: 10 }}>
-              <Text style={{ color: hazards.length > 0 ? '#f87171' : '#38bdf8', fontSize: 12, fontWeight: 'bold', marginBottom: 2 }}>
+            <View style={{ backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc', padding: 10, borderRadius: 10, borderWidth: isDarkMode ? 0 : 1, borderColor: 'rgba(0,0,0,0.06)' }}>
+              <Text style={{ color: hazards.length > 0 ? (isDarkMode ? '#f87171' : '#dc2626') : (isDarkMode ? '#38bdf8' : colors.primary), fontSize: 12, fontWeight: 'bold', marginBottom: 2 }}>
                 ⚠️ Active Hazard Zones: {hazards.length} Detected
               </Text>
               {hazards.length > 0 ? (
                 hazards.map((h, idx) => (
-                  <Text key={idx} style={{ color: '#fca5a5', fontSize: 11, marginVertical: 1 }}>
+                  <Text key={idx} style={{ color: isDarkMode ? '#fca5a5' : '#b91c1c', fontSize: 11, marginVertical: 1 }}>
                     • {h.name || 'Hazard Zone'} ({h.hazard_type} - {h.severity_level || 'moderate'})
                   </Text>
                 ))
               ) : (
-                <Text style={{ color: '#94a3b8', fontSize: 11 }}>No critical active hazards reported nearby.</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 11 }}>No critical active hazards reported nearby.</Text>
               )}
             </View>
 
             {maintenances.length > 0 && (
-              <View style={{ backgroundColor: '#1e293b', padding: 10, borderRadius: 10 }}>
-                <Text style={{ color: '#c084fc', fontSize: 12, fontWeight: 'bold', marginBottom: 2 }}>
+              <View style={{ backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc', padding: 10, borderRadius: 10, borderWidth: isDarkMode ? 0 : 1, borderColor: 'rgba(0,0,0,0.06)' }}>
+                <Text style={{ color: isDarkMode ? '#c084fc' : '#7c3aed', fontSize: 12, fontWeight: 'bold', marginBottom: 2 }}>
                   🛣️ Road Closures: {maintenances.length} Active
                 </Text>
                 {maintenances.map((m, idx) => (
-                  <Text key={idx} style={{ color: '#e9d5ff', fontSize: 11, marginVertical: 1 }}>
+                  <Text key={idx} style={{ color: isDarkMode ? '#e9d5ff' : '#6d28d9', fontSize: 11, marginVertical: 1 }}>
                     • {m.description || 'Road maintenance in progress'}
                   </Text>
                 ))}
