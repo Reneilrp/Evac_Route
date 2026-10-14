@@ -418,7 +418,7 @@ export default function ReportIncidentScreen({ navigation }) {
             paddingVertical: 2,
             borderRadius: 12,
           }}>
-            <Text style={{ fontSize: 10, fontWeight: '800', color: colors.textPrimary, textTransform: 'uppercase' }}>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: '#ffffff', textTransform: 'uppercase' }}>
               {item.severity_level}
             </Text>
           </View>
