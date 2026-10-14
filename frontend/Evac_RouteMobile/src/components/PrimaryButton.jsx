@@ -17,9 +17,11 @@ export default function PrimaryButton({
   style,
   textStyle,
   haptic = true,
+  throttleMs = 750,
 }) {
   const { colors, isDarkMode } = useTheme();
   const scaleAnimRef = useRef(new Animated.Value(1));
+  const lastPressRef = useRef(0);
 
   const handlePressIn = useCallback(() => {
     Animated.spring(scaleAnimRef.current, {
@@ -40,11 +42,18 @@ export default function PrimaryButton({
   }, []);
 
   const handlePress = useCallback(() => {
+    if (disabled || loading) return;
+    const now = Date.now();
+    if (now - lastPressRef.current < throttleMs) {
+      return; // Debounce rapid multi-clicks
+    }
+    lastPressRef.current = now;
+
     if (haptic) {
       Vibration.vibrate(10);
     }
     onPress?.();
-  }, [haptic, onPress]);
+  }, [disabled, loading, throttleMs, haptic, onPress]);
 
   const variantStyles = getVariantStyles(variant, colors, isDarkMode);
   const sizeStyles = SIZE_STYLES[size] || SIZE_STYLES.large;

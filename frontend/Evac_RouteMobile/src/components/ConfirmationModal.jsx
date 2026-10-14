@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   Modal,
   View,
@@ -59,6 +59,15 @@ export default function ConfirmationModal({
   const styles = useThemedStyles(getStyles);
   const config = VARIANT_CONFIGS[variant] || VARIANT_CONFIGS.warning;
   const IconComponent = CustomIcon || config.defaultIcon;
+  const lastConfirmPressRef = useRef(0);
+
+  const handleConfirm = () => {
+    if (loading) return;
+    const now = Date.now();
+    if (now - lastConfirmPressRef.current < 800) return;
+    lastConfirmPressRef.current = now;
+    onConfirm?.();
+  };
 
   return (
     <Modal
@@ -121,7 +130,7 @@ export default function ConfirmationModal({
                     { backgroundColor: config.buttonBg },
                     loading && { opacity: 0.75 },
                   ]}
-                  onPress={onConfirm}
+                  onPress={handleConfirm}
                   disabled={loading}
                   activeOpacity={0.8}
                 >

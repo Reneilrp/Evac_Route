@@ -240,6 +240,7 @@ export default function EvacMapScreen({ navigation, route }) {
   // ─── Automated Geofence Arrival State ───
   const [geofencePrompt, setGeofencePrompt] = useState(null);
   const [isGeofenceCheckingIn, setIsGeofenceCheckingIn] = useState(false);
+  const isGeofenceCheckingInRef = useRef(false);
   const checkedInShelterIdRef = useRef(null);
   const dismissedSheltersRef = useRef(new Set());
 
@@ -639,7 +640,8 @@ export default function EvacMapScreen({ navigation, route }) {
   }, [activeUserLocation, safeShelters, geofencePrompt, isGeofenceCheckingIn]);
 
   const handleConfirmGeofenceCheckIn = async (targetShelter) => {
-    if (!targetShelter || !activeUserLocation) return;
+    if (!targetShelter || !activeUserLocation || isGeofenceCheckingIn || isGeofenceCheckingInRef.current) return;
+    isGeofenceCheckingInRef.current = true;
     setIsGeofenceCheckingIn(true);
     try {
       await api.post(`/shelters/${targetShelter.id}/geofence-checkin`, {
@@ -660,6 +662,7 @@ export default function EvacMapScreen({ navigation, route }) {
       const msg = err?.response?.data?.message || 'Geofence check-in could not be completed.';
       Alert.alert('Check-In Notice', msg);
     } finally {
+      isGeofenceCheckingInRef.current = false;
       setIsGeofenceCheckingIn(false);
     }
   };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -70,6 +70,8 @@ export default function ReportIncidentScreen({ navigation }) {
   const [locating, setLocating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isSendingSOS, setIsSendingSOS] = useState(false);
+  const isSubmittingRef = useRef(false);
+  const isSendingSOSRef = useRef(false);
 
   // --- Styled Confirmation Modal State ---
   const [confirmModal, setConfirmModal] = useState({
@@ -125,6 +127,8 @@ export default function ReportIncidentScreen({ navigation }) {
       icon: LifeBuoy,
       loading: false,
       onConfirm: async () => {
+        if (isSendingSOSRef.current) return;
+        isSendingSOSRef.current = true;
         setConfirmModal(prev => ({ ...prev, loading: true }));
         setIsSendingSOS(true);
         try {
@@ -151,6 +155,7 @@ export default function ReportIncidentScreen({ navigation }) {
           closeConfirmModal();
           Alert.alert('Error', err?.response?.data?.message || 'Failed to transmit SOS signal.');
         } finally {
+          isSendingSOSRef.current = false;
           setIsSendingSOS(false);
         }
       },
@@ -336,6 +341,8 @@ export default function ReportIncidentScreen({ navigation }) {
   };
 
   const sendReportToServer = async () => {
+    if (isSubmittingRef.current || submitting) return;
+    isSubmittingRef.current = true;
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -374,6 +381,7 @@ export default function ReportIncidentScreen({ navigation }) {
       const msg = error?.response?.data?.message || 'Failed to submit report. Please try again.';
       Alert.alert('Submission Failed', msg);
     } finally {
+      isSubmittingRef.current = false;
       setSubmitting(false);
     }
   };

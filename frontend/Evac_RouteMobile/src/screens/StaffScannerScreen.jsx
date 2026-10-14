@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Vibration, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -27,6 +27,9 @@ export default function StaffScannerScreen() {
   const [claimSuccess, setClaimSuccess] = useState(null);
   const [checkInLoading, setCheckInLoading] = useState(false);
   const [checkInSuccess, setCheckInSuccess] = useState(null);
+
+  const isClaimingRef = useRef(false);
+  const isCheckingInRef = useRef(false);
 
   // Reset scanner state
   const resetScanner = () => {
@@ -80,7 +83,8 @@ export default function StaffScannerScreen() {
   };
 
   const executeClaim = async () => {
-    if (!scanResult || claimLoading) return;
+    if (!scanResult || claimLoading || isClaimingRef.current) return;
+    isClaimingRef.current = true;
     setClaimLoading(true);
     setError(null);
     
@@ -107,11 +111,14 @@ export default function StaffScannerScreen() {
       Vibration.vibrate([0, 100, 100, 100]);
       setError(err.response?.data?.message || 'Failed to record claim. Please try again.');
     } finally {
+      isClaimingRef.current = false;
       setClaimLoading(false);
     }
   };
 
   const executeCheckIn = async () => {
+    if (!scanResult || checkInLoading || isCheckingInRef.current) return;
+
     const assignedShelter = user?.assigned_shelter || user?.assignedShelter;
     let targetShelterId = user?.assigned_shelter_id || assignedShelter?.id;
     let sName = assignedShelter?.name;
@@ -133,7 +140,8 @@ export default function StaffScannerScreen() {
       setError("No evacuation shelter assigned to your marshal profile. Please contact CSWDO supervisor.");
       return;
     }
-    if (!scanResult || checkInLoading) return;
+
+    isCheckingInRef.current = true;
     setCheckInLoading(true);
     setError(null);
 
@@ -159,6 +167,7 @@ export default function StaffScannerScreen() {
       Vibration.vibrate([0, 100, 100, 100]);
       setError(err.response?.data?.message || 'Failed to check in resident to shelter. Please try again.');
     } finally {
+      isCheckingInRef.current = false;
       setCheckInLoading(false);
     }
   };

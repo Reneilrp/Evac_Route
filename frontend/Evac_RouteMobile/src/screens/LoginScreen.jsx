@@ -75,7 +75,10 @@ export default function LoginScreen({ navigation }) {
     setError('');
   };
 
+  const isLoggingInRef = useRef(false);
+
   const handleLoginSubmit = async () => {
+    if (isLoggingInRef.current || loading) return;
     if (!email.trim()) {
       setError('Please enter your email or identifier.');
       return;
@@ -85,13 +88,18 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
+    isLoggingInRef.current = true;
     setLoading(true);
     setError('');
 
-    const result = await loginWithCredentials(email.trim().toLowerCase(), password);
-    setLoading(false);
-    if (!result || !result.success) {
-      setError(result?.message || 'Invalid email or password. Please try again.');
+    try {
+      const result = await loginWithCredentials(email.trim().toLowerCase(), password);
+      if (!result || !result.success) {
+        setError(result?.message || 'Invalid email or password. Please try again.');
+      }
+    } finally {
+      isLoggingInRef.current = false;
+      setLoading(false);
     }
   };
 

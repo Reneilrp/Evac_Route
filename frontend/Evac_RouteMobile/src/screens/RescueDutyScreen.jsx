@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -173,6 +173,8 @@ export default function RescueDutyScreen({ navigation }) {
     };
   }, [queryClient]);
 
+  const isUpdatingStatusRef = useRef(false);
+
   // Status Stepper Mutation
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status, target_shelter_id, staging_point_id }) =>
@@ -192,7 +194,16 @@ export default function RescueDutyScreen({ navigation }) {
     onError: (err) => {
       Alert.alert('Update Failed', err?.response?.data?.message || 'Could not update mission status.');
     },
+    onSettled: () => {
+      isUpdatingStatusRef.current = false;
+    },
   });
+
+  const handleUpdateMissionStatus = (params) => {
+    if (updateStatusMutation.isPending || isUpdatingStatusRef.current) return;
+    isUpdatingStatusRef.current = true;
+    updateStatusMutation.mutate(params);
+  };
 
   const handleCall = (phoneNumber) => {
     if (!phoneNumber) {
@@ -604,7 +615,7 @@ export default function RescueDutyScreen({ navigation }) {
                 <TouchableOpacity
                   style={[styles.stepperActionBtn, styles.btnBlue]}
                   onPress={() =>
-                    updateStatusMutation.mutate({ id: currentMission.id, status: 'en_route' })
+                    handleUpdateMissionStatus({ id: currentMission.id, status: 'en_route' })
                   }
                   disabled={updateStatusMutation.isPending}
                   activeOpacity={0.85}
@@ -618,7 +629,7 @@ export default function RescueDutyScreen({ navigation }) {
                 <TouchableOpacity
                   style={[styles.stepperActionBtn, styles.btnAmber]}
                   onPress={() =>
-                    updateStatusMutation.mutate({ id: currentMission.id, status: 'on_scene' })
+                    handleUpdateMissionStatus({ id: currentMission.id, status: 'on_scene' })
                   }
                   disabled={updateStatusMutation.isPending}
                   activeOpacity={0.85}
@@ -634,12 +645,12 @@ export default function RescueDutyScreen({ navigation }) {
                     style={[styles.stepperActionBtn, isSuppressionMission ? styles.btnGreen : styles.btnCyan]}
                     onPress={() => {
                       if (isSuppressionMission) {
-                        updateStatusMutation.mutate({
+                        handleUpdateMissionStatus({
                           id: currentMission.id,
                           status: 'completed',
                         });
                       } else {
-                        updateStatusMutation.mutate({
+                        handleUpdateMissionStatus({
                           id: currentMission.id,
                           status: 'transporting',
                           target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
@@ -680,7 +691,7 @@ export default function RescueDutyScreen({ navigation }) {
                         loading: updateStatusMutation.isPending,
                         onConfirm: () => {
                           closeConfirmModal();
-                          updateStatusMutation.mutate({
+                          handleUpdateMissionStatus({
                             id: currentMission.id,
                             status: 'staged_at_assembly',
                             staging_point_id: stagingPoint?.id,
@@ -702,7 +713,7 @@ export default function RescueDutyScreen({ navigation }) {
                 <TouchableOpacity
                   style={[styles.stepperActionBtn, styles.btnGreen]}
                   onPress={() =>
-                    updateStatusMutation.mutate({
+                    handleUpdateMissionStatus({
                       id: currentMission.id,
                       status: 'completed',
                       target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,

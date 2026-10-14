@@ -87,6 +87,7 @@ export default function DispatchDetailScreen({ route, navigation }) {
   };
 
   const handleDepart = () => {
+    if (departMutation.isPending) return;
     setConfirmModal({
       visible: true,
       title: 'Load & Depart',
@@ -98,6 +99,7 @@ export default function DispatchDetailScreen({ route, navigation }) {
       icon: Truck,
       loading: departMutation.isPending,
       onConfirm: () => {
+        if (departMutation.isPending) return;
         closeConfirmModal();
         departMutation.mutate();
       },
@@ -105,6 +107,7 @@ export default function DispatchDetailScreen({ route, navigation }) {
   };
 
   const handleDeliver = () => {
+    if (deliverMutation.isPending) return;
     setConfirmModal({
       visible: true,
       title: 'Confirm Delivery',
@@ -116,6 +119,7 @@ export default function DispatchDetailScreen({ route, navigation }) {
       icon: CheckCircle,
       loading: deliverMutation.isPending,
       onConfirm: () => {
+        if (deliverMutation.isPending) return;
         closeConfirmModal();
         deliverMutation.mutate();
       },

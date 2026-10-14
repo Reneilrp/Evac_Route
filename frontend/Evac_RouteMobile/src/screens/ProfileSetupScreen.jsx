@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { View, Text, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { Plus, Minus, Footprints, Bike, Car } from 'lucide-react-native';
@@ -26,6 +26,7 @@ export default function ProfileSetupScreen({ navigation }) {
   const [contact, setContact] = useState('');
   const [transportationMode, setTransportationMode] = useState('pedestrian');
   const [loading, setLoading] = useState(false);
+  const isRegisteringRef = useRef(false);
 
   const transportOptions = [
     {
@@ -46,6 +47,8 @@ export default function ProfileSetupScreen({ navigation }) {
   ];
 
   const handleRegister = async () => {
+    if (isRegisteringRef.current || loading) return;
+
     const trimmedFirst = firstName.trim();
     const trimmedMiddle = middleName.trim();
     const trimmedLast = lastName.trim();
@@ -57,6 +60,7 @@ export default function ProfileSetupScreen({ navigation }) {
 
     const fullName = [trimmedFirst, trimmedMiddle, trimmedLast].filter(Boolean).join(' ');
 
+    isRegisteringRef.current = true;
     setLoading(true);
     try {
       // 1. Call the real Laravel API
@@ -89,12 +93,12 @@ export default function ProfileSetupScreen({ navigation }) {
 
       // 4. Sync user state into AuthContext directly
       await login(registeredUser);
-      setLoading(false);
-
     } catch (error) {
       const serverMsg = error?.response?.data?.message || error?.message || 'Connection error. Please check your network and try again.';
       console.error('[Registration Failed]:', error?.response?.data || error);
       alert(`Registration Failed: ${serverMsg}`);
+    } finally {
+      isRegisteringRef.current = false;
       setLoading(false);
     }
   };

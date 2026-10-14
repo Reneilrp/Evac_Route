@@ -379,7 +379,18 @@ export default function RescueMapScreen({ navigation, route }) {
     onError: (err) => {
       Alert.alert('Status Error', err?.response?.data?.message || 'Could not update status.');
     },
+    onSettled: () => {
+      isUpdatingStatusRef.current = false;
+    },
   });
+
+  const isUpdatingStatusRef = useRef(false);
+
+  const safeUpdateMissionStatus = (params) => {
+    if (updateStatusMutation.isPending || isUpdatingStatusRef.current) return;
+    isUpdatingStatusRef.current = true;
+    updateStatusMutation.mutate(params);
+  };
 
   // ─── AUTOMATED 20-METER PROXIMITY ENGINE ───
   useEffect(() => {
@@ -516,7 +527,7 @@ export default function RescueMapScreen({ navigation, route }) {
   // ─── GUIDED 5-STEP SIMULATION HANDLERS ───
   const handleStep1_EnRoute = () => {
     if (!currentMission) return;
-    updateStatusMutation.mutate({
+    safeUpdateMissionStatus({
       id: currentMission.id,
       status: 'en_route',
     });
@@ -540,7 +551,7 @@ export default function RescueMapScreen({ navigation, route }) {
       zoomLevel: 17,
       animationDuration: 800,
     });
-    updateStatusMutation.mutate({
+    safeUpdateMissionStatus({
       id: currentMission.id,
       status: 'on_scene',
     });
@@ -550,7 +561,7 @@ export default function RescueMapScreen({ navigation, route }) {
 
   const handleStep3_ExtractAndReRoute = () => {
     if (!currentMission) return;
-    updateStatusMutation.mutate({
+    safeUpdateMissionStatus({
       id: currentMission.id,
       status: 'transporting',
       target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
@@ -575,7 +586,7 @@ export default function RescueMapScreen({ navigation, route }) {
 
   const handleStep5_HandoverAndStandby = () => {
     if (!currentMission) return;
-    updateStatusMutation.mutate({
+    safeUpdateMissionStatus({
       id: currentMission.id,
       status: 'completed',
       target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
@@ -607,7 +618,7 @@ export default function RescueMapScreen({ navigation, route }) {
 
   const handleResetMissionToDispatched = () => {
     if (!currentMission) return;
-    updateStatusMutation.mutate({
+    safeUpdateMissionStatus({
       id: currentMission.id,
       status: 'dispatched',
     });
@@ -1177,12 +1188,12 @@ export default function RescueMapScreen({ navigation, route }) {
                     style={[styles.dockBtn, styles.transportBtn, { width: '100%', paddingVertical: 12 }]}
                     onPress={() => {
                       if (isSuppressionMission) {
-                        updateStatusMutation.mutate({
+                        safeUpdateMissionStatus({
                           id: currentMission.id,
                           status: 'completed',
                         });
                       } else {
-                        updateStatusMutation.mutate({
+                        safeUpdateMissionStatus({
                           id: currentMission.id,
                           status: 'transporting',
                           target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
@@ -1270,13 +1281,13 @@ export default function RescueMapScreen({ navigation, route }) {
                 setShowVictimArrivalModal(false);
                 if (isSuppressionMission) {
                   // If it's a suppression mission, it completes here. No shelter.
-                  updateStatusMutation.mutate({
+                  safeUpdateMissionStatus({
                     id: currentMission.id,
                     status: 'completed',
                   });
                 } else {
                   // Standard Evacuation: Proceed to Shelter Transport Phase
-                  updateStatusMutation.mutate({
+                  safeUpdateMissionStatus({
                     id: currentMission.id,
                     status: 'transporting',
                     target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
@@ -1341,7 +1352,7 @@ export default function RescueMapScreen({ navigation, route }) {
               style={[styles.modalActionPrimaryBtn, { backgroundColor: '#10b981' }]}
               onPress={() => {
                 setShowShelterArrivalModal(false);
-                updateStatusMutation.mutate({
+                safeUpdateMissionStatus({
                   id: currentMission.id,
                   status: 'completed',
                   target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
