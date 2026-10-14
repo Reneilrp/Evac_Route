@@ -965,15 +965,6 @@ export default function EvacMapScreen({ navigation, route }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNavigating, activeUserLocation, targetLng, targetLat, hazards, preloadedGraph, transportationMode, activeTargetShelter?.name, cachedRoute, lastRoutingLocation]);
 
-  if (!location || (isLoadingShelters && offlineShelters.length === 0)) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Acquiring GPS Signal...</Text>
-      </View>
-    );
-  }
-
   const routeGeoJSON = useMemo(() => {
     return cachedRoute ? {
       type: 'FeatureCollection',
@@ -984,7 +975,7 @@ export default function EvacMapScreen({ navigation, route }) {
   const activeHazardsGeoJSON = useMemo(() => {
     return {
       type: 'FeatureCollection',
-      features: visibleHazards.filter(h => h.is_active && !h.is_fixed_flood_spot).map(hazard => {
+      features: (visibleHazards || []).filter(h => h.is_active && !h.is_fixed_flood_spot).map(hazard => {
         const polygon = createCirclePolygon(
           [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
           parseFloat(hazard.radius_meters || 50),
@@ -1007,7 +998,7 @@ export default function EvacMapScreen({ navigation, route }) {
   const susceptibleGeoJSON = useMemo(() => {
     return {
       type: 'FeatureCollection',
-      features: visibleHazards.filter(h => h.is_fixed_flood_spot && !h.is_active).map(hazard => {
+      features: (visibleHazards || []).filter(h => h.is_fixed_flood_spot && !h.is_active).map(hazard => {
         const polygon = createCirclePolygon(
           [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
           parseFloat(hazard.radius_meters || 50),
@@ -1044,6 +1035,15 @@ export default function EvacMapScreen({ navigation, route }) {
       }))
     };
   }, [maintenances]);
+
+  if (!location || (isLoadingShelters && offlineShelters.length === 0)) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Acquiring GPS Signal...</Text>
+      </View>
+    );
+  }
 
   const openExternalNavigation = () => {
     if (!activeTargetShelter) return;
