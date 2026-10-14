@@ -407,7 +407,7 @@ export default function ReportIncidentScreen({ navigation }) {
         {/* Top Header: Hazard & Severity */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontSize: 16 }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: colors.textPrimary }}>
               {HAZARD_TYPES.find(h => h.value === item.hazard_type)?.label || `⚠️ ${item.hazard_type}`}
             </Text>
           </View>
@@ -670,16 +670,26 @@ export default function ReportIncidentScreen({ navigation }) {
         marginHorizontal: 16,
         marginTop: 12,
         marginBottom: 6,
-        backgroundColor: '#450a0a',
-        borderWidth: 1,
-        borderColor: '#dc2626',
+        backgroundColor: isDarkMode ? '#450a0a' : '#fef2f2',
+        borderWidth: 1.5,
+        borderColor: isDarkMode ? '#dc2626' : '#f87171',
         borderRadius: 14,
         padding: 14,
-        elevation: 3,
+        elevation: isDarkMode ? 3 : 2,
+        shadowColor: isDarkMode ? '#000' : '#dc2626',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: isDarkMode ? 0.3 : 0.08,
+        shadowRadius: 4,
       }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, justifyContent: 'center' }}>
-          <LifeBuoy color="#fca5a5" size={16} />
-          <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '900', letterSpacing: 0.5, textAlign: 'center' }}>
+          <LifeBuoy color={isDarkMode ? '#fca5a5' : '#dc2626'} size={16} />
+          <Text style={{
+            color: isDarkMode ? '#ffffff' : '#991b1b',
+            fontSize: 13,
+            fontWeight: '900',
+            letterSpacing: 0.5,
+            textAlign: 'center'
+          }}>
             URGENT EMERGENCY SOS DISPATCH
           </Text>
         </View>
