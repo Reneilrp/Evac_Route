@@ -235,13 +235,6 @@ export default function AppNavigator() {
     });
   }, []);
 
-  console.log('>>> [AppNavigator] Render:', {
-    loading,
-    hasOnboarded,
-    hasUser: !!user,
-    userRole: user?.role,
-  });
-
   if (loading || hasOnboarded === null) {
     return <SplashScreen />;
   }
