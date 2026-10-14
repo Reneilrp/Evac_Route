@@ -2,20 +2,21 @@ import { useRef, useEffect } from 'react';
 import { Animated, Text, StyleSheet } from 'react-native';
 import { WifiOff } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, typography } from '../styles/theme';
+import { spacing, radii } from '../styles/theme';
 import { useTheme } from '../context/ThemeContext';
 
 /**
- * NetworkStatusBar — Slides in from top when offline.
+ * NetworkStatusBar — Floating pill banner sliding down below status bar when offline.
+ * Sits safely below the phone's status bar / camera cutout.
  */
 export default function NetworkStatusBar({ isOffline }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const slideAnimRef = useRef(new Animated.Value(-60));
+  const slideAnimRef = useRef(new Animated.Value(-120));
 
   useEffect(() => {
     Animated.spring(slideAnimRef.current, {
-      toValue: isOffline ? 0 : -60,
+      toValue: isOffline ? 0 : -120,
       useNativeDriver: true,
       speed: 14,
       bounciness: 4,
@@ -27,15 +28,15 @@ export default function NetworkStatusBar({ isOffline }) {
       style={[
         styles.container,
         {
-          backgroundColor: colors.dangerBg,
-          paddingTop: insets.top + spacing.xs,
+          top: insets.top + 6,
+          backgroundColor: colors.danger,
           transform: [{ translateY: slideAnimRef.current }],
         },
       ]}
       pointerEvents="none"
     >
-      <WifiOff size={14} color={colors.dangerText} />
-      <Text style={[styles.text, { color: colors.dangerText }]}>OFFLINE MODE — Using Cached Data</Text>
+      <WifiOff size={13} color="#ffffff" />
+      <Text style={styles.text}>OFFLINE MODE — Using Cached Data</Text>
     </Animated.View>
   );
 }
@@ -43,20 +44,26 @@ export default function NetworkStatusBar({ isOffline }) {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    left: 20,
+    right: 20,
     zIndex: 9999,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: spacing.sm,
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    borderRadius: radii.full,
     gap: spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 8,
   },
   text: {
-    ...typography.small,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });
-

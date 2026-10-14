@@ -8,7 +8,8 @@ export const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.xl,
-    paddingTop: spacing['3xl'],
+    paddingTop: spacing.md,
+    paddingBottom: 48,
   },
   title: {
     ...typography.hero,

@@ -82,7 +82,7 @@ function App() {
   useEffect(() => {
     // ── Network status listener ──
     const unsubscribeNetInfo = NetInfo.addEventListener(state => {
-      setIsOffline(state.isConnected === false || state.isInternetReachable === false);
+      setIsOffline(state.isConnected === false);
     });
 
     // ── P2: Request permission & register Expo Push Token with backend ──
