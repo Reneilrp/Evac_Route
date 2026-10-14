@@ -44,7 +44,7 @@ export default function RescueDutyScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { user, logout } = useAuth();
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 

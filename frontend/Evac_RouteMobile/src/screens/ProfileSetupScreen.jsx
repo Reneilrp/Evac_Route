@@ -13,7 +13,7 @@ import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { getStyles } from '../styles/ProfileSetupScreen.styles';
 
 export default function ProfileSetupScreen({ navigation }) {
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
   const { login } = useAuth();
   const setProfileData = useResidentStore((state) => state.setProfileData);

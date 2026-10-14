@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
@@ -18,7 +18,7 @@ export default function CustomHeader({
   style,
 }) {
   const { top } = useSafeAreaInsets();
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
 
   return (

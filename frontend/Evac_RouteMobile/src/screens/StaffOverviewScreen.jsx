@@ -20,7 +20,7 @@ const WEB_DASHBOARD_URL = API_BASE.replace('/api', '');
 
 export default function StaffOverviewScreen() {
   const insets = useSafeAreaInsets();
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
   const [expandedShelterId, setExpandedShelterId] = useState(null);
 

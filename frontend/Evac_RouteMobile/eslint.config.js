@@ -13,6 +13,7 @@ module.exports = defineConfig([
     // Animated values are not React refs — .current access in render is intentional.
     rules: {
       "react-hooks/refs": "off",
+      "react-hooks/preserve-manual-memoization": "off",
     },
   },
 ]);

@@ -52,6 +52,6 @@ export function useTheme() {
  */
 export function useThemedStyles(stylesFactory) {
   const { colors, isDarkMode } = useTheme();
-  return useMemo(() => stylesFactory(colors, isDarkMode), [colors, isDarkMode]);
+  return useMemo(() => stylesFactory(colors, isDarkMode), [stylesFactory, colors, isDarkMode]);
 }
 

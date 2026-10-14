@@ -32,7 +32,7 @@ const timeAgo = (dateStr) => {
 export default function DispatchQueueScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
   const [activeFilter, setActiveFilter] = useState('All');
 

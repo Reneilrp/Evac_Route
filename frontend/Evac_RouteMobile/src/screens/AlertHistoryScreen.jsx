@@ -56,7 +56,7 @@ function formatTimestamp(timestamp) {
 }
 
 export default function AlertHistoryScreen({ navigation }) {
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
   const ALERT_TYPE_CONFIG = getAlertTypeConfig(colors);
   const alertHistory = useResidentStore(state => state.alertHistory);

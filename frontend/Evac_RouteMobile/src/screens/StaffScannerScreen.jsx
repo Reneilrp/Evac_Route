@@ -12,7 +12,7 @@ import { spacing, radii, typography, shadows } from '../styles/theme';
 export default function StaffScannerScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
   const [permission, requestPermission] = useCameraPermissions();
   const [showLogoutModal, setShowLogoutModal] = useState(false);

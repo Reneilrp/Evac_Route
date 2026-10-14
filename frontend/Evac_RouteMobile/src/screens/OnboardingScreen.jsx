@@ -40,7 +40,7 @@ const getSlides = (colors) => [
 ];
 
 export default function OnboardingScreen({ navigation }) {
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
   const insets = useSafeAreaInsets();
   const [currentSlide, setCurrentSlide] = useState(0);

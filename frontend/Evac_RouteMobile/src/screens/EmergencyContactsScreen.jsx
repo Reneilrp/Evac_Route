@@ -30,7 +30,7 @@ const getEmergencyContacts = (colors) => [
 ];
 
 export default function EmergencyContactsScreen({ navigation }) {
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
   const EMERGENCY_CONTACTS = getEmergencyContacts(colors);
   const handleCall = (number, name) => {

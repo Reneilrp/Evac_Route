@@ -191,30 +191,30 @@ export default function RescueMapScreen({ navigation, route }) {
 
   // Guided simulation control & step (starts at Step 1 by default, reliable reset, interactive)
   const [showDemoControls, setShowDemoControls] = useState(false);
-  const [simulationStep, setSimulationStep] = useState(1);
-  const currentSimulationStep = simulationStep;
+  const [simulationStepOverride, setSimulationStepOverride] = useState(null);
 
-  // Sync simulation step if a live mission's status changes from server
-  useEffect(() => {
-    if (currentMission?.status) {
-      switch (currentMission.status) {
-        case 'dispatched':
-          setSimulationStep(1);
-          break;
-        case 'en_route':
-          setSimulationStep(2);
-          break;
-        case 'on_scene':
-          setSimulationStep(3);
-          break;
-        case 'transporting':
-          setSimulationStep(4);
-          break;
-        case 'completed':
-          break;
-      }
+  const activeMission = currentMission || (showDemoControls ? effectiveMission : null);
+
+  const simulationStep = useMemo(() => {
+    if (simulationStepOverride !== null) return simulationStepOverride;
+    if (!currentMission) return 1;
+    switch (currentMission.status) {
+      case 'dispatched':
+        return 1;
+      case 'en_route':
+        return 2;
+      case 'on_scene':
+        return 3;
+      case 'transporting':
+        return 4;
+      case 'completed':
+      default:
+        return 1;
     }
-  }, [currentMission?.status]);
+  }, [simulationStepOverride, currentMission]);
+
+  const currentSimulationStep = simulationStep;
+  const setSimulationStep = setSimulationStepOverride;
 
   const activeHazards = useMemo(
     () =>
@@ -841,7 +841,7 @@ export default function RescueMapScreen({ navigation, route }) {
         )}
 
         {/* 1. Victim SOS Distress Pin */}
-        {currentMission && victimLngLat && (
+        {activeMission && victimLngLat && (
           <Mapbox.PointAnnotation
             key="victim-marker"
             id="victim-marker"
@@ -854,7 +854,7 @@ export default function RescueMapScreen({ navigation, route }) {
               </View>
               <View style={styles.victimCallout}>
                 <Text style={styles.victimCalloutText} numberOfLines={1}>
-                  🚨 {currentMission?.victim_name || 'Victim'} ({currentMission?.headcount || 1}p)
+                  🚨 {activeMission?.victim_name || 'Victim'} ({activeMission?.headcount || 1}p)
                 </Text>
               </View>
             </View>
@@ -862,7 +862,7 @@ export default function RescueMapScreen({ navigation, route }) {
         )}
 
         {/* 2. Target Evacuation Shelter Pin */}
-        {currentMission && shelterLngLat && (
+        {activeMission && shelterLngLat && (
           <Mapbox.PointAnnotation
             key="shelter-marker"
             id="shelter-marker"
@@ -874,8 +874,8 @@ export default function RescueMapScreen({ navigation, route }) {
               </View>
               <View style={styles.shelterCallout}>
                 <Text style={styles.shelterCalloutText} numberOfLines={1}>
-                  {currentMission?.target_shelter?.type === 'primary' ? '⭐ ' : '🏠 '} 
-                  {currentMission?.target_shelter?.name || shelters[0]?.name || 'Baliwasan Gym'}
+                  {activeMission?.target_shelter?.type === 'primary' ? '⭐ ' : '🏠 '} 
+                  {activeMission?.target_shelter?.name || shelters[0]?.name || 'Baliwasan Gym'}
                 </Text>
               </View>
             </View>
@@ -938,10 +938,10 @@ export default function RescueMapScreen({ navigation, route }) {
             <Text style={styles.backBtnText}>Duty Hub</Text>
           </TouchableOpacity>
 
-          <View style={[styles.phaseBadge, !currentMission && styles.phaseBadgeStandby]}>
-            <Radio size={12} color={currentMission ? '#34d399' : '#60a5fa'} />
+          <View style={[styles.phaseBadge, !activeMission && styles.phaseBadgeStandby]}>
+            <Radio size={12} color={activeMission ? '#34d399' : '#60a5fa'} />
             <Text style={styles.phaseBadgeText}>
-              {currentMission
+              {activeMission
                 ? (isTransportPhase ? 'PHASE 2: SHELTER TRANSPORT' : 'PHASE 1: VICTIM EXTRACTION')
                 : 'FLEET STANDBY • READY'}
             </Text>
@@ -958,7 +958,7 @@ export default function RescueMapScreen({ navigation, route }) {
           </View>
         </View>
 
-        {currentMission ? (
+        {activeMission ? (
           <>
             {/* Turn-by-Turn Card */}
             <View style={styles.maneuverCard}>
@@ -1289,7 +1289,7 @@ export default function RescueMapScreen({ navigation, route }) {
                     ]}
                   />
                   <Text style={styles.dockStatusText}>
-                    {currentMission.status.toUpperCase()} • {currentMission.control_no}
+                    {(currentMission.status || 'ACTIVE').toUpperCase()} • {currentMission.control_no || 'OP-QRT'}
                   </Text>
                 </View>
 
@@ -1302,7 +1302,7 @@ export default function RescueMapScreen({ navigation, route }) {
                   ]}
                 >
                   <Text style={styles.triageBadgeText}>
-                    {currentMission.triage_level?.toUpperCase()}
+                    {(currentMission.triage_level || 'URGENT').toUpperCase()}
                   </Text>
                 </View>
               </View>
@@ -1434,7 +1434,7 @@ export default function RescueMapScreen({ navigation, route }) {
             <Text style={styles.arrivalSubtitle}>
               Automated proximity geofence detected you are within 20 meters of{' '}
               <Text style={{ fontWeight: '700', color: colors.white }}>
-                {currentMission?.victim_name}
+                {activeMission?.victim_name || 'Distress Victim'}
               </Text>
               . Mission status has been automatically transitioned to{' '}
               <Text style={{ fontWeight: '700', color: '#f59e0b' }}>ON SCENE</Text>.
@@ -1443,11 +1443,11 @@ export default function RescueMapScreen({ navigation, route }) {
             <View style={styles.arrivalDetailsBox}>
               <Text style={styles.arrivalDetailsLabel}>VULNERABILITY &amp; HEADCOUNT:</Text>
               <Text style={styles.arrivalDetailsVal}>
-                👥 {currentMission?.headcount || 1} Persons • {currentMission?.special_needs || 'Standard evac'}
+                👥 {activeMission?.headcount || 1} Persons • {activeMission?.special_needs || 'Standard evac'}
               </Text>
               <Text style={[styles.arrivalDetailsLabel, { marginTop: 6 }]}>SITUATION:</Text>
               <Text style={styles.arrivalDetailsVal}>
-                &ldquo;{currentMission?.situation_description || 'Rising floodwaters'}&rdquo;
+                &ldquo;{activeMission?.situation_description || 'Rising floodwaters'}&rdquo;
               </Text>
             </View>
 
@@ -1498,18 +1498,18 @@ export default function RescueMapScreen({ navigation, route }) {
             <Text style={styles.arrivalSubtitle}>
               You have arrived at{' '}
               <Text style={{ fontWeight: '700', color: colors.white }}>
-                {currentMission?.target_shelter?.name || shelters[0]?.name || 'Baliwasan Gym'}
+                {activeMission?.target_shelter?.name || shelters[0]?.name || 'Baliwasan Gym'}
               </Text>
-              . CSWDO intake staff are ready to accept {currentMission?.headcount || 1} evacuees.
+              . CSWDO intake staff are ready to accept {activeMission?.headcount || 1} evacuees.
             </Text>
 
             <View style={styles.arrivalDetailsBox}>
               <Text style={styles.arrivalDetailsLabel}>AUTOMATIC CSWDO INTAKE BRIDGE:</Text>
               <Text style={styles.arrivalDetailsVal}>
-                • Automatically increments shelter occupancy (+{currentMission?.headcount || 1})
+                • Automatically increments shelter occupancy (+{activeMission?.headcount || 1})
               </Text>
               <Text style={styles.arrivalDetailsVal}>
-                • Registers {currentMission?.victim_name} in CSWDO intake ledger
+                • Registers {activeMission?.victim_name || 'Distress Evacuees'} in CSWDO intake ledger
               </Text>
               <Text style={styles.arrivalDetailsVal}>
                 • Resets {assignedUnit?.name || 'Unit'} to STANDBY for next rescue

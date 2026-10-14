@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { AlertTriangle, Archive, ArchiveRestore, CheckCircle2 } from 'lucide-react-native';
 import { radii } from '../styles/theme';
-import { useTheme, useThemedStyles } from '../context/ThemeContext';
+import { useThemedStyles } from '../context/ThemeContext';
 
 const VARIANT_CONFIGS = {
   warning: {

@@ -1,15 +1,14 @@
 import { useEffect } from 'react';
 import { View, Text, Vibration, ScrollView } from 'react-native';
-import { CheckCircle, Package, PackageX, ShieldCheck } from 'lucide-react-native';
+import { CheckCircle, Package, PackageX } from 'lucide-react-native';
 import CustomHeader from '../components/CustomHeader';
 import { useResidentStore } from '../context/useResidentStore';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import PrimaryButton from '../components/PrimaryButton';
-import SkeletonLoader from '../components/SkeletonLoader';
 import { getStyles } from '../styles/SafeCheckInScreen.styles';
 
 export default function SafeCheckInScreen({ navigation }) {
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
 
   const status = useResidentStore(state => state.status);

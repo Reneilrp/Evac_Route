@@ -73,14 +73,6 @@ export default function StaffProfileScreen({ navigation }) {
     ? user?.assigned_shelter?.name || 'Baliwasan Gym Evacuation Center'
     : 'EOC Central Command Headquarters';
 
-  const initials = (user?.name || 'Staff')
-    .split(' ')
-    .filter(Boolean)
-    .map((w) => w[0])
-    .join('')
-    .substring(0, 2)
-    .toUpperCase();
-
   const handleConfirmLogout = async () => {
     setShowLogoutModal(false);
     await logout();

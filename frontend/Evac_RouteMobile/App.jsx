@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { getEcho, disconnectEcho } from './src/services/echoService';
 import { useResidentStore } from './src/context/useResidentStore';
 import api from './src/services/api';
-import ErrorBoundary from './src/components/ErrorBoundary';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import NetworkStatusBar from './src/components/NetworkStatusBar';
 
 // ─── Global notification handler — show alerts even when app is in foreground ───

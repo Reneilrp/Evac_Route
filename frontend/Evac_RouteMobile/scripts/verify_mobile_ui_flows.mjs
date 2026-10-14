@@ -64,7 +64,7 @@ async function runTests() {
     password: 'password'
   });
   const residentUser = residentLogin.data.user;
-  
+  console.log(`  ↳ Resident: ${residentUser?.name || 'Resident User'}`);
   // Fetch resident profile
   const profileRes = await axios.get(`${API_BASE}/user`, {
     headers: { Authorization: `Bearer ${residentLogin.data.access_token}` }

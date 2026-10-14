@@ -128,6 +128,7 @@ class BundledApiTest extends TestCase
             'max_capacity' => 10,
             'current_occupancy' => 0,
             'status' => 'closed',
+            'type' => 'primary',
             'pinned_by' => $this->admin->id,
         ]);
 

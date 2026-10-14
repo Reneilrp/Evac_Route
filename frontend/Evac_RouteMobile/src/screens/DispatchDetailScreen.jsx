@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  MapPin, Package, ChevronLeft, Truck,
+  MapPin, Package, Truck,
   CheckCircle, Clock, AlertTriangle, Box,
 } from 'lucide-react-native';
 import api from '../services/api';
@@ -26,7 +26,7 @@ export default function DispatchDetailScreen({ route, navigation }) {
   const { orderId } = route.params;
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
   const [delivered, setDelivered] = useState(false);
 

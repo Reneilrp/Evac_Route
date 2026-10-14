@@ -1,7 +1,6 @@
 import { create } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
 
 // Prioritize configured API Base URL (from process.env / Constants.expoConfig); fallback to live production URL
 const configuredBaseUrl = process.env.EXPO_PUBLIC_API_URL || Constants.expoConfig?.extra?.apiBaseUrl;

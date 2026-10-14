@@ -117,18 +117,15 @@ export default function EvacMapScreen({ navigation, route }) {
   const [routeWarnings, setRouteWarnings] = useState([]);
 
   // Map style switcher (defaults to dark in Dark Mode, standard streets in Light Mode)
-  const [mapStyleMode, setMapStyleMode] = useState(isDarkMode ? 'dark' : 'streets');
+  const [overrideStyleMode, setOverrideStyleMode] = useState(null);
+  const mapStyleMode = overrideStyleMode || (isDarkMode ? 'dark' : 'streets');
+  const setMapStyleMode = (mode) => setOverrideStyleMode(mode === (isDarkMode ? 'dark' : 'streets') ? null : mode);
   const [currentZoom, setCurrentZoom] = useState(14);
   const MAP_STYLE_URLS = {
     dark:      Mapbox?.StyleURL?.Dark || 'mapbox://styles/mapbox/dark-v11',
     satellite: Mapbox?.StyleURL?.SatelliteStreet || 'mapbox://styles/mapbox/satellite-streets-v12',
     streets:   Mapbox?.StyleURL?.Street || 'mapbox://styles/mapbox/streets-v12',
   };
-
-  // Automatically sync map style when theme changes
-  useEffect(() => {
-    setMapStyleMode(isDarkMode ? 'dark' : 'streets');
-  }, [isDarkMode]);
 
   const isExpoGo = Constants.appOwnership === 'expo' || !Mapbox?.MapView;
 
@@ -498,21 +495,26 @@ export default function EvacMapScreen({ navigation, route }) {
       : (Array.isArray(sheltersData?.data) ? sheltersData.data : (Array.isArray(offlineShelters) ? offlineShelters : []));
   }, [sheltersData, offlineShelters]);
 
-  const rawHazardsList = (Array.isArray(hazardsData) && hazardsData.length > 0)
-    ? hazardsData
-    : (Array.isArray(hazardsData?.data) ? hazardsData.data : (Array.isArray(offlineHazards) ? offlineHazards : []));
-  const hazards = (Array.isArray(rawHazardsList) ? rawHazardsList : []).filter(h => h && (h.is_active === true || h.is_active === 1 || h.is_active === '1' || h.is_active === undefined));
+  const hazards = useMemo(() => {
+    const rawHazardsList = (Array.isArray(hazardsData) && hazardsData.length > 0)
+      ? hazardsData
+      : (Array.isArray(hazardsData?.data) ? hazardsData.data : (Array.isArray(offlineHazards) ? offlineHazards : []));
+    return (Array.isArray(rawHazardsList) ? rawHazardsList : []).filter(
+      h => h && (h.is_active === true || h.is_active === 1 || h.is_active === '1' || h.is_active === undefined)
+    );
+  }, [hazardsData, offlineHazards]);
 
   // P3: Use live data when available, fall back to SQLite cache offline
-  const maintenances = (Array.isArray(maintenanceData) && maintenanceData.length > 0)
-    ? maintenanceData
-    : (Array.isArray(maintenanceData?.data) ? maintenanceData.data : (Array.isArray(offlineMaintenances) ? offlineMaintenances : []));
+  const maintenances = useMemo(() => {
+    return (Array.isArray(maintenanceData) && maintenanceData.length > 0)
+      ? maintenanceData
+      : (Array.isArray(maintenanceData?.data) ? maintenanceData.data : (Array.isArray(offlineMaintenances) ? offlineMaintenances : []));
+  }, [maintenanceData, offlineMaintenances]);
 
   // Filter active hazards based on Disaster Preset Filter
-  const safeHazards = Array.isArray(hazards) ? hazards : [];
   const filteredHazards = useMemo(() => {
-    if (selectedDisasterFilter === 'all') return safeHazards;
-    return safeHazards.filter(h => {
+    if (selectedDisasterFilter === 'all') return hazards;
+    return hazards.filter(h => {
       if (!h) return false;
       const hType = (h.hazard_type || '').toLowerCase();
       if (selectedDisasterFilter === 'flood') return ['flood', 'landslide', 'tsunami', 'water'].some(t => hType.includes(t));
@@ -522,7 +524,7 @@ export default function EvacMapScreen({ navigation, route }) {
       if (selectedDisasterFilter === 'chemical') return ['chemical', 'biohazard', 'gas', 'toxic', 'decontamination'].some(t => hType.includes(t));
       return true;
     });
-  }, [safeHazards, selectedDisasterFilter]);
+  }, [hazards, selectedDisasterFilter]);
 
   // Filter shelters/places based on Category AND Disaster Preset Filter
   const safeShelters = useMemo(() => (Array.isArray(shelters) ? shelters : []), [shelters]);

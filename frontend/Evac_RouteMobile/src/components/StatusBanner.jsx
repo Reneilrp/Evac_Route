@@ -2,14 +2,13 @@ import { useRef, useEffect } from 'react';
 import { Text, Animated, StyleSheet } from 'react-native';
 import { AlertTriangle, ShieldCheck } from 'lucide-react-native';
 import { spacing, typography } from '../styles/theme';
-import { useTheme, useThemedStyles } from '../context/ThemeContext';
+import { useThemedStyles } from '../context/ThemeContext';
 
 /**
  * StatusBanner — Safe-area-aware status banner with pulse animation in danger mode.
  */
 export default function StatusBanner({ status = 'danger', text, icon }) {
   const pulseAnimRef = useRef(new Animated.Value(1));
-  const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
 
   useEffect(() => {
