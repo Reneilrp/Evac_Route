@@ -34,6 +34,7 @@ import {
   Play,
   Pause,
   FastForward,
+  ChevronUp,
 } from 'lucide-react-native';
 import api from '../services/api';
 import { spacing, radii } from '../styles/theme';
@@ -370,6 +371,7 @@ export default function RescueMapScreen({ navigation, route }) {
   // Modals
   const [showVictimArrivalModal, setShowVictimArrivalModal] = useState(false);
   const [showShelterArrivalModal, setShowShelterArrivalModal] = useState(false);
+  const [showStartSimModal, setShowStartSimModal] = useState(false);
 
   // Location watching effect - constrained to Zamboanga City bounds for testing
   useEffect(() => {
@@ -1169,10 +1171,7 @@ export default function RescueMapScreen({ navigation, route }) {
             if (isSimulationActive) {
               setShowDemoControls(!showDemoControls);
             } else {
-              startSimulation();
-              if (navigation) {
-                navigation.navigate('Rescue');
-              }
+              setShowStartSimModal(true);
             }
           }}
           accessibilityLabel="Toggle Presentation Simulation Tools"
@@ -1279,6 +1278,40 @@ export default function RescueMapScreen({ navigation, route }) {
             currentScreen="map"
             onClose={() => setShowDemoControls(false)}
           />
+        </View>
+      )}
+
+      {/* ─── ACTIVE SIMULATION PROGRESS PILL (ABOVE BOTTOM DOCK) ─── */}
+      {isSimulationActive && !showDemoControls && (
+        <View
+          style={[
+            styles.simProgressPillAnchor,
+            {
+              bottom: (activeMission ? 174 : 114) + Math.max(insets.bottom, 14),
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.simProgressPillBtn}
+            onPress={() => {
+              setShowDemoControls(true);
+              Vibration.vibrate(20);
+            }}
+            activeOpacity={0.85}
+            accessibilityLabel="Expand simulation controls"
+          >
+            <View style={styles.simPillDotPulse} />
+            <Text style={styles.simProgressPillText} numberOfLines={1}>
+              ⚡ STEP {simulationStep} OF 5 •{' '}
+              {simPhase === 'dispatched' && 'ACCEPT DISPATCH'}
+              {simPhase === 'en_route' && '10M/S NAV (VICTIM)'}
+              {simPhase === 'on_scene' && 'ON SCENE (≤20M)'}
+              {simPhase === 'transporting' && '10M/S NAV (SHELTER)'}
+              {simPhase === 'completed' && 'CSWDO COMPLETED'}
+              {' • VIEW PROGRESS'}
+            </Text>
+            <ChevronUp size={14} color="#f59e0b" />
+          </TouchableOpacity>
         </View>
       )}
 
@@ -1562,6 +1595,102 @@ export default function RescueMapScreen({ navigation, route }) {
               onPress={() => setShowShelterArrivalModal(false)}
             >
               <Text style={styles.modalActionSecondaryText}>Dismiss for Now</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─── MODAL: RESCUE SIMULATION CONFIRMATION (STEPS 1-5) ─── */}
+      <Modal
+        visible={showStartSimModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowStartSimModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.startSimModalContent}>
+            <View style={styles.startSimIconCircle}>
+              <Play size={28} color="#f59e0b" />
+            </View>
+
+            <Text style={styles.startSimTitle}>⚡ START RESCUE SIMULATION</Text>
+            <Text style={styles.startSimSubtitle}>
+              This will initiate an interactive 5-step emergency rescue sequence with automated 10m/s tactical routing and 20-meter geofencing triggers.
+            </Text>
+
+            <View style={styles.startSimStepsList}>
+              <View style={styles.startSimStepItem}>
+                <View style={styles.startSimStepNum}>
+                  <Text style={styles.startSimStepNumText}>1</Text>
+                </View>
+                <Text style={styles.startSimStepText}>
+                  <Text style={styles.startSimStepTitle}>Duty Hub Dispatch: </Text>
+                  <Text style={styles.startSimStepDesc}>Accept distress order in Duty Hub</Text>
+                </Text>
+              </View>
+
+              <View style={styles.startSimStepItem}>
+                <View style={styles.startSimStepNum}>
+                  <Text style={styles.startSimStepNumText}>2</Text>
+                </View>
+                <Text style={styles.startSimStepText}>
+                  <Text style={styles.startSimStepTitle}>En Route (10 m/s): </Text>
+                  <Text style={styles.startSimStepDesc}>Navigate along tactical route to victim</Text>
+                </Text>
+              </View>
+
+              <View style={styles.startSimStepItem}>
+                <View style={styles.startSimStepNum}>
+                  <Text style={styles.startSimStepNumText}>3</Text>
+                </View>
+                <Text style={styles.startSimStepText}>
+                  <Text style={styles.startSimStepTitle}>On Scene (≤ 20m): </Text>
+                  <Text style={styles.startSimStepDesc}>Geofence alerts arrival & secures victim onboard</Text>
+                </Text>
+              </View>
+
+              <View style={styles.startSimStepItem}>
+                <View style={styles.startSimStepNum}>
+                  <Text style={styles.startSimStepNumText}>4</Text>
+                </View>
+                <Text style={styles.startSimStepText}>
+                  <Text style={styles.startSimStepTitle}>Transporting (10 m/s): </Text>
+                  <Text style={styles.startSimStepDesc}>Reroute and navigate to nearest shelter</Text>
+                </Text>
+              </View>
+
+              <View style={styles.startSimStepItem}>
+                <View style={styles.startSimStepNum}>
+                  <Text style={styles.startSimStepNumText}>5</Text>
+                </View>
+                <Text style={styles.startSimStepText}>
+                  <Text style={styles.startSimStepTitle}>CSWDO Handover: </Text>
+                  <Text style={styles.startSimStepDesc}>Shelter gate geofence & return to standby</Text>
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.modalActionPrimaryBtn}
+              onPress={() => {
+                setShowStartSimModal(false);
+                startSimulation();
+                if (navigation) {
+                  navigation.navigate('Rescue');
+                }
+              }}
+            >
+              <Play size={18} color="#ffffff" />
+              <Text style={styles.modalActionPrimaryText}>
+                START SIMULATION &amp; GO TO DUTY HUB
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalActionSecondaryBtn}
+              onPress={() => setShowStartSimModal(false)}
+            >
+              <Text style={styles.modalActionSecondaryText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -2537,5 +2666,119 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '800',
+  },
+
+  /* ─── ACTIVE SIMULATION PROGRESS PILL ─── */
+  simProgressPillAnchor: {
+    position: 'absolute',
+    left: spacing.md,
+    right: spacing.md,
+    alignItems: 'center',
+    zIndex: 40,
+  },
+  simProgressPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+    borderWidth: 1.5,
+    borderColor: '#f59e0b',
+    borderRadius: radii.full,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    gap: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  simPillDotPulse: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10b981',
+  },
+  simProgressPillText: {
+    color: isDarkMode ? '#f8fafc' : '#0f172a',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+
+  /* ─── START SIMULATION CONFIRMATION MODAL ─── */
+  startSimModalContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#f59e0b',
+  },
+  startSimIconCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 2,
+    borderColor: '#f59e0b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  startSimTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 6,
+    letterSpacing: 0.5,
+  },
+  startSimSubtitle: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  startSimStepsList: {
+    width: '100%',
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+    gap: 8,
+  },
+  startSimStepItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  startSimStepNum: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  startSimStepNumText: {
+    color: '#f59e0b',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  startSimStepText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  startSimStepTitle: {
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  startSimStepDesc: {
+    color: colors.textSecondary,
   },
 });
