@@ -94,15 +94,15 @@ export const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   quickChipsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    flexWrap: 'nowrap',
+    gap: 6,
     marginBottom: spacing.md,
+    width: '100%',
   },
   quickChip: {
     flex: 1,
-    minWidth: 90,
     backgroundColor: colors.surfaceElevated,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
@@ -132,8 +132,9 @@ export const getStyles = (colors, isDarkMode) => StyleSheet.create({
     color: isDarkMode ? '#86efac' : '#15803d',
   },
   quickChipText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '800',
+    textAlign: 'center',
   },
   formSection: {
     gap: spacing.sm,

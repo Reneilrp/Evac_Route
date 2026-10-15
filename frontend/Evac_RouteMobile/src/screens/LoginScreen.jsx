@@ -176,7 +176,14 @@ export default function LoginScreen({ navigation }) {
                   onPress={() => handleQuickSelect('rescue1@lgu.gov.ph', 'password')}
                   style={[styles.quickChip, styles.quickChipRescue]}
                 >
-                  <Text style={[styles.quickChipText, styles.quickChipRescueText]}>🚤 Rescue QRT</Text>
+                  <Text
+                    style={[styles.quickChipText, styles.quickChipRescueText]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
+                    🚤 Rescue QRT
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -184,7 +191,14 @@ export default function LoginScreen({ navigation }) {
                   onPress={() => handleQuickSelect('scanner1@lgu.gov.ph', 'password')}
                   style={[styles.quickChip, styles.quickChipScanner]}
                 >
-                  <Text style={[styles.quickChipText, styles.quickChipScannerText]}>📋 Scanner</Text>
+                  <Text
+                    style={[styles.quickChipText, styles.quickChipScannerText]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
+                    📋 Scanner
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -192,7 +206,14 @@ export default function LoginScreen({ navigation }) {
                   onPress={() => handleQuickSelect('pheinz@evacroute.local', 'password')}
                   style={[styles.quickChip, styles.quickChipResident]}
                 >
-                  <Text style={[styles.quickChipText, styles.quickChipResidentText]}>👤 Resident</Text>
+                  <Text
+                    style={[styles.quickChipText, styles.quickChipResidentText]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
+                    👤 Resident
+                  </Text>
                 </TouchableOpacity>
               </View>
 
