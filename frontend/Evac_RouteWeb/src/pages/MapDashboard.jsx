@@ -3314,10 +3314,10 @@ export default function MapDashboard() {
             <span className="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1 select-none">Proactive EOC</span>
             <button
               onClick={() => setIsProactiveModalOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-red-600/90 hover:bg-red-600 text-white border border-red-500/50 text-[11px] font-black rounded-lg shadow-md transition cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-red-600/90 hover:bg-red-600 text-white border border-red-500/50 text-[11px] font-black rounded-lg shadow-md transition cursor-pointer whitespace-nowrap"
             >
               <ShieldAlert size={13} className="text-white" />
-              <span>Geohazard Presets &amp; EOC</span>
+              <span>Presets</span>
             </button>
           </div>
 
