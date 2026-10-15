@@ -391,7 +391,7 @@ export default function LandingPage() {
             >
               <Download size={14} className="shrink-0" />
               <span>Download APK</span>
-              <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-bold">v1.0.1</span>
+              <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-bold">v1.1.0</span>
             </button>
           </div>
 
@@ -1448,7 +1448,7 @@ export default function LandingPage() {
                 className="w-full sm:w-auto px-7 py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 transition duration-200 flex items-center justify-center gap-2.5 cursor-pointer"
               >
                 <Download size={18} />
-                <span>{downloading ? "Preparing Download..." : "Download EvacRoute.apk (v1.0.1)"}</span>
+                <span>{downloading ? "Preparing Download..." : "Download EvacRoute.apk (v1.1.0)"}</span>
               </button>
             </div>
             <div className="flex items-center justify-center gap-1.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">
