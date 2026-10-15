@@ -495,7 +495,7 @@ function ToolbarBtn({ active, onClick, icon, label, color = 'blue', disabled = f
       onClick={onClick}
       disabled={disabled}
       title={label}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 select-none whitespace-nowrap ${
+      className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 select-none whitespace-nowrap ${
         active ? `${c.active} shadow-lg` : c.hover
       } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
     >
@@ -3271,7 +3271,7 @@ export default function MapDashboard() {
           </div>
         </div>
       ) : (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-4 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-2.5 xl:gap-3.5 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2 xl:p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[96vw] overflow-x-auto whitespace-nowrap">
           {/* Overlays Group */}
           <div className="flex flex-col items-center">
             <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Overlays</span>
@@ -3296,7 +3296,7 @@ export default function MapDashboard() {
                   .then(() => queryClient.invalidateQueries(['mapDashboard']))
                   .catch(err => console.warn('Sim toggle warning:', err));
               }}
-              className="bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-extrabold rounded-lg px-2 py-1 focus:ring-2 focus:ring-amber-400 outline-none cursor-pointer shadow-md"
+              className="bg-slate-800 text-amber-300 border border-amber-500/40 text-xs font-extrabold rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-amber-400 outline-none cursor-pointer shadow-md"
             >
               <option value="none">⚪ Command Mode (Off)</option>
               <option value="siege">⚔️ Armed Siege Simulation</option>
@@ -3311,13 +3311,13 @@ export default function MapDashboard() {
 
           {/* Proactive Early Warning & Presets Command */}
           <div className="flex flex-col items-center">
-            <span className="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1 select-none">Proactive EOC</span>
+            <span className="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1 select-none whitespace-nowrap">Early Warning</span>
             <button
               onClick={() => setIsProactiveModalOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-red-600/90 hover:bg-red-600 text-white border border-red-500/50 text-[11px] font-black rounded-lg shadow-md transition cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white border border-red-500/40 text-xs font-bold rounded-lg shadow-md hover:shadow-red-500/30 transition cursor-pointer whitespace-nowrap"
             >
-              <ShieldAlert size={13} className="text-white" />
-              <span>Presets</span>
+              <ShieldAlert size={14} className="text-white" />
+              <span>Proactive EOC</span>
             </button>
           </div>
 
