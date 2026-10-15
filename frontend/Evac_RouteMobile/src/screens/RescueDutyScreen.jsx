@@ -39,6 +39,7 @@ import { spacing, radii, shadows } from '../styles/theme';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { clampToZamboanga, ZAMBOANGA_RESCUER_BASE } from '../utils/zamboangaGeo';
+import { useRescueSimulationStore } from '../context/useRescueSimulationStore';
 
 export default function RescueDutyScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -124,14 +125,22 @@ export default function RescueDutyScreen({ navigation }) {
 
   const [selectedMissionId, setSelectedMissionId] = useState(null);
 
+  const isSimulationActive = useRescueSimulationStore((state) => state.isSimulationActive);
+  const simMission = useRescueSimulationStore((state) => state.simMission);
+  const startSimulation = useRescueSimulationStore((state) => state.startSimulation);
+  const stopSimulation = useRescueSimulationStore((state) => state.stopSimulation);
+  const acceptDispatch = useRescueSimulationStore((state) => state.acceptDispatch);
+  const resetToStandby = useRescueSimulationStore((state) => state.resetToStandby);
+
   const allActiveMissions = missionsData ?? [];
   const activeMissions = assignedUnit
     ? allActiveMissions.filter((m) => m.rescue_unit_id === assignedUnit.id)
     : (user?.role === 'admin' ? allActiveMissions : []);
-  const currentMission =
+  const realMission =
     (selectedMissionId ? activeMissions.find((m) => m.id === selectedMissionId) : null) ||
     activeMissions[0] ||
     (user?.role === 'admin' ? allActiveMissions[0] : null);
+  const currentMission = isSimulationActive ? simMission : realMission;
   const shelters = sheltersData ?? [];
 
   // Confirmation modal state
@@ -348,6 +357,48 @@ export default function RescueDutyScreen({ navigation }) {
         </View>
       </View>
 
+      {/* ─── RESCUE SIMULATION MODE BANNER ─── */}
+      <View style={styles.simBanner}>
+        <View style={styles.simBannerInfo}>
+          <View style={[styles.simIndicatorCircle, isSimulationActive && styles.simIndicatorActive]}>
+            <Text style={{ fontSize: 13 }}>⚡</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.simBannerTitle}>
+              {isSimulationActive ? 'SIMULATION MODE ACTIVE' : 'GUIDED RESCUE SIMULATOR'}
+            </Text>
+            <Text style={styles.simBannerSub} numberOfLines={1}>
+              {isSimulationActive
+                ? (currentMission?.status === 'dispatched'
+                  ? '🚨 New dispatch received • Accept to start'
+                  : `Phase: ${currentMission?.status?.toUpperCase()} • 10m/s Nav`)
+                : 'Simulate 5-step mission with 10m/s tactical navigation'}
+            </Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.simToggleBtn, isSimulationActive && styles.simToggleBtnActive]}
+          onPress={() => {
+            if (isSimulationActive) {
+              stopSimulation();
+              Alert.alert('Simulation Stopped', 'Returned to live CDRRMO operations.');
+            } else {
+              startSimulation();
+              Alert.alert(
+                '⚡ Rescue Simulation Mode Active',
+                'An emergency search & rescue dispatch order has arrived! Review and accept the dispatch below to start tactical 10m/s navigation.'
+              );
+            }
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.simToggleBtnText, isSimulationActive && styles.simToggleBtnTextActive]}>
+            {isSimulationActive ? 'STOP SIM' : 'START SIM'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -398,6 +449,19 @@ export default function RescueDutyScreen({ navigation }) {
               </View>
             )}
 
+            {/* Incoming Simulated Dispatch Alert */}
+            {isSimulationActive && currentMission?.status === 'dispatched' && (
+              <View style={styles.simIncomingAlertBox}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <AlertTriangle size={15} color="#ffffff" />
+                  <Text style={styles.simIncomingAlertTitle}>INCOMING EMERGENCY DISPATCH ORDER</Text>
+                </View>
+                <Text style={styles.simIncomingAlertSub}>
+                  CDRRMO EOC assigned a high-priority flood rescue in Baliwasan Coastal. Accept dispatch to launch 10m/s tactical route navigation!
+                </Text>
+              </View>
+            )}
+
             {/* 1. Priority & Control Banner */}
             <View
               style={[
@@ -419,8 +483,14 @@ export default function RescueDutyScreen({ navigation }) {
               style={[
                 styles.heroNavigationCta,
                 isTransportPhase ? styles.heroCtaCyan : styles.heroCtaBlue,
+                isSimulationActive && currentMission?.status === 'dispatched' && styles.heroCtaDispatchPulse,
               ]}
-              onPress={() => navigation.navigate('RescueMap', { missionId: currentMission.id })}
+              onPress={() => {
+                if (isSimulationActive && currentMission?.status === 'dispatched') {
+                  acceptDispatch();
+                }
+                navigation.navigate('RescueMap', { missionId: currentMission.id, isSimulation: isSimulationActive });
+              }}
               activeOpacity={0.85}
               accessibilityLabel="Launch Tactical Navigation Map"
             >
@@ -613,15 +683,26 @@ export default function RescueDutyScreen({ navigation }) {
               {/* ONLY THE SINGLE NEXT VALID ACTION BUTTON IS RENDERED */}
               {currentMission.status === 'dispatched' && (
                 <TouchableOpacity
-                  style={[styles.stepperActionBtn, styles.btnBlue]}
-                  onPress={() =>
-                    handleUpdateMissionStatus({ id: currentMission.id, status: 'en_route' })
-                  }
+                  style={[
+                    styles.stepperActionBtn,
+                    styles.btnBlue,
+                    isSimulationActive && styles.simAcceptBtnGlow,
+                  ]}
+                  onPress={() => {
+                    if (isSimulationActive) {
+                      acceptDispatch();
+                      navigation.navigate('RescueMap', { missionId: currentMission.id, isSimulation: true });
+                    } else {
+                      handleUpdateMissionStatus({ id: currentMission.id, status: 'en_route' });
+                    }
+                  }}
                   disabled={updateStatusMutation.isPending}
                   activeOpacity={0.85}
                 >
                   <Navigation size={18} color="#ffffff" />
-                  <Text style={styles.stepperActionBtnText}>1. ACCEPT MISSION &amp; EN ROUTE</Text>
+                  <Text style={styles.stepperActionBtnText}>
+                    {isSimulationActive ? 'ACCEPT DISPATCH & START 10M/S NAVIGATION' : '1. ACCEPT MISSION & EN ROUTE'}
+                  </Text>
                 </TouchableOpacity>
               )}
 
@@ -725,6 +806,22 @@ export default function RescueDutyScreen({ navigation }) {
                   <CheckCircle2 size={18} color="#ffffff" />
                   <Text style={styles.stepperActionBtnText}>
                     4. CONFIRM INTAKE HANDOVER &amp; COMPLETE
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {isSimulationActive && currentMission.status === 'completed' && (
+                <TouchableOpacity
+                  style={[styles.stepperActionBtn, styles.btnGreen]}
+                  onPress={() => {
+                    resetToStandby();
+                    Alert.alert('Simulation Concluded', 'Rescue mission completed and handed over. Unit is back on Standby.');
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <CheckCircle2 size={18} color="#ffffff" />
+                  <Text style={styles.stepperActionBtnText}>
+                    MISSION COMPLETED • RESET TO STANDBY
                   </Text>
                 </TouchableOpacity>
               )}
@@ -1341,5 +1438,103 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   missionChipTextActive: {
     color: '#ffffff',
     fontWeight: '900',
+  },
+
+  /* ─── Simulation Mode Enhancements ─── */
+  simBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceElevated,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  simBannerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  simIndicatorCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: radii.full,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  simIndicatorActive: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: '#f59e0b',
+  },
+  simBannerTitle: {
+    color: colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  simBannerSub: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  simToggleBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radii.full,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  simToggleBtnActive: {
+    backgroundColor: '#f59e0b',
+    borderColor: '#d97706',
+  },
+  simToggleBtnText: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  simToggleBtnTextActive: {
+    color: '#ffffff',
+    fontWeight: '900',
+  },
+  simIncomingAlertBox: {
+    backgroundColor: '#dc2626',
+    padding: 12,
+    borderRadius: radii.md,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#ef4444',
+  },
+  simIncomingAlertTitle: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  simIncomingAlertSub: {
+    color: '#fecaca',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  simAcceptBtnGlow: {
+    backgroundColor: '#2563eb',
+    borderWidth: 1,
+    borderColor: '#60a5fa',
+  },
+  heroCtaDispatchPulse: {
+    borderWidth: 2,
+    borderColor: '#60a5fa',
   },
 });
