@@ -2,20 +2,18 @@ import { useState, useRef } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Vibration, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { QrCode, LogOut, CheckCircle, XCircle, AlertTriangle, RefreshCw, Send, Users, Home } from 'lucide-react-native';
+import { QrCode, CheckCircle, XCircle, AlertTriangle, RefreshCw, Send, Users, Home } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
-import ConfirmationModal from '../components/ConfirmationModal';
 import api from '../services/api';
 import { spacing, radii, typography, shadows } from '../styles/theme';
 
 export default function StaffScannerScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
   const [permission, requestPermission] = useCameraPermissions();
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [manualOnlyMode, setManualOnlyMode] = useState(false);
   
   const [scanned, setScanned] = useState(false);
@@ -197,10 +195,6 @@ export default function StaffScannerScreen() {
         <TouchableOpacity style={styles.manualEntryAltBtn} onPress={() => setManualOnlyMode(true)}>
           <Text style={styles.manualEntryAltBtnText}>Enter QR Code Hash Manually</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.logoutButtonTop} onPress={() => setShowLogoutModal(true)}>
-          <LogOut size={20} color={colors.dangerLight} />
-          <Text style={styles.logoutText}>Sign Out</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -209,7 +203,7 @@ export default function StaffScannerScreen() {
     <View style={styles.container}>
       {/* Top Header */}
       <View style={[styles.header, { paddingTop: Math.max(spacing.md, insets.top + spacing.xs) }]}>
-        <View style={{ flex: 1, paddingRight: 8 }}>
+        <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>CSWDO INTAKE &amp; RELIEF DESK</Text>
           <Text style={styles.headerSubtitle}>Operator: {user?.name || 'Gate Marshal'}</Text>
           {(user?.assigned_shelter || user?.assignedShelter) && (
@@ -221,14 +215,6 @@ export default function StaffScannerScreen() {
             </View>
           )}
         </View>
-        <TouchableOpacity
-          style={styles.logoutIconBtn}
-          onPress={() => setShowLogoutModal(true)}
-          title="Logout"
-          accessibilityLabel="Sign Out of Duty"
-        >
-          <LogOut size={22} color={colors.textSecondary} />
-        </TouchableOpacity>
       </View>
 
       {/* Main View Area */}
@@ -452,21 +438,6 @@ export default function StaffScannerScreen() {
         )}
       </ScrollView>
 
-      {/* Logout Confirmation Modal */}
-      <ConfirmationModal
-        visible={showLogoutModal}
-        title="Confirm Duty Sign Out"
-        message="Are you sure you want to end your shift and sign out? You will be disconnected from the shelter intake desk."
-        confirmText="Yes, Sign Out"
-        cancelText="Stay on Duty"
-        variant="danger"
-        icon={LogOut}
-        onConfirm={async () => {
-          setShowLogoutModal(false);
-          await logout();
-        }}
-        onClose={() => setShowLogoutModal(false)}
-      />
     </View>
   );
 }
@@ -524,18 +495,6 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  logoutButtonTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing['2xl'],
-    padding: spacing.md,
-  },
-  logoutText: {
-    color: colors.dangerLight,
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -575,9 +534,6 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     color: isDarkMode ? '#60a5fa' : '#2563eb',
     fontSize: 11,
     fontWeight: '700',
-  },
-  logoutIconBtn: {
-    padding: spacing.xs,
   },
   scrollContent: {
     padding: spacing.lg,

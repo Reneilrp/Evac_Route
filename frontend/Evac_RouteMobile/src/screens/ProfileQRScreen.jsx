@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, Modal, TextInput, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
-import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon } from 'lucide-react-native';
+import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon, Edit3 } from 'lucide-react-native';
 import { useResidentStore } from '../context/useResidentStore';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
@@ -198,27 +198,45 @@ export default function ProfileQRScreen({ navigation }) {
 
           {/* Details */}
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '900', marginBottom: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+              <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 16, fontWeight: '900', marginBottom: 2 }} numberOfLines={2}>
                 {effectiveName}
               </Text>
               <TouchableOpacity
                 onPress={() => setIsHomeModalOpen(true)}
-                style={{ backgroundColor: colors.primaryGlow, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: colors.primary }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  backgroundColor: colors.primaryGlow,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: colors.primary,
+                }}
+                accessibilityLabel="Edit Profile"
               >
-                <Text style={{ color: colors.primary, fontSize: 10, fontWeight: 'bold' }}>✏️ Edit</Text>
+                <Edit3 size={11} color={colors.primary} />
+                <Text style={{ color: colors.primary, fontSize: 11, fontWeight: 'bold' }}>Edit</Text>
               </TouchableOpacity>
             </View>
             <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600', marginBottom: 6 }}>
               ID: RES-{effectiveId.toString().padStart(6, '0')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <Text style={{ backgroundColor: colors.surfaceElevated, color: colors.primary, fontSize: 10, fontWeight: 'bold', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
-                📍 Brgy. {effectiveBarangay}
-              </Text>
-              <Text style={{ backgroundColor: colors.successBg, color: colors.successText, fontSize: 10, fontWeight: 'bold', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: colors.success }}>
-                👨‍👩‍👧‍👦 Family of {effectiveHeadcount}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.surfaceElevated, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+                <MapPin size={11} color={colors.primary} />
+                <Text style={{ color: colors.primary, fontSize: 10, fontWeight: 'bold' }}>
+                  Brgy. {effectiveBarangay}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.successBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: colors.success }}>
+                <Users size={11} color={colors.successText} />
+                <Text style={{ color: colors.successText, fontSize: 10, fontWeight: 'bold' }}>
+                  Family of {effectiveHeadcount}
+                </Text>
+              </View>
             </View>
           </View>
         </View>

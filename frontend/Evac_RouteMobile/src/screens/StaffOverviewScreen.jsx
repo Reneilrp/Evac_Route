@@ -69,6 +69,8 @@ export default function StaffOverviewScreen() {
   };
 
   const getOccupancyColor = (shelter) => {
+    const isOpen = (shelter?.status || '').toLowerCase() === 'open';
+    if (!isOpen) return colors.danger;
     const maxCap = Math.max(1, Number(shelter?.max_capacity) || 1);
     const currOcc = Math.max(0, Number(shelter?.current_occupancy) || 0);
     const ratio = currOcc / maxCap;

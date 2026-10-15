@@ -23,7 +23,6 @@ import {
   Clock,
   Shield,
   RefreshCw,
-  LogOut,
   MessageSquare,
   Activity,
   ChevronRight,
@@ -45,10 +44,9 @@ import RescueSimulationStepper from '../components/RescueSimulationStepper';
 export default function RescueDutyScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // 1. Fetch active rescue missions
   const {
@@ -116,13 +114,13 @@ export default function RescueDutyScreen({ navigation }) {
     (user?.role === 'admin' ? unitsData?.[0] : null);
 
   const roleDisplayNames = {
-    boat_pilot: '🚤 Boat Pilot / Vessel Commander',
-    lead_medic: '🚑 Lead Paramedic / Medic',
-    heavy_driver: '🛻 Heavy 4x4 Driver / Navigator',
-    rescue_swimmer: '🦺 Field Rescue Swimmer / Rescuer',
-    crew: '📋 Logistics & Radio Operator',
+    boat_pilot: 'Boat Pilot / Vessel Commander',
+    lead_medic: 'Lead Paramedic / Medic',
+    heavy_driver: 'Heavy 4x4 Driver / Navigator',
+    rescue_swimmer: 'Field Rescue Swimmer / Rescuer',
+    crew: 'Logistics & Radio Operator',
   };
-  const rescuerRoleTitle = roleDisplayNames[user?.rescue_role] || '🦺 Rescue Field Operator';
+  const rescuerRoleTitle = roleDisplayNames[user?.rescue_role] || 'Rescue Field Operator';
 
   const [selectedMissionId, setSelectedMissionId] = useState(null);
 
@@ -306,15 +304,8 @@ export default function RescueDutyScreen({ navigation }) {
         </View>
 
         <View style={styles.headerActionRow}>
-          <TouchableOpacity onPress={refetchMissions} style={styles.refreshBtn}>
+          <TouchableOpacity onPress={refetchMissions} style={styles.refreshBtn} accessibilityLabel="Refresh missions">
             <RefreshCw color={colors.textSecondary} size={18} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setShowLogoutModal(true)}
-            style={styles.logoutBtn}
-            accessibilityLabel="Sign Out of Duty"
-          >
-            <LogOut color="#f87171" size={18} />
           </TouchableOpacity>
         </View>
       </View>
@@ -883,21 +874,6 @@ export default function RescueDutyScreen({ navigation }) {
         onClose={closeConfirmModal}
       />
 
-      {/* Logout Confirmation Modal */}
-      <ConfirmationModal
-        visible={showLogoutModal}
-        title="Confirm Duty Sign Out"
-        message="Are you sure you want to end your shift and sign out? You will stop receiving live field dispatch telemetry until you log back in."
-        confirmText="Yes, Sign Out"
-        cancelText="Stay on Duty"
-        variant="danger"
-        icon={LogOut}
-        onConfirm={async () => {
-          setShowLogoutModal(false);
-          await logout();
-        }}
-        onClose={() => setShowLogoutModal(false)}
-      />
     </View>
   );
 }
@@ -926,9 +902,6 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-  },
-  logoutBtn: {
-    padding: spacing.xs,
   },
   iconCircle: {
     width: 38,

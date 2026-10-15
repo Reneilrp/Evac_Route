@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Linking, Alert, Platform, Animated, PanResponder, Vibration, Modal, Pressable } from 'react-native';
-import { AlertTriangle, Navigation, Phone, X, User, ChevronDown, Info, Layers, ShieldAlert, Activity, CheckCircle2 } from 'lucide-react-native';
+import { AlertTriangle, Navigation, Phone, X, User, ChevronDown, Info, Layers, ShieldAlert, Activity, CheckCircle2, Footprints, Bike, Car } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
@@ -2476,28 +2476,33 @@ export default function EvacMapScreen({ navigation, route }) {
                   {/* Transport mode selector inside bottom sheet */}
                   <View style={{ flexDirection: 'row', gap: 8, marginVertical: 8 }}>
                     {[
-                      { key: 'pedestrian', icon: '🚶', label: 'Walk' },
-                      { key: '2_wheel',    icon: '🏍', label: 'Bike' },
-                      { key: '4_wheel',    icon: '🚗', label: 'Car'  },
-                    ].map(m => (
-                      <TouchableOpacity
-                        key={m.key}
-                        style={[
-                          styles.modeButton,
-                          { flex: 1, paddingVertical: 6, justifyContent: 'center' },
-                          transportationMode === m.key && styles.modeButtonActive
-                        ]}
-                        onPress={() => {
-                          setTransportationMode(m.key);
-                          Vibration.vibrate(50);
-                        }}
-                      >
-                        <Text style={styles.modeIcon}>{m.icon}</Text>
-                        <Text style={[styles.modeButtonText, transportationMode === m.key && styles.modeButtonTextActive]}>
-                          {m.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                      { key: 'pedestrian', Icon: Footprints, label: 'Walk' },
+                      { key: '2_wheel',    Icon: Bike,       label: 'Bike' },
+                      { key: '4_wheel',    Icon: Car,        label: 'Car'  },
+                    ].map(m => {
+                      const isActive = transportationMode === m.key;
+                      const iconColor = isActive ? colors.white : colors.textSecondary;
+                      return (
+                        <TouchableOpacity
+                          key={m.key}
+                          style={[
+                            styles.modeButton,
+                            { flex: 1, paddingVertical: 6, justifyContent: 'center' },
+                            isActive && styles.modeButtonActive
+                          ]}
+                          onPress={() => {
+                            setTransportationMode(m.key);
+                            Vibration.vibrate(50);
+                          }}
+                          accessibilityLabel={`Switch mode to ${m.label}`}
+                        >
+                          <m.Icon size={16} color={iconColor} style={{ marginBottom: 3 }} />
+                          <Text style={[styles.modeButtonText, isActive && styles.modeButtonTextActive]}>
+                            {m.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
 
                   {/* Occupancy progress bar */}
