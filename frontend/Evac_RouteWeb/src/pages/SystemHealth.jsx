@@ -27,7 +27,7 @@ export default function SystemHealth() {
       const res = await api.post('/system-health/clear-cache');
       showSuccess(res.data.message || "System caches flushed successfully.");
       refetch();
-    } catch (err) {
+    } catch {
       showError("Failed to flush system caches.");
     } finally {
       setIsFlushingCache(false);
@@ -48,7 +48,7 @@ export default function SystemHealth() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       showSuccess(`Backup downloaded: ${res.data.data.filename}`);
-    } catch (err) {
+    } catch {
       showError("Failed to export database snapshot.");
     } finally {
       setIsBackingUp(false);

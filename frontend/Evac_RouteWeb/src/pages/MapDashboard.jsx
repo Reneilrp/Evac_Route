@@ -6,7 +6,7 @@ import {
   MapPin, AlertTriangle, X, Cloud, Flame, Zap,
   ChevronRight, ChevronLeft, Moon, Satellite, Mountain,
   TriangleAlert, Droplets, Waves, Shield, SlidersHorizontal, Layers,
-  Eye, Wrench, Users, Navigation, Building2, Search
+  Eye, Wrench, Users, Building2, Search
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
@@ -1226,7 +1226,7 @@ const BARANGAY_COORDS = {
   'Talon-Talon': [122.1000, 6.8972]
 };
 
-function FloatingMapSearch({ shelters = [], onSelectLocation }) {
+export function FloatingMapSearch({ shelters = [], onSelectLocation }) {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);

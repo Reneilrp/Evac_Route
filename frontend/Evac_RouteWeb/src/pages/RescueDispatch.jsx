@@ -712,7 +712,7 @@ export default function RescueDispatch() {
 }
 
 // --- Dispatch Modal Component ---
-function DispatchUnitModal({ initialData, availableUnits, shelters, onClose, onSuccess }) {
+export function DispatchUnitModal({ initialData, availableUnits, shelters, onClose, onSuccess }) {
   const [unitId, setUnitId] = useState(initialData.rescue_unit_id || (availableUnits.find(u => u.status === 'standby')?.id || ''));
   const [victimName, setVictimName] = useState(initialData.victim_name || '');
   const [victimPhone, setVictimPhone] = useState(initialData.victim_phone || '');

@@ -40,7 +40,7 @@ const UNIT_TYPES = [
 ];
 
 // --- Add Stock Modal ---
-function AddStockModal({ onCancel, onAdd }) {
+export function AddStockModal({ onCancel, onAdd }) {
   const [selectedPreset, setSelectedPreset] = useState(DISASTER_RELIEF_ITEMS[0].name);
   const [customItemName, setCustomItemName] = useState('');
   const [category, setCategory] = useState(DISASTER_RELIEF_ITEMS[0].category);
