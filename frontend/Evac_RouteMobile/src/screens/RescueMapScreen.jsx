@@ -29,7 +29,6 @@ import {
   ArrowLeft,
   LifeBuoy,
   Radio,
-  Sliders,
   RotateCcw,
   Play,
   Pause,
@@ -1174,9 +1173,14 @@ export default function RescueMapScreen({ navigation, route }) {
               setShowStartSimModal(true);
             }
           }}
-          accessibilityLabel="Toggle Presentation Simulation Tools"
+          accessibilityLabel="Rescue Simulation"
         >
-          <Sliders size={20} color={(showDemoControls || isSimulationActive) ? '#f59e0b' : '#94a3b8'} />
+          <Play
+            size={18}
+            color={(showDemoControls || isSimulationActive) ? '#f59e0b' : colors.textPrimary}
+            fill={(showDemoControls || isSimulationActive) ? '#f59e0b' : 'none'}
+            style={{ marginLeft: 2 }}
+          />
         </TouchableOpacity>
       </View>
 
