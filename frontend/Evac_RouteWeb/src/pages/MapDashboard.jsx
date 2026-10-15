@@ -6,7 +6,7 @@ import {
   MapPin, AlertTriangle, X, Cloud, Flame, Zap,
   ChevronRight, ChevronLeft, Moon, Satellite, Mountain,
   TriangleAlert, Droplets, Waves, Shield, SlidersHorizontal, Layers,
-  Eye, Wrench, Users, Building2, Search, ShieldAlert
+  Eye, Users, Building2, Search, ShieldAlert
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
@@ -383,10 +383,9 @@ function VisualTimeline({ createdAt, durationHours, hazardType }) {
         pingClass: 'bg-red-500'
       };
     }
-    // maintenance or default
     return {
-      title: 'Road Maintenance Blockage Timeline',
-      targetLabel: 'Est. Road Reopened',
+      title: 'Incident Clearance Timeline',
+      targetLabel: 'Est. All-Clear Time',
       accentClass: 'bg-amber-500',
       textClass: 'text-amber-600 dark:text-amber-400',
       borderClass: 'border-amber-500/20 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/20',
@@ -534,7 +533,6 @@ function MapLegend({ simulationMode }) {
             <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-blue-800/60 border border-amber-400" /><span className="text-xs text-white/80">Flood — Medium</span></div>
             <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-red-700/60 border border-white/30" /><span className="text-xs text-white/80">Flood — High</span></div>
             <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-red-950/80 border-2 border-red-500" /><span className="text-xs text-white/80 font-bold">Earthquake — Block</span></div>
-            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-orange-600/50 border border-white/20" /><span className="text-xs text-white/80">Road Maintenance</span></div>
           </div>
           {simulationMode && (
             <>
@@ -1060,136 +1058,6 @@ function HazardDetailModal({ hazard, onResolve, onCancel, isLoading, readOnly = 
   );
 }
 
-// --- Maintenance Form Modal ---
-function MaintenanceFormModal({ onConfirm, onCancel, isLoading }) {
-  const [desc, setDesc] = useState('');
-  const [durationValue, setDurationValue] = useState('');
-  const [durationUnit, setDurationUnit] = useState('hours');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!desc) return;
-    let hours = durationValue ? parseInt(durationValue, 10) : null;
-    if (hours && durationUnit === 'days') hours = hours * 24;
-    if (hours && durationUnit === 'weeks') hours = hours * 168;
-    onConfirm({ 
-      description: desc,
-      estimated_duration_hours: hours
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-amber-600 text-lg flex items-center gap-2">
-            <Wrench size={20} className="text-amber-500" /> Flag Road Blockage
-          </h3>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition"><X size={22} /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Blockage Description</label>
-            <input
-              type="text"
-              className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-              placeholder="e.g. Bridge Repair, Road Closed for Pipe Installation"
-              value={desc}
-              onChange={e => setDesc(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Estimated Duration</label>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                min="1"
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-                placeholder="e.g. 24"
-                value={durationValue}
-                onChange={e => setDurationValue(e.target.value)}
-              />
-              <select
-                className="px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-                value={durationUnit}
-                onChange={e => setDurationUnit(e.target.value)}
-              >
-                <option value="hours">Hours</option>
-                <option value="days">Days</option>
-                <option value="weeks">Weeks</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-2.5 rounded-lg font-semibold text-sm transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-lg font-bold text-sm transition disabled:opacity-60"
-            >
-              {isLoading ? 'Saving...' : 'Block Route'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// --- Maintenance Detail Modal ---
-function MaintenanceDetailModal({ maintenance, onResolve, onCancel, isLoading }) {
-  return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-amber-600 text-lg flex items-center gap-2">
-            <Wrench size={20} className="text-amber-500" /> Active Road Maintenance
-          </h3>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition"><X size={22} /></button>
-        </div>
-        <div className="space-y-4">
-          <div>
-            <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Description</p>
-            <p className="text-gray-800 dark:text-slate-200 font-medium text-lg mt-0.5">{maintenance.description}</p>
-          </div>
-          {maintenance.estimated_duration_hours && (
-            <VisualTimeline
-              createdAt={maintenance.created_at}
-              durationHours={maintenance.estimated_duration_hours}
-              hazardType="maintenance"
-            />
-          )}
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-2.5 rounded-lg font-semibold text-sm transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={onResolve}
-              disabled={isLoading}
-              className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-lg font-bold text-sm transition disabled:opacity-60"
-            >
-              Resolve Maintenance
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // --- Memoized Map Viewer ---
 const BARANGAY_COORDS = {
   'Tetuan': [122.0886, 6.9192],
@@ -1499,11 +1367,7 @@ const MapViewer = React.memo(({
   isDrawingRadius = false,
   drawingRadiusMeters = 50,
   handleMapMouseMove = null,
-  roadMaintenances = [],
-  maintenancePoints = [],
   drawingEnd = null,
-  showRoadMaintenances = true,
-  setSelectedRoadMaintenance = null,
   showRoadNetwork = true,
   roadNetwork = null,
   placementCoords = null,
@@ -1562,21 +1426,6 @@ const MapViewer = React.memo(({
 
   const [hoveredFeature, setHoveredFeature] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-
-  const roadMaintenancesGeoJSON = useMemo(() => ({
-    type: 'FeatureCollection',
-    features: roadMaintenances.map(rm => ({
-      type: 'Feature',
-      properties: { id: rm.id, description: rm.description },
-      geometry: {
-        type: 'LineString',
-        coordinates: [
-          [parseFloat(rm.start_longitude), parseFloat(rm.start_latitude)],
-          [parseFloat(rm.end_longitude), parseFloat(rm.end_latitude)]
-        ]
-      }
-    }))
-  }), [roadMaintenances]);
 
   const placementPreviewGeoJSON = useMemo(() => {
     if (pinMode !== 'sim-placement' || !placementCoords) return null;
@@ -2089,92 +1938,7 @@ const MapViewer = React.memo(({
 
 
 
-        {/* Active Road Maintenance Lines */}
-        {showRoadMaintenances && roadMaintenancesGeoJSON.features.length > 0 && (
-          <Source id="road-maintenances-source" type="geojson" data={roadMaintenancesGeoJSON}>
-            <Layer
-              id="road-maintenances-layer-case"
-              type="line"
-              paint={{
-                'line-color': '#000000',
-                'line-width': 8,
-              }}
-            />
-            <Layer
-              id="road-maintenances-layer"
-              type="line"
-              paint={{
-                'line-color': '#f59e0b', // amber-500
-                'line-width': 5,
-                'line-dasharray': [2, 2],
-              }}
-            />
-          </Source>
-        )}
 
-        {/* Road Maintenance Midpoint Markers */}
-        {showRoadMaintenances && roadMaintenances.map(rm => {
-          const midLng = (parseFloat(rm.start_longitude) + parseFloat(rm.end_longitude)) / 2;
-          const midLat = (parseFloat(rm.start_latitude) + parseFloat(rm.end_latitude)) / 2;
-          return (
-            <Marker key={`rm-pin-${rm.id}`} longitude={midLng} latitude={midLat} anchor="center">
-              <div
-                onClick={e => { e.stopPropagation(); setSelectedRoadMaintenance(rm); inspectLocation(midLng, midLat); }}
-                className="w-8 h-8 border border-amber-500/40 bg-amber-950/95 rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform group relative"
-              >
-                <Wrench size={13} className="text-amber-400 animate-pulse" />
-                <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col w-max bg-gray-950/90 border border-white/10 rounded-xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-200">
-                  <p className="font-black text-white text-xs">{rm.description}</p>
-                  <p className="text-[10px] text-white/50 mt-0.5">Road Closed · Maintenance</p>
-                  {rm.estimated_duration_hours && (
-                    <MiniTimeline 
-                      createdAt={rm.created_at} 
-                      durationHours={rm.estimated_duration_hours} 
-                      hazardType="maintenance" 
-                    />
-                  )}
-                  <p className="text-[9px] text-white/30 mt-1.5 font-bold">Click to resolve</p>
-                </div>
-              </div>
-            </Marker>
-          );
-        })}
-
-        {/* Drawing Road Maintenance Line Preview */}
-        {pinMode === 'maintenance' && (maintenancePoints.length + (drawingEnd ? 1 : 0)) >= 2 && (
-          <Source
-            id="drawing-maintenance-source"
-            type="geojson"
-            data={{
-              type: 'Feature',
-              geometry: {
-                type: 'LineString',
-                coordinates: [
-                  ...maintenancePoints.map(p => [p.longitude, p.latitude]),
-                  ...(drawingEnd ? [[drawingEnd.longitude, drawingEnd.latitude]] : [])
-                ]
-              }
-            }}
-          >
-            <Layer
-              id="drawing-maintenance-layer-case"
-              type="line"
-              paint={{
-                'line-color': '#000000',
-                'line-width': 6,
-              }}
-            />
-            <Layer
-              id="drawing-maintenance-layer"
-              type="line"
-              paint={{
-                'line-color': '#f59e0b',
-                'line-width': 4,
-                'line-dasharray': [2, 2],
-              }}
-            />
-          </Source>
-        )}
 
         {/* Local Hydrological & Terrain Simulation Layer */}
         {simulationGeoJSON && simOverlayMode === 'flow' && (
@@ -2404,7 +2168,7 @@ const MapViewer = React.memo(({
 });
 
 // ─── Scoped Risk Alerts Drawer ───────────────────────────────────────────────
-function RiskAlertsDrawer({ hazards, roadMaintenances = [], simulationMode, drawerOpen, setDrawerOpen }) {
+function RiskAlertsDrawer({ hazards, simulationMode, drawerOpen, setDrawerOpen }) {
   const activeHazards = hazards.filter(h =>
     simulationMode === 'rain'
       ? h.hazard_type === 'flood'
@@ -2413,16 +2177,11 @@ function RiskAlertsDrawer({ hazards, roadMaintenances = [], simulationMode, draw
       : true
   );
 
-  const activeMaintenance = simulationMode ? [] : roadMaintenances;
-
-  // Combine alerts and sort by newest created_at first
-  const combinedAlerts = [
-    ...activeHazards.map(h => ({ ...h, alertType: 'hazard' })),
-    ...activeMaintenance.map(rm => ({ ...rm, alertType: 'maintenance' }))
-  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const combinedAlerts = activeHazards
+    .map(h => ({ ...h, alertType: 'hazard' }))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const severityIcon = (alert) => {
-    if (alert.alertType === 'maintenance') return <Wrench size={14} className="text-amber-400" />;
     const s = alert.severity_level;
     if (s === 'high') return <TriangleAlert size={14} className="text-red-400" />;
     if (s === 'medium') return <Waves size={14} className="text-orange-400" />;
@@ -2430,7 +2189,6 @@ function RiskAlertsDrawer({ hazards, roadMaintenances = [], simulationMode, draw
   };
   
   const severityBg = (alert) => {
-    if (alert.alertType === 'maintenance') return 'border-amber-500/40 bg-amber-950/20';
     const s = alert.severity_level;
     if (s === 'high') return 'border-red-500/40 bg-red-950/30';
     if (s === 'medium') return 'border-orange-500/40 bg-orange-950/20';
@@ -2469,24 +2227,23 @@ function RiskAlertsDrawer({ hazards, roadMaintenances = [], simulationMode, draw
             </div>
           ) : (
             combinedAlerts.map(alert => {
-              const isHazard = alert.alertType === 'hazard';
-              const name = isHazard ? alert.name : alert.description;
-              const typeLabel = isHazard ? alert.hazard_type : 'road blockage';
+              const name = alert.name;
+              const typeLabel = alert.hazard_type;
               
               return (
-                <div key={isHazard ? `hz-${alert.id}` : `rm-${alert.id}`} className={`border rounded-xl p-3 ${severityBg(alert)}`}>
+                <div key={`hz-${alert.id}`} className={`border rounded-xl p-3 ${severityBg(alert)}`}>
                   <div className="flex items-start gap-2">
                     {severityIcon(alert)}
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-black text-white truncate">{name}</p>
                       <p className="text-[10px] text-white/50 mt-0.5 capitalize">
-                        {typeLabel} {isHazard ? `· ${alert.severity_level} severity · ${alert.radius_meters}m radius` : '· Maintenance'}
+                        {typeLabel} · {alert.severity_level} severity · {alert.radius_meters}m radius
                       </p>
                       {alert.estimated_duration_hours && (
                         <MiniTimeline 
                           createdAt={alert.created_at} 
                           durationHours={alert.estimated_duration_hours} 
-                          hazardType={isHazard ? alert.hazard_type : 'maintenance'} 
+                          hazardType={alert.hazard_type} 
                         />
                       )}
                     </div>
@@ -2583,11 +2340,7 @@ export default function MapDashboard() {
   const [isDrawingRadius, setIsDrawingRadius] = useState(false);
   const [drawingRadiusMeters, setDrawingRadiusMeters] = useState(50);
 
-  const [showRoadMaintenances, setShowRoadMaintenances] = useState(true);
-  const [maintenancePoints, setMaintenancePoints] = useState([]);
   const [drawingEnd, setDrawingEnd] = useState(null);
-  const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
-  const [selectedRoadMaintenance, setSelectedRoadMaintenance] = useState(null);
   const [showLocalSimulation, setShowLocalSimulation] = useState(false);
   const [simSetupState, setSimSetupState] = useState('idle'); // 'idle' | 'configuring' | 'placing' | 'processing' | 'rendered'
   const [selectedRadiusMeters, setSelectedRadiusMeters] = useState(2000); // Default 2km (2000m)
@@ -2665,12 +2418,10 @@ export default function MapDashboard() {
       );
       setDrawingRadiusMeters(Math.max(10, Math.min(5000, Math.round(distance))));
       setDrawingEnd({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
-    } else if (pinMode === 'maintenance' && maintenancePoints.length > 0) {
-      setDrawingEnd({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
     } else if (pinMode === 'sim-placement') {
       setPlacementCoords({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
     }
-  }, [pinMode, pendingLocation, isDrawingRadius, maintenancePoints]);
+  }, [pinMode, pendingLocation, isDrawingRadius]);
 
   const inspectLocation = useCallback((lng, lat) => {
     const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
@@ -2769,7 +2520,6 @@ export default function MapDashboard() {
 
   const shelters = dashboardData?.shelters || [];
   const hazards = dashboardData?.hazards || [];
-  const roadMaintenances = dashboardData?.road_maintenances || [];
   const demographics = dashboardData?.demographics || [];
 
   const nearestShelterToResident = useMemo(() => {
@@ -2828,7 +2578,7 @@ export default function MapDashboard() {
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
-  const isModalOpen = !!(selectedHazard || selectedRoadMaintenance || selectedShelter || showShelterForm || showHazardForm || showMaintenanceForm || isDeleteConfirmOpen);
+  const isModalOpen = !!(selectedHazard || selectedShelter || showShelterForm || showHazardForm || isDeleteConfirmOpen);
   const isModalOpenRef = useRef(false);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/immutability
@@ -2843,10 +2593,8 @@ export default function MapDashboard() {
         if (pendingLocation) setPendingLocation(null);
         if (showShelterForm) setShowShelterForm(false);
         if (showHazardForm) setShowHazardForm(false);
-        if (showMaintenanceForm) setShowMaintenanceForm(false);
         if (selectedHazard) setSelectedHazard(null);
         if (selectedShelter) setSelectedShelter(null);
-        if (selectedRoadMaintenance) setSelectedRoadMaintenance(null);
         if (isDeleteConfirmOpen) setIsDeleteConfirmOpen(false);
         if (layersOpen) setLayersOpen(false);
       }
@@ -2855,8 +2603,7 @@ export default function MapDashboard() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     pinMode, pendingLocation, showShelterForm, showHazardForm,
-    showMaintenanceForm, selectedHazard, selectedShelter,
-    selectedRoadMaintenance, isDeleteConfirmOpen, layersOpen
+    selectedHazard, selectedShelter, isDeleteConfirmOpen, layersOpen
   ]);
 
   const addShelterMutation = useMutation({
@@ -2883,37 +2630,6 @@ export default function MapDashboard() {
     },
     onError: (err) => {
       showError(err.response?.data?.message || 'Failed to add hazard zone.');
-    }
-  });
-  const addMaintenanceMutation = useMutation({
-    pointer: 'add-maintenance',
-    mutationFn: (data) => api.post('/road-maintenance', data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['map-dashboard'] });
-      // Keep pinMode === 'maintenance' active for session-based multiple blocks creation
-      setMaintenancePoints([]);
-      setDrawingEnd(null);
-      setShowMaintenanceForm(false);
-      showSuccess('Road maintenance blockage reported successfully.');
-    },
-    onError: (err) => {
-      showError(err.response?.data?.message || 'Failed to report road maintenance.');
-    }
-  });
-  const resolveMaintenanceMutation = useMutation({
-    mutationFn: (ids) => {
-      if (Array.isArray(ids)) {
-        return Promise.all(ids.map(id => api.put(`/road-maintenance/${id}/resolve`)));
-      }
-      return api.put(`/road-maintenance/${ids}/resolve`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['map-dashboard'] });
-      setSelectedRoadMaintenance(null);
-      showSuccess('Road maintenance blockage resolved.');
-    },
-    onError: (err) => {
-      showError(err.response?.data?.message || 'Failed to resolve road blockage.');
     }
   });
   const updateShelterMutation = useMutation({
@@ -2979,12 +2695,6 @@ export default function MapDashboard() {
       } else if (pinMode === 'resident') {
         setSimulatedResidentCoords([e.lngLat.lng, e.lngLat.lat]);
         setPinMode(null);
-      } else if (pinMode === 'maintenance') {
-        setMaintenancePoints(prev => {
-          const newPoints = [...prev, { longitude: e.lngLat.lng, latitude: e.lngLat.lat }];
-          setDrawingEnd({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
-          return newPoints;
-        });
       }
     }
   };
@@ -2993,11 +2703,9 @@ export default function MapDashboard() {
     setPendingLocation(null); 
     setIsDrawingRadius(false);
     setDrawingRadiusMeters(50);
-    setMaintenancePoints([]);
     setDrawingEnd(null);
     setShowShelterForm(false); 
     setShowHazardForm(false); 
-    setShowMaintenanceForm(false);
     if (simSetupState === 'placing') {
       setSimSetupState('configuring');
       setPlacementCoords(null);
@@ -3005,15 +2713,6 @@ export default function MapDashboard() {
   };
   const handleConfirmShelter = ({ name, max_capacity }) => addShelterMutation.mutate({ name, latitude: pendingLocation.latitude, longitude: pendingLocation.longitude, max_capacity });
   const handleConfirmHazard = ({ name, radius_meters, hazard_type, severity_level, estimated_duration_hours, is_fixed_flood_spot }) => addHazardMutation.mutate({ name, latitude: pendingLocation.latitude, longitude: pendingLocation.longitude, radius_meters, hazard_type, severity_level, estimated_duration_hours, is_fixed_flood_spot });
-  const handleConfirmMaintenance = ({ description, estimated_duration_hours }) => {
-    if (maintenancePoints.length < 2) return;
-    const coordinates = maintenancePoints.map(p => [p.longitude, p.latitude]);
-    addMaintenanceMutation.mutate({
-      description,
-      coordinates,
-      estimated_duration_hours,
-    });
-  };
   const handleUpdateShelter = (data) => updateShelterMutation.mutate({ id: selectedShelter.id, data });
   const handleDeleteShelter = () => setIsDeleteConfirmOpen(true);
   const handleConfirmDeleteShelter = () => {
@@ -3047,21 +2746,6 @@ export default function MapDashboard() {
           onConfirm={handleConfirmHazard} 
           onCancel={handleCancelPin} 
           isLoading={addHazardMutation.isPending} 
-        />
-      )}
-      {showMaintenanceForm && maintenancePoints.length >= 2 && (
-        <MaintenanceFormModal 
-          onConfirm={handleConfirmMaintenance}
-          onCancel={handleCancelPin}
-          isLoading={addMaintenanceMutation.isPending}
-        />
-      )}
-      {selectedRoadMaintenance && (
-        <MaintenanceDetailModal 
-          maintenance={selectedRoadMaintenance}
-          onResolve={() => resolveMaintenanceMutation.mutate(selectedRoadMaintenance.id)}
-          onCancel={() => setSelectedRoadMaintenance(null)}
-          isLoading={resolveMaintenanceMutation.isPending}
         />
       )}
       {selectedShelter && (
@@ -3130,16 +2814,6 @@ export default function MapDashboard() {
 
             {!isCSWDO && (
               <>
-                <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-                  <input
-                    type="checkbox"
-                    checked={showRoadMaintenances}
-                    onChange={e => setShowRoadMaintenances(e.target.checked)}
-                    className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-                  />
-                  Active Road Blocks
-                </label>
-
                 <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
                   <input
                     type="checkbox"
@@ -3332,7 +3006,6 @@ export default function MapDashboard() {
                   <ToolbarBtn active={false} onClick={() => setPinMode('inspect')} icon={<Eye size={14} className="animate-pulse" />} label="Inspect" color="purple" />
                   <ToolbarBtn active={false} onClick={() => setPinMode('shelter')} icon={<MapPin size={14} />} label="Shelter" color="blue" />
                   <ToolbarBtn active={false} onClick={() => setPinMode('hazard')} icon={<AlertTriangle size={14} />} label="Hazard" color="red" />
-                  <ToolbarBtn active={false} onClick={() => setPinMode('maintenance')} icon={<Wrench size={14} />} label="Maintenance" color="amber" />
                 </>
               ) : (
                 <ToolbarBtn active={false} onClick={handleCancelPin} icon={<X size={14} />} label="Cancel Pin" color="red" />
@@ -3402,22 +3075,6 @@ export default function MapDashboard() {
                   <span>⚠️ <strong className="font-black tracking-wide uppercase">Define Disaster Reach:</strong> Move mouse outward to stretch the line &amp; circle (Current: <strong className="text-yellow-300 font-bold">{drawingRadiusMeters}m radius</strong>), then click again to lock boundary.</span>
                 ) : (
                   <span>⚠️ <strong className="font-black tracking-wide uppercase">Flagging Hazard:</strong> Click on the map to mark the center of the hazard zone.</span>
-                )
-              ) : pinMode === 'maintenance' ? (
-                maintenancePoints.length === 0 ? (
-                  <span>🚧 <strong className="font-black tracking-wide uppercase">Road Maintenance:</strong> Click on the map to define the <strong className="text-yellow-300">START</strong> of the blockage.</span>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <span>🚧 <strong className="font-black tracking-wide uppercase">Define Blockage Route:</strong> Click subsequent points on the map. Total points: <strong className="text-yellow-300 font-bold">{maintenancePoints.length}</strong>.</span>
-                    {maintenancePoints.length >= 2 && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setShowMaintenanceForm(true); }}
-                        className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1 rounded-lg text-[10px] uppercase transition shadow-md"
-                      >
-                        Finish &amp; Save Route
-                      </button>
-                    )}
-                  </div>
                 )
               ) : (
                 <span>🔍 <strong className="font-black tracking-wide uppercase">Tactical 3D Inspection Active:</strong> Click any location on the map to run a 360° situational orbit.</span>
@@ -3615,11 +3272,7 @@ export default function MapDashboard() {
           isDrawingRadius={isDrawingRadius}
           drawingRadiusMeters={drawingRadiusMeters}
           handleMapMouseMove={handleMapMouseMove}
-          roadMaintenances={roadMaintenances}
-          maintenancePoints={maintenancePoints}
           drawingEnd={drawingEnd}
-          showRoadMaintenances={showRoadMaintenances}
-          setSelectedRoadMaintenance={setSelectedRoadMaintenance}
           showRoadNetwork={showRoadNetwork}
           roadNetwork={roadNetwork}
           placementCoords={placementCoords}
@@ -3635,7 +3288,6 @@ export default function MapDashboard() {
         />
         <RiskAlertsDrawer
           hazards={hazards}
-          roadMaintenances={roadMaintenances}
           simulationMode={simulationMode}
           drawerOpen={drawerOpen}
           setDrawerOpen={setDrawerOpen}

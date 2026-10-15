@@ -12,7 +12,6 @@ use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\ReliefClaimController;
 use App\Http\Controllers\Api\ResidentRegistryController;
 use App\Http\Controllers\Api\ResidentStatusController;
-use App\Http\Controllers\Api\RoadMaintenanceController;
 use App\Http\Controllers\Api\RoadNetworkController;
 use App\Http\Controllers\Api\RescueMissionController;
 use App\Http\Controllers\Api\SettingController;
@@ -138,11 +137,6 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         // 8. Evacuation Logs
         Route::get('/evacuation-logs', [CheckInController::class, 'getLogs']);
         Route::get('/residents', [ResidentRegistryController::class, 'index']);
-
-        // 9. Road Maintenance
-        Route::get('/road-maintenance', [RoadMaintenanceController::class, 'index']);
-        Route::post('/road-maintenance', [RoadMaintenanceController::class, 'store']);
-        Route::put('/road-maintenance/{id}/resolve', [RoadMaintenanceController::class, 'resolve']);
 
         // 10. Broadcast Warning Alerts
         Route::post('/alerts', [BroadcastAlertController::class, 'store']);

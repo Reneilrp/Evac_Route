@@ -394,67 +394,7 @@ function DashboardLayout({ children }) {
       }
     });
 
-    channel.listen('.road-maintenance.created', (data) => {
-      playNotificationSound();
-      const newNotif = {
-        id: `rm-create-${data.id}-${Date.now()}`,
-        title: 'Road Blocked for Maintenance',
-        message: `${data.description} is active`,
-        time: new Date(),
-        type: 'road_maintenance',
-        link: '/admin/map'
-      };
-      setNotifications(prev => [newNotif, ...prev]);
-      setUnreadCount(prev => prev + 1);
 
-      toast.custom((t) => (
-        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-amber-950 text-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-black ring-opacity-5 border border-amber-800/50 backdrop-blur-md`}>
-          <div className="flex-1 w-0 p-4">
-            <div className="flex items-start">
-              <div className="flex-shrink-0 pt-0.5">
-                <span className="text-xl">🚧</span>
-              </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-extrabold text-amber-400 font-mono">ROAD BLOCK ENFORCED</p>
-                <p className="mt-1 text-xs text-amber-100">{data.description}</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex border-l border-amber-800/50 items-center divide-x divide-amber-800/50">
-            <button
-              onClick={() => {
-                toast.dismiss(t.id);
-                window.location.href = '/admin/map';
-              }}
-              className="px-3.5 py-3 text-xs font-black text-amber-400 hover:text-amber-300 focus:outline-none cursor-pointer"
-            >
-              VIEW MAP
-            </button>
-            <button
-              onClick={() => toast.dismiss(t.id)}
-              className="px-3 py-3 text-xs font-black text-amber-400/70 hover:text-white focus:outline-none cursor-pointer"
-              title="Close Notification"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      ), { duration: 7000 });
-    });
-
-    channel.listen('.road-maintenance.resolved', (data) => {
-      playNotificationSound();
-      const newNotif = {
-        id: `rm-resolve-${data.id}-${Date.now()}`,
-        title: 'Road Block Resolved',
-        message: `Road maintenance blockage has been resolved.`,
-        time: new Date(),
-        type: 'road_maintenance_resolved',
-        link: '/admin/map'
-      };
-      setNotifications(prev => [newNotif, ...prev]);
-      setUnreadCount(prev => prev + 1);
-    });
 
     channel.listen('.dispatch.order.delivered', (data) => {
       playNotificationSound();

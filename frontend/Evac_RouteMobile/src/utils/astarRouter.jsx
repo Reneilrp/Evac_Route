@@ -282,7 +282,7 @@ function getHazardCostMultiplier(geometryCoords, hazardsWithBounds, transportati
           const dist = getDistanceMeters(edgeLat, edgeLng, h.lat, h.lng);
           if (dist <= h.radius) {
             // Absolute blocks: Non-flood hazards
-            if (['earthquake', 'maintenance', 'siege', 'chemical_spill'].includes(h.hazard_type)) {
+            if (['earthquake', 'siege', 'chemical_spill'].includes(h.hazard_type)) {
               return 99999;
             }
             

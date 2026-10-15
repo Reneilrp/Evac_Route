@@ -49,7 +49,7 @@ const OPERATOR_TYPES = [
   {
     id: 'cdrrmo',
     label: 'CDRRMO Tactical Director',
-    description: 'Disaster command, hazard zoning, road maintenance & rescue fleet oversight',
+    description: 'Disaster command, hazard zoning, proactive alerts & rescue fleet oversight',
     icon: Building2,
     role: 'admin',
     color: 'blue',

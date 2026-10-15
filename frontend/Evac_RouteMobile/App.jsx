@@ -142,18 +142,6 @@ function App() {
       .listen('.hazard.resolved', () => {
         console.log('[Echo] Hazard resolved — refreshing map data.');
         queryClient.invalidateQueries({ queryKey: ['resident-map-data'] });
-      })
-
-      // ── Road Maintenance Created ──
-      .listen('.road.maintenance.created', () => {
-        console.log('[Echo] Road maintenance started — refreshing map data.');
-        queryClient.invalidateQueries({ queryKey: ['resident-map-data'] });
-      })
-
-      // ── Road Maintenance Resolved ──
-      .listen('.road.maintenance.resolved', () => {
-        console.log('[Echo] Road maintenance resolved — refreshing map data.');
-        queryClient.invalidateQueries({ queryKey: ['resident-map-data'] });
       });
 
     // ─────────────────────────────────────────────────────────────────────

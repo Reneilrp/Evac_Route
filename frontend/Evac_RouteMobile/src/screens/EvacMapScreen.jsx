@@ -25,8 +25,6 @@ import {
   getOfflineNodes,
   getOfflineEdges,
   getDistanceMeters,
-  saveRoadMaintenances,
-  getOfflineRoadMaintenances,
 } from '../services/offlineDb';
 import { calculateOfflineRoute, fetchMapboxDirectionsRoute, determineTargetFacility } from '../utils/astarRouter';
 import { MAPBOX_PUBLIC_TOKEN } from '../utils/zamboangaGeo';
@@ -106,7 +104,6 @@ export default function EvacMapScreen({ navigation, route }) {
   // Local cache fallback state
   const [offlineShelters, setOfflineShelters] = useState([]);
   const [offlineHazards, setOfflineHazards] = useState([]);
-  const [offlineMaintenances, setOfflineMaintenances] = useState([]); // P3
   const [isOffline, setIsOffline] = useState(false);
 
   // Optimized in-memory Graph Caching and Route Throttle states
@@ -291,11 +288,9 @@ export default function EvacMapScreen({ navigation, route }) {
     try {
       const cachedS = getOfflineShelters();
       const cachedH = getOfflineHazardsExtended(); // P4: use extended schema so offline hazards have type+severity
-      const cachedM = getOfflineRoadMaintenances(); // P3: load cached maintenance zones
       setTimeout(() => {
         setOfflineShelters(cachedS);
         setOfflineHazards(cachedH);
-        setOfflineMaintenances(cachedM);
       }, 0);
 
       // Load road graph data from database
@@ -395,7 +390,6 @@ export default function EvacMapScreen({ navigation, route }) {
 
   const sheltersData = mapData?.shelters;
   const hazardsData = mapData?.hazards;
-  const maintenanceData = mapData?.road_maintenances; // P3
   const isLoadingShelters = isLoadingMap;
 
   useEffect(() => {
@@ -418,16 +412,6 @@ export default function EvacMapScreen({ navigation, route }) {
       }, 0);
     }
   }, [hazardsData]);
-
-  // P3: Cache and apply road maintenance zones from API response
-  useEffect(() => {
-    if (maintenanceData) {
-      saveRoadMaintenances(maintenanceData);
-      setTimeout(() => {
-        setOfflineMaintenances(maintenanceData);
-      }, 0);
-    }
-  }, [maintenanceData]);
 
   useEffect(() => {
     if (sheltersData || mapData) {
@@ -507,13 +491,6 @@ export default function EvacMapScreen({ navigation, route }) {
       h => h && (h.is_active === true || h.is_active === 1 || h.is_active === '1' || h.is_active === undefined)
     );
   }, [hazardsData, offlineHazards]);
-
-  // P3: Use live data when available, fall back to SQLite cache offline
-  const maintenances = useMemo(() => {
-    return (Array.isArray(maintenanceData) && maintenanceData.length > 0)
-      ? maintenanceData
-      : (Array.isArray(maintenanceData?.data) ? maintenanceData.data : (Array.isArray(offlineMaintenances) ? offlineMaintenances : []));
-  }, [maintenanceData, offlineMaintenances]);
 
   // Filter active hazards based on Disaster Preset Filter
   const filteredHazards = useMemo(() => {
@@ -2785,19 +2762,6 @@ export default function EvacMapScreen({ navigation, route }) {
                 <Text style={{ color: colors.textMuted, fontSize: 11 }}>No critical active hazards reported nearby.</Text>
               )}
             </View>
-
-            {maintenances.length > 0 && (
-              <View style={{ backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc', padding: 10, borderRadius: 10, borderWidth: isDarkMode ? 0 : 1, borderColor: 'rgba(0,0,0,0.06)' }}>
-                <Text style={{ color: isDarkMode ? '#c084fc' : '#7c3aed', fontSize: 12, fontWeight: 'bold', marginBottom: 2 }}>
-                  🛣️ Road Closures: {maintenances.length} Active
-                </Text>
-                {maintenances.map((m, idx) => (
-                  <Text key={idx} style={{ color: isDarkMode ? '#e9d5ff' : '#6d28d9', fontSize: 11, marginVertical: 1 }}>
-                    • {m.description || 'Road maintenance in progress'}
-                  </Text>
-                ))}
-              </View>
-            )}
           </View>
         </View>
       )}

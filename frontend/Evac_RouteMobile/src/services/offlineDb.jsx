@@ -76,18 +76,8 @@ export function initDb() {
       );
     `);
 
-    // 6. P3: Create road_maintenances table for offline visibility of LGU-closed roads
-    database.execSync(`
-      CREATE TABLE IF NOT EXISTS road_maintenances (
-        id INTEGER PRIMARY KEY NOT NULL,
-        description TEXT,
-        start_lat REAL NOT NULL,
-        start_lng REAL NOT NULL,
-        end_lat REAL NOT NULL,
-        end_lng REAL NOT NULL,
-        estimated_duration_hours INTEGER
-      );
-    `);
+    // Clean up deprecated road_maintenances table if present
+    database.execSync(`DROP TABLE IF EXISTS road_maintenances;`);
 
     // 7. Create performance indexes
     database.execSync('CREATE INDEX IF NOT EXISTS idx_nodes_coords ON nodes(lat, lng);');
@@ -497,59 +487,4 @@ export function getDistanceMeters(lat1, lon1, lat2, lon2) {
   return R * c; // in meters
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// P3: Road Maintenance Cache
-// Stores LGU-created road closure segments so they can be shown as a distinct
-// dashed purple layer on the resident map even when offline.
-// ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Replaces the offline road_maintenances cache with a fresh list from the server.
- * Called whenever the backend returns new road_maintenances in map-data.
- *
- * @param {Array} list  Array of maintenance objects from GET /api/resident/map-data
- */
-export function saveRoadMaintenances(list) {
-  if (!db || !list) return;
-  try {
-    db.execSync('DELETE FROM road_maintenances');
-    const stmt = db.prepareSync(
-      'INSERT INTO road_maintenances (id, description, start_lat, start_lng, end_lat, end_lng, estimated_duration_hours) ' +
-      'VALUES ($id, $desc, $slat, $slng, $elat, $elng, $hours)'
-    );
-    for (const m of list) {
-      stmt.executeSync({
-        $id:    m.id,
-        $desc:  m.description ?? '',
-        $slat:  parseFloat(m.start_latitude),
-        $slng:  parseFloat(m.start_longitude),
-        $elat:  parseFloat(m.end_latitude),
-        $elng:  parseFloat(m.end_longitude),
-        $hours: m.estimated_duration_hours ?? 0,
-      });
-    }
-    stmt.finalizeSync();
-  } catch (e) {
-    console.error('Error saving road maintenances to SQLite:', e);
-  }
-}
-
-/**
- * Returns all offline cached road maintenance segments.
- * Returns objects with start_latitude/longitude and end_latitude/longitude
- * so they match the shape of the API response (consistent field names).
- */
-export function getOfflineRoadMaintenances() {
-  if (!db) return [];
-  try {
-    return db.getAllSync(
-      'SELECT id, description, ' +
-      'start_lat AS start_latitude, start_lng AS start_longitude, ' +
-      'end_lat AS end_latitude, end_lng AS end_longitude, ' +
-      'estimated_duration_hours FROM road_maintenances'
-    );
-  } catch (e) {
-    console.error('Error fetching offline road maintenances:', e);
-    return [];
-  }
-}

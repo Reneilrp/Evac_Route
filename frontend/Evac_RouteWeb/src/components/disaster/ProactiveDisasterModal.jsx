@@ -347,7 +347,7 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
                       <option value="debris">⛰️ Landslide / Rock Debris</option>
                       <option value="fire">🚒 Structural / Forest Fire</option>
                       <option value="earthquake">🌋 Earthquake Tremors</option>
-                      <option value="maintenance">🚧 Emergency Road Obstruction</option>
+                      <option value="chemical_spill">🧪 Chemical / Hazmat Spill</option>
                     </select>
                   </div>
                 </div>
