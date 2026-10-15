@@ -8,12 +8,23 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pheinz.evacroutemobile"
+      "bundleIdentifier": "com.pheinz.evacroutemobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow Evac_Route to access camera for scanning QR codes at relief and shelter desks.",
+        "NSLocationWhenInUseUsageDescription": "Allow Evac_Route to access your real-time location for emergency evacuation routing.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow Evac_Route to access your real-time location for emergency evacuation and search & rescue tracking."
+      }
     },
     "android": {
       "versionCode": 4,
       "package": "com.pheinz.evacroutemobile",
       "usesCleartextTraffic": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.VIBRATE"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -29,7 +40,19 @@
       "expo-secure-store",
       "@rnmapbox/maps",
       "expo-sqlite",
-      "expo-build-properties"
+      "expo-build-properties",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Evac_Route to access camera for scanning resident QR codes at distribution desks."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Evac_Route to access your live location for emergency routing and rescue operations."
+        }
+      ]
     ],
     "updates": {
       "url": "https://u.expo.dev/315fb1d4-26ab-4cd8-b5ce-696b39dfccc9"

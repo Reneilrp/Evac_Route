@@ -176,7 +176,7 @@ export default function LoginScreen({ navigation }) {
                   onPress={() => handleQuickSelect('rescue1@lgu.gov.ph', 'password')}
                   style={[styles.quickChip, styles.quickChipRescue]}
                 >
-                  <Text style={[styles.quickChipText, { color: colors.dangerLight }]}>🚤 Rescue QRT</Text>
+                  <Text style={[styles.quickChipText, styles.quickChipRescueText]}>🚤 Rescue QRT</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -184,7 +184,7 @@ export default function LoginScreen({ navigation }) {
                   onPress={() => handleQuickSelect('scanner1@lgu.gov.ph', 'password')}
                   style={[styles.quickChip, styles.quickChipScanner]}
                 >
-                  <Text style={[styles.quickChipText, { color: colors.primary }]}>📋 Scanner</Text>
+                  <Text style={[styles.quickChipText, styles.quickChipScannerText]}>📋 Scanner</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -192,7 +192,7 @@ export default function LoginScreen({ navigation }) {
                   onPress={() => handleQuickSelect('pheinz@evacroute.local', 'password')}
                   style={[styles.quickChip, styles.quickChipResident]}
                 >
-                  <Text style={[styles.quickChipText, { color: colors.successLight }]}>👤 Resident</Text>
+                  <Text style={[styles.quickChipText, styles.quickChipResidentText]}>👤 Resident</Text>
                 </TouchableOpacity>
               </View>
 

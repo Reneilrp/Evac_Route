@@ -127,6 +127,7 @@ export default function RescueDutyScreen({ navigation }) {
   const isSimulationActive = useRescueSimulationStore((state) => state.isSimulationActive);
   const simMission = useRescueSimulationStore((state) => state.simMission);
   const startSimulation = useRescueSimulationStore((state) => state.startSimulation);
+  const stopSimulation = useRescueSimulationStore((state) => state.stopSimulation);
   const acceptDispatch = useRescueSimulationStore((state) => state.acceptDispatch);
   const resetToStandby = useRescueSimulationStore((state) => state.resetToStandby);
 
@@ -286,7 +287,16 @@ export default function RescueDutyScreen({ navigation }) {
   const isSuppressionMission = ['building_fire', 'active_shooter', 'siege', 'chemical_spill'].includes(incidentHazType);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}
+    >
       {/* ─── HEADER ─── */}
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
@@ -380,7 +390,10 @@ export default function RescueDutyScreen({ navigation }) {
       )}
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(120, insets.bottom + 85) },
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={isLoadingMissions}
@@ -466,22 +479,52 @@ export default function RescueDutyScreen({ navigation }) {
                 styles.heroNavigationCta,
                 currentMission.status === 'dispatched'
                   ? styles.heroCtaDispatch
-                  : (isTransportPhase ? styles.heroCtaCyan : styles.heroCtaBlue),
+                  : currentMission.status === 'completed'
+                    ? styles.heroCtaGreen
+                    : (isTransportPhase ? styles.heroCtaCyan : styles.heroCtaBlue),
                 isSimulationActive && currentMission?.status === 'dispatched' && styles.heroCtaDispatchPulse,
               ]}
               onPress={() => {
                 if (isSimulationActive && currentMission?.status === 'dispatched') {
                   acceptDispatch();
+                  navigation.navigate('RescueMap', { missionId: currentMission.id, isSimulation: true });
+                } else if (isSimulationActive && currentMission?.status === 'completed') {
+                  Alert.alert(
+                    '🎉 Mission Simulation Concluded',
+                    'CSWDO intake logged (+4 persons). Rescuer unit is back at Base. What would you like to do?',
+                    [
+                      {
+                        text: '🔄 Run Simulation Again',
+                        onPress: () => {
+                          startSimulation();
+                          Alert.alert('Simulation Restarted', 'Ready at Step 1: Incoming Dispatch in Duty Hub.');
+                        },
+                      },
+                      {
+                        text: '🟢 Return to Standby',
+                        onPress: () => {
+                          stopSimulation();
+                        },
+                        style: 'default',
+                      },
+                      {
+                        text: 'Dismiss',
+                        style: 'cancel',
+                      },
+                    ]
+                  );
                 } else if (!isSimulationActive && currentMission?.status === 'dispatched') {
                   handleUpdateMissionStatus({ id: currentMission.id, status: 'en_route' });
+                  navigation.navigate('RescueMap', { missionId: currentMission.id, isSimulation: false });
+                } else {
+                  navigation.navigate('RescueMap', { missionId: currentMission.id, isSimulation: isSimulationActive });
                 }
-                navigation.navigate('RescueMap', { missionId: currentMission.id, isSimulation: isSimulationActive });
               }}
               activeOpacity={0.85}
               accessibilityLabel="Launch Tactical Navigation Map"
             >
               <View style={styles.heroCtaIconCircle}>
-                {currentMission.status === 'dispatched' ? (
+                {currentMission.status === 'dispatched' || currentMission.status === 'completed' ? (
                   <CheckCircle2 size={24} color="#ffffff" />
                 ) : (
                   <Compass size={24} color="#ffffff" />
@@ -491,20 +534,24 @@ export default function RescueDutyScreen({ navigation }) {
                 <Text style={styles.heroCtaTitle}>
                   {currentMission.status === 'dispatched'
                     ? 'ACCEPT DISPATCH & LAUNCH MAP'
-                    : (isSuppressionMission 
-                      ? 'START TACTICAL ROUTING (MAP)' 
-                      : (isTransportPhase
-                        ? 'START ROUTE TO SHELTER (MAP)'
-                        : 'START ROUTE TO FAMILY (MAP)'))}
+                    : currentMission.status === 'completed'
+                      ? 'MISSION COMPLETED • RESET TO STANDBY'
+                      : (isSuppressionMission 
+                        ? 'START TACTICAL ROUTING (MAP)' 
+                        : (isTransportPhase
+                          ? 'START ROUTE TO SHELTER (MAP)'
+                          : 'START ROUTE TO FAMILY (MAP)'))}
                 </Text>
                 <Text style={styles.heroCtaSub}>
                   {currentMission.status === 'dispatched'
                     ? `Acknowledge order • Launch 10m/s tactical routing to ${currentMission.victim_name || 'scene'}`
-                    : (isSuppressionMission
-                      ? 'Navigating to Incident Epicenter'
-                      : (isTransportPhase
-                        ? `Navigating to ${currentMission.target_shelter?.name || 'Safe Shelter'}`
-                        : `Turn-by-turn routing to ${currentMission.victim_name || 'Target'}`))}
+                    : currentMission.status === 'completed'
+                      ? 'CSWDO intake recorded (+4) • Unit on Standby for next rescue'
+                      : (isSuppressionMission
+                        ? 'Navigating to Incident Epicenter'
+                        : (isTransportPhase
+                          ? `Navigating to ${currentMission.target_shelter?.name || 'Safe Shelter'}`
+                          : `Turn-by-turn routing to ${currentMission.victim_name || 'Target'}`))}
                 </Text>
               </View>
               <ChevronRight size={22} color="#ffffff" />
@@ -1056,6 +1103,11 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     backgroundColor: '#0891b2',
     borderWidth: 1.5,
     borderColor: '#22d3ee',
+  },
+  heroCtaGreen: {
+    backgroundColor: '#059669',
+    borderWidth: 1.5,
+    borderColor: '#34d399',
   },
   heroCtaIconCircle: {
     width: 44,

@@ -176,19 +176,20 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
     }).not.toThrow();
   });
 
-  it('renders DispatchUnitModal with optional name, capacity, and medical pills without throwing', () => {
+  it('renders DispatchUnitModal with smart geocoding and nearest shelter recommendation without throwing', () => {
     const mockInitialData = {
       victim_name: '',
       victim_latitude: 6.9214,
       victim_longitude: 122.0790,
       barangay: 'Tetuan',
       headcount: 3,
+      hazard_type: 'flood',
     };
     const mockUnits = [
-      { id: 1, name: 'Rescue Alpha', call_sign: 'RA-01', capacity: 6, status: 'standby' }
+      { id: 1, name: 'Rescue Alpha', call_sign: 'RA-01', unit_type: 'water_rescue', capacity: 6, status: 'standby' }
     ];
     const mockShelters = [
-      { id: 10, name: 'Tetuan Central Center', barangay: 'Tetuan', current_occupancy: 20, max_capacity: 100 }
+      { id: 10, name: 'Tetuan Central Center', barangay: 'Tetuan', latitude: 6.9194, longitude: 122.0840, current_occupancy: 20, max_capacity: 100 }
     ];
 
     expect(() => {
@@ -203,10 +204,47 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
       );
       expect(html).toContain('Victim / Family Name');
       expect(html).toContain('Optional');
-      expect(html).toContain('Senior Citizen');
-      expect(html).toContain('Wheelchair / PWD');
-      expect(html).toContain('Pinpoint GPS Coordinates');
+      expect(html).toContain('Distress GPS Coordinates');
+      expect(html).toContain('Barangay');
+      expect(html).toContain('RECOMMENDED NEAREST SHELTER');
+      expect(html).toContain('Tetuan Central Center');
+      expect(html).toContain('FLOOD RESCUE');
+      expect(html).toContain('Rescue Equipment Brought');
     }).not.toThrow();
+  });
+
+  it('renders DispatchUnitModal with SOS fire hazard, modifiers, and over-capacity alert', () => {
+    const mockInitialData = {
+      victim_name: 'Santos Family',
+      victim_latitude: 6.9214,
+      victim_longitude: 122.0790,
+      barangay: 'Tetuan',
+      headcount: 6,
+      hazard_type: 'fire',
+      modifiers: ['infant', 'elderly', 'roof_trapped'],
+    };
+    const mockUnits = [
+      { id: 1, name: 'Truck Delta', call_sign: 'TD-01', unit_type: 'high_clearance_truck', capacity: 4, status: 'standby' }
+    ];
+    const mockShelters = [
+      { id: 10, name: 'Tetuan Central Center', barangay: 'Tetuan', latitude: 6.9194, longitude: 122.0840, current_occupancy: 20, max_capacity: 100 }
+    ];
+
+    const html = renderWithProviders(
+      <DispatchUnitModal
+        initialData={mockInitialData}
+        availableUnits={mockUnits}
+        shelters={mockShelters}
+        onClose={jest.fn()}
+        onSuccess={jest.fn()}
+      />
+    );
+    expect(html).toContain('FIRE RESCUE');
+    expect(html).toContain('6 Victims Stranded');
+    expect(html).toContain('infant');
+    expect(html).toContain('elderly');
+    expect(html).toContain('roof trapped');
+    expect(html).toContain('Exceeds Capacity');
   });
 
   it('renders AddStockModal with relief presets, categories, and unit dropdowns without throwing', () => {

@@ -111,16 +111,25 @@ export const getStyles = (colors, isDarkMode) => StyleSheet.create({
     justifyContent: 'center',
   },
   quickChipRescue: {
-    borderColor: colors.danger,
-    backgroundColor: colors.dangerBg,
+    borderColor: isDarkMode ? '#ef4444' : '#dc2626',
+    backgroundColor: isDarkMode ? '#7f1d1d' : '#fee2e2',
+  },
+  quickChipRescueText: {
+    color: isDarkMode ? '#fca5a5' : '#991b1b',
   },
   quickChipScanner: {
-    borderColor: colors.primary,
-    backgroundColor: isDarkMode ? 'rgba(56, 189, 248, 0.12)' : '#f0f9ff',
+    borderColor: isDarkMode ? '#38bdf8' : '#0284c7',
+    backgroundColor: isDarkMode ? 'rgba(56, 189, 248, 0.16)' : '#e0f2fe',
+  },
+  quickChipScannerText: {
+    color: isDarkMode ? '#38bdf8' : '#0369a1',
   },
   quickChipResident: {
-    borderColor: colors.success,
-    backgroundColor: colors.successBg,
+    borderColor: isDarkMode ? '#22c55e' : '#16a34a',
+    backgroundColor: isDarkMode ? '#14532d' : '#dcfce7',
+  },
+  quickChipResidentText: {
+    color: isDarkMode ? '#86efac' : '#15803d',
   },
   quickChipText: {
     fontSize: 11,

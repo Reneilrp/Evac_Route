@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Storage;
 class IncidentController extends Controller
 {
     /**
-     * Resident submits a field incident report with up to 3 photos.
+     * Resident submits a field incident report with up to 4 photos.
      * Route: POST /api/incidents  (auth:sanctum)
      */
     public function submit(Request $request)
@@ -26,16 +26,16 @@ class IncidentController extends Controller
             'severity_level' => 'required|in:low,medium,high',
             'description' => 'nullable|string|max:1000',
             'photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120', // 5MB max (legacy)
-            'photos' => 'nullable|array|max:3',                         // Up to 3 photos
+            'photos' => 'nullable|array|max:4',                         // Up to 4 photos for credibility
             'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:5120',
         ]);
 
         $photoPaths = [];
 
-        // Handle array of photos (up to 3)
+        // Handle array of photos (up to 4)
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $file) {
-                if (count($photoPaths) < 3) {
+                if (count($photoPaths) < 4) {
                     $photoPaths[] = $file->store('incidents', 'public');
                 }
             }
@@ -123,6 +123,8 @@ class IncidentController extends Controller
                 'longitude' => (float) $incident->longitude,
                 'hazard_type' => $incident->hazard_type,
                 'severity_level' => $incident->severity_level,
+                'headcount' => $incident->headcount,
+                'modifiers' => $incident->modifiers,
                 'description' => $incident->description,
                 'photo_url' => $incident->photo_url,
                 'photo_urls' => $incident->photo_urls,

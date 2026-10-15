@@ -69,6 +69,37 @@ test('CDRRMO admin can dispatch a rescue unit to stranded victims', function () 
     expect($unit->fresh()->status)->toBe('dispatched');
 });
 
+test('CDRRMO can dispatch with automatic accept en_route and equipment tracking', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $unit = RescueUnit::create([
+        'name' => 'Rescue Truck Delta',
+        'call_sign' => 'DELTA-01',
+        'unit_type' => 'high_clearance_truck',
+        'status' => 'standby',
+    ]);
+
+    $payload = [
+        'rescue_unit_id' => $unit->id,
+        'victim_name' => 'Trapped Family',
+        'victim_latitude' => 6.9200,
+        'victim_longitude' => 122.0800,
+        'headcount' => 5,
+        'status' => 'en_route',
+        'equipments' => ['Rubber Boat', 'Life Vests', 'Trauma Kit'],
+    ];
+
+    $response = $this->actingAs($admin)
+        ->postJson('/api/rescue/missions', $payload);
+
+    $response->assertStatus(201)
+        ->assertJsonPath('status', 'success')
+        ->assertJsonPath('data.status', 'en_route')
+        ->assertJsonPath('data.headcount', 5);
+
+    expect($unit->fresh()->status)->toBe('en_route')
+        ->and($response->json('data.notes'))->toContain('Rubber Boat, Life Vests, Trauma Kit');
+});
+
 test('busy rescue unit cannot be dispatched to another mission', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $unit = RescueUnit::create([
@@ -152,20 +183,31 @@ test('responder stepper updates and completed mission triggers shelter bridge', 
     expect($shelter->fresh()->current_occupancy)->toBe(25);
 });
 
-test('resident can submit emergency rescue SOS', function () {
+test('resident can submit emergency rescue SOS with disaster type, headcount, and modifiers', function () {
     $resident = User::factory()->create(['role' => 'resident']);
 
     $response = $this->actingAs($resident)->postJson('/api/rescue/sos', [
         'latitude' => 6.9150,
         'longitude' => 122.0750,
-        'headcount' => 3,
-        'situation' => 'Rapid flood rise on street',
+        'headcount' => 5,
+        'hazard_type' => 'fire',
+        'modifiers' => ['elderly', 'infant', 'trapped_on_roof'],
         'contact_number' => '09170000000',
     ]);
 
     $response->assertStatus(201)
         ->assertJsonPath('status', 'success')
+        ->assertJsonPath('data.hazard_type', 'fire')
+        ->assertJsonPath('data.headcount', 5)
+        ->assertJsonPath('data.modifiers', ['elderly', 'infant', 'trapped_on_roof'])
         ->assertJsonPath('data.status', 'pending_rescue_dispatch');
+
+    $incident = \App\Models\PendingIncident::find($response->json('data.incident_id'));
+    expect($incident)->not->toBeNull()
+        ->and($incident->hazard_type)->toBe('fire')
+        ->and($incident->headcount)->toBe(5)
+        ->and($incident->modifiers)->toEqual(['elderly', 'infant', 'trapped_on_roof'])
+        ->and($incident->description)->toContain('URGENT FIRE SOS: 5 person(s) stranded');
 });
 
 test('water rescue boat can drop victims at staging assembly point and instantly release unit', function () {

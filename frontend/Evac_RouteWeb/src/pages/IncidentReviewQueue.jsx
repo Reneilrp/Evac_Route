@@ -114,7 +114,7 @@ export default function IncidentReviewQueue() {
           return (
             <div key={incident.id} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden flex flex-col justify-between hover:shadow-md transition">
               <div>
-                {/* Photo Gallery (Up to 3 photos) */}
+                {/* Photo Gallery (Up to 4 photos for credibility) */}
                 {photos.length > 0 ? (
                   <div className="relative bg-gray-900">
                     {photos.length === 1 ? (
@@ -125,8 +125,8 @@ export default function IncidentReviewQueue() {
                         className="w-full h-44 object-cover cursor-pointer hover:opacity-90 transition"
                       />
                     ) : (
-                      <div className="grid grid-cols-3 gap-0.5 h-44">
-                        {photos.slice(0, 3).map((url, idx) => (
+                      <div className={`grid ${photos.length === 2 ? 'grid-cols-2' : photos.length === 3 ? 'grid-cols-3' : 'grid-cols-2 grid-rows-2'} gap-0.5 h-44`}>
+                        {photos.slice(0, 4).map((url, idx) => (
                           <div key={idx} className="relative h-full overflow-hidden">
                             <img
                               src={url}
@@ -134,7 +134,7 @@ export default function IncidentReviewQueue() {
                               onClick={() => setActivePhotoModal(url)}
                               className="w-full h-full object-cover cursor-pointer hover:scale-105 transition duration-200"
                             />
-                            <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
+                            <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded font-mono font-bold">
                               Photo {idx + 1}
                             </span>
                           </div>

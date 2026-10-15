@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Linking,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +19,7 @@ import * as Location from 'expo-location';
 import Constants from 'expo-constants';
 import {
   Navigation,
+  Navigation2,
   Crosshair,
   AlertTriangle,
   Building,
@@ -232,16 +234,16 @@ export default function RescueMapScreen({ navigation, route }) {
   const simulationStep = useMemo(() => {
     if (isSimulationActive) {
       switch (simPhase) {
+        case 'dispatched':
         case 'standby':
           return 1;
         case 'en_route':
-          return 1;
-        case 'on_scene':
           return 2;
-        case 'transporting':
+        case 'on_scene':
           return 3;
-        case 'shelter_arrival':
+        case 'transporting':
           return 4;
+        case 'shelter_arrival':
         case 'completed':
           return 5;
         default:
@@ -260,6 +262,7 @@ export default function RescueMapScreen({ navigation, route }) {
       case 'transporting':
         return 4;
       case 'completed':
+        return 5;
       default:
         return 1;
     }
@@ -367,10 +370,11 @@ export default function RescueMapScreen({ navigation, route }) {
   const hasTriggeredVictimArrival = useRef(false);
   const hasTriggeredShelterArrival = useRef(false);
 
-  // Modals
+  // Modals & Disaster Situational View
   const [showVictimArrivalModal, setShowVictimArrivalModal] = useState(false);
   const [showShelterArrivalModal, setShowShelterArrivalModal] = useState(false);
   const [showStartSimModal, setShowStartSimModal] = useState(false);
+  const [showDisasterView, setShowDisasterView] = useState(false);
 
   // Location watching effect - constrained to Zamboanga City bounds for testing
   useEffect(() => {
@@ -798,6 +802,23 @@ export default function RescueMapScreen({ navigation, route }) {
   };
 
 
+  const resetSimulation = () => {
+    setSimulatedLocation(null);
+    hasTriggeredVictimArrival.current = false;
+    hasTriggeredShelterArrival.current = false;
+    if (isSimulationActive) {
+      stopSimulation();
+    }
+    if (cameraRef.current && (simCoords || gpsLocation)) {
+      cameraRef.current.setCamera({
+        centerCoordinate: gpsLocation || ZAMBOANGA_RESCUER_BASE,
+        zoomLevel: 16.5,
+        pitch: 35,
+        animationDuration: 800,
+      });
+    }
+  };
+
   const handleStep5_HandoverAndStandby = () => {
     setSimulationStep(5);
     setShowShelterArrivalModal(false);
@@ -816,22 +837,40 @@ export default function RescueMapScreen({ navigation, route }) {
     resetSimulation();
   };
 
-  const resetSimulation = () => {
-    setSimulatedLocation(null);
-    hasTriggeredVictimArrival.current = false;
-    hasTriggeredShelterArrival.current = false;
-    if (isSimulationActive) {
-      stopSimulation();
+  // Hands-free auto-dismiss and stage advancement timers (rescuers never blocked by popups)
+  useEffect(() => {
+    if (showVictimArrivalModal) {
+      const timer = setTimeout(() => {
+        setShowVictimArrivalModal(false);
+        if (isSuppressionMission) {
+          handleStep5_HandoverAndStandby();
+        } else if (isSimulationActive) {
+          confirmVictimSecured(shelters[0]);
+        } else {
+          handleStep3_ExtractAndReRoute();
+          setSimulationStep(4);
+        }
+      }, 2500);
+      return () => clearTimeout(timer);
     }
-    if (cameraRef.current && (simCoords || gpsLocation)) {
-      cameraRef.current.setCamera({
-        centerCoordinate: gpsLocation || ZAMBOANGA_RESCUER_BASE,
-        zoomLevel: 16.5,
-        pitch: 35,
-        animationDuration: 800,
-      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showVictimArrivalModal]);
+
+  useEffect(() => {
+    if (showShelterArrivalModal) {
+      const timer = setTimeout(() => {
+        setShowShelterArrivalModal(false);
+        if (isSimulationActive) {
+          confirmHandoverAndStandby();
+          setRouteData(null);
+        } else {
+          handleStep5_HandoverAndStandby();
+        }
+      }, 2500);
+      return () => clearTimeout(timer);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showShelterArrivalModal]);
 
   const isExpoGo = Constants.appOwnership === 'expo' || !Mapbox?.MapView;
 
@@ -1024,21 +1063,45 @@ export default function RescueMapScreen({ navigation, route }) {
                   },
                 ]}
               >
-                <Text style={{ fontSize: 16 }}>🚤</Text>
+                <Navigation2 size={18} color="#ffffff" fill="#ffffff" />
               </View>
               <View style={styles.rescuerCallout}>
-                <Text style={styles.rescuerCalloutText}>
+                <View style={styles.rescuerStatusDot} />
+                <Text style={styles.rescuerCalloutText} numberOfLines={1}>
                   {assignedUnit?.call_sign || 'QRT DELTA-3'}
                 </Text>
               </View>
             </View>
           </Mapbox.PointAnnotation>
         )}
-        {/* 4. Active Flood Hazard Zone Markers */}
-        {activeHazards.slice(0, 10).map((h) => {
+        {/* 4. Active Disaster Hazards (Fires, Landslides, Floods, Collapses) */}
+        {activeHazards.slice(0, 20).map((h) => {
           const lat = parseFloat(h.latitude);
           const lng = parseFloat(h.longitude);
           if (isNaN(lat) || isNaN(lng)) return null;
+
+          const type = (h.hazard_type || '').toLowerCase();
+          let icon = '⚠️';
+          let bgColor = 'rgba(239, 68, 68, 0.9)';
+          let borderColor = '#f87171';
+          if (type.includes('fire')) {
+            icon = '🔥';
+            bgColor = 'rgba(234, 88, 12, 0.95)';
+            borderColor = '#fdba74';
+          } else if (type.includes('landslide')) {
+            icon = '⛰️';
+            bgColor = 'rgba(180, 83, 9, 0.95)';
+            borderColor = '#fde047';
+          } else if (type.includes('flood') || type.includes('water')) {
+            icon = '🌊';
+            bgColor = 'rgba(2, 132, 199, 0.95)';
+            borderColor = '#7dd3fc';
+          } else if (type.includes('earthquake')) {
+            icon = '🏚️';
+            bgColor = 'rgba(147, 51, 234, 0.95)';
+            borderColor = '#d8b4fe';
+          }
+
           return (
             <Mapbox.PointAnnotation
               key={`hazard-pin-${h.id}`}
@@ -1046,8 +1109,21 @@ export default function RescueMapScreen({ navigation, route }) {
               coordinate={[lng, lat]}
             >
               <View style={styles.hazardMarkerWrap}>
-                <View style={styles.hazardPinCircle}>
-                  <Text style={{ fontSize: 11 }}>🌊</Text>
+                <View style={[styles.hazardPinCircle, { backgroundColor: bgColor, borderColor }]}>
+                  <Text style={{ fontSize: 13 }}>{icon}</Text>
+                </View>
+                <View style={{
+                  backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                  paddingHorizontal: 5,
+                  paddingVertical: 1,
+                  borderRadius: 4,
+                  marginTop: 2,
+                  borderWidth: 0.5,
+                  borderColor,
+                }}>
+                  <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '800' }} numberOfLines={1}>
+                    {h.name || type.toUpperCase()}
+                  </Text>
                 </View>
               </View>
             </Mapbox.PointAnnotation>
@@ -1164,6 +1240,21 @@ export default function RescueMapScreen({ navigation, route }) {
           <Crosshair size={20} color="#38bdf8" />
         </TouchableOpacity>
 
+        {/* Disaster Situational View Toggle Button */}
+        <TouchableOpacity
+          style={[styles.floatingBtn, showDisasterView && styles.floatingBtnActive]}
+          onPress={() => {
+            setShowDisasterView(prev => !prev);
+            Vibration.vibrate(20);
+          }}
+          accessibilityLabel="Disaster Situational View"
+        >
+          <AlertTriangle
+            size={18}
+            color={showDisasterView ? '#ef4444' : (activeHazards.length > 0 ? '#f59e0b' : colors.textPrimary)}
+          />
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.floatingBtn, (showDemoControls || isSimulationActive) && styles.floatingBtnActive]}
           onPress={() => {
@@ -1183,6 +1274,88 @@ export default function RescueMapScreen({ navigation, route }) {
           />
         </TouchableOpacity>
       </View>
+
+      {/* ─── RESCUER DISASTER SITUATIONAL AWARENESS BRIEFING CARD ─── */}
+      {showDisasterView && (
+        <View style={{
+          position: 'absolute',
+          top: insets.top + 130,
+          left: 14,
+          right: 14,
+          maxHeight: 280,
+          backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.98)',
+          borderRadius: 16,
+          padding: 14,
+          borderWidth: 1.5,
+          borderColor: '#ef4444',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.35,
+          shadowRadius: 8,
+          elevation: 10,
+          zIndex: 90,
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottomWidth: 1, borderBottomColor: isDarkMode ? '#334155' : '#e2e8f0', paddingBottom: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <AlertTriangle size={16} color="#ef4444" />
+              <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '900', letterSpacing: 0.3 }}>
+                DISASTER SITUATIONAL VIEW ({activeHazards.length} ACTIVE)
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowDisasterView(false)} style={{ padding: 4 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold' }}>✕ Close</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={true}>
+            {activeHazards.length === 0 ? (
+              <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: 'center', paddingVertical: 12 }}>
+                ✓ No active disaster hazards reported in sector.
+              </Text>
+            ) : (
+              activeHazards.map((hz) => {
+                const hzLat = parseFloat(hz.latitude);
+                const hzLng = parseFloat(hz.longitude);
+                const distM = (activeRescuerLocation && !isNaN(hzLat) && !isNaN(hzLng))
+                  ? Math.round(getHaversineDistanceMeters(activeRescuerLocation[1], activeRescuerLocation[0], hzLat, hzLng))
+                  : null;
+                const hzType = (hz.hazard_type || '').toLowerCase();
+                const icon = hzType.includes('fire') ? '🔥' : hzType.includes('landslide') ? '⛰️' : hzType.includes('flood') ? '🌊' : '⚠️';
+
+                return (
+                  <View key={hz.id} style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingVertical: 8,
+                    borderBottomWidth: 0.5,
+                    borderBottomColor: isDarkMode ? '#1e293b' : '#f1f5f9',
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 }}>
+                      <Text style={{ fontSize: 16 }}>{icon}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '800' }} numberOfLines={1}>
+                          {hz.name}
+                        </Text>
+                        <Text style={{ color: colors.textSecondary, fontSize: 10 }}>
+                          {hz.hazard_type?.toUpperCase()} • {hz.severity_level?.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+                    {distM !== null && (
+                      <View style={{ backgroundColor: distM < 500 ? '#ef4444' : (isDarkMode ? '#334155' : '#e2e8f0'), paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ color: distM < 500 ? '#ffffff' : colors.textPrimary, fontSize: 10, fontWeight: '900', fontFamily: 'monospace' }}>
+                          {distM < 1000 ? `${distM}m` : `${(distM / 1000).toFixed(1)}km`} away
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })
+            )}
+          </ScrollView>
+        </View>
+      )}
 
       {/* ─── FLOATING MAP STYLE SWITCHER (BOTTOM-LEFT) ─── */}
       <View
@@ -1311,6 +1484,7 @@ export default function RescueMapScreen({ navigation, route }) {
               {simPhase === 'en_route' && '10M/S NAV (VICTIM)'}
               {simPhase === 'on_scene' && 'ON SCENE (≤20M)'}
               {simPhase === 'transporting' && '10M/S NAV (SHELTER)'}
+              {simPhase === 'shelter_arrival' && 'SHELTER ARRIVAL (≤20M)'}
               {simPhase === 'completed' && 'CSWDO COMPLETED'}
               {' • VIEW PROGRESS'}
             </Text>
@@ -1434,7 +1608,7 @@ export default function RescueMapScreen({ navigation, route }) {
                   </TouchableOpacity>
                 )}
 
-                {(currentMission?.status === 'transporting' || simPhase === 'transporting') && (
+                {(currentMission?.status === 'transporting' || simPhase === 'transporting' || simPhase === 'shelter_arrival') && (
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity
                       style={[styles.dockBtn, styles.completeBtn, { flex: 1, paddingVertical: 12 }]}
@@ -1453,6 +1627,23 @@ export default function RescueMapScreen({ navigation, route }) {
                       <Navigation size={14} color="#94a3b8" />
                     </TouchableOpacity>
                   </View>
+                )}
+
+                {(currentMission?.status === 'completed' || simPhase === 'completed') && (
+                  <TouchableOpacity
+                    style={[styles.dockBtn, styles.completeBtn, { width: '100%', paddingVertical: 12, backgroundColor: '#059669' }]}
+                    onPress={() => {
+                      if (isSimulationActive) {
+                        confirmHandoverAndStandby();
+                      }
+                      if (navigation) {
+                        navigation.navigate('Rescue');
+                      }
+                    }}
+                  >
+                    <CheckCircle2 size={16} color={colors.white} />
+                    <Text style={styles.dockBtnTextBold}>MISSION COMPLETED • RETURN TO DUTY HUB</Text>
+                  </TouchableOpacity>
                 )}
             </View>
           ) : (
@@ -1791,36 +1982,56 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   rescuerAura: {
     position: 'absolute',
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(16, 185, 129, 0.25)',
-    borderWidth: 1,
-    borderColor: '#10b981',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(16, 185, 129, 0.22)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(16, 185, 129, 0.65)',
   },
   rescuerVehicleCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: '#059669',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 6,
   },
   rescuerCallout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginTop: 4,
-    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 5,
+    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#10b981',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 4,
+  },
+  rescuerStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#22c55e',
   },
   rescuerCalloutText: {
     color: '#34d399',
     fontSize: 10,
     fontWeight: '800',
+    letterSpacing: 0.3,
   },
   hazardMarkerWrap: {
     alignItems: 'center',

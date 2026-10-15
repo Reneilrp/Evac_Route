@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LifeBuoy, Truck, Phone, Users, Clock, AlertTriangle,
-  CheckCircle2, MapPin, Send, X, RefreshCw, Radio, Plus
+  CheckCircle2, MapPin, Send, X, RefreshCw, Radio, Plus, Sparkles
 } from 'lucide-react';
 import api from '../services/api';
 import echo from '../services/echo';
 import { showSuccess, showError } from '../utils/toast';
+import { getHaversineDistance } from '../utils/mapHelper';
 
 const STATUS_BADGES = {
   standby: { label: 'Standby / Available', cls: 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800' },
@@ -25,7 +26,7 @@ const TRIAGE_BADGES = {
   standard: 'bg-blue-600 text-white',
 };
 
-const ZAMBOANGA_BARANGAYS = [
+export const ZAMBOANGA_BARANGAYS = [
   "Arena Blanco", "Ayala", "Baliwasan", "Boalan", "Cabaluay", "Calarian",
   "Canelar", "Cawit", "Culianan", "Curuan", "Divisoria", "Guiwan",
   "Labuan", "Manicahan", "Mampang", "Mercedes", "Pasonanca", "Putik",
@@ -35,14 +36,81 @@ const ZAMBOANGA_BARANGAYS = [
   "Zone III (Poblacion)", "Zone IV (Poblacion)"
 ];
 
-const MEDICAL_NEED_TAGS = [
-  "Senior Citizen",
-  "Wheelchair / PWD",
-  "Pregnant",
-  "Infant / Child",
-  "Trauma / Bleeding",
-  "Bedridden"
-];
+const ZAMBOANGA_BARANGAY_CENTROIDS = {
+  "Tetuan": { lat: 6.9194, lng: 122.0840 },
+  "Baliwasan": { lat: 6.9159, lng: 122.0599 },
+  "Canelar": { lat: 6.9165, lng: 122.0696 },
+  "San Jose Cawa-Cawa": { lat: 6.9140, lng: 122.0650 },
+  "San Jose Gusu": { lat: 6.9197, lng: 122.0532 },
+  "Pasonanca": { lat: 6.9471, lng: 122.0728 },
+  "Tumaga": { lat: 6.9380, lng: 122.0720 },
+  "Guiwan": { lat: 6.9289, lng: 122.0922 },
+  "Putik": { lat: 6.9350, lng: 122.1050 },
+  "Tugbungan": { lat: 6.9150, lng: 122.0800 },
+  "Santa Maria": { lat: 6.9300, lng: 122.0700 },
+  "Calarian": { lat: 6.9245, lng: 122.0246 },
+  "Mampang": { lat: 6.9157, lng: 122.1339 },
+  "Talon-Talon": { lat: 6.8950, lng: 122.1000 },
+  "Ayala": { lat: 6.9592, lng: 121.9498 },
+  "Recodo": { lat: 6.9700, lng: 121.9700 },
+  "Cawit": { lat: 6.9556, lng: 121.9739 },
+  "Labuan": { lat: 7.0918, lng: 121.9027 },
+  "Vitali": { lat: 7.3777, lng: 122.2893 },
+  "Curuan": { lat: 7.2100, lng: 122.2313 },
+  "Manicahan": { lat: 7.0200, lng: 122.1500 },
+  "Cabaluay": { lat: 6.9800, lng: 122.1700 },
+  "Mercedes": { lat: 6.9500, lng: 122.1400 },
+  "Boalan": { lat: 6.9450, lng: 122.1150 },
+  "Culianan": { lat: 6.9700, lng: 122.1400 },
+  "Zone I (Poblacion)": { lat: 6.9052, lng: 122.0738 },
+  "Zone II (Poblacion)": { lat: 6.9060, lng: 122.0750 },
+  "Zone III (Poblacion)": { lat: 6.9070, lng: 122.0760 },
+  "Zone IV (Poblacion)": { lat: 6.9080, lng: 122.0770 },
+  "Rio Hondo": { lat: 6.9000, lng: 122.0650 },
+  "Campo Islam": { lat: 6.9145, lng: 122.0462 },
+  "Arena Blanco": { lat: 6.8850, lng: 122.0900 },
+  "Santa Catalina": { lat: 6.9100, lng: 122.0850 },
+  "Santa Barbara": { lat: 6.9080, lng: 122.0800 },
+  "Camino Nuevo": { lat: 6.9123, lng: 122.0762 },
+  "San Roque": { lat: 6.9400, lng: 122.0600 },
+  "Cabatangan": { lat: 6.9440, lng: 122.0544 },
+};
+
+export function resolveBarangayFromCoords(lat, lng, shelters = []) {
+  const latNum = parseFloat(lat);
+  const lngNum = parseFloat(lng);
+  if (isNaN(latNum) || isNaN(lngNum)) return null;
+
+  let closestBarangay = null;
+  let minDistance = Infinity;
+
+  // 1. Check official shelters (dense ground-truth in Zamboanga)
+  if (Array.isArray(shelters)) {
+    for (const shelter of shelters) {
+      const sLat = parseFloat(shelter.latitude);
+      const sLng = parseFloat(shelter.longitude);
+      const bgy = shelter.barangay || shelter.location;
+      if (!isNaN(sLat) && !isNaN(sLng) && bgy) {
+        const dist = getHaversineDistance({ lat: latNum, lng: lngNum }, { lat: sLat, lng: sLng });
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestBarangay = bgy;
+        }
+      }
+    }
+  }
+
+  // 2. Also compare against known Barangay centroids
+  for (const [bgy, c] of Object.entries(ZAMBOANGA_BARANGAY_CENTROIDS)) {
+    const dist = getHaversineDistance({ lat: latNum, lng: lngNum }, { lat: c.lat, lng: c.lng });
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestBarangay = bgy;
+    }
+  }
+
+  return closestBarangay || 'Tetuan';
+}
 
 export default function RescueDispatch() {
   const queryClient = useQueryClient();
@@ -293,59 +361,91 @@ export default function RescueDispatch() {
               <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">All flood SOS and rescue requests have been dispatched or addressed.</p>
             </div>
           ) : (
-            pendingIncidents.map(inc => (
-              <div key={inc.id} className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-red-300 dark:hover:border-red-900/60 transition flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="space-y-1.5 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
-                      EMERGENCY SOS
-                    </span>
-                    <span className="text-xs text-gray-400 dark:text-slate-500 font-mono">
-                      {new Date(inc.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <span className="text-xs font-bold text-gray-800 dark:text-slate-200">
-                      Reported by: {inc.reporter?.name || inc.reported_by_name || 'Citizen'}
-                    </span>
-                  </div>
-                  <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">{inc.name}</h3>
-                  <p className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">{inc.description || 'Rapid water rescue requested.'}</p>
-                  <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-slate-400 pt-1">
-                    <span className="flex items-center gap-1 font-mono">
-                      <MapPin size={13} className="text-red-500" />
-                      {Number(inc.latitude).toFixed(4)}, {Number(inc.longitude).toFixed(4)}
-                    </span>
-                    {inc.reporter?.familyProfile?.contact_number && (
-                      <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-slate-300">
-                        <Phone size={13} className="text-blue-500" />
-                        {inc.reporter.familyProfile.contact_number}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-slate-300">
-                      <Users size={13} className="text-purple-500" />
-                      Headcount: {inc.reporter?.familyProfile?.headcount || 1} people
-                    </span>
-                  </div>
-                </div>
+            pendingIncidents.map(inc => {
+              const hazard = (inc.hazard_type || 'flood').toLowerCase();
+              const isFire = hazard === 'fire' || hazard === 'building_fire';
+              const isMedical = hazard === 'medical';
+              const exactHeadcount = inc.headcount || inc.reporter?.familyProfile?.headcount || 1;
 
-                <div className="flex md:flex-col items-end gap-2 w-full md:w-auto">
-                  <button
-                    onClick={() => setDispatchModalData({
-                      pending_incident_id: inc.id,
-                      victim_name: inc.reporter?.name || inc.name,
-                      victim_phone: inc.reporter?.familyProfile?.contact_number || '',
-                      victim_latitude: inc.latitude,
-                      victim_longitude: inc.longitude,
-                      barangay: inc.reporter?.familyProfile?.barangay || 'Zamboanga City',
-                      headcount: inc.reporter?.familyProfile?.headcount || 4,
-                      situation_description: inc.description || inc.name,
-                    })}
-                    className="w-full md:w-44 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow transition cursor-pointer"
-                  >
-                    <Send size={13} /> Dispatch Unit
-                  </button>
+              return (
+                <div key={inc.id} className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-red-300 dark:hover:border-red-900/60 transition flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {isFire ? (
+                        <span className="bg-orange-600 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
+                          🔥 FIRE SOS
+                        </span>
+                      ) : isMedical ? (
+                        <span className="bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
+                          🚑 MEDICAL SOS
+                        </span>
+                      ) : (
+                        <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
+                          🌊 FLOOD SOS
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-400 dark:text-slate-500 font-mono">
+                        {new Date(inc.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span className="text-xs font-bold text-gray-800 dark:text-slate-200">
+                        Reported by: {inc.reporter?.name || inc.reported_by_name || 'Citizen'}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">{inc.name}</h3>
+                    <p className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">{inc.description || 'Rapid rescue dispatch requested.'}</p>
+                    
+                    {/* Special Needs / Modifiers Chips */}
+                    {Array.isArray(inc.modifiers) && inc.modifiers.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase">Needs:</span>
+                        {inc.modifiers.map(mod => (
+                          <span key={mod} className="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800/80 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            {mod.replace(/_/g, ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-slate-400 pt-1">
+                      <span className="flex items-center gap-1 font-mono">
+                        <MapPin size={13} className="text-red-500" />
+                        {Number(inc.latitude).toFixed(4)}, {Number(inc.longitude).toFixed(4)}
+                      </span>
+                      {inc.reporter?.familyProfile?.contact_number && (
+                        <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-slate-300">
+                          <Phone size={13} className="text-blue-500" />
+                          {inc.reporter.familyProfile.contact_number}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-slate-300">
+                        <Users size={13} className="text-purple-500" />
+                        Headcount: <strong className="text-red-600 dark:text-red-400 font-bold">{exactHeadcount} people</strong>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex md:flex-col items-end gap-2 w-full md:w-auto">
+                    <button
+                      onClick={() => setDispatchModalData({
+                        pending_incident_id: inc.id,
+                        victim_name: inc.reporter?.name || inc.name,
+                        victim_phone: inc.reporter?.familyProfile?.contact_number || '',
+                        victim_latitude: inc.latitude,
+                        victim_longitude: inc.longitude,
+                        barangay: inc.reporter?.familyProfile?.barangay || 'Zamboanga City',
+                        headcount: exactHeadcount,
+                        hazard_type: inc.hazard_type || 'flood',
+                        modifiers: inc.modifiers || [],
+                        situation_description: inc.description || inc.name,
+                      })}
+                      className="w-full md:w-44 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow transition cursor-pointer"
+                    >
+                      <Send size={13} /> Dispatch Unit
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
@@ -711,38 +811,115 @@ export default function RescueDispatch() {
   );
 }
 
+// --- Standard Rescue Equipment Presets ---
+const RESCUE_EQUIPMENT_PRESETS = [
+  { id: 'rubber_boat', label: 'Rubber Boat / Inflatable Raft', icon: '🚤' },
+  { id: 'life_vests', label: 'Life Vests & Ring Buoys', icon: '🦺' },
+  { id: 'first_aid', label: 'First Aid Trauma Kit & Splints', icon: '🩹' },
+  { id: 'spine_board', label: 'Spine Board & Cervical Collar', icon: '🩺' },
+  { id: 'scba_gear', label: 'SCBA / Fire Protective Gear', icon: '🧯' },
+  { id: 'extrication_tools', label: 'Hydraulic Extrication Cutters', icon: '🔧' },
+  { id: 'vhf_radios', label: 'VHF Handheld Radios', icon: '📻' },
+  { id: 'floodlights', label: 'Tactical Searchlights', icon: '🔦' },
+];
+
 // --- Dispatch Modal Component ---
-export function DispatchUnitModal({ initialData, availableUnits, shelters, onClose, onSuccess }) {
-  const [unitId, setUnitId] = useState(initialData.rescue_unit_id || (availableUnits.find(u => u.status === 'standby')?.id || ''));
+export function DispatchUnitModal({ initialData, availableUnits, shelters = [], onClose, onSuccess }) {
+  const hazardType = (initialData.hazard_type || 'flood').toLowerCase();
+  const isFireHazard = hazardType === 'fire' || hazardType === 'building_fire';
+  const isMedicalHazard = hazardType === 'medical';
+  const suggestedUnitType = isFireHazard ? 'high_clearance_truck' : (isMedicalHazard ? 'medical_ambulance' : 'water_rescue');
+
+  const defaultUnit = availableUnits.find(u => u.status === 'standby' && u.unit_type === suggestedUnitType)
+    || availableUnits.find(u => u.status === 'standby')
+    || availableUnits[0];
+
+  const defaultEquipments = useMemo(() => {
+    if (isFireHazard) return ['scba_gear', 'first_aid', 'vhf_radios', 'extrication_tools'];
+    if (isMedicalHazard) return ['first_aid', 'spine_board', 'vhf_radios'];
+    return ['rubber_boat', 'life_vests', 'first_aid', 'vhf_radios'];
+  }, [isFireHazard, isMedicalHazard]);
+
+  const [unitId, setUnitId] = useState(initialData.rescue_unit_id || (defaultUnit?.id || ''));
   const [victimName, setVictimName] = useState(initialData.victim_name || '');
   const [victimPhone, setVictimPhone] = useState(initialData.victim_phone || '');
   const [lat, setLat] = useState(initialData.victim_latitude || 6.9200);
   const [lng, setLng] = useState(initialData.victim_longitude || 122.0800);
-  const [barangay, setBarangay] = useState(initialData.barangay || 'Tetuan');
+  const [barangay, setBarangay] = useState(initialData.barangay || '');
   const [customBarangay, setCustomBarangay] = useState('');
-  const [headcount, setHeadcount] = useState(initialData.headcount || 4);
-  const [specialNeeds, setSpecialNeeds] = useState(initialData.special_needs || '');
-  const [triageLevel, setTriageLevel] = useState(initialData.triage_level || 'critical');
-  const [targetShelterId, setTargetShelterId] = useState(shelters[0]?.id || '');
-  const [notes, setNotes] = useState(initialData.situation_description || '');
-  const [showCoordinates, setShowCoordinates] = useState(false);
+  const [isManualBarangay, setIsManualBarangay] = useState(false);
+  const [headcount, setHeadcount] = useState(initialData.headcount || 1);
+  const [targetShelterId, setTargetShelterId] = useState('');
+  const [isManualShelter, setIsManualShelter] = useState(false);
+  const [selectedEquipments, setSelectedEquipments] = useState(defaultEquipments);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const selectedUnit = availableUnits.find(u => String(u.id) === String(unitId));
-  const isOverCapacity = selectedUnit?.capacity && parseInt(headcount, 10) > selectedUnit.capacity;
-
-  const toggleNeedTag = (tag) => {
-    if (!specialNeeds) {
-      setSpecialNeeds(tag);
-      return;
-    }
-    const tags = specialNeeds.split(',').map(s => s.trim()).filter(Boolean);
-    if (tags.includes(tag)) {
-      setSpecialNeeds(tags.filter(t => t !== tag).join(', '));
-    } else {
-      setSpecialNeeds([...tags, tag].join(', '));
-    }
+  const toggleEquipment = (id) => {
+    setSelectedEquipments(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
   };
+
+  // 1. Smart Geocoding: Automatically resolve Barangay from coordinates
+  useEffect(() => {
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (!isNaN(latNum) && !isNaN(lngNum)) {
+      const detected = resolveBarangayFromCoords(latNum, lngNum, shelters);
+      if (detected && !isManualBarangay) {
+        setBarangay(detected);
+      }
+    }
+  }, [lat, lng, shelters, isManualBarangay]);
+
+  // 2. Proximity Calculation: Compute distances to all shelters and sort closest first
+  const sortedSheltersWithDistance = useMemo(() => {
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (isNaN(latNum) || isNaN(lngNum) || !Array.isArray(shelters)) return shelters || [];
+
+    return [...shelters]
+      .map(shelter => {
+        const sLat = parseFloat(shelter.latitude);
+        const sLng = parseFloat(shelter.longitude);
+        const distanceMeters = (!isNaN(sLat) && !isNaN(sLng))
+          ? getHaversineDistance({ lat: latNum, lng: lngNum }, { lat: sLat, lng: sLng })
+          : 9999999;
+        const distanceKm = (distanceMeters / 1000).toFixed(2);
+        const availableCapacity = Math.max(0, (shelter.max_capacity || 0) - (shelter.current_occupancy || 0));
+        const isClosed = shelter.status === 'closed';
+
+        return {
+          ...shelter,
+          distanceMeters,
+          distanceKm,
+          availableCapacity,
+          isClosed,
+        };
+      })
+      .sort((a, b) => a.distanceMeters - b.distanceMeters);
+  }, [shelters, lat, lng]);
+
+  // 3. Recommended Shelter: Closest open shelter with free capacity
+  const recommendedShelter = useMemo(() => {
+    if (!sortedSheltersWithDistance || sortedSheltersWithDistance.length === 0) return null;
+    const bestWithCapacity = sortedSheltersWithDistance.find(s => !s.isClosed && s.availableCapacity > 0);
+    if (bestWithCapacity) return bestWithCapacity;
+    const bestOpen = sortedSheltersWithDistance.find(s => !s.isClosed);
+    return bestOpen || sortedSheltersWithDistance[0];
+  }, [sortedSheltersWithDistance]);
+
+  // Auto-select nearest shelter by default
+  useEffect(() => {
+    if (recommendedShelter?.id && (!targetShelterId || !isManualShelter)) {
+      setTargetShelterId(recommendedShelter.id);
+    }
+  }, [recommendedShelter?.id, isManualShelter]);
+
+  const selectedUnit = availableUnits.find(u => String(u.id) === String(unitId));
+  const responsibleOfficer = selectedUnit?.assigned_personnel?.name || selectedUnit?.crew_members?.[0]?.name || 'Officer On Duty';
+  const unitPhone = selectedUnit?.contact_number || 'N/A';
+  const isOverCapacity = selectedUnit?.capacity && parseInt(headcount, 10) > selectedUnit.capacity;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -751,7 +928,7 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters, onClo
       return;
     }
     setIsSubmitting(true);
-    const finalBarangay = barangay === 'Other' ? (customBarangay || 'Zamboanga City') : barangay;
+    const finalBarangay = barangay === 'Other' ? (customBarangay || 'Zamboanga City') : (barangay || 'Zamboanga City');
     try {
       await api.post('/rescue/missions', {
         rescue_unit_id: parseInt(unitId, 10),
@@ -762,10 +939,10 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters, onClo
         victim_longitude: parseFloat(lng),
         barangay: finalBarangay,
         headcount: parseInt(headcount, 10),
-        special_needs: specialNeeds || null,
-        situation_description: notes || null,
-        triage_level: triageLevel,
-        target_shelter_id: targetShelterId ? parseInt(targetShelterId, 10) : null,
+        triage_level: 'urgent',
+        status: 'en_route', // automatic accept for immediate field action
+        equipments: selectedEquipments,
+        target_shelter_id: targetShelterId ? parseInt(targetShelterId, 10) : (recommendedShelter?.id ? parseInt(recommendedShelter.id, 10) : null),
       });
       onSuccess();
     } catch (err) {
@@ -787,9 +964,54 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters, onClo
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
+          {/* Emergency SOS Origin Banner */}
+          {initialData.hazard_type && (
+            <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl p-3.5 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {isFireHazard ? (
+                    <span className="bg-orange-600 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                      🔥 FIRE RESCUE
+                    </span>
+                  ) : isMedicalHazard ? (
+                    <span className="bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                      🚑 MEDICAL RESCUE
+                    </span>
+                  ) : (
+                    <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                      🌊 FLOOD RESCUE
+                    </span>
+                  )}
+                  <span className="font-bold text-gray-900 dark:text-slate-100">
+                    Distress Order: <strong className="text-red-600 dark:text-red-400">{`${headcount} Victims Stranded`}</strong>
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-gray-400 font-mono">
+                  CITIZEN SOS ORDER
+                </span>
+              </div>
+
+              {Array.isArray(initialData.modifiers) && initialData.modifiers.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-red-100 dark:border-red-900/30">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase">Special Needs:</span>
+                  {initialData.modifiers.map(mod => (
+                    <span key={mod} className="bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                      {mod.replace(/_/g, ' ')}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Rescue Unit Selector */}
           <div>
-            <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Select Responding Unit</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block font-bold text-gray-700 dark:text-slate-300">Select Responding Unit</label>
+              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                Recommended: {isFireHazard ? '🚒 Truck / Fire Unit' : (isMedicalHazard ? '🚑 Ambulance' : '🚤 Water Rescue Boat')}
+              </span>
+            </div>
             <select
               value={unitId}
               onChange={e => setUnitId(e.target.value)}
@@ -797,14 +1019,47 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters, onClo
               required
             >
               <option value="">Select an available unit...</option>
-              {availableUnits.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.call_sign}) — Cap: {u.capacity ?? 4} pers — {u.status.toUpperCase()}
-                </option>
-              ))}
+              {availableUnits.map(u => {
+                const isMatch = u.unit_type === suggestedUnitType;
+                return (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.call_sign}) — Cap: {u.capacity ?? 4} pers — {u.status.toUpperCase()} {isMatch ? '★ RECOMMENDED' : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
+          {/* Selected Unit Responsible Officer & Contact Person Card */}
+          {selectedUnit && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-xl flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
+                  {selectedUnit.call_sign ? selectedUnit.call_sign.substring(0, 3) : 'SRR'}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-gray-900 dark:text-slate-100 text-xs">
+                      Responsible Officer: {responsibleOfficer}
+                    </span>
+                    <span className="text-[10px] font-mono bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-1.5 py-0.2 rounded font-bold">
+                      {selectedUnit.call_sign}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-600 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                    <Phone size={11} className="text-blue-500" /> Hot Contact: <strong className="font-mono text-gray-900 dark:text-slate-100">{unitPhone}</strong> • Max Capacity: {selectedUnit.capacity ?? 4} pers
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                  READY
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Victim / Family Name & Contact Phone */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">
@@ -830,7 +1085,8 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters, onClo
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          {/* Headcount & Smart Auto-Geocoded Barangay */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="font-bold text-gray-700 dark:text-slate-300">Headcount</label>
@@ -851,149 +1107,206 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters, onClo
                 required
               />
               {isOverCapacity && (
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 block">
-                  ⚠️ Exceeds unit capacity ({selectedUnit.capacity} pers).
-                </span>
+                <div className="mt-1.5 p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-lg text-amber-800 dark:text-amber-300 text-[10px] flex items-center gap-1.5">
+                  <AlertTriangle size={12} className="shrink-0 text-amber-600" />
+                  <span><strong>⚠️ Exceeds Capacity:</strong> Unit holds {selectedUnit.capacity} pers (order has {headcount} victims).</span>
+                </div>
               )}
             </div>
-            <div>
-              <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Triage Urgency</label>
-              <select
-                value={triageLevel}
-                onChange={e => setTriageLevel(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg font-bold text-red-600 dark:text-red-400"
-              >
-                <option value="critical">🔴 Critical (Life Threat)</option>
-                <option value="urgent">🟡 Urgent (Trapped)</option>
-                <option value="standard">🔵 Standard Assist</option>
-              </select>
-            </div>
-            <div>
-              <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Barangay</label>
-              <select
-                value={barangay}
-                onChange={e => setBarangay(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg"
-              >
-                {ZAMBOANGA_BARANGAYS.map(b => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
-                <option value="Other">Other / Custom...</option>
-              </select>
-              {barangay === 'Other' && (
-                <input
-                  type="text"
-                  value={customBarangay}
-                  onChange={e => setCustomBarangay(e.target.value)}
-                  placeholder="Type barangay name"
-                  className="w-full mt-2 p-2 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg"
-                />
-              )}
-            </div>
-          </div>
 
-          {/* Collapsible Coordinates */}
-          <div className="border border-gray-200 dark:border-slate-800 rounded-xl p-3 bg-gray-50/50 dark:bg-slate-950/40">
-            <button
-              type="button"
-              onClick={() => setShowCoordinates(prev => !prev)}
-              className="w-full flex items-center justify-between text-left font-bold text-gray-700 dark:text-slate-300 hover:text-red-600 cursor-pointer text-xs"
-            >
-              <span className="flex items-center gap-1.5">
-                <MapPin size={13} className="text-red-500" />
-                <span>Pinpoint GPS Coordinates</span>
-                <span className="text-[10px] font-normal text-gray-400 font-mono">
-                  ({parseFloat(lat).toFixed(4)}, {parseFloat(lng).toFixed(4)})
-                </span>
-              </span>
-              <span className="text-[11px] text-gray-400">{showCoordinates ? 'Hide ▲' : 'Edit ▼'}</span>
-            </button>
-            {showCoordinates && (
-              <div className="grid grid-cols-2 gap-3 mt-3 pt-2 border-t border-gray-200 dark:border-slate-800">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 mb-1">Latitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={lat}
-                    onChange={e => setLat(e.target.value)}
-                    className="w-full p-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg font-mono text-xs"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 mb-1">Longitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={lng}
-                    onChange={e => setLng(e.target.value)}
-                    className="w-full p-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg font-mono text-xs"
-                    required
-                  />
-                </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-gray-700 dark:text-slate-300">Barangay (Geocoded)</label>
+                <button
+                  type="button"
+                  onClick={() => setIsManualBarangay(prev => !prev)}
+                  className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
+                >
+                  {isManualBarangay ? 'Auto-detect from GPS' : 'Manual Override'}
+                </button>
               </div>
-            )}
+
+              {!isManualBarangay ? (
+                <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-lg flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 font-bold text-blue-900 dark:text-blue-200 text-xs">
+                    <MapPin size={13} className="text-blue-500" />
+                    <span>Barangay {barangay || 'Detecting...'}</span>
+                  </span>
+                  <span className="text-[9px] bg-blue-600 text-white font-mono px-1.5 py-0.5 rounded font-bold">
+                    Auto-Geocoded
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <select
+                    value={barangay}
+                    onChange={e => {
+                      setBarangay(e.target.value);
+                      setIsManualBarangay(true);
+                    }}
+                    className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg"
+                  >
+                    {ZAMBOANGA_BARANGAYS.map(b => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                    <option value="Other">Other / Custom...</option>
+                  </select>
+                  {barangay === 'Other' && (
+                    <input
+                      type="text"
+                      value={customBarangay}
+                      onChange={e => setCustomBarangay(e.target.value)}
+                      placeholder="Type barangay name"
+                      className="w-full mt-2 p-2 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg"
+                    />
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
-          <div>
-            <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Drop-off Shelter Destination</label>
-            <select
-              value={targetShelterId}
-              onChange={e => setTargetShelterId(e.target.value)}
-              className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg"
-            >
-              <option value="">Select evacuation center...</option>
-              {shelters.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.barangay}) — Occupancy: {s.current_occupancy}/{s.max_capacity}
-                </option>
-              ))}
-            </select>
+          {/* Permanently Visible GPS Coordinates & Geocoding Anchor */}
+          <div className="border border-gray-200 dark:border-slate-800 rounded-xl p-3 bg-gray-50/70 dark:bg-slate-950/50">
+            <div className="flex items-center justify-between mb-2">
+              <span className="flex items-center gap-1.5 font-bold text-gray-700 dark:text-slate-300 text-xs">
+                <MapPin size={13} className="text-red-500" />
+                <span>Distress GPS Coordinates (Permanently Visible)</span>
+              </span>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold font-mono">
+                Auto-resolves Barangay &amp; Nearest Shelter
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 mb-1">Latitude</label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={lat}
+                  onChange={e => setLat(e.target.value)}
+                  className="w-full p-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg font-mono text-xs focus:ring-1 focus:ring-red-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 mb-1">Longitude</label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={lng}
+                  onChange={e => setLng(e.target.value)}
+                  className="w-full p-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg font-mono text-xs focus:ring-1 focus:ring-red-500"
+                  required
+                />
+              </div>
+            </div>
           </div>
 
+          {/* Rescue Equipment Brought Checklist */}
           <div>
-            <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Special Medical / Vulnerability Needs</label>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {MEDICAL_NEED_TAGS.map(tag => {
-                const isSelected = specialNeeds.includes(tag);
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="font-bold text-gray-700 dark:text-slate-300">
+                Rescue Equipment Brought / Deployed ({selectedEquipments.length} selected)
+              </label>
+              <span className="text-[10px] text-gray-400">Click to toggle items</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {RESCUE_EQUIPMENT_PRESETS.map(eq => {
+                const isSelected = selectedEquipments.includes(eq.id);
                 return (
                   <button
-                    key={tag}
+                    key={eq.id}
                     type="button"
-                    onClick={() => toggleNeedTag(tag)}
-                    className={`text-[11px] px-2.5 py-1 rounded-full font-semibold transition border cursor-pointer ${
+                    onClick={() => toggleEquipment(eq.id)}
+                    className={`flex items-center gap-2 p-2 rounded-lg text-left transition border text-xs cursor-pointer ${
                       isSelected
-                        ? 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800 font-bold'
-                        : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 border-gray-200 dark:border-slate-700 hover:bg-gray-200'
+                        ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-400 dark:border-blue-700 text-blue-900 dark:text-blue-200 font-bold'
+                        : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 font-medium hover:bg-gray-50'
                     }`}
                   >
-                    {isSelected ? '✓ ' : '+ '}
-                    {tag}
+                    <span className="text-base">{eq.icon}</span>
+                    <span className="truncate flex-1">{eq.label}</span>
+                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${
+                      isSelected ? 'bg-blue-600 text-white' : 'border border-gray-300 dark:border-slate-600'
+                    }`}>
+                      {isSelected ? '✓' : ''}
+                    </span>
                   </button>
                 );
               })}
             </div>
-            <input
-              type="text"
-              value={specialNeeds}
-              onChange={e => setSpecialNeeds(e.target.value)}
-              placeholder="e.g. Senior citizen, wheelchair required, pregnant"
-              className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg"
-            />
           </div>
 
+          {/* Smart Proximity-Based Drop-off Shelter Destination */}
           <div>
-            <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Situation Notes / Directives</label>
-            <textarea
-              rows={2}
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="e.g. Rapidly rising water near bridge access. Extrication required from 2nd floor."
-              className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg resize-none"
-            />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block font-bold text-gray-700 dark:text-slate-300">Drop-off Shelter Destination</label>
+              {recommendedShelter && (
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                  <Sparkles size={11} /> Smart Nearest Suggestion
+                </span>
+              )}
+            </div>
+
+            {/* Smart Recommendation Banner */}
+            {recommendedShelter && (
+              <div className="mb-2.5 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl flex items-center justify-between gap-3">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-black text-emerald-900 dark:text-emerald-200 text-xs">
+                        RECOMMENDED NEAREST SHELTER:
+                      </span>
+                      <span className="bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                        {recommendedShelter.distanceKm} km away
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 mt-0.5">
+                      {recommendedShelter.name} ({recommendedShelter.barangay}) • {recommendedShelter.availableCapacity} spots available ({recommendedShelter.current_occupancy}/{recommendedShelter.max_capacity} occupied)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTargetShelterId(recommendedShelter.id);
+                    setIsManualShelter(false);
+                  }}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition shrink-0 cursor-pointer ${
+                    String(targetShelterId) === String(recommendedShelter.id)
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'border border-emerald-500 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60'
+                  }`}
+                >
+                  {String(targetShelterId) === String(recommendedShelter.id) ? '✓ Selected' : 'Use Nearest'}
+                </button>
+              </div>
+            )}
+
+            {/* Dropdown sorted by proximity (closest first) */}
+            <select
+              value={targetShelterId}
+              onChange={e => {
+                setTargetShelterId(e.target.value);
+                setIsManualShelter(true);
+              }}
+              className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg text-xs font-medium"
+            >
+              <option value="">Select evacuation center...</option>
+              {sortedSheltersWithDistance.map(s => {
+                const isRec = s.id === recommendedShelter?.id;
+                return (
+                  <option key={s.id} value={s.id}>
+                    {isRec ? '★ [RECOMMENDED - ' : '['}
+                    {s.distanceKm} km] {s.name} ({s.barangay}) — {s.availableCapacity} spots free {s.isClosed ? '(CLOSED)' : ''}
+                  </option>
+                );
+              })}
+            </select>
           </div>
 
+          {/* Action Buttons */}
           <div className="flex gap-3 pt-3">
             <button
               type="button"

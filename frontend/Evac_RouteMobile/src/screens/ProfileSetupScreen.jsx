@@ -1,12 +1,11 @@
 import { useState, useRef } from 'react';
 import { View, Text, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Minus, Footprints, Bike, Car } from 'lucide-react-native';
+import { Plus, Minus } from 'lucide-react-native';
 import * as SecureStore from 'expo-secure-store';
 import api from '../services/api';
 import { useResidentStore } from '../context/useResidentStore';
 import PrimaryButton from '../components/PrimaryButton';
-import ChipSelector from '../components/ChipSelector';
 import BarangayAutocomplete from '../components/BarangayAutocomplete';
 import CustomHeader from '../components/CustomHeader';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
@@ -21,30 +20,14 @@ export default function ProfileSetupScreen({ navigation }) {
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [barangay, setBarangay] = useState('Tetuan');
+  const [barangay, setBarangay] = useState('');
   const [headcount, setHeadcount] = useState(1);
   const [contact, setContact] = useState('');
-  const [transportationMode, setTransportationMode] = useState('pedestrian');
   const [loading, setLoading] = useState(false);
   const isRegisteringRef = useRef(false);
 
-  const transportOptions = [
-    {
-      value: 'pedestrian',
-      label: 'Pedestrian',
-      icon: <Footprints size={18} color={transportationMode === 'pedestrian' ? colors.white : colors.textSecondary} />,
-    },
-    {
-      value: '2_wheel',
-      label: '2-Wheel',
-      icon: <Bike size={18} color={transportationMode === '2_wheel' ? colors.white : colors.textSecondary} />,
-    },
-    {
-      value: '4_wheel',
-      label: '4-Wheel',
-      icon: <Car size={18} color={transportationMode === '4_wheel' ? colors.white : colors.textSecondary} />,
-    },
-  ];
+  // Default transportation mode to pedestrian (residents can change anytime in Profile)
+  const transportationMode = 'pedestrian';
 
   const handleRegister = async () => {
     if (isRegisteringRef.current || loading) return;
@@ -58,6 +41,11 @@ export default function ProfileSetupScreen({ navigation }) {
       return;
     }
 
+    if (!barangay.trim()) {
+      alert('Please select or specify your Barangay.');
+      return;
+    }
+
     const fullName = [trimmedFirst, trimmedMiddle, trimmedLast].filter(Boolean).join(' ');
 
     isRegisteringRef.current = true;
@@ -66,7 +54,7 @@ export default function ProfileSetupScreen({ navigation }) {
       // 1. Call the real Laravel API
       const response = await api.post('/register/family', {
         name: fullName,
-        barangay,
+        barangay: barangay.trim(),
         headcount,
         contact_number: contact,
         transportation_mode: transportationMode
@@ -77,7 +65,7 @@ export default function ProfileSetupScreen({ navigation }) {
       const registeredUser = {
         ...(user || {}),
         family_profile: family || {
-          barangay,
+          barangay: barangay.trim(),
           headcount,
           contact_number: contact,
           transportation_mode: transportationMode,
@@ -89,7 +77,7 @@ export default function ProfileSetupScreen({ navigation }) {
       await SecureStore.setItemAsync('auth_token', access_token);
 
       // 3. Use ZUSTAND to save the profile and QR hash (Persists to AsyncStorage automatically)
-      setProfileData({ name: fullName, barangay, headcount, contact_number: contact, transportation_mode: transportationMode }, qr_code_hash);
+      setProfileData({ name: fullName, barangay: barangay.trim(), headcount, contact_number: contact, transportation_mode: transportationMode }, qr_code_hash);
 
       // 4. Sync user state into AuthContext directly
       await login(registeredUser);
@@ -113,7 +101,7 @@ export default function ProfileSetupScreen({ navigation }) {
         subtitle="Evacuee intake credentials"
         onBack={() => navigation?.goBack?.()}
       />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>First Name</Text>
@@ -160,25 +148,16 @@ export default function ProfileSetupScreen({ navigation }) {
           />
         </View>
 
-        <View style={[styles.inputGroup, { zIndex: 1000 }]}>
+        <View style={[styles.inputGroup, { zIndex: 5000, elevation: 15 }]}>
           <Text style={styles.label}>Barangay</Text>
           <BarangayAutocomplete
             value={barangay}
             onChangeText={setBarangay}
-            placeholder="Search or type Barangay (e.g. Tetuan)"
+            placeholder="Select or search Barangay (e.g. Tetuan)"
           />
         </View>
 
-        <View style={styles.chipSection}>
-          <Text style={styles.chipLabel}>Transportation Mode</Text>
-          <ChipSelector
-            options={transportOptions}
-            value={transportationMode}
-            onChange={setTransportationMode}
-          />
-        </View>
-
-        <View style={styles.counterBox}>
+        <View style={[styles.counterBox, { zIndex: 1, elevation: 1 }]}>
           <Text style={styles.counterLabel}>Family Headcount</Text>
           <View style={styles.counterRow}>
             <PrimaryButton

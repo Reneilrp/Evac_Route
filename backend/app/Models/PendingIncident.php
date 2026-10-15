@@ -8,7 +8,7 @@ class PendingIncident extends Model
 {
     protected $fillable = [
         'reported_by', 'name', 'latitude', 'longitude',
-        'hazard_type', 'severity_level', 'description',
+        'hazard_type', 'severity_level', 'headcount', 'modifiers', 'description',
         'photo_path', 'photos', 'status', 'read_at', 'archived_at', 'reviewed_by', 'reviewed_at', 'review_note',
     ];
 
@@ -17,6 +17,8 @@ class PendingIncident extends Model
         'read_at' => 'datetime',
         'archived_at' => 'datetime',
         'photos' => 'array',
+        'modifiers' => 'array',
+        'headcount' => 'integer',
     ];
 
     protected $appends = ['is_read', 'is_archived'];
@@ -48,7 +50,7 @@ class PendingIncident extends Model
     }
 
     /**
-     * Get array of public URLs for all incident photos (up to 3).
+     * Get array of public URLs for all incident photos (up to 4).
      */
     public function getPhotoUrlsAttribute(): array
     {

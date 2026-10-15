@@ -59,6 +59,7 @@ export const useRescueSimulationStore = create((set, get) => ({
   stopSimulation: () => {
     set({
       isSimulationActive: false,
+      simMission: DEFAULT_SIMULATION_MISSION,
       simPhase: 'dispatched',
       simCoords: null,
       simHeading: 0,
@@ -131,6 +132,7 @@ export const useRescueSimulationStore = create((set, get) => ({
   resetToStandby: () => {
     set({
       simPhase: 'dispatched',
+      simMission: DEFAULT_SIMULATION_MISSION,
       simCoords: null,
       simHeading: 0,
       isNavigating: false,

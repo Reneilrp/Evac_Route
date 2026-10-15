@@ -76,14 +76,6 @@ export const getStyles = (colors, isDarkMode) => StyleSheet.create({
     ...typography.label,
     lineHeight: 20,
   },
-  chipLabel: {
-    ...typography.subheading,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  chipSection: {
-    marginBottom: spacing.xl,
-  },
 });
 
 export default getStyles(darkColors, true);

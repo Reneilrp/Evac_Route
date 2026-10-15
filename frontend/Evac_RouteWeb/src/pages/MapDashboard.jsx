@@ -672,7 +672,7 @@ function HazardFormModal({ location, initialRadius = 50, onConfirm, onCancel, is
   const handleHazardTypeChange = (e) => {
     const type = e.target.value;
     setHazardType(type);
-    if (type === 'earthquake' || type === 'maintenance') {
+    if (type === 'earthquake') {
       setSeverityLevel('high');
       setIsFixedFloodSpot(false);
     }
@@ -694,7 +694,7 @@ function HazardFormModal({ location, initialRadius = 50, onConfirm, onCancel, is
     });
   };
 
-  const isSeverityLocked = hazardType === 'earthquake' || hazardType === 'maintenance';
+  const isSeverityLocked = hazardType === 'earthquake';
 
   return (
     <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
@@ -730,8 +730,9 @@ function HazardFormModal({ location, initialRadius = 50, onConfirm, onCancel, is
                 onChange={handleHazardTypeChange}
               >
                 <option value="flood">Flood</option>
+                <option value="landslide">Landslide</option>
+                <option value="building_fire">Building Fire</option>
                 <option value="earthquake">Earthquake</option>
-                <option value="maintenance">Road Maintenance</option>
               </select>
             </div>
             <div>
@@ -1720,10 +1721,23 @@ const MapViewer = React.memo(({
     const active = displayHazards.filter(h => h.is_active && !h.is_fixed_flood_spot);
     const susceptible = displayHazards.filter(h => h.is_fixed_flood_spot && !h.is_active);
 
-    const buildFeature = (h) => ({
-      ...createCirclePolygon([parseFloat(h.longitude), parseFloat(h.latitude)], parseFloat(h.radius_meters || 50)),
-      properties: { id: h.id, name: h.name, hazard_type: h.hazard_type, severity_level: h.severity_level, radius: h.radius_meters }
-    });
+    const buildFeature = (h) => {
+      const lng = parseFloat(h.longitude);
+      const lat = parseFloat(h.latitude);
+      const rad = parseFloat(h.radius_meters || 50);
+      const deg = Math.max(0.0004, rad / 111000);
+      return {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [lng - deg * 0.9, lat - deg * 0.45],
+            [lng + deg * 0.9, lat + deg * 0.45],
+          ],
+        },
+        properties: { id: h.id, name: h.name, hazard_type: h.hazard_type, severity_level: h.severity_level, radius: h.radius_meters }
+      };
+    };
 
     return {
       activeHazardsGeoJSON: { type: 'FeatureCollection', features: active.map(buildFeature) },
@@ -1846,25 +1860,27 @@ const MapViewer = React.memo(({
           </Source>
         )}
 
-        {/* Hazard Zone Polygons (Active Emergency Hazards) */}
+        {/* Hazard Zone Corridors (Active Emergency Hazards - Line instead of Circle) */}
         {showHazards && (
           <Source id="hazards-source" type="geojson" data={activeHazardsGeoJSON}>
-            <Layer id="hazards-fill" type="fill" paint={{
-              'fill-color': ['match', ['get', 'hazard_type'],
-                'flood', ['match', ['get', 'severity_level'], 'low', '#60a5fa', 'medium', '#3b82f6', 'high', '#ef4444', '#3b82f6'],
-                'earthquake', '#ef4444', 'maintenance', '#f97316', '#eab308'],
-              'fill-opacity': ['match', ['get', 'hazard_type'],
-                'flood', ['match', ['get', 'severity_level'], 'low', 0.35, 'medium', 0.45, 'high', 0.55, 0.45],
-                'earthquake', 0.55, 'maintenance', 0.45, 0.45],
-              'fill-color-transition': { duration: 300 },
-              'fill-opacity-transition': { duration: 300 }
+            {/* High-visibility line casing */}
+            <Layer id="hazards-line-casing" type="line" paint={{
+              'line-color': '#000000',
+              'line-width': 8,
+              'line-cap': 'round',
+              'line-join': 'round',
             }} />
-            <Layer id="hazards-line" type="line" paint={{
+            {/* Core road hazard line corridor */}
+            <Layer id="hazards-line-core" type="line" paint={{
               'line-color': ['match', ['get', 'hazard_type'],
-                'flood', ['match', ['get', 'severity_level'], 'low', '#93c5fd', 'medium', '#e0f2fe', 'high', '#ffffff', '#ffffff'],
-                'earthquake', '#fca5a5', 'maintenance', '#fdba74', '#fef08a'],
-              'line-width': ['match', ['get', 'hazard_type'], 'earthquake', 3.5, 'maintenance', 2.5, 2.5],
-              'line-dasharray': ['literal', [3, 2]]
+                'flood', ['match', ['get', 'severity_level'], 'low', '#60a5fa', 'medium', '#3b82f6', 'high', '#ef4444', '#3b82f6'],
+                'landslide', ['match', ['get', 'severity_level'], 'low', '#d97706', 'medium', '#b45309', 'high', '#78350f', '#b45309'],
+                'building_fire', ['match', ['get', 'severity_level'], 'low', '#f97316', 'medium', '#ea580c', 'high', '#dc2626', '#ea580c'],
+                'earthquake', '#ef4444',
+                '#ef4444'],
+              'line-width': 5,
+              'line-cap': 'round',
+              'line-join': 'round',
             }} />
           </Source>
         )}

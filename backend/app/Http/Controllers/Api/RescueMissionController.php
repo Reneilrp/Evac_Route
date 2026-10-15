@@ -14,6 +14,7 @@ use App\Models\PendingIncident;
 use App\Models\RescueMission;
 use App\Models\RescueUnit;
 use App\Models\Shelter;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -89,10 +90,13 @@ class RescueMissionController extends Controller
             'headcount' => 'required|integer|min:1|max:50',
             'special_needs' => 'nullable|string|max:255',
             'situation_description' => 'nullable|string|max:1000',
-            'triage_level' => 'required|in:critical,urgent,standard',
+            'triage_level' => 'nullable|in:critical,urgent,standard',
             'pending_incident_id' => 'nullable|exists:pending_incidents,id',
             'target_shelter_id' => 'nullable|exists:shelters,id',
             'staging_point_id' => 'nullable|exists:shelters,id',
+            'status' => 'nullable|in:dispatched,en_route',
+            'equipments' => 'nullable|array',
+            'equipments.*' => 'string|max:100',
             'notes' => 'nullable|string|max:1000',
         ]);
 
@@ -105,7 +109,15 @@ class RescueMissionController extends Controller
             ], 422);
         }
 
-        $mission = DB::transaction(function () use ($validated, $unit, $request) {
+        $initialStatus = $validated['status'] ?? 'dispatched';
+
+        $notes = $validated['notes'] ?? '';
+        if (!empty($validated['equipments'])) {
+            $equipStr = '[EQUIPMENT DEPLOYED]: ' . implode(', ', $validated['equipments']);
+            $notes = !empty($notes) ? "{$notes} | {$equipStr}" : $equipStr;
+        }
+
+        $mission = DB::transaction(function () use ($validated, $unit, $request, $initialStatus, $notes) {
             $year = date('Y');
             $count = RescueMission::whereYear('created_at', $year)->count() + 1;
             $controlNo = 'RES-'.$year.'-'.str_pad($count, 4, '0', STR_PAD_LEFT);
@@ -115,8 +127,8 @@ class RescueMissionController extends Controller
                 'pending_incident_id' => $validated['pending_incident_id'] ?? null,
                 'rescue_unit_id' => $unit->id,
                 'dispatched_by' => $request->user()->id,
-                'status' => 'dispatched',
-                'triage_level' => $validated['triage_level'],
+                'status' => $initialStatus,
+                'triage_level' => $validated['triage_level'] ?? 'urgent',
                 'victim_name' => $validated['victim_name'],
                 'victim_phone' => $validated['victim_phone'] ?? null,
                 'victim_latitude' => $validated['victim_latitude'],
@@ -128,10 +140,10 @@ class RescueMissionController extends Controller
                 'target_shelter_id' => $validated['target_shelter_id'] ?? null,
                 'staging_point_id' => $validated['staging_point_id'] ?? null,
                 'dispatched_at' => now(),
-                'notes' => $validated['notes'] ?? null,
+                'notes' => !empty($notes) ? $notes : null,
             ]);
 
-            $unit->update(['status' => 'dispatched']);
+            $unit->update(['status' => $initialStatus]);
 
             return $mission->load(['rescueUnit', 'targetShelter', 'stagingPoint']);
         });
@@ -245,21 +257,49 @@ class RescueMissionController extends Controller
                     $newOccupancy = $shelter->current_occupancy + $mission->headcount;
                     $shelter->update(['current_occupancy' => $newOccupancy]);
 
-                    // Look for matching family or create provisional entry
-                    $family = FamilyProfile::whereHas('user', function ($q) use ($mission) {
-                        $q->where('name', 'like', "%{$mission->victim_name}%");
-                    })->first();
-
-                    if ($family) {
-                        EvacuationLog::create([
-                            'family_profile_id' => $family->id,
-                            'shelter_id' => $shelter->id,
-                            'checked_in_at' => now(),
-                            'recorded_headcount' => $mission->headcount,
-                            'checkin_method' => 'rescue_intake',
-                            'notes' => "Rescued via {$mission->rescueUnit->name} (Mission {$mission->control_no})",
+                    // Look for matching family by incident reporter, phone, or name, or create provisional entry
+                    $family = null;
+                    if ($mission->pending_incident_id) {
+                        $pending = PendingIncident::find($mission->pending_incident_id);
+                        if ($pending && $pending->reported_by) {
+                            $family = FamilyProfile::where('user_id', $pending->reported_by)->first();
+                        }
+                    }
+                    if (!$family && $mission->victim_phone) {
+                        $family = FamilyProfile::where('contact_number', $mission->victim_phone)->first();
+                    }
+                    if (!$family) {
+                        $family = FamilyProfile::whereHas('user', function ($q) use ($mission) {
+                            $words = preg_split('/\s+(and|&|\+)\s+/i', trim($mission->victim_name));
+                            $searchName = $words[0] ?? $mission->victim_name;
+                            $q->where('name', 'like', "%{$searchName}%");
+                        })->first();
+                    }
+                    if (!$family) {
+                        $tempUser = User::create([
+                            'name' => $mission->victim_name,
+                            'email' => 'rescued_' . $mission->id . '_' . Str::random(6) . '@evacroute.local',
+                            'password' => bcrypt(Str::random(16)),
+                            'role' => 'resident',
+                            'status' => 'active',
+                        ]);
+                        $family = FamilyProfile::create([
+                            'user_id' => $tempUser->id,
+                            'contact_number' => $mission->victim_phone ?? 'N/A',
+                            'barangay' => $mission->barangay ?: ($shelter->barangay ?: 'Zamboanga City'),
+                            'headcount' => $mission->headcount,
+                            'qr_code_hash' => 'RESCUED_' . Str::upper(Str::random(16)),
                         ]);
                     }
+
+                    EvacuationLog::create([
+                        'family_profile_id' => $family->id,
+                        'shelter_id' => $shelter->id,
+                        'checked_in_at' => now(),
+                        'recorded_headcount' => $mission->headcount,
+                        'checkin_method' => 'rescue_intake',
+                        'notes' => "Rescued via {$mission->rescueUnit->name} (Mission {$mission->control_no})",
+                    ]);
 
                     // Broadcast real-time shelter occupancy change to CSWDO & CDRRMO
                     event(new ShelterStatusUpdated($shelter));
@@ -294,26 +334,39 @@ class RescueMissionController extends Controller
         $validated = $request->validate([
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
-            'headcount' => 'required|integer|min:1|max:30',
+            'headcount' => 'required|integer|min:1|max:100',
             'situation' => 'nullable|string|max:1000',
             'contact_number' => 'nullable|string|max:50',
             'name' => 'nullable|string|max:255',
             'hazard_type' => 'nullable|string|max:50',
+            'modifiers' => 'nullable|array',
+            'modifiers.*' => 'string|max:50',
         ]);
 
         $user = $request->user();
         $callerName = $validated['name'] ?? $user?->name ?? 'Stranded Citizen';
         $contactNumber = $validated['contact_number'] ?? $user?->familyProfile?->contact_number ?? null;
         $hazardType = $validated['hazard_type'] ?? 'flood';
+        $headcount = (int) $validated['headcount'];
+        $modifiers = $validated['modifiers'] ?? [];
+
+        $situationDesc = $validated['situation'] ?? null;
+        if (empty($situationDesc)) {
+            $upperHazard = strtoupper(str_replace('_', ' ', $hazardType));
+            $needsPart = !empty($modifiers) ? ' Special Needs: ' . implode(', ', $modifiers) . '.' : '';
+            $situationDesc = "🚨 URGENT {$upperHazard} SOS: {$headcount} person(s) stranded.{$needsPart} Immediate rescue unit requested.";
+        }
 
         $incident = PendingIncident::create([
             'reported_by' => $user ? $user->id : 1, // Fallback to system admin if guest
-            'name' => "EMERGENCY SOS: {$callerName} ({$validated['headcount']} people)",
+            'name' => "EMERGENCY SOS: {$callerName} ({$headcount} people)",
             'latitude' => $validated['latitude'],
             'longitude' => $validated['longitude'],
             'hazard_type' => $hazardType,
             'severity_level' => 'high',
-            'description' => $validated['situation'] ?? 'Emergency SOS dispatch requested via Mobile App.',
+            'headcount' => $headcount,
+            'modifiers' => $modifiers,
+            'description' => $situationDesc,
             'status' => 'pending',
         ]);
 
@@ -323,7 +376,9 @@ class RescueMissionController extends Controller
         try {
             event(new RescueSOSAlert($incident, [
                 'contact_number' => $contactNumber,
-                'headcount' => $validated['headcount'],
+                'headcount' => $headcount,
+                'hazard_type' => $hazardType,
+                'modifiers' => $modifiers,
             ]));
         } catch (\Throwable $e) {
             \Log::warning('RescueSOSAlert broadcast warning: ' . $e->getMessage());
@@ -334,6 +389,9 @@ class RescueMissionController extends Controller
             'message' => 'Emergency SOS distress call received. CDRRMO Rescue Center has been alerted.',
             'data' => [
                 'incident_id' => $incident->id,
+                'hazard_type' => $incident->hazard_type,
+                'headcount' => $incident->headcount,
+                'modifiers' => $incident->modifiers,
                 'status' => 'pending_rescue_dispatch',
                 'reported_at' => $incident->created_at->toIso8601String(),
             ],

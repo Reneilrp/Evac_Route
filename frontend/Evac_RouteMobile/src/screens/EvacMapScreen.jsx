@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Linking, Alert, Platform, Animated, PanResponder, Vibration, Modal, Pressable } from 'react-native';
-import { AlertTriangle, Navigation, Phone, X, User, ChevronDown, Info, Layers, ShieldAlert, Activity, CheckCircle2, Footprints, Bike, Car } from 'lucide-react-native';
+import { AlertTriangle, Navigation, Phone, X, User, ChevronDown, Info, Layers, ShieldAlert, Activity, CheckCircle2, Footprints, Bike, Car, LifeBuoy } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
@@ -10,6 +10,7 @@ import api from '../services/api';
 import { getStyles } from '../styles/EvacMapScreen.styles';
 import { useResidentStore } from '../context/useResidentStore';
 import PrimaryButton from '../components/PrimaryButton';
+import EmergencySOSModal from '../components/EmergencySOSModal';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { getEcho } from '../services/echoService';
 
@@ -42,26 +43,24 @@ function getETAMinutes(distanceMeters, mode) {
   return `${minutes} min`;
 }
 
-// ─── Circle Polygon Generator (Trigonometric Geodesic Approximator) ───
-function createCirclePolygon(center, radiusInMeters, points = 32) {
+
+
+// ─── Road Hazard Corridor Line Generator (High-Visibility Road Line instead of Circle) ───
+function createHazardRoadCorridorLine(center, radiusInMeters = 50) {
   const [lng, lat] = center;
-  const coords = [];
-  const distanceX = radiusInMeters / (111320 * Math.cos((lat * Math.PI) / 180));
-  const distanceY = radiusInMeters / 110540;
+  const radius = Math.max(30, radiusInMeters);
+  const distanceX = radius / (111320 * Math.cos((lat * Math.PI) / 180));
+  const distanceY = radius / 110540;
 
-  for (let i = 0; i < points; i++) {
-    const theta = (i / points) * (2 * Math.PI);
-    const x = distanceX * Math.cos(theta);
-    const y = distanceY * Math.sin(theta);
-    coords.push([lng + x, lat + y]);
-  }
-  coords.push(coords[0]);
-
+  // Street corridor line segment extending along roadway orientation
   return {
     type: 'Feature',
     geometry: {
-      type: 'Polygon',
-      coordinates: [coords],
+      type: 'LineString',
+      coordinates: [
+        [lng - distanceX * 0.9, lat - distanceY * 0.45],
+        [lng + distanceX * 0.9, lat + distanceY * 0.45],
+      ],
     },
   };
 }
@@ -96,6 +95,7 @@ export default function EvacMapScreen({ navigation, route }) {
   const queryClient = useQueryClient();
   const [location, setLocation] = useState(null);
   const [isPinningHomeMode, setIsPinningHomeMode] = useState(false);
+  const [showSOSModal, setShowSOSModal] = useState(false);
 
   useEffect(() => {
     if (route?.params?.pinHome) {
@@ -452,17 +452,21 @@ export default function EvacMapScreen({ navigation, route }) {
         console.warn('Permission to access location was denied');
         return;
       }
-      const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      setLocation([initial.coords.longitude, initial.coords.latitude]);
+      const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.BestForNavigation });
+      if (initial?.coords) {
+        setLocation([initial.coords.longitude, initial.coords.latitude]);
+      }
       
       subscription = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.High,
-          distanceInterval: 10,
-          timeInterval: 8000,
+          accuracy: Location.Accuracy.BestForNavigation,
+          distanceInterval: 2,
+          timeInterval: 1500,
         },
         (loc) => {
-          setLocation([loc.coords.longitude, loc.coords.latitude]);
+          if (loc?.coords) {
+            setLocation([loc.coords.longitude, loc.coords.latitude]);
+          }
         }
       );
 
@@ -549,32 +553,38 @@ export default function EvacMapScreen({ navigation, route }) {
     });
   }, [safeShelters, selectedCategoryFilter, selectedDisasterFilter]);
 
-  // Ensure user location defaults to Zamboanga City (Tetuan) if GPS is outside Zamboanga bounds
+  // Default fallback to Zamboanga City (Tetuan) if GPS is completely unavailable
   const defaultZamboangaPos = useMemo(() => [122.084, 6.918], []);
-  const isValidZamboangaLocation = (pos) => {
+  const isValidCoordinate = (pos) => {
     if (!pos || !Array.isArray(pos) || pos.length < 2) return false;
-    const lng = pos[0];
-    const lat = pos[1];
-    return lng >= 121.5 && lng <= 122.5 && lat >= 6.5 && lat <= 7.5;
+    const lng = Number(pos[0]);
+    const lat = Number(pos[1]);
+    return !isNaN(lng) && !isNaN(lat) && lng !== 0 && lat !== 0;
   };
 
   // Dynamic User Location Determination:
-  // 1. If resident pinpointed custom Home Location in Profile, prioritize Home Location for system routing.
-  // 2. If physical device GPS is inside Zamboanga bounds, use real-time GPS coordinates.
-  // 3. If physical device GPS is outside Zamboanga bounds (e.g. laptop/emulator), use registered profile/barangay coordinates.
-  // 4. Fallback to Tetuan Barangay Center [122.084, 6.918].
+  // 1. Priority 1: Physical Device GPS (real-time phone location right now)
+  // 2. Priority 2: Custom Home Location in Profile (fallback when device GPS is unavailable)
+  // 3. Priority 3: Registered profile coordinates / Barangay Center
+  // 4. Fallback: Tetuan Barangay Center [122.084, 6.918]
   const activeUserLocation = useMemo(() => {
-    if (homeLocation && isValidZamboangaLocation(homeLocation)) {
+    // 1. Live device GPS is primary
+    if (isValidCoordinate(location)) {
+      return location;
+    }
+    // 2. Home Location fallback if GPS not locked
+    if (isValidCoordinate(homeLocation)) {
       return homeLocation;
     }
-    if (isValidZamboangaLocation(location)) return location;
     
+    // 3. User saved profile coordinates
     const userLat = parseFloat(user?.last_latitude || user?.latitude);
     const userLng = parseFloat(user?.last_longitude || user?.longitude);
-    if (!isNaN(userLat) && !isNaN(userLng) && isValidZamboangaLocation([userLng, userLat])) {
+    if (!isNaN(userLat) && !isNaN(userLng) && isValidCoordinate([userLng, userLat])) {
       return [userLng, userLat];
     }
 
+    // 4. Barangay center fallback
     const barangayName = user?.family_profile?.barangay || user?.barangay;
     if (barangayName) {
       const barangayCoords = {
@@ -589,7 +599,7 @@ export default function EvacMapScreen({ navigation, route }) {
     }
 
     return defaultZamboangaPos;
-  }, [location, user, defaultZamboangaPos, homeLocation]);
+  }, [location, homeLocation, user, defaultZamboangaPos]);
 
   // ─── Initial Map Camera Centering (guarantees view centers on Zamboanga City immediately) ───
   const hasInitialCenteredRef = useRef(false);
@@ -981,13 +991,12 @@ export default function EvacMapScreen({ navigation, route }) {
     return {
       type: 'FeatureCollection',
       features: (visibleHazards || []).filter(h => h.is_active && !h.is_fixed_flood_spot).map(hazard => {
-        const polygon = createCirclePolygon(
+        const line = createHazardRoadCorridorLine(
           [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
-          parseFloat(hazard.radius_meters || 50),
-          32
+          parseFloat(hazard.radius_meters || 50)
         );
         return {
-          ...polygon,
+          ...line,
           properties: {
             id: hazard.id,
             name: hazard.name,
@@ -1004,13 +1013,12 @@ export default function EvacMapScreen({ navigation, route }) {
     return {
       type: 'FeatureCollection',
       features: (visibleHazards || []).filter(h => h.is_fixed_flood_spot && !h.is_active).map(hazard => {
-        const polygon = createCirclePolygon(
+        const line = createHazardRoadCorridorLine(
           [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
-          parseFloat(hazard.radius_meters || 50),
-          32
+          parseFloat(hazard.radius_meters || 50)
         );
         return {
-          ...polygon,
+          ...line,
           properties: {
             id: hazard.id,
             name: hazard.name,
@@ -1022,24 +1030,6 @@ export default function EvacMapScreen({ navigation, route }) {
       })
     };
   }, [visibleHazards]);
-
-  const roadMaintenanceGeoJSON = useMemo(() => {
-    if (!maintenances || maintenances.length === 0) return null;
-    return {
-      type: 'FeatureCollection',
-      features: maintenances.map(m => ({
-        type: 'Feature',
-        properties: { description: m.description },
-        geometry: {
-          type: 'LineString',
-          coordinates: [
-            [parseFloat(m.start_longitude), parseFloat(m.start_latitude)],
-            [parseFloat(m.end_longitude),   parseFloat(m.end_latitude)],
-          ],
-        },
-      }))
-    };
-  }, [maintenances]);
 
   if (!location || (isLoadingShelters && offlineShelters.length === 0)) {
     return (
@@ -1227,21 +1217,21 @@ export default function EvacMapScreen({ navigation, route }) {
             );
           })}
 
-        {/* Active Emergency Hazards: Solid Red Polygon Fill & Crisp Red Line Outline */}
+        {/* Active Emergency Hazards: High-Visibility Road Hazard Line Corridor (Line instead of Circle) */}
         <Mapbox.ShapeSource id="hazardsSource" shape={activeHazardsGeoJSON}>
-          <Mapbox.FillLayer
-            id="hazardsFillLayer"
+          {/* Outer Casing / High-Contrast Halo */}
+          <Mapbox.LineLayer
+            id="hazardsLineCasing"
             style={{
-              fillColor: [
-                'match', ['get', 'severity'],
-                'high', isHighContrast ? 'rgba(255,0,0,0.55)' : 'rgba(239,68,68,0.35)',
-                'medium', isHighContrast ? 'rgba(255,140,0,0.45)' : 'rgba(249,115,22,0.30)',
-                isHighContrast ? 'rgba(255,255,0,0.35)' : 'rgba(234,179,8,0.25)'
-              ],
+              lineColor: '#000000',
+              lineWidth: isHighContrast ? 11 : 9,
+              lineCap: 'round',
+              lineJoin: 'round',
             }}
           />
+          {/* Core Road Hazard Line Corridor */}
           <Mapbox.LineLayer
-            id="hazardsOutlineLayer"
+            id="hazardsLineCore"
             style={{
               lineColor: [
                 'match', ['get', 'severity'],
@@ -1249,11 +1239,12 @@ export default function EvacMapScreen({ navigation, route }) {
                 'medium', '#f97316',
                 '#eab308'
               ],
-              lineWidth: isHighContrast ? 4.5 : 3.5,
-              lineDasharray: [3, 2],
+              lineWidth: isHighContrast ? 7 : 5,
+              lineCap: 'round',
+              lineJoin: 'round',
             }}
           />
-          {/* Hazard type label above each circle */}
+          {/* Hazard type label above each road line corridor */}
           <Mapbox.SymbolLayer
             id="hazardLabels"
             style={{
@@ -1262,28 +1253,23 @@ export default function EvacMapScreen({ navigation, route }) {
               textColor: '#ffffff',
               textHaloColor: '#000000',
               textHaloWidth: 1.5,
-              textTranslate: [0, -20],
+              textTranslate: [0, -14],
               textFont: ['DIN Pro Bold', 'Arial Unicode MS Bold'],
               textTransform: 'uppercase',
             }}
           />
         </Mapbox.ShapeSource>
 
-        {/* Flood Susceptibility Zones (Prone Areas / Passive): Dashed Light Blue */}
+        {/* Flood Susceptibility Road Corridors: Dashed Light Blue */}
         <Mapbox.ShapeSource id="susceptibleSource" shape={susceptibleGeoJSON}>
-          <Mapbox.FillLayer
-            id="susceptibleFillLayer"
-            style={{
-              fillColor: '#38bdf8',
-              fillOpacity: 0.15,
-            }}
-          />
           <Mapbox.LineLayer
             id="susceptibleOutlineLayer"
             style={{
-              lineColor: '#7dd3fc',
-              lineWidth: 2,
+              lineColor: '#38bdf8',
+              lineWidth: 4,
               lineDasharray: [4, 4],
+              lineCap: 'round',
+              lineJoin: 'round',
             }}
           />
         </Mapbox.ShapeSource>
@@ -1307,25 +1293,6 @@ export default function EvacMapScreen({ navigation, route }) {
               style={{
                 lineColor: isHighContrast ? '#FFFF00' : colors.routeLine,
                 lineWidth: isHighContrast ? 8 : 5,
-                lineCap: 'round',
-                lineJoin: 'round',
-              }}
-            />
-          </Mapbox.ShapeSource>
-        )}
-
-        {/* P3: Road Maintenance — dashed purple line segments */}
-        {roadMaintenanceGeoJSON && (
-          <Mapbox.ShapeSource
-            id="maintenanceSource"
-            shape={roadMaintenanceGeoJSON}
-          >
-            <Mapbox.LineLayer
-              id="maintenanceLayer"
-              style={{
-                lineColor: '#a855f7',
-                lineWidth: 5,
-                lineDasharray: [2, 2],
                 lineCap: 'round',
                 lineJoin: 'round',
               }}
@@ -2351,6 +2318,53 @@ export default function EvacMapScreen({ navigation, route }) {
           <Navigation size={18} color={colors.textPrimary} />
         </TouchableOpacity>
 
+        {/* Emergency Rescue SOS Dispatch Trigger */}
+        <TouchableOpacity
+          onPress={() => {
+            Vibration.vibrate(80);
+            setShowSOSModal(true);
+          }}
+          style={[
+            styles.mapStyleBtn,
+            {
+              backgroundColor: '#dc2626',
+              borderColor: '#fca5a5',
+              borderWidth: 1.5,
+              elevation: 8,
+              shadowColor: '#dc2626',
+              shadowOpacity: 0.5,
+              shadowRadius: 6,
+            },
+          ]}
+          accessibilityLabel="Emergency SOS Distress Signal"
+        >
+          <LifeBuoy size={20} color="#ffffff" strokeWidth={2.5} />
+        </TouchableOpacity>
+
+        {/* Report Hazard at Map Pin */}
+        <TouchableOpacity
+          onPress={() => {
+            Vibration.vibrate(50);
+            const targetCoords = activeUserLocation
+              ? { latitude: activeUserLocation[1], longitude: activeUserLocation[0] }
+              : (mapCenter ? { latitude: mapCenter[1], longitude: mapCenter[0] } : null);
+            navigation.navigate('Report Hazard', {
+              openCreate: true,
+              initialCoords: targetCoords,
+            });
+          }}
+          style={[
+            styles.mapStyleBtn,
+            {
+              backgroundColor: colors.warning,
+              borderColor: '#f59e0b',
+            },
+          ]}
+          accessibilityLabel="Report Hazard at Current Location"
+        >
+          <AlertTriangle size={18} color="#ffffff" strokeWidth={2.5} />
+        </TouchableOpacity>
+
         {/* High Contrast Mode Toggle */}
         <TouchableOpacity
           onPress={() => {
@@ -3209,6 +3223,13 @@ export default function EvacMapScreen({ navigation, route }) {
           </View>
         </View>
       </Modal>
+
+      {/* Ordering-System Style Emergency SOS Modal */}
+      <EmergencySOSModal
+        visible={showSOSModal}
+        onClose={() => setShowSOSModal(false)}
+        initialCoords={activeUserLocation ? { latitude: activeUserLocation[1], longitude: activeUserLocation[0] } : null}
+      />
     </View>
   );
 }

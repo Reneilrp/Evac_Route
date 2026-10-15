@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, Modal, TextInput, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
-import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon, Edit3 } from 'lucide-react-native';
+import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon, Edit3, Footprints, Bike, Car } from 'lucide-react-native';
 import { useResidentStore } from '../context/useResidentStore';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
@@ -35,6 +35,7 @@ export default function ProfileQRScreen({ navigation }) {
   const effectiveName = profile?.name || user?.name || 'Resident';
   const effectiveBarangay = profile?.barangay || user?.family_profile?.barangay || user?.familyProfile?.barangay || 'Tetuan';
   const effectiveHeadcount = profile?.headcount || user?.family_profile?.headcount || user?.familyProfile?.headcount || 1;
+  const effectiveTransportMode = profile?.transportation_mode || user?.family_profile?.transportation_mode || user?.familyProfile?.transportation_mode || 'pedestrian';
   const effectiveQrHash = qrHash || user?.family_profile?.qr_code_hash || user?.familyProfile?.qr_code_hash || `family_hash_${effectiveId}`;
 
   const handleLogout = () => {
@@ -235,6 +236,18 @@ export default function ProfileQRScreen({ navigation }) {
                 <Users size={11} color={colors.successText} />
                 <Text style={{ color: colors.successText, fontSize: 10, fontWeight: 'bold' }}>
                   Family of {effectiveHeadcount}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.surfaceElevated, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+                {effectiveTransportMode === '4_wheel' ? (
+                  <Car size={11} color={colors.primary} />
+                ) : effectiveTransportMode === '2_wheel' ? (
+                  <Bike size={11} color={colors.primary} />
+                ) : (
+                  <Footprints size={11} color={colors.primary} />
+                )}
+                <Text style={{ color: colors.textSecondary, fontSize: 10, fontWeight: 'bold' }}>
+                  {effectiveTransportMode === '4_wheel' ? 'Car (4-Wheel)' : effectiveTransportMode === '2_wheel' ? 'Bike (2-Wheel)' : 'Walking'}
                 </Text>
               </View>
             </View>

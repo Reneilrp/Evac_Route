@@ -173,7 +173,17 @@ export default function StaffScannerScreen() {
   if (!permission) {
     // Camera permissions are still loading
     return (
-      <View style={styles.centerContainer}>
+      <View
+        style={[
+          styles.centerContainer,
+          {
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+            paddingLeft: Math.max(spacing.lg, insets.left),
+            paddingRight: Math.max(spacing.lg, insets.right),
+          },
+        ]}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Accessing Camera...</Text>
       </View>
@@ -183,7 +193,17 @@ export default function StaffScannerScreen() {
   if (!permission.granted && !manualOnlyMode) {
     // Camera permissions are not granted yet
     return (
-      <View style={styles.permissionContainer}>
+      <View
+        style={[
+          styles.permissionContainer,
+          {
+            paddingTop: Math.max(spacing.xl, insets.top + spacing.md),
+            paddingBottom: Math.max(spacing.xl, insets.bottom + spacing.md),
+            paddingLeft: Math.max(spacing.xl, insets.left + spacing.md),
+            paddingRight: Math.max(spacing.xl, insets.right + spacing.md),
+          },
+        ]}
+      >
         <QrCode size={80} color={colors.primary} style={styles.permissionIcon} />
         <Text style={styles.permissionTitle}>Camera Permission Required</Text>
         <Text style={styles.permissionSubtitle}>
@@ -200,9 +220,26 @@ export default function StaffScannerScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}
+    >
       {/* Top Header */}
-      <View style={[styles.header, { paddingTop: Math.max(spacing.md, insets.top + spacing.xs) }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: Math.max(spacing.md, insets.top + spacing.xs),
+            paddingLeft: Math.max(spacing.md, insets.left),
+            paddingRight: Math.max(spacing.md, insets.right),
+          },
+        ]}
+      >
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>CSWDO INTAKE &amp; RELIEF DESK</Text>
           <Text style={styles.headerSubtitle}>Operator: {user?.name || 'Gate Marshal'}</Text>
@@ -218,7 +255,13 @@ export default function StaffScannerScreen() {
       </View>
 
       {/* Main View Area */}
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(120, insets.bottom + 85) },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
         
         {/* Camera Scanner or Status Details */}
         <View style={styles.displayCard}>

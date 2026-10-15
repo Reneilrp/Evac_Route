@@ -43,6 +43,7 @@ export default function RescueSimulationStepper({
   const currentStep = (() => {
     switch (simPhase) {
       case 'dispatched':
+      case 'standby':
         return 1;
       case 'en_route':
         return 2;
@@ -50,6 +51,7 @@ export default function RescueSimulationStepper({
         return 3;
       case 'transporting':
         return 4;
+      case 'shelter_arrival':
       case 'completed':
         return 5;
       default:
@@ -68,20 +70,31 @@ export default function RescueSimulationStepper({
     } else if (stepNum === 2) {
       if (simPhase === 'dispatched') {
         acceptDispatch();
+      } else if (simPhase !== 'en_route') {
+        startSimulation();
+        acceptDispatch();
       }
       if (currentScreen !== 'map' && navigation) {
         navigation.navigate('RescueMap', { isSimulation: true });
       }
     } else if (stepNum === 3) {
+      if (simPhase === 'dispatched' || simPhase === 'completed') {
+        startSimulation();
+        acceptDispatch();
+      }
       if (currentScreen !== 'map' && navigation) {
         navigation.navigate('RescueMap', { isSimulation: true });
       }
       skipToGeofence();
     } else if (stepNum === 4) {
+      if (simPhase === 'dispatched' || simPhase === 'completed') {
+        startSimulation();
+        acceptDispatch();
+      }
+      confirmVictimSecured();
       if (currentScreen !== 'map' && navigation) {
         navigation.navigate('RescueMap', { isSimulation: true });
       }
-      confirmVictimSecured();
     } else if (stepNum === 5) {
       confirmHandoverAndStandby();
       if (currentScreen !== 'duty' && navigation) {
@@ -104,9 +117,13 @@ export default function RescueSimulationStepper({
     } else if (currentStep === 4) {
       skipToGeofence();
     } else if (currentStep === 5) {
-      confirmHandoverAndStandby();
-      if (navigation) {
-        navigation.navigate('Rescue');
+      if (simPhase === 'completed') {
+        handleRestartStep1();
+      } else {
+        confirmHandoverAndStandby();
+        if (navigation) {
+          navigation.navigate('Rescue');
+        }
       }
     }
   };
@@ -215,6 +232,36 @@ export default function RescueSimulationStepper({
             </Text>
           </Text>
         </View>
+
+        {/* Duty Screen Direct Action CTA */}
+        <TouchableOpacity
+          style={[
+            styles.dutyActionBtn,
+            currentStep === 1 && styles.btnBlue,
+            currentStep >= 2 && currentStep <= 4 && styles.btnAmber,
+            currentStep === 5 && styles.btnGreen,
+          ]}
+          onPress={() => {
+            if (currentStep === 1) {
+              acceptDispatch();
+              if (navigation) navigation.navigate('RescueMap', { isSimulation: true });
+            } else if (currentStep >= 2 && currentStep <= 4) {
+              if (navigation) navigation.navigate('RescueMap', { isSimulation: true });
+            } else if (currentStep === 5) {
+              handleRestartStep1();
+            }
+          }}
+          activeOpacity={0.85}
+        >
+          {currentStep === 1 && <Navigation size={13} color="#ffffff" />}
+          {currentStep >= 2 && currentStep <= 4 && <MapPin size={13} color="#ffffff" />}
+          {currentStep === 5 && <RotateCcw size={13} color="#ffffff" />}
+          <Text style={styles.dutyActionBtnText}>
+            {currentStep === 1 && '▶ ACCEPT DISPATCH & LAUNCH MAP (STEP 2)'}
+            {currentStep >= 2 && currentStep <= 4 && '🗺 CONTINUE TACTICAL MAP NAVIGATION'}
+            {currentStep === 5 && '🔄 RESTART SIMULATION (STEP 1)'}
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -428,6 +475,22 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   dutyPhaseValue: {
     fontWeight: '700',
     color: colors.textPrimary,
+  },
+  dutyActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: radii.md,
+    marginTop: 8,
+  },
+  dutyActionBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.4,
   },
 
   container: {

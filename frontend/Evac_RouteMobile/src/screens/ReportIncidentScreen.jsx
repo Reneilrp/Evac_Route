@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import api from '../services/api';
 import ChipSelector from '../components/ChipSelector';
 import PrimaryButton from '../components/PrimaryButton';
 import ConfirmationModal from '../components/ConfirmationModal';
+import EmergencySOSModal from '../components/EmergencySOSModal';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { getStyles } from '../styles/ReportIncidentScreen.styles';
 
@@ -38,16 +39,37 @@ const HAZARD_TYPES = [
   { value: 'gas_leak', label: '⚠️ Gas Leak' },
   { value: 'active_shooter', label: '🚨 Security Threat' },
   { value: 'structural_collapse', label: '🏗️ Collapse' },
-  { value: 'maintenance', label: '🚧 Road Block' },
 ];
 
-const SEVERITY_LEVELS = [
-  { value: 'low', label: 'LOW' },
-  { value: 'medium', label: 'MEDIUM' },
-  { value: 'high', label: 'HIGH' },
-];
+const CONTEXTUAL_SEVERITY = {
+  building_fire: [
+    { level: 'low', title: '1st Alarm (Low)', desc: 'Early stage / localized room fire. Contained to single room or small area, 2-3 fire engines sufficient.' },
+    { level: 'medium', title: '2nd Alarm (Medium)', desc: 'Spreading / multi-room fire. Commercial or multi-family structure threatened, backup units requested.' },
+    { level: 'high', title: '3rd Alarm / Task Force (High)', desc: 'Conflagration / General alarm. Multiple structures engulfed, mass evacuation and citywide firefighting needed.' },
+  ],
+  flood: [
+    { level: 'low', title: 'Low (Ankle / Gutter Deep)', desc: 'Water ~0.1m - 0.2m. Passable to all vehicles, gutters and curbs overflowing.' },
+    { level: 'medium', title: 'Medium (Knee to Waist Deep)', desc: 'Water ~0.5m - 1.0m. Light vehicles impassable, ground floors starting to inundate.' },
+    { level: 'high', title: 'High (Chest Deep / Submerged Roofs)', desc: 'Water >1.5m. Completely impassable, trapped residents, rooftop evacuation needed.' },
+  ],
+  landslide: [
+    { level: 'low', title: 'Low (Minor Slope Erosion)', desc: 'Soil slumping on roadside ditch or shoulder. Roadway remains passable with caution.' },
+    { level: 'medium', title: 'Medium (Partial Road Blockage)', desc: 'Boulders and mud blocking one lane. Secondary slips imminent; clearance crew required.' },
+    { level: 'high', title: 'High (Massive Slope Collapse / Impassable)', desc: 'Complete hillside collapse covering both lanes or structures. Evacuation route severed.' },
+  ],
+  earthquake: [
+    { level: 'low', title: 'Low (Minor Surface Cracks)', desc: 'Hairline cracks on pavement or fences. No structural failure.' },
+    { level: 'medium', title: 'Medium (Fractured Pavement / Wall Damage)', desc: 'Road surface displaced, walls cracked, light vehicles must detour.' },
+    { level: 'high', title: 'High (Major Structural / Bridge Collapse)', desc: 'Road fissure, bridge deck dropped, or building collapse blocking thoroughfare.' },
+  ],
+  default: [
+    { level: 'low', title: 'Low Priority', desc: 'Minor hazard, manageable locally, no immediate risk to life.' },
+    { level: 'medium', title: 'Medium Priority', desc: 'Significant hazard affecting travel or property; requires response.' },
+    { level: 'high', title: 'High / Critical Priority', desc: 'Severe emergency threatening life safety or completely cutting off access.' },
+  ],
+};
 
-export default function ReportIncidentScreen({ navigation }) {
+export default function ReportIncidentScreen({ navigation, route }) {
   const { colors, isDarkMode } = useTheme();
   const styles = useThemedStyles(getStyles);
   const queryClient = useQueryClient();
@@ -60,18 +82,76 @@ export default function ReportIncidentScreen({ navigation }) {
     high: colors.danger,
   };
 
+  const HAZARD_HINTS = {
+    flood: '🌊 Flood: Note whether water is ankle, knee, or waist-deep, and if light vehicles can pass.',
+    building_fire: '🔥 Fire: Note if structural, commercial, or residential, and if spread is imminent.',
+    earthquake: '🏚️ Earthquake: Note structural cracks, collapsed walls, or damaged power lines.',
+    typhoon: '🌀 Typhoon / Storm: Note fallen trees, flooded gutters, or blown iron sheets.',
+    landslide: '⛰️ Landslide: Note whether soil or debris blocks the entire lane or access road.',
+    active_shooter: '🚨 Security Threat: Stay safe. Note location and avoid escalating.',
+    siege: '⚔️ Security Incident: Evacuate immediately if possible and stay hidden.',
+    chemical_spill: '🧪 Chemical Hazard: Avoid fumes and note hazardous container markings.',
+    gas_leak: '⚠️ Gas Leak: Strong odor detected. Avoid electrical sparks or ignition.',
+    structural_collapse: '🏗️ Collapse: Danger of secondary collapse; keep safe perimeter.',
+  };
+
+  const PHOTO_ROLE_LABELS = [
+    '1. Overview',
+    '2. Close-up Depth',
+    '3. Landmark / Sign',
+    '4. Road Blockage',
+  ];
+
   // --- Form State ---
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [hazardType, setHazardType] = useState('flood');
   const [severityLevel, setSeverityLevel] = useState('medium');
-  const [photos, setPhotos] = useState([]); // array of { uri, type, fileName }, max 3
+  const [photos, setPhotos] = useState([]); // array of { uri, type, fileName }, max 4
   const [coords, setCoords] = useState(null); // { latitude, longitude }
+  const [streetAddress, setStreetAddress] = useState('');
+  const [barangayName, setBarangayName] = useState('');
   const [locating, setLocating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [isSendingSOS, setIsSendingSOS] = useState(false);
+  const [showSOSModal, setShowSOSModal] = useState(false);
   const isSubmittingRef = useRef(false);
-  const isSendingSOSRef = useRef(false);
+
+  // --- Reverse geocode coordinates to human-readable street/barangay ---
+  const reverseGeocodeCoords = useCallback(async (latitude, longitude) => {
+    try {
+      const results = await Location.reverseGeocodeAsync({ latitude, longitude });
+      if (results && results.length > 0) {
+        const item = results[0];
+        const street = item.street || item.name || '';
+        const district = item.district || item.subregion || item.city || '';
+        if (street) setStreetAddress(street);
+        if (district) setBarangayName(district);
+      }
+    } catch (_e) {
+      // Gracefully ignore reverse geocoding errors
+    }
+  }, []);
+
+  // Auto-open modal if navigated with params (e.g. from EvacMapScreen)
+  useEffect(() => {
+    if (route?.params?.openSOS) {
+      setTimeout(() => setShowSOSModal(true), 0);
+    }
+    if (route?.params?.openCreate) {
+      const timer = setTimeout(() => {
+        if (route?.params?.initialCoords) {
+          const initCoords = {
+            latitude: Number(route.params.initialCoords.latitude),
+            longitude: Number(route.params.initialCoords.longitude),
+          };
+          setCoords(initCoords);
+          reverseGeocodeCoords(initCoords.latitude, initCoords.longitude);
+        }
+        setShowCreateModal(true);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [route?.params, reverseGeocodeCoords]);
 
   // --- Styled Confirmation Modal State ---
   const [confirmModal, setConfirmModal] = useState({
@@ -89,77 +169,6 @@ export default function ReportIncidentScreen({ navigation }) {
 
   const closeConfirmModal = () => {
     setConfirmModal(prev => ({ ...prev, visible: false, loading: false }));
-  };
-
-  const handleTriggerSOS = (sosType = 'flood') => {
-    
-    let modalTitle = 'Request Emergency Rescue?';
-    let modalMessage = 'This will broadcast an urgent Search & Rescue SOS to CDRRMO EOC with your live GPS location for immediate boat/truck dispatch.';
-    let detailMsg = 'Quick Response Teams (QRT) will be mobilized.';
-    let situationMsg = 'Emergency flood rescue requested via Resident Mobile App SOS button.';
-    let successTitle = '🚨 RESCUE SOS DISPATCHED';
-    let successMessage = 'Your distress signal has been received by CDRRMO EOC. Quick Response Teams (QRT) have been alerted and will be dispatched to your location.';
-
-    if (sosType === 'building_fire') {
-      modalTitle = 'Call Fire Department?';
-      modalMessage = 'This will immediately alert the Fire Department to dispatch a firetruck directly to your live GPS coordinates.';
-      detailMsg = 'Fire Suppression units will be mobilized.';
-      situationMsg = 'Emergency Fire Response requested via Mobile App SOS.';
-      successTitle = '🚒 FIRETRUCK DISPATCHED';
-      successMessage = 'Your fire alert has been received. Firetrucks are en route to your location.';
-    } else if (sosType === 'active_shooter' || sosType === 'siege') {
-      modalTitle = 'Report Security Threat?';
-      modalMessage = 'This will silently alert the LGU and Police Tactical Units to a hostile situation at your live GPS coordinates.';
-      detailMsg = 'Police/SWAT units will be mobilized.';
-      situationMsg = 'Emergency Security Threat/Siege reported via Mobile App SOS.';
-      successTitle = '🚓 POLICE DISPATCHED';
-      successMessage = 'Security forces have been alerted to your location. Stay hidden and safe.';
-    }
-
-    setConfirmModal({
-      visible: true,
-      title: modalTitle,
-      message: modalMessage,
-      detail: detailMsg,
-      confirmText: 'CONFIRM & SEND SOS',
-      cancelText: 'Cancel',
-      variant: 'danger',
-      icon: LifeBuoy,
-      loading: false,
-      onConfirm: async () => {
-        if (isSendingSOSRef.current) return;
-        isSendingSOSRef.current = true;
-        setConfirmModal(prev => ({ ...prev, loading: true }));
-        setIsSendingSOS(true);
-        try {
-          let { status } = await Location.requestForegroundPermissionsAsync();
-          let lat = 6.9214, lng = 122.0790;
-          if (status === 'granted') {
-            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-            lat = loc.coords.latitude;
-            lng = loc.coords.longitude;
-          }
-
-          await api.post('/rescue/sos', {
-            latitude: lat,
-            longitude: lng,
-            headcount: 1,
-            situation: situationMsg,
-            hazard_type: sosType, // Pass the specific type to the backend!
-          });
-
-          queryClient.invalidateQueries({ queryKey: ['my-incidents'] });
-          closeConfirmModal();
-          Alert.alert(successTitle, successMessage, [{ text: 'OK' }]);
-        } catch (err) {
-          closeConfirmModal();
-          Alert.alert('Error', err?.response?.data?.message || 'Failed to transmit SOS signal.');
-        } finally {
-          isSendingSOSRef.current = false;
-          setIsSendingSOS(false);
-        }
-      },
-    });
   };
 
   // --- Fetch resident's report history ---
@@ -223,6 +232,7 @@ export default function ReportIncidentScreen({ navigation }) {
     });
   };
 
+
   // --- Use current GPS location ---
   const handleGetLocation = async () => {
     setLocating(true);
@@ -235,7 +245,7 @@ export default function ReportIncidentScreen({ navigation }) {
       
       const loc = await Promise.race([
         Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('GPS_TIMEOUT')), 4000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('GPS_TIMEOUT')), 4500))
       ]).catch(async () => {
         return await Location.getLastKnownPositionAsync();
       });
@@ -245,7 +255,9 @@ export default function ReportIncidentScreen({ navigation }) {
         return;
       }
 
-      setCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      const acquired = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+      setCoords(acquired);
+      await reverseGeocodeCoords(acquired.latitude, acquired.longitude);
     } catch (_e) {
       Alert.alert('Error', 'Could not get your location. Please ensure GPS location services are enabled.');
     } finally {
@@ -253,10 +265,10 @@ export default function ReportIncidentScreen({ navigation }) {
     }
   };
 
-  // --- Pick photo from camera or gallery (up to 3 photos) ---
+  // --- Pick photo from camera or gallery (up to 4 photos for credibility) ---
   const handlePickPhoto = async (useCamera) => {
-    if (photos.length >= 3) {
-      Alert.alert('Limit Reached', 'You can attach up to 3 photos per incident report.');
+    if (photos.length >= 4) {
+      Alert.alert('Limit Reached', 'You can attach up to 4 credibility photos per incident report.');
       return;
     }
 
@@ -286,11 +298,11 @@ export default function ReportIncidentScreen({ navigation }) {
   };
 
   const showPhotoPicker = () => {
-    if (photos.length >= 3) {
-      Alert.alert('Limit Reached', 'Maximum of 3 photos reached.');
+    if (photos.length >= 4) {
+      Alert.alert('Limit Reached', 'Maximum of 4 credibility photos reached.');
       return;
     }
-    Alert.alert('Add Photo', `Photo ${photos.length + 1} of 3 — Choose source`, [
+    Alert.alert('Add Credibility Photo', `Photo ${photos.length + 1} of 4 — Choose source`, [
       { text: 'Take Photo', onPress: () => handlePickPhoto(true) },
       { text: 'Choose from Gallery', onPress: () => handlePickPhoto(false) },
       { text: 'Cancel', style: 'cancel' },
@@ -308,6 +320,8 @@ export default function ReportIncidentScreen({ navigation }) {
     setSeverityLevel('medium');
     setPhotos([]);
     setCoords(null);
+    setStreetAddress('');
+    setBarangayName('');
   };
 
   // --- Submit report ---
@@ -351,7 +365,15 @@ export default function ReportIncidentScreen({ navigation }) {
       formData.append('longitude', String(coords.longitude));
       formData.append('hazard_type', hazardType);
       formData.append('severity_level', severityLevel);
-      if (description.trim()) formData.append('description', description.trim());
+
+      let finalDescription = description.trim();
+      const locationParts = [];
+      if (barangayName.trim()) locationParts.push(`Barangay: ${barangayName.trim()}`);
+      if (streetAddress.trim()) locationParts.push(`Address: ${streetAddress.trim()}`);
+      if (locationParts.length > 0) {
+        finalDescription = `[${locationParts.join(' | ')}]` + (finalDescription ? `\n\n${finalDescription}` : '');
+      }
+      if (finalDescription) formData.append('description', finalDescription);
 
       photos.forEach((photoObj, index) => {
         const fileData = {
@@ -597,7 +619,7 @@ export default function ReportIncidentScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* Header Bar with Top Right Archive Button */}
+      {/* Header Bar with Action Buttons */}
       <View style={{
         paddingHorizontal: 16,
         paddingTop: 8,
@@ -608,72 +630,116 @@ export default function ReportIncidentScreen({ navigation }) {
         borderBottomWidth: 1,
         borderBottomColor: colors.surface,
       }}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, marginRight: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             {historyTab === 'archived' ? (
               <Archive color={colors.primary} size={22} />
             ) : (
               <AlertTriangle color={colors.warning} size={22} />
             )}
-            <Text style={{ fontSize: 20, fontWeight: '800', color: colors.textPrimary }}>
+            <Text style={{ fontSize: 19, fontWeight: '800', color: colors.textPrimary }}>
               {historyTab === 'archived' ? 'Archived Reports' : 'Incident Reports'}
             </Text>
           </View>
-          <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+          <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
             {historyTab === 'archived'
               ? 'Past and resolved incident reports history'
-              : 'Track and report community disaster hazards'}
+              : 'Community field hazards with GPS & 4 photos'}
           </Text>
         </View>
 
-        {/* Top Right Archive History Icon Button */}
-        <TouchableOpacity
-          onPress={() => setHistoryTab(prev => prev === 'active' ? 'archived' : 'active')}
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: 21,
-            backgroundColor: historyTab === 'archived' ? colors.primary : colors.surface,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: historyTab === 'archived' ? colors.primary : colors.border,
-            position: 'relative',
-          }}
-          accessibilityLabel={historyTab === 'archived' ? 'Switch to Active Reports' : 'View Archive History'}
-        >
-          <Archive
-            size={20}
-            color={historyTab === 'archived' ? colors.white : colors.textPrimary}
-          />
-          {archivedIncidents.length > 0 && historyTab !== 'archived' && (
-            <View style={{
-              position: 'absolute',
-              top: -3,
-              right: -3,
-              backgroundColor: colors.primary,
-              borderRadius: 8,
-              minWidth: 16,
-              height: 16,
-              paddingHorizontal: 4,
+        {/* Header Action Buttons: [+ File Report] & [Archive History] */}
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => setShowCreateModal(true)}
+            style={styles.headerCreateBtn}
+            activeOpacity={0.8}
+            accessibilityLabel="File New Incident Report"
+          >
+            <Plus color={colors.white} size={15} strokeWidth={2.5} />
+            <Text style={styles.headerCreateBtnText}>File Report</Text>
+          </TouchableOpacity>
+
+          {/* Archive History Icon Button */}
+          <TouchableOpacity
+            onPress={() => setHistoryTab(prev => prev === 'active' ? 'archived' : 'active')}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              backgroundColor: historyTab === 'archived' ? colors.primary : colors.surface,
               alignItems: 'center',
               justifyContent: 'center',
-              borderWidth: 1.5,
-              borderColor: colors.background,
-            }}>
-              <Text style={{
-                color: colors.white,
-                fontSize: 9,
-                fontWeight: '800',
+              borderWidth: 1,
+              borderColor: historyTab === 'archived' ? colors.primary : colors.border,
+              position: 'relative',
+            }}
+            accessibilityLabel={historyTab === 'archived' ? 'Switch to Active Reports' : 'View Archive History'}
+          >
+            <Archive
+              size={18}
+              color={historyTab === 'archived' ? colors.white : colors.textPrimary}
+            />
+            {archivedIncidents.length > 0 && historyTab !== 'archived' && (
+              <View style={{
+                position: 'absolute',
+                top: -3,
+                right: -3,
+                backgroundColor: colors.primary,
+                borderRadius: 8,
+                minWidth: 16,
+                height: 16,
+                paddingHorizontal: 4,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1.5,
+                borderColor: colors.background,
               }}>
-                {archivedIncidents.length}
-              </Text>
-            </View>
-          )}
+                <Text style={{
+                  color: colors.white,
+                  fontSize: 9,
+                  fontWeight: '800',
+                }}>
+                  {archivedIncidents.length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* --- COMMUNITY HAZARD REPORT HERO BANNER --- */}
+      <View style={styles.heroBanner}>
+        <View style={styles.heroHeaderRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <AlertTriangle color={colors.warning} size={18} />
+            <Text style={styles.heroTitle}>Report Hazard / Disaster</Text>
+          </View>
+          <View style={{
+            backgroundColor: isDarkMode ? '#334155' : '#e2e8f0',
+            paddingHorizontal: 8,
+            paddingVertical: 2,
+            borderRadius: 10,
+          }}>
+            <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textSecondary }}>LGU FIELD DISPATCH</Text>
+          </View>
+        </View>
+
+        <Text style={styles.heroSubtitle}>
+          Spotted road flooding, landslides, or blocked evacuation paths? Alert CDRRMO with live GPS and up to 4 credibility photos for immediate review.
+        </Text>
+
+        <TouchableOpacity
+          onPress={() => setShowCreateModal(true)}
+          style={styles.heroActionBtn}
+          activeOpacity={0.85}
+        >
+          <Plus color={colors.white} size={16} strokeWidth={2.5} />
+          <Text style={styles.heroActionBtnText}>File Incident Report (4 Photos + GPS)</Text>
         </TouchableOpacity>
       </View>
 
-      {/* --- EMERGENCY SOS QUICK ACTIONS --- */}
+      {/* --- EMERGENCY SOS QUICK ACTIONS (ORDERING SYSTEM LAUNCHER) --- */}
       <View style={{
         marginHorizontal: 16,
         marginTop: 12,
@@ -681,94 +747,72 @@ export default function ReportIncidentScreen({ navigation }) {
         backgroundColor: isDarkMode ? '#450a0a' : '#fef2f2',
         borderWidth: 1.5,
         borderColor: isDarkMode ? '#dc2626' : '#f87171',
-        borderRadius: 14,
+        borderRadius: 16,
         padding: 14,
-        elevation: isDarkMode ? 3 : 2,
+        elevation: isDarkMode ? 4 : 2,
         shadowColor: isDarkMode ? '#000' : '#dc2626',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: isDarkMode ? 0.3 : 0.08,
-        shadowRadius: 4,
+        shadowOpacity: isDarkMode ? 0.35 : 0.1,
+        shadowRadius: 6,
       }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, justifyContent: 'center' }}>
-          <LifeBuoy color={isDarkMode ? '#fca5a5' : '#dc2626'} size={16} />
-          <Text style={{
-            color: isDarkMode ? '#ffffff' : '#991b1b',
-            fontSize: 13,
-            fontWeight: '900',
-            letterSpacing: 0.5,
-            textAlign: 'center'
-          }}>
-            URGENT EMERGENCY SOS DISPATCH
-          </Text>
-        </View>
-
-        <View style={{ flexDirection: 'column', gap: 8 }}>
-          {/* Rescue Evacuation Button */}
-          <TouchableOpacity
-            onPress={() => handleTriggerSOS('flood')}
-            disabled={isSendingSOS}
-            style={{
-              backgroundColor: '#dc2626',
-              paddingVertical: 10,
-              borderRadius: 10,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              borderWidth: 1,
-              borderColor: '#fca5a5',
-            }}
-          >
-            <Text style={{ fontSize: 16 }}>🚑</Text>
-            <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '900', letterSpacing: 0.5 }}>
-              {isSendingSOS ? 'SENDING...' : 'REQUEST MEDICAL / EVACUATION'}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <LifeBuoy color="#ef4444" size={18} />
+            <Text style={{
+              color: isDarkMode ? '#fca5a5' : '#991b1b',
+              fontSize: 12,
+              fontWeight: '900',
+              letterSpacing: 0.6,
+            }}>
+              RAPID EMERGENCY RESCUE SOS
             </Text>
-          </TouchableOpacity>
-
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {/* Firetruck Button */}
-            <TouchableOpacity
-              onPress={() => handleTriggerSOS('building_fire')}
-              disabled={isSendingSOS}
-              style={{
-                flex: 1,
-                backgroundColor: '#ea580c',
-                paddingVertical: 10,
-                borderRadius: 10,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                borderWidth: 1,
-                borderColor: '#fdba74',
-              }}
-            >
-              <Text style={{ fontSize: 14 }}>🚒</Text>
-              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '900' }}>CALL FIRE DEPT</Text>
-            </TouchableOpacity>
-
-            {/* Police Button */}
-            <TouchableOpacity
-              onPress={() => handleTriggerSOS('active_shooter')}
-              disabled={isSendingSOS}
-              style={{
-                flex: 1,
-                backgroundColor: '#1d4ed8',
-                paddingVertical: 10,
-                borderRadius: 10,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                borderWidth: 1,
-                borderColor: '#93c5fd',
-              }}
-            >
-              <Text style={{ fontSize: 14 }}>🚓</Text>
-              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '900' }}>CALL POLICE</Text>
-            </TouchableOpacity>
+          </View>
+          <View style={{
+            backgroundColor: '#ef4444',
+            paddingHorizontal: 8,
+            paddingVertical: 2,
+            borderRadius: 6,
+          }}>
+            <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 }}>
+              INSTANT
+            </Text>
           </View>
         </View>
+
+        <Text style={{
+          color: isDarkMode ? '#fecaca' : '#7f1d1d',
+          fontSize: 12,
+          lineHeight: 16,
+          marginBottom: 10,
+        }}>
+          Trapped in floodwaters, fire, or critical medical danger? Tap below to select disaster type, set victim headcount, and toggle special needs for immediate CDRRMO dispatch.
+        </Text>
+
+        <TouchableOpacity
+          onPress={() => setShowSOSModal(true)}
+          style={{
+            backgroundColor: '#dc2626',
+            paddingVertical: 12,
+            borderRadius: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            borderWidth: 1,
+            borderColor: '#fca5a5',
+            shadowColor: '#dc2626',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.4,
+            shadowRadius: 6,
+            elevation: 4,
+          }}
+          activeOpacity={0.85}
+        >
+          <Text style={{ fontSize: 16 }}>🚨</Text>
+          <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '900', letterSpacing: 0.6 }}>
+            LAUNCH EMERGENCY SOS (ORDER RESCUE)
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Archive Active Notification Bar (shown when viewing archive) */}
@@ -897,26 +941,10 @@ export default function ReportIncidentScreen({ navigation }) {
         />
       )}
 
-      {/* Fixed Bottom-Right (+ icon) Floating Action Button */}
+      {/* Fixed Bottom-Right (+ icon) Floating Action Button - Positioned safely above FloatingDock */}
       <TouchableOpacity
         onPress={() => setShowCreateModal(true)}
-        style={{
-          position: 'absolute',
-          bottom: 24,
-          right: 20,
-          width: 58,
-          height: 58,
-          borderRadius: 29,
-          backgroundColor: colors.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.35,
-          shadowRadius: 5,
-          elevation: 8,
-          zIndex: 999,
-        }}
+        style={styles.fabRepositioned}
         activeOpacity={0.85}
         accessibilityLabel="Report New Incident"
       >
@@ -954,7 +982,7 @@ export default function ReportIncidentScreen({ navigation }) {
 
           <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <Text style={styles.subtitle}>
-              Help your community by reporting road hazards, floods, or blocked paths to LGU.
+              Help your community by reporting road hazards, floods, or blocked paths to LGU with GPS and up to 4 credibility photos.
             </Text>
 
             {/* Incident Name */}
@@ -972,7 +1000,7 @@ export default function ReportIncidentScreen({ navigation }) {
             <Text style={styles.label}>Description (optional)</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Describe what you observed..."
+              placeholder="Describe what you observed (water depth, vehicle passability, blockage)..."
               placeholderTextColor={colors.textMuted}
               value={description}
               onChangeText={setDescription}
@@ -982,15 +1010,62 @@ export default function ReportIncidentScreen({ navigation }) {
             />
 
             {/* Hazard Type */}
-            <Text style={styles.label}>Hazard Type *</Text>
+            <Text style={styles.label}>Disaster / Hazard Type *</Text>
             <ChipSelector options={HAZARD_TYPES} value={hazardType} onChange={setHazardType} />
 
-            {/* Severity Level */}
-            <Text style={styles.label}>Severity Level *</Text>
-            <ChipSelector options={SEVERITY_LEVELS} value={severityLevel} onChange={setSeverityLevel} colorMap={SEVERITY_COLORS} />
+            {/* Contextual Hazard Hint */}
+            {HAZARD_HINTS[hazardType] && (
+              <View style={styles.hazardHintBox}>
+                <Text style={styles.hazardHintText}>{HAZARD_HINTS[hazardType]}</Text>
+              </View>
+            )}
+
+            {/* Severity Level (Contextual Disaster Severity Basis) */}
+            <Text style={styles.label}>Basis of Severity ({HAZARD_TYPES.find(h => h.value === hazardType)?.label || hazardType}) *</Text>
+            <View style={{ marginBottom: 12 }}>
+              {(CONTEXTUAL_SEVERITY[hazardType] || CONTEXTUAL_SEVERITY.default).map((opt) => {
+                const isSelected = severityLevel === opt.level;
+                const accentColor = SEVERITY_COLORS[opt.level] || colors.primary;
+                return (
+                  <TouchableOpacity
+                    key={opt.level}
+                    onPress={() => setSeverityLevel(opt.level)}
+                    activeOpacity={0.75}
+                    style={[
+                      styles.contextualSeverityCard,
+                      {
+                        backgroundColor: isSelected
+                          ? (isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)')
+                          : (isDarkMode ? '#1e293b' : '#f8fafc'),
+                        borderColor: isSelected ? accentColor : (isDarkMode ? '#334155' : '#e2e8f0'),
+                      }
+                    ]}
+                  >
+                    <View style={styles.contextualSeverityHeader}>
+                      <Text style={[styles.contextualSeverityTitle, { color: isSelected ? accentColor : colors.textPrimary }]}>
+                        {opt.title}
+                      </Text>
+                      <View style={{
+                        backgroundColor: isSelected ? accentColor : (isDarkMode ? '#334155' : '#cbd5e1'),
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                        borderRadius: 6,
+                      }}>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#ffffff', textTransform: 'uppercase' }}>
+                          {opt.level}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.contextualSeverityDesc, { color: colors.textSecondary }]}>
+                      {opt.desc}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
             {/* Location Pin */}
-            <Text style={styles.label}>Location *</Text>
+            <Text style={styles.label}>Location & Coordinates *</Text>
             <TouchableOpacity style={styles.locationBtn} onPress={handleGetLocation} disabled={locating}>
               {locating ? (
                 <ActivityIndicator size="small" color={colors.primary} />
@@ -999,24 +1074,56 @@ export default function ReportIncidentScreen({ navigation }) {
               )}
               <Text style={[styles.locationText, coords && { color: colors.successLight }]}>
                 {locating
-                  ? 'Getting location...'
+                  ? 'Acquiring GPS & Address...'
                   : coords
                   ? `📍 ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`
                   : 'Use My Current Location'}
               </Text>
             </TouchableOpacity>
 
-            {/* Photos (Up to 3 photos) */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 6 }}>
-              <Text style={styles.label}>Photos (Up to 3 Recommended)</Text>
-              <Text style={{ fontSize: 12, color: colors.textMuted }}>{photos.length}/3 photos</Text>
+            {/* Reverse Geocoded Address & Barangay Card */}
+            {coords && (
+              <View style={[styles.addressCard, { backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc', borderColor: isDarkMode ? '#334155' : '#e2e8f0' }]}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary }}>
+                  📍 Verified Locality / Barangay
+                </Text>
+                <View style={{ gap: 6 }}>
+                  <View>
+                    <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 2 }}>Barangay</Text>
+                    <TextInput
+                      style={[styles.addressInput, { backgroundColor: colors.background, color: colors.textPrimary, borderColor: colors.border }]}
+                      placeholder="Barangay name (e.g. Tetuan, Tumaga)"
+                      placeholderTextColor={colors.textMuted}
+                      value={barangayName}
+                      onChangeText={setBarangayName}
+                    />
+                  </View>
+                  <View>
+                    <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 2 }}>Street / Landmark</Text>
+                    <TextInput
+                      style={[styles.addressInput, { backgroundColor: colors.background, color: colors.textPrimary, borderColor: colors.border }]}
+                      placeholder="Street or nearest landmark"
+                      placeholderTextColor={colors.textMuted}
+                      value={streetAddress}
+                      onChangeText={setStreetAddress}
+                    />
+                  </View>
+                  <Text style={styles.geocodeCoords}>Coordinates: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Photos (Up to 4 photos for credibility) */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 6 }}>
+              <Text style={styles.label}>Credibility Photos (Up to 4 Photos)</Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted }}>{photos.length}/4 photos</Text>
             </View>
 
             {photos.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                 {photos.map((item, idx) => (
                   <View key={idx} style={{ position: 'relative', marginRight: 10 }}>
-                    <Image source={{ uri: item.uri }} style={{ width: 90, height: 90, borderRadius: 8 }} />
+                    <Image source={{ uri: item.uri }} style={{ width: 95, height: 95, borderRadius: 8 }} />
                     <TouchableOpacity
                       style={{
                         position: 'absolute',
@@ -1030,19 +1137,21 @@ export default function ReportIncidentScreen({ navigation }) {
                     >
                       <X color={colors.white} size={14} />
                     </TouchableOpacity>
-                    <Text style={{ fontSize: 10, color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>Photo {idx + 1}</Text>
+                    <View style={styles.photoSlotBadge}>
+                      <Text style={styles.photoSlotBadgeText}>{PHOTO_ROLE_LABELS[idx] || `Photo ${idx + 1}`}</Text>
+                    </View>
                   </View>
                 ))}
               </ScrollView>
             )}
 
-            {photos.length < 3 && (
+            {photos.length < 4 && (
               <TouchableOpacity style={styles.photoBtn} onPress={showPhotoPicker}>
                 <Camera color={colors.textMuted} size={24} />
                 <Text style={styles.photoBtnText}>
-                  {photos.length === 0 ? 'Tap to add photos (Up to 3)' : `Add Photo ${photos.length + 1} of 3`}
+                  {photos.length === 0 ? 'Tap to add photos (Up to 4 for credibility)' : `Add Photo ${photos.length + 1} of 4 (${PHOTO_ROLE_LABELS[photos.length]})`}
                 </Text>
-                <Text style={styles.photoBtnHint}>JPG/PNG up to 5MB each</Text>
+                <Text style={styles.photoBtnHint}>Include wide scene, depth indicator & landmarks</Text>
               </TouchableOpacity>
             )}
 
@@ -1078,6 +1187,14 @@ export default function ReportIncidentScreen({ navigation }) {
         loading={confirmModal.loading}
         onConfirm={confirmModal.onConfirm}
         onClose={closeConfirmModal}
+      />
+
+      {/* Rapid Ordering Emergency SOS Modal */}
+      <EmergencySOSModal
+        visible={showSOSModal}
+        onClose={() => setShowSOSModal(false)}
+        initialCoords={coords}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['my-incidents'] })}
       />
     </SafeAreaView>
   );
