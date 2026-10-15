@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\ShelterController;
 use App\Http\Controllers\Api\SitRepController;
 use App\Http\Controllers\Api\SystemHealthController;
+use App\Http\Controllers\Api\WeatherController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -32,8 +33,11 @@ Route::get('/ping', function () {
 
 // Capacity Matching
 Route::get('/shelters/active', [ShelterController::class, 'getActiveShelters']);
-// Hazard Avoidance
+// Hazard Avoidance & Geohazard Presets
 Route::get('/hazards', [HazardController::class, 'getActiveHazards']);
+Route::get('/hazards/presets', [HazardController::class, 'getPresets']);
+// Live Weather Telemetry (Open-Meteo & Rain Status)
+Route::get('/weather/live-status', [WeatherController::class, 'liveStatus']);
 // Road Network (public — mobile can sync without auth)
 Route::get('/road-network', [RoadNetworkController::class, 'index']);
 
@@ -89,6 +93,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/inventory/dashboard', [BundledApiController::class, 'getInventoryDashboard']);
         Route::get('/shelters/dashboard', [BundledApiController::class, 'getSheltersDashboard']);
         Route::get('/lgu/barangay-relief-summary/{barangay}', [BundledApiController::class, 'getBarangayReliefSummary']);
+        Route::get('/lgu/population-at-risk/{barangay}', [BundledApiController::class, 'getPopulationAtRisk']);
 
         // 1. Shelter Management
         Route::get('/shelters', [ShelterController::class, 'getAll']);
@@ -103,8 +108,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/shelters/{shelter_id}/check-out', [CheckInController::class, 'processCheckOut']);
         Route::post('/evacuation-logs/{id}/check-out', [CheckInController::class, 'manualCheckOut']);
 
-        // 3. Hazard Management & Disaster Simulation Toggle
+        // 3. Hazard Management, Proactive Zones & Disaster Simulation
         Route::post('/hazards', [HazardController::class, 'reportHazard']);
+        Route::post('/hazards/declare-zone', [HazardController::class, 'declareZone']);
+        Route::post('/hazards/presets/{key}/toggle', [HazardController::class, 'togglePreset']);
         Route::put('/hazards/{id}/resolve', [HazardController::class, 'resolveHazard']);
         Route::post('/simulation/toggle', [HazardController::class, 'toggleSimulation']);
 
@@ -153,6 +160,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/rescue/units', [RescueMissionController::class, 'storeUnit']);
         Route::get('/rescue/missions', [RescueMissionController::class, 'missions']);
         Route::post('/rescue/missions', [RescueMissionController::class, 'store']);
+        Route::post('/rescue/hotline-intake', [RescueMissionController::class, 'hotlineIntake']);
         Route::put('/rescue/missions/{id}/status', [RescueMissionController::class, 'updateStatus']);
 
         // 13. System Settings (Readable by all LGU staff and Admin)

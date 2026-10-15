@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LifeBuoy, Truck, Phone, Users, Clock, AlertTriangle,
@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import echo from '../services/echo';
+import HotlineIntakeModal from '../components/disaster/HotlineIntakeModal';
 import { showSuccess, showError } from '../utils/toast';
 import { getHaversineDistance } from '../utils/mapHelper';
 
@@ -118,6 +119,7 @@ export default function RescueDispatch() {
   const [dispatchModalData, setDispatchModalData] = useState(null); // Incident / SOS being dispatched
   const [stagingHandoverMission, setStagingHandoverMission] = useState(null); // Mission undergoing radio shoreline handover
   const [isAddUnitOpen, setIsAddUnitOpen] = useState(false); // Modal to register new rescue vehicle/unit
+  const [isHotlineModalOpen, setIsHotlineModalOpen] = useState(false); // Modal for 911 / VHF radio distress intake
 
   // Escape key handler to close active modals
   useEffect(() => {
@@ -126,11 +128,12 @@ export default function RescueDispatch() {
         if (dispatchModalData) setDispatchModalData(null);
         if (stagingHandoverMission) setStagingHandoverMission(null);
         if (isAddUnitOpen) setIsAddUnitOpen(false);
+        if (isHotlineModalOpen) setIsHotlineModalOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [dispatchModalData, stagingHandoverMission, isAddUnitOpen]);
+  }, [dispatchModalData, stagingHandoverMission, isAddUnitOpen, isHotlineModalOpen]);
 
   // 1. Fetch rescue fleet units
   const { data: unitsData, refetch: refetchUnits } = useQuery({
@@ -250,6 +253,12 @@ export default function RescueDispatch() {
             className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow transition"
           >
             <Plus size={14} /> Register Rescue Vehicle
+          </button>
+          <button
+            onClick={() => setIsHotlineModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer"
+          >
+            <Phone size={14} /> Log 911 / Call-In
           </button>
           <button
             onClick={() => setDispatchModalData({})}
@@ -473,6 +482,11 @@ export default function RescueDispatch() {
                       <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${TRIAGE_BADGES[m.triage_level] || TRIAGE_BADGES.standard}`}>
                         {m.triage_level} PRIORITY
                       </span>
+                      {m.intake_source && m.intake_source !== 'mobile_sos' && (
+                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                          📞 {m.intake_source === 'vhf_radio' ? 'VHF RADIO' : m.intake_source.replace('_', ' ').toUpperCase()} {m.informant_name ? `• ${m.informant_name}` : ''}
+                        </span>
+                      )}
                     </div>
 
                     <div>
@@ -807,6 +821,14 @@ export default function RescueDispatch() {
           }}
         />
       )}
+
+      {/* Offline 911 Hotline / VHF Radio Intake Modal */}
+      <HotlineIntakeModal
+        isOpen={isHotlineModalOpen}
+        onClose={() => setIsHotlineModalOpen(false)}
+        rescueUnits={units}
+        shelters={shelters}
+      />
     </div>
   );
 }
@@ -867,7 +889,7 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters = [], 
     if (!isNaN(latNum) && !isNaN(lngNum)) {
       const detected = resolveBarangayFromCoords(latNum, lngNum, shelters);
       if (detected && !isManualBarangay) {
-        setBarangay(detected);
+        queueMicrotask(() => setBarangay(detected));
       }
     }
   }, [lat, lng, shelters, isManualBarangay]);
@@ -912,9 +934,9 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters = [], 
   // Auto-select nearest shelter by default
   useEffect(() => {
     if (recommendedShelter?.id && (!targetShelterId || !isManualShelter)) {
-      setTargetShelterId(recommendedShelter.id);
+      queueMicrotask(() => setTargetShelterId(recommendedShelter.id));
     }
-  }, [recommendedShelter?.id, isManualShelter]);
+  }, [recommendedShelter?.id, isManualShelter, targetShelterId]);
 
   const selectedUnit = availableUnits.find(u => String(u.id) === String(unitId));
   const responsibleOfficer = selectedUnit?.assigned_personnel?.name || selectedUnit?.crew_members?.[0]?.name || 'Officer On Duty';

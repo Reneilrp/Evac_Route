@@ -174,6 +174,118 @@ class RescueMissionController extends Controller
     }
 
     /**
+     * Direct 911 Hotline / VHF Radio Call-In Emergency Intake.
+     * Allows dispatchers to rapidly create and dispatch missions for offline callers.
+     * Route: POST /api/rescue/hotline-intake
+     */
+    public function hotlineIntake(Request $request)
+    {
+        $validated = $request->validate([
+            'intake_source' => 'required|in:hotline_911,vhf_radio,walk_in,barangay_scout',
+            'informant_name' => 'required|string|max:150',
+            'informant_contact' => 'nullable|string|max:100',
+            'rescue_unit_id' => 'required|exists:rescue_units,id',
+            'victim_name' => 'required|string|max:255',
+            'victim_phone' => 'nullable|string|max:50',
+            'victim_latitude' => 'required|numeric|between:-90,90',
+            'victim_longitude' => 'required|numeric|between:-180,180',
+            'barangay' => 'nullable|string|max:100',
+            'headcount' => 'required|integer|min:1|max:50',
+            'special_needs' => 'nullable|string|max:255',
+            'situation_description' => 'nullable|string|max:1000',
+            'triage_level' => 'nullable|in:critical,urgent,standard',
+            'target_shelter_id' => 'nullable|exists:shelters,id',
+            'staging_point_id' => 'nullable|exists:shelters,id',
+            'status' => 'nullable|in:dispatched,en_route',
+            'equipments' => 'nullable|array',
+            'equipments.*' => 'string|max:100',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $unit = RescueUnit::findOrFail($validated['rescue_unit_id']);
+
+        if (in_array($unit->status, ['en_route', 'on_scene', 'transporting'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Rescue unit {$unit->name} is currently engaged in an active mission.",
+            ], 422);
+        }
+
+        $initialStatus = $validated['status'] ?? 'dispatched';
+
+        $sourceLabel = strtoupper(str_replace('_', ' ', $validated['intake_source']));
+        $intakeHeader = "[{$sourceLabel} INTAKE | Informant: {$validated['informant_name']}" .
+            (!empty($validated['informant_contact']) ? " ({$validated['informant_contact']})]" : "]");
+
+        $notes = $validated['notes'] ?? '';
+        $notes = $intakeHeader . (!empty($notes) ? " - {$notes}" : '');
+
+        if (!empty($validated['equipments'])) {
+            $equipStr = '[EQUIPMENT DEPLOYED]: ' . implode(', ', $validated['equipments']);
+            $notes = "{$notes} | {$equipStr}";
+        }
+
+        $mission = DB::transaction(function () use ($validated, $unit, $request, $initialStatus, $notes) {
+            $year = date('Y');
+            $count = RescueMission::whereYear('created_at', $year)->count() + 1;
+            $controlNo = 'RES-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+
+            $mission = RescueMission::create([
+                'control_no' => $controlNo,
+                'pending_incident_id' => null,
+                'rescue_unit_id' => $unit->id,
+                'dispatched_by' => $request->user()->id,
+                'intake_source' => $validated['intake_source'],
+                'informant_name' => $validated['informant_name'],
+                'status' => $initialStatus,
+                'triage_level' => $validated['triage_level'] ?? 'urgent',
+                'victim_name' => $validated['victim_name'],
+                'victim_phone' => $validated['victim_phone'] ?? $validated['informant_contact'] ?? null,
+                'victim_latitude' => $validated['victim_latitude'],
+                'victim_longitude' => $validated['victim_longitude'],
+                'barangay' => $validated['barangay'] ?? null,
+                'headcount' => $validated['headcount'],
+                'special_needs' => $validated['special_needs'] ?? null,
+                'situation_description' => $validated['situation_description'] ?? null,
+                'target_shelter_id' => $validated['target_shelter_id'] ?? null,
+                'staging_point_id' => $validated['staging_point_id'] ?? null,
+                'dispatched_at' => now(),
+                'notes' => $notes,
+            ]);
+
+            $unit->update(['status' => $initialStatus]);
+
+            return $mission->load(['rescueUnit', 'targetShelter', 'stagingPoint']);
+        });
+
+        // Broadcast real-time dispatch notification
+        event(new RescueMissionDispatched($mission));
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'rescue_mission_hotline_intake',
+            'ip_address' => $request->ip(),
+            'old_values' => null,
+            'new_values' => [
+                'mission_id' => $mission->id,
+                'control_no' => $mission->control_no,
+                'intake_source' => $validated['intake_source'],
+                'informant_name' => $validated['informant_name'],
+                'unit_id' => $unit->id,
+                'unit_name' => $unit->name,
+                'triage_level' => $mission->triage_level,
+                'headcount' => $mission->headcount,
+            ],
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Offline {$sourceLabel} intake processed. Rescue unit {$unit->name} dispatched.",
+            'data' => $mission,
+        ], 201);
+    }
+
+    /**
      * Stepper Status Updates: en_route -> on_scene -> transporting -> staged_at_assembly / completed.
      * Triggered by field responder on mobile or CDRRMO command desk.
      */

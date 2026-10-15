@@ -468,9 +468,18 @@ export default function RescueDutyScreen({ navigation }) {
                 </Text>
               </View>
 
-              <Text style={styles.controlNoText}>
-                {currentMission.control_no}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.controlNoText}>
+                  {currentMission.control_no}
+                </Text>
+                {currentMission.intake_source && currentMission.intake_source !== 'mobile_sos' && (
+                  <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#92400e' }}>
+                      📞 {currentMission.intake_source === 'vhf_radio' ? 'VHF RADIO' : 'MANUAL CALL'}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
 
             {/* 2. Hero Navigation CTA Button (Prominent, High-Visibility) */}

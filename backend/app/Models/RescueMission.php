@@ -24,6 +24,8 @@ class RescueMission extends Model
         'headcount',
         'special_needs',
         'situation_description',
+        'intake_source',
+        'informant_name',
         'target_shelter_id',
         'staging_point_id',
         'dispatched_at',

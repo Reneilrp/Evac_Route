@@ -6,12 +6,13 @@ import {
   MapPin, AlertTriangle, X, Cloud, Flame, Zap,
   ChevronRight, ChevronLeft, Moon, Satellite, Mountain,
   TriangleAlert, Droplets, Waves, Shield, SlidersHorizontal, Layers,
-  Eye, Wrench, Users, Building2, Search
+  Eye, Wrench, Users, Building2, Search, ShieldAlert
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ConfirmationModal from '../components/common/ConfirmationModal';
+import ProactiveDisasterModal from '../components/disaster/ProactiveDisasterModal';
 import { showSuccess, showError } from '../utils/toast';
 import { createCirclePolygon, getHaversineDistance } from '../utils/mapHelper';
 
@@ -2050,6 +2051,42 @@ const MapViewer = React.memo(({
           </Source>
         )}
 
+        {/* Dynamic Hazard Radius Line from Center to Cursor */}
+        {pinMode === 'hazard' && pendingLocation && isDrawingRadius && drawingEnd && (
+          <>
+            <Source
+              id="drawing-hazard-radius-line"
+              type="geojson"
+              data={{
+                type: 'Feature',
+                geometry: {
+                  type: 'LineString',
+                  coordinates: [
+                    [pendingLocation.longitude, pendingLocation.latitude],
+                    [drawingEnd.longitude, drawingEnd.latitude],
+                  ],
+                },
+              }}
+            >
+              <Layer
+                id="drawing-hazard-radius-line-layer"
+                type="line"
+                paint={{
+                  'line-color': '#f59e0b',
+                  'line-width': 2.5,
+                  'line-dasharray': [3, 2],
+                }}
+              />
+            </Source>
+            <Marker longitude={drawingEnd.longitude} latitude={drawingEnd.latitude} anchor="left">
+              <div className="ml-2 px-2 py-0.5 bg-gray-950/90 text-amber-300 font-mono text-[11px] font-black rounded-md border border-amber-500/60 shadow-xl whitespace-nowrap pointer-events-none flex items-center gap-1.5 backdrop-blur-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+                <span>📏 {drawingRadiusMeters}m radius ({drawingRadiusMeters * 2}m span)</span>
+              </div>
+            </Marker>
+          </>
+        )}
+
 
 
         {/* Active Road Maintenance Lines */}
@@ -2627,6 +2664,7 @@ export default function MapDashboard() {
         e.lngLat
       );
       setDrawingRadiusMeters(Math.max(10, Math.min(5000, Math.round(distance))));
+      setDrawingEnd({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
     } else if (pinMode === 'maintenance' && maintenancePoints.length > 0) {
       setDrawingEnd({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
     } else if (pinMode === 'sim-placement') {
@@ -2711,6 +2749,7 @@ export default function MapDashboard() {
 
   const [simulationMode, setSimulationMode] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isProactiveModalOpen, setIsProactiveModalOpen] = useState(false);
   const [showShelters, setShowShelters] = useState(true);
   const [showHazards, setShowHazards] = useState(true);
   const [showRoadNetwork, setShowRoadNetwork] = useState(true);
@@ -2926,10 +2965,17 @@ export default function MapDashboard() {
         setPendingLocation({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
         setShowShelterForm(true);
       } else if (pinMode === 'hazard') {
-        setPendingLocation({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
-        setDrawingRadiusMeters(50);
-        setIsDrawingRadius(false);
-        setShowHazardForm(true);
+        if (!isDrawingRadius) {
+          // First click: Set disaster center point and start stretching radius line
+          setPendingLocation({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
+          setDrawingRadiusMeters(50);
+          setDrawingEnd({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
+          setIsDrawingRadius(true);
+        } else {
+          // Second click: Lock in the boundary length and open the hazard details modal
+          setIsDrawingRadius(false);
+          setShowHazardForm(true);
+        }
       } else if (pinMode === 'resident') {
         setSimulatedResidentCoords([e.lngLat.lng, e.lngLat.lat]);
         setPinMode(null);
@@ -3263,6 +3309,20 @@ export default function MapDashboard() {
 
           <div className="w-px bg-white/10 self-stretch my-1" />
 
+          {/* Proactive Early Warning & Presets Command */}
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1 select-none">Proactive EOC</span>
+            <button
+              onClick={() => setIsProactiveModalOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-red-600/90 hover:bg-red-600 text-white border border-red-500/50 text-[11px] font-black rounded-lg shadow-md transition cursor-pointer"
+            >
+              <ShieldAlert size={13} className="text-white" />
+              <span>Geohazard Presets &amp; EOC</span>
+            </button>
+          </div>
+
+          <div className="w-px bg-white/10 self-stretch my-1" />
+
           {/* Pinpoint & Orbit Tools Group */}
           <div className="flex flex-col items-center">
             <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Pinpoint &amp; Orbit</span>
@@ -3339,7 +3399,7 @@ export default function MapDashboard() {
                 <span>📍 <strong className="font-black tracking-wide uppercase">Pinning Shelter:</strong> Click anywhere on the map to place a new evacuation shelter.</span>
               ) : pinMode === 'hazard' ? (
                 isDrawingRadius ? (
-                  <span>⚠️ <strong className="font-black tracking-wide uppercase">Define Boundary:</strong> Move your mouse to change size (Current: <strong className="text-yellow-300 font-bold">{drawingRadiusMeters}m</strong>), then click again to confirm.</span>
+                  <span>⚠️ <strong className="font-black tracking-wide uppercase">Define Disaster Reach:</strong> Move mouse outward to stretch the line &amp; circle (Current: <strong className="text-yellow-300 font-bold">{drawingRadiusMeters}m radius</strong>), then click again to lock boundary.</span>
                 ) : (
                   <span>⚠️ <strong className="font-black tracking-wide uppercase">Flagging Hazard:</strong> Click on the map to mark the center of the hazard zone.</span>
                 )
@@ -3581,6 +3641,10 @@ export default function MapDashboard() {
           setDrawerOpen={setDrawerOpen}
         />
       </div>
+      <ProactiveDisasterModal
+        isOpen={isProactiveModalOpen}
+        onClose={() => setIsProactiveModalOpen(false)}
+      />
       <ConfirmationModal
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}

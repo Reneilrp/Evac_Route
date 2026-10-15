@@ -241,4 +241,75 @@ class BundledApiController extends Controller
             'estimated_supplies_needed' => $requiredSupplies,
         ], 200);
     }
+
+    /**
+     * Proactive Population-at-Risk & Shelter Capacity Deficit Engine.
+     * Route: GET /api/lgu/population-at-risk/{barangay}
+     */
+    public function getPopulationAtRisk(Request $request, $barangay)
+    {
+        $families = FamilyProfile::where('barangay', 'like', "%{$barangay}%")->get();
+        $totalHouseholds = $families->count();
+        $totalHeadcount = (int) $families->sum('headcount');
+
+        // Transportation distribution for logistics & staging planning
+        $transportBreakdown = [
+            'pedestrian' => $families->where('transportation_mode', 'pedestrian')->count(),
+            '2_wheel' => $families->where('transportation_mode', '2_wheel')->count(),
+            '4_wheel' => $families->where('transportation_mode', '4_wheel')->count(),
+            'unspecified' => $families->whereNull('transportation_mode')->count(),
+        ];
+
+        // Match against shelters serving this barangay or in the immediate area
+        $shelters = Shelter::where(function ($query) use ($barangay) {
+            $query->where('barangay', 'like', "%{$barangay}%")
+                ->orWhere('name', 'like', "%{$barangay}%");
+        })->get();
+
+        // If no shelters explicitly tagged with this barangay, provide all open/operational shelters
+        if ($shelters->isEmpty()) {
+            $shelters = Shelter::whereIn('status', ['open', 'full'])->get();
+        }
+
+        $totalCapacity = (int) $shelters->sum('max_capacity');
+        $currentOccupancy = (int) $shelters->sum('current_occupancy');
+        $availableCapacity = max(0, $totalCapacity - $currentOccupancy);
+
+        $netBalance = $availableCapacity - $totalHeadcount;
+        $hasDeficit = $netBalance < 0;
+        $deficitAmount = $hasDeficit ? abs($netBalance) : 0;
+
+        return response()->json([
+            'status' => 'success',
+            'barangay' => $barangay,
+            'risk_summary' => [
+                'total_registered_households' => $totalHouseholds,
+                'total_registered_headcount' => $totalHeadcount,
+                'transportation_modes' => $transportBreakdown,
+            ],
+            'shelter_feasibility' => [
+                'matched_shelters_count' => $shelters->count(),
+                'total_shelter_capacity' => $totalCapacity,
+                'current_shelter_occupancy' => $currentOccupancy,
+                'available_shelter_capacity' => $availableCapacity,
+                'capacity_surplus_or_deficit' => $netBalance,
+                'has_deficit' => $hasDeficit,
+                'deficit_amount' => $deficitAmount,
+                'recommendation' => $hasDeficit
+                    ? "SHELTER DEFICIT ALERT: Requires opening secondary overflow shelter for {$deficitAmount} evacuees."
+                    : "SHELTER CAPACITY ADEQUATE: Surplus of {$netBalance} beds available in designated shelters.",
+                'shelters' => $shelters->map(function ($s) {
+                    return [
+                        'id' => $s->id,
+                        'name' => $s->name,
+                        'barangay' => $s->barangay,
+                        'status' => $s->status,
+                        'max_capacity' => $s->max_capacity,
+                        'current_occupancy' => $s->current_occupancy,
+                        'available_spaces' => max(0, $s->max_capacity - $s->current_occupancy),
+                    ];
+                }),
+            ],
+        ], 200);
+    }
 }
