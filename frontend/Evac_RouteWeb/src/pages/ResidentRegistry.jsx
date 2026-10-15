@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, Eye, X, Calendar, User, Phone, MapPin, Truck, History, ClipboardCheck } from "lucide-react";
+import { Search, Eye, X, Calendar, User, Phone, MapPin, Truck, History, ClipboardCheck, Download } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import api from "../services/api";
 
@@ -52,6 +52,38 @@ export default function ResidentRegistry() {
     year: "numeric",
   });
 
+  const handleExportCSV = async () => {
+    try {
+      const res = await api.get('/residents', { params: { per_page: 1000, search: debouncedSearch } });
+      const allResidents = res.data?.data?.data || residents;
+
+      let csv = `ID,Family Head,Contact Number,Barangay,Family Size,Special Needs,Total Stays,Total Rations Claimed,Current Status\n`;
+      allResidents.forEach(r => {
+        const id = r.id || '';
+        const name = (r.name || '').replace(/"/g, '""');
+        const contact = (r.contact_number || r.contact || 'N/A').replace(/"/g, '""');
+        const brgy = (r.barangay || 'N/A').replace(/"/g, '""');
+        const size = r.family_size || 1;
+        const needs = (r.special_needs || 'None').replace(/"/g, '""');
+        const stays = r.check_ins_count ?? (r.check_ins?.length ?? 0);
+        const rations = r.rations_count ?? (r.rations?.length ?? 0);
+        const status = r.active_check_in ? 'Evacuated' : 'Cleared / Decamped';
+        csv += `"${id}","${name}","${contact}","${brgy}","${size}","${needs}","${stays}","${rations}","${status}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `EvacRoute_Resident_Registry_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Export failed", err);
+    }
+  };
+
   return (
     <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
       {/* Detail Modal */}
@@ -62,7 +94,7 @@ export default function ResidentRegistry() {
         />
       )}
 
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">
             Resident History &amp; Registry
@@ -71,8 +103,17 @@ export default function ResidentRegistry() {
             Directory of evacuees, total checked-in counts, and relief ration history.
           </p>
         </div>
-        <div className="text-sm text-gray-500 dark:text-slate-400 flex items-center gap-2">
-          <Calendar size={16} /> {today}
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-500 dark:text-slate-400 hidden sm:flex items-center gap-2">
+            <Calendar size={16} /> {today}
+          </div>
+          <button
+            onClick={handleExportCSV}
+            disabled={!residents.length}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition shadow-sm text-sm disabled:opacity-50 cursor-pointer"
+          >
+            <Download size={16} /> Export to CSV
+          </button>
         </div>
       </div>
 

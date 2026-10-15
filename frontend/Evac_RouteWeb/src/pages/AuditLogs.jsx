@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { 
@@ -57,6 +57,41 @@ export default function AuditLogs() {
       bg: 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700',
       label: action.replace('_', ' ').toUpperCase()
     };
+  };
+
+  const getActionDescription = (log) => {
+    const action = log.action || '';
+    const newVals = log.new_values || {};
+    const oldVals = log.old_values || {};
+
+    if (action.includes('staff_created') || action.includes('user_created')) {
+      return `Created user account for ${newVals.name || 'new staff'}${newVals.role ? ` (${newVals.role})` : ''}`;
+    }
+    if (action.includes('staff_updated') || action.includes('user_updated')) {
+      return `Updated account details for ${newVals.name || oldVals.name || 'user'}`;
+    }
+    if (action.includes('staff_deleted') || action.includes('user_deleted') || action.includes('staff_revoked')) {
+      return `Revoked user account access for ${oldVals.name || 'operator'}`;
+    }
+    if (action.includes('stock_added') || action.includes('inventory_created')) {
+      return `Received delivery of ${newVals.item_name || 'supplies'} (${newVals.quantity || ''} ${newVals.unit || ''})`;
+    }
+    if (action.includes('stock_adjusted') || action.includes('inventory_updated')) {
+      return `Adjusted stock for ${newVals.item_name || oldVals.item_name || 'inventory item'}`;
+    }
+    if (action.includes('dispatch') || action.includes('rescue_mission')) {
+      return `Dispatched rescue mission ${newVals.team_name ? `to ${newVals.team_name}` : ''}`;
+    }
+    if (action.includes('emergency') || action.includes('alert')) {
+      return `Broadcasted emergency warning: ${newVals.title || 'Critical Alert'}`;
+    }
+    if (action.includes('hazard')) {
+      return `Reported or updated hazard pin: ${newVals.hazard_type || 'Road Obstruction'}`;
+    }
+    if (action.includes('shelter')) {
+      return `Updated shelter records for ${newVals.name || oldVals.name || 'facility'}`;
+    }
+    return action.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   };
 
   const handleExportCSV = () => {
@@ -207,93 +242,96 @@ export default function AuditLogs() {
                   const hasDetails = log.new_values || log.old_values;
 
                   return (
-                    <tr key={log.id} className="hover:bg-purple-50/20 dark:hover:bg-slate-800/20 transition">
-                      <td className="py-3.5 px-6 whitespace-nowrap text-gray-500 dark:text-slate-400 font-mono text-[11px]">
-                        <div className="flex items-center gap-1.5 font-bold text-gray-700 dark:text-slate-300">
-                          <Clock size={12} className="text-purple-500" />
-                          {log.created_at ? new Date(log.created_at).toLocaleTimeString() : '—'}
-                        </div>
-                        <div className="text-[10px] text-gray-400">
-                          {log.created_at ? new Date(log.created_at).toLocaleDateString() : '—'}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-6">
-                        {log.user ? (
-                          <div>
-                            <div className="font-bold text-gray-900 dark:text-slate-100">{log.user.name}</div>
-                            <div className="text-[10px] font-mono text-gray-400">{log.user.email}</div>
+                    <Fragment key={log.id}>
+                      <tr className={`hover:bg-purple-50/20 dark:hover:bg-slate-800/20 transition ${isExpanded ? 'bg-purple-50/30 dark:bg-slate-800/30' : ''}`}>
+                        <td className="py-3.5 px-6 whitespace-nowrap text-gray-500 dark:text-slate-400 font-mono text-[11px]">
+                          <div className="flex items-center gap-1.5 font-bold text-gray-700 dark:text-slate-300">
+                            <Clock size={12} className="text-purple-500" />
+                            {log.created_at ? new Date(log.created_at).toLocaleTimeString() : '—'}
                           </div>
-                        ) : (
-                          <span className="text-gray-400 italic">System Automation</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-6">
-                        <span className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-black tracking-wider uppercase border ${badge.bg}`}>
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-6 font-mono text-[11px] text-gray-500 dark:text-slate-400">
-                        {log.ip_address || '127.0.0.1'}
-                      </td>
-                      <td className="py-3.5 px-6 text-right">
-                        {hasDetails ? (
-                          <button
-                            onClick={() => toggleExpand(log.id)}
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
-                          >
-                            <span>{isExpanded ? 'Hide Payload' : 'View Payload'}</span>
-                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                          </button>
-                        ) : (
-                          <span className="text-gray-400 text-[10px] italic">No Payload</span>
-                        )}
-                      </td>
-                    </tr>
+                          <div className="text-[10px] text-gray-400">
+                            {log.created_at ? new Date(log.created_at).toLocaleDateString() : '—'}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-6">
+                          {log.user ? (
+                            <div>
+                              <div className="font-bold text-gray-900 dark:text-slate-100">{log.user.name}</div>
+                              <div className="text-[10px] font-mono text-gray-400">{log.user.email}</div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic">System Automation</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-6">
+                          <div className="flex flex-col gap-1 items-start">
+                            <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-black tracking-wider uppercase border ${badge.bg}`}>
+                              {badge.label}
+                            </span>
+                            <span className="text-gray-600 dark:text-slate-300 font-medium text-[11px]">
+                              {getActionDescription(log)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-6 font-mono text-[11px] text-gray-500 dark:text-slate-400">
+                          {log.ip_address || '127.0.0.1'}
+                        </td>
+                        <td className="py-3.5 px-6 text-right">
+                          {hasDetails ? (
+                            <button
+                              onClick={() => toggleExpand(log.id)}
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
+                            >
+                              <span>{isExpanded ? 'Hide Payload' : 'View Payload'}</span>
+                              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </button>
+                          ) : (
+                            <span className="text-gray-400 text-[10px] italic">No Payload</span>
+                          )}
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="bg-slate-900 text-slate-100 font-mono text-xs">
+                          <td colSpan={5} className="p-4 border-t border-b border-purple-500/30">
+                            <div className="flex justify-between items-center mb-2 pb-1 border-b border-slate-800">
+                              <span className="font-bold flex items-center gap-2 text-purple-400">
+                                <Terminal size={14} /> Audit Log Event #{log.id} Payload Inspection
+                              </span>
+                              <button
+                                onClick={() => setExpandedLogId(null)}
+                                className="text-slate-400 hover:text-white text-xs cursor-pointer"
+                              >
+                                ✕ Close
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {log.old_values && (
+                                <div>
+                                  <span className="text-rose-400 font-bold block mb-1">Previous Values (Before Action):</span>
+                                  <pre className="p-3 bg-slate-950 rounded-lg overflow-x-auto text-[11px] text-rose-200 border border-rose-950 max-h-60">
+                                    {JSON.stringify(log.old_values, null, 2)}
+                                  </pre>
+                                </div>
+                              )}
+                              {log.new_values && (
+                                <div>
+                                  <span className="text-emerald-400 font-bold block mb-1">New State / Recorded Values:</span>
+                                  <pre className="p-3 bg-slate-950 rounded-lg overflow-x-auto text-[11px] text-emerald-200 border border-emerald-950 max-h-60">
+                                    {JSON.stringify(log.new_values, null, 2)}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>
             </table>
           </div>
         )}
-
-        {/* Expandable Details Modal / Sub-row */}
-        {expandedLogId && (() => {
-          const log = logs.find(l => l.id === expandedLogId);
-          if (!log) return null;
-          return (
-            <div className="p-4 bg-slate-900 text-slate-100 border-t border-gray-200 dark:border-slate-800 font-mono text-xs">
-              <div className="flex justify-between items-center mb-2 pb-1 border-b border-slate-800">
-                <span className="font-bold flex items-center gap-2 text-purple-400">
-                  <Terminal size={14} /> Audit Log Event #{log.id} Payload Inspection
-                </span>
-                <button
-                  onClick={() => setExpandedLogId(null)}
-                  className="text-slate-400 hover:text-white text-xs cursor-pointer"
-                >
-                  ✕ Close
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {log.old_values && (
-                  <div>
-                    <span className="text-rose-400 font-bold block mb-1">Previous Values (Before Action):</span>
-                    <pre className="p-3 bg-slate-950 rounded-lg overflow-x-auto text-[11px] text-rose-200 border border-rose-950">
-                      {JSON.stringify(log.old_values, null, 2)}
-                    </pre>
-                  </div>
-                )}
-                {log.new_values && (
-                  <div>
-                    <span className="text-emerald-400 font-bold block mb-1">New State / Recorded Values:</span>
-                    <pre className="p-3 bg-slate-950 rounded-lg overflow-x-auto text-[11px] text-emerald-200 border border-emerald-950">
-                      {JSON.stringify(log.new_values, null, 2)}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
 
         {/* Pagination Footer */}
         <div className="p-4 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">

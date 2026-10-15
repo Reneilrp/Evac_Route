@@ -4,22 +4,42 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import ConfirmationModal from '../components/common/ConfirmationModal';
 
-// List of common barangays in Zamboanga City for quick selection
+// List of common barangays in Zamboanga City for quick selection (Alphabetical A-Z)
 const COMMON_BARANGAYS = [
-  "Tumaga",
-  "Tetuan",
-  "Guiwan",
-  "Santa Maria",
-  "Calarian",
-  "Pasonanca",
-  "Divisoria",
-  "San Roque",
+  "Arena Blanco",
+  "Ayala",
   "Baliwasan",
-  "Putik",
-  "Talon-Talon",
+  "Boalan",
   "Cabaluay",
+  "Calarian",
+  "Canelar",
+  "Cawit",
+  "Culianan",
+  "Curuan",
+  "Divisoria",
+  "Guiwan",
+  "Labuan",
+  "Manicahan",
+  "Mampang",
   "Mercedes",
-  "Manicahan"
+  "Pasonanca",
+  "Putik",
+  "Recodo",
+  "Rio Hondo",
+  "San Jose",
+  "San Roque",
+  "Santa Catalina",
+  "Santa Maria",
+  "Talon-Talon",
+  "Taluksangay",
+  "Tetuan",
+  "Tugbungan",
+  "Tumaga",
+  "Vitali",
+  "Zone I (Poblacion)",
+  "Zone II (Poblacion)",
+  "Zone III (Poblacion)",
+  "Zone IV (Poblacion)"
 ];
 
 export default function EmergencyAlerts() {

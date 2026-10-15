@@ -25,6 +25,25 @@ const TRIAGE_BADGES = {
   standard: 'bg-blue-600 text-white',
 };
 
+const ZAMBOANGA_BARANGAYS = [
+  "Arena Blanco", "Ayala", "Baliwasan", "Boalan", "Cabaluay", "Calarian",
+  "Canelar", "Cawit", "Culianan", "Curuan", "Divisoria", "Guiwan",
+  "Labuan", "Manicahan", "Mampang", "Mercedes", "Pasonanca", "Putik",
+  "Recodo", "Rio Hondo", "San Jose", "San Roque", "Santa Catalina",
+  "Santa Maria", "Talon-Talon", "Taluksangay", "Tetuan", "Tugbungan",
+  "Tumaga", "Vitali", "Zone I (Poblacion)", "Zone II (Poblacion)",
+  "Zone III (Poblacion)", "Zone IV (Poblacion)"
+];
+
+const MEDICAL_NEED_TAGS = [
+  "Senior Citizen",
+  "Wheelchair / PWD",
+  "Pregnant",
+  "Infant / Child",
+  "Trauma / Bleeding",
+  "Bedridden"
+];
+
 export default function RescueDispatch() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('sos'); // 'sos' | 'active' | 'fleet' | 'history'
@@ -700,12 +719,30 @@ function DispatchUnitModal({ initialData, availableUnits, shelters, onClose, onS
   const [lat, setLat] = useState(initialData.victim_latitude || 6.9200);
   const [lng, setLng] = useState(initialData.victim_longitude || 122.0800);
   const [barangay, setBarangay] = useState(initialData.barangay || 'Tetuan');
+  const [customBarangay, setCustomBarangay] = useState('');
   const [headcount, setHeadcount] = useState(initialData.headcount || 4);
   const [specialNeeds, setSpecialNeeds] = useState(initialData.special_needs || '');
   const [triageLevel, setTriageLevel] = useState(initialData.triage_level || 'critical');
   const [targetShelterId, setTargetShelterId] = useState(shelters[0]?.id || '');
   const [notes, setNotes] = useState(initialData.situation_description || '');
+  const [showCoordinates, setShowCoordinates] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const selectedUnit = availableUnits.find(u => String(u.id) === String(unitId));
+  const isOverCapacity = selectedUnit?.capacity && parseInt(headcount, 10) > selectedUnit.capacity;
+
+  const toggleNeedTag = (tag) => {
+    if (!specialNeeds) {
+      setSpecialNeeds(tag);
+      return;
+    }
+    const tags = specialNeeds.split(',').map(s => s.trim()).filter(Boolean);
+    if (tags.includes(tag)) {
+      setSpecialNeeds(tags.filter(t => t !== tag).join(', '));
+    } else {
+      setSpecialNeeds([...tags, tag].join(', '));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -714,15 +751,16 @@ function DispatchUnitModal({ initialData, availableUnits, shelters, onClose, onS
       return;
     }
     setIsSubmitting(true);
+    const finalBarangay = barangay === 'Other' ? (customBarangay || 'Zamboanga City') : barangay;
     try {
       await api.post('/rescue/missions', {
         rescue_unit_id: parseInt(unitId, 10),
         pending_incident_id: initialData.pending_incident_id || null,
-        victim_name: victimName,
-        victim_phone: victimPhone,
+        victim_name: victimName.trim() || 'Unnamed Evacuees',
+        victim_phone: victimPhone || null,
         victim_latitude: parseFloat(lat),
         victim_longitude: parseFloat(lng),
-        barangay: barangay,
+        barangay: finalBarangay,
         headcount: parseInt(headcount, 10),
         special_needs: specialNeeds || null,
         situation_description: notes || null,
@@ -745,7 +783,7 @@ function DispatchUnitModal({ initialData, availableUnits, shelters, onClose, onS
             <LifeBuoy size={20} />
             <h3 className="font-bold text-base">Dispatch Search &amp; Rescue Mission</h3>
           </div>
-          <button onClick={onClose} className="text-white/80 hover:text-white"><X size={20} /></button>
+          <button onClick={onClose} className="text-white/80 hover:text-white cursor-pointer"><X size={20} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
@@ -761,7 +799,7 @@ function DispatchUnitModal({ initialData, availableUnits, shelters, onClose, onS
               <option value="">Select an available unit...</option>
               {availableUnits.map(u => (
                 <option key={u.id} value={u.id}>
-                  {u.name} ({u.call_sign}) — {u.status.toUpperCase()}
+                  {u.name} ({u.call_sign}) — Cap: {u.capacity ?? 4} pers — {u.status.toUpperCase()}
                 </option>
               ))}
             </select>
@@ -769,14 +807,15 @@ function DispatchUnitModal({ initialData, availableUnits, shelters, onClose, onS
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Victim / Family Name</label>
+              <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">
+                Victim / Family Name <span className="text-gray-400 font-normal">(Optional)</span>
+              </label>
               <input
                 type="text"
                 value={victimName}
                 onChange={e => setVictimName(e.target.value)}
-                placeholder="e.g. Santos Family"
+                placeholder="e.g. Santos Family or Unnamed Evacuees"
                 className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg"
-                required
               />
             </div>
             <div>
@@ -793,15 +832,29 @@ function DispatchUnitModal({ initialData, availableUnits, shelters, onClose, onS
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Headcount</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="font-bold text-gray-700 dark:text-slate-300">Headcount</label>
+                {selectedUnit && (
+                  <span className="text-[10px] text-gray-500 dark:text-slate-400 font-mono">
+                    Cap: <strong className={isOverCapacity ? 'text-red-500 font-black' : 'text-emerald-500'}>{selectedUnit.capacity ?? 4}</strong>
+                  </span>
+                )}
+              </div>
               <input
                 type="number"
                 min="1"
                 value={headcount}
                 onChange={e => setHeadcount(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg"
+                className={`w-full p-2.5 bg-gray-50 dark:bg-slate-800 border rounded-lg text-gray-900 dark:text-slate-100 ${
+                  isOverCapacity ? 'border-amber-500 ring-1 ring-amber-500' : 'border-gray-300 dark:border-slate-700'
+                }`}
                 required
               />
+              {isOverCapacity && (
+                <span className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 block">
+                  ⚠️ Exceeds unit capacity ({selectedUnit.capacity} pers).
+                </span>
+              )}
             </div>
             <div>
               <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Triage Urgency</label>
@@ -817,38 +870,70 @@ function DispatchUnitModal({ initialData, availableUnits, shelters, onClose, onS
             </div>
             <div>
               <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Barangay</label>
-              <input
-                type="text"
+              <select
                 value={barangay}
                 onChange={e => setBarangay(e.target.value)}
                 className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg"
-              />
+              >
+                {ZAMBOANGA_BARANGAYS.map(b => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+                <option value="Other">Other / Custom...</option>
+              </select>
+              {barangay === 'Other' && (
+                <input
+                  type="text"
+                  value={customBarangay}
+                  onChange={e => setCustomBarangay(e.target.value)}
+                  placeholder="Type barangay name"
+                  className="w-full mt-2 p-2 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg"
+                />
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">GPS Latitude</label>
-              <input
-                type="number"
-                step="0.0001"
-                value={lat}
-                onChange={e => setLat(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg font-mono"
-                required
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">GPS Longitude</label>
-              <input
-                type="number"
-                step="0.0001"
-                value={lng}
-                onChange={e => setLng(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg font-mono"
-                required
-              />
-            </div>
+          {/* Collapsible Coordinates */}
+          <div className="border border-gray-200 dark:border-slate-800 rounded-xl p-3 bg-gray-50/50 dark:bg-slate-950/40">
+            <button
+              type="button"
+              onClick={() => setShowCoordinates(prev => !prev)}
+              className="w-full flex items-center justify-between text-left font-bold text-gray-700 dark:text-slate-300 hover:text-red-600 cursor-pointer text-xs"
+            >
+              <span className="flex items-center gap-1.5">
+                <MapPin size={13} className="text-red-500" />
+                <span>Pinpoint GPS Coordinates</span>
+                <span className="text-[10px] font-normal text-gray-400 font-mono">
+                  ({parseFloat(lat).toFixed(4)}, {parseFloat(lng).toFixed(4)})
+                </span>
+              </span>
+              <span className="text-[11px] text-gray-400">{showCoordinates ? 'Hide ▲' : 'Edit ▼'}</span>
+            </button>
+            {showCoordinates && (
+              <div className="grid grid-cols-2 gap-3 mt-3 pt-2 border-t border-gray-200 dark:border-slate-800">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 mb-1">Latitude</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    value={lat}
+                    onChange={e => setLat(e.target.value)}
+                    className="w-full p-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg font-mono text-xs"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 mb-1">Longitude</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    value={lng}
+                    onChange={e => setLng(e.target.value)}
+                    className="w-full p-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg font-mono text-xs"
+                    required
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -869,11 +954,31 @@ function DispatchUnitModal({ initialData, availableUnits, shelters, onClose, onS
 
           <div>
             <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Special Medical / Vulnerability Needs</label>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {MEDICAL_NEED_TAGS.map(tag => {
+                const isSelected = specialNeeds.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleNeedTag(tag)}
+                    className={`text-[11px] px-2.5 py-1 rounded-full font-semibold transition border cursor-pointer ${
+                      isSelected
+                        ? 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800 font-bold'
+                        : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 border-gray-200 dark:border-slate-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {isSelected ? '✓ ' : '+ '}
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
             <input
               type="text"
               value={specialNeeds}
               onChange={e => setSpecialNeeds(e.target.value)}
-              placeholder="e.g. 1 senior citizen in wheelchair, pregnant mother"
+              placeholder="e.g. Senior citizen, wheelchair required, pregnant"
               className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-lg"
             />
           </div>
@@ -893,14 +998,14 @@ function DispatchUnitModal({ initialData, availableUnits, shelters, onClose, onS
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg font-bold transition"
+              className="flex-1 py-2.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg font-bold transition cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition shadow flex items-center justify-center gap-1.5 disabled:opacity-60"
+              className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition shadow flex items-center justify-center gap-1.5 disabled:opacity-60 cursor-pointer"
             >
               {isSubmitting ? 'Deploying...' : 'Confirm & Deploy Unit'}
             </button>

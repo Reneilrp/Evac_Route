@@ -14,6 +14,8 @@ export default function EvacuationLogs() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [rationFilter, setRationFilter] = useState('all');
   const [shelterFilter, setShelterFilter] = useState('all');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const queryClient = useQueryClient();
 
   // Debounce search string to limit API requests
@@ -32,17 +34,23 @@ export default function EvacuationLogs() {
   });
   const shelters = Array.isArray(sheltersData) ? sheltersData : (sheltersData?.data || []);
 
-  const activeFilterCount = (statusFilter !== 'all' ? 1 : 0) + (rationFilter !== 'all' ? 1 : 0) + (shelterFilter !== 'all' ? 1 : 0);
+  const activeFilterCount = (statusFilter !== 'all' ? 1 : 0) + 
+    (rationFilter !== 'all' ? 1 : 0) + 
+    (shelterFilter !== 'all' ? 1 : 0) +
+    (fromDate ? 1 : 0) +
+    (toDate ? 1 : 0);
 
   const resetFilters = () => {
     setStatusFilter('all');
     setRationFilter('all');
     setShelterFilter('all');
+    setFromDate('');
+    setToDate('');
     setPage(1);
   };
 
   const { data: logsData, isLoading } = useQuery({
-    queryKey: ['evacuation-logs', page, debouncedSearch, statusFilter, rationFilter, shelterFilter],
+    queryKey: ['evacuation-logs', page, debouncedSearch, statusFilter, rationFilter, shelterFilter, fromDate, toDate],
     queryFn: () => api.get('/evacuation-logs', {
       params: {
         page,
@@ -50,6 +58,8 @@ export default function EvacuationLogs() {
         status: statusFilter !== 'all' ? statusFilter : undefined,
         ration: rationFilter !== 'all' ? rationFilter : undefined,
         shelter_id: shelterFilter !== 'all' ? shelterFilter : undefined,
+        from_date: fromDate || undefined,
+        to_date: toDate || undefined,
       }
     }).then(res => res.data),
     refetchInterval: 10000, // Refresh every 10 seconds
@@ -158,7 +168,7 @@ export default function EvacuationLogs() {
 
         {/* Collapsible Filter Panel */}
         {isFilterOpen && (
-          <div className="p-4 bg-gray-50/90 dark:bg-slate-950/80 border-b border-gray-200/80 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-4 gap-3 animate-in fade-in duration-150">
+          <div className="p-4 bg-gray-50/90 dark:bg-slate-950/80 border-b border-gray-200/80 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 animate-in fade-in duration-150">
             <div>
               <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">
                 Stay Status
@@ -203,6 +213,30 @@ export default function EvacuationLogs() {
                   <option key={s.id} value={s.id}>{s.name} ({s.barangay || 'Area'})</option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                From Date
+              </label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={e => { setFromDate(e.target.value); setPage(1); }}
+                className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                To Date
+              </label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={e => { setToDate(e.target.value); setPage(1); }}
+                className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500"
+              />
             </div>
 
             <div className="flex items-end">

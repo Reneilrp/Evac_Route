@@ -500,6 +500,14 @@ class CheckInController extends Controller
             $query->where('ration_claimed', false);
         }
 
+        if ($request->filled('from_date')) {
+            $query->whereDate('checked_in_at', '>=', $request->query('from_date'));
+        }
+
+        if ($request->filled('to_date')) {
+            $query->whereDate('checked_in_at', '<=', $request->query('to_date'));
+        }
+
         $logs = $query->orderBy('checked_in_at', 'desc')->paginate(50);
 
         return response()->json([

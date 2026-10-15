@@ -213,6 +213,10 @@ export default function StaffManagement() {
   };
 
   const openEditModal = (user) => {
+    if (user.role === 'admin' && currentUser?.role !== 'admin') {
+      showError('Only System Administrators can edit administrator accounts.');
+      return;
+    }
     setEditingStaff(user);
     setName(user.name);
     setEmail(user.email);
@@ -280,6 +284,10 @@ export default function StaffManagement() {
   };
 
   const handleRevoke = (user) => {
+    if (user.role === 'admin' && currentUser?.role !== 'admin') {
+      showError('Only System Administrators can revoke administrator accounts.');
+      return;
+    }
     setRevokeConfirmUser(user);
   };
 
@@ -850,6 +858,8 @@ export default function StaffManagement() {
         const opConfig = OPERATOR_TYPES.find(t => t.id === opTypeKey) || OPERATOR_TYPES[0];
         const OpIcon = opConfig.icon;
         const isSelf = viewingStaff.id === currentUser?.id;
+        const isTargetAdmin = viewingStaff.role === 'admin';
+        const canManage = !isSelf && (currentUser?.role === 'admin' || !isTargetAdmin);
 
         return (
           <div 
@@ -1042,7 +1052,7 @@ export default function StaffManagement() {
                 </button>
 
                 <div className="flex items-center gap-2">
-                  {!isSelf ? (
+                  {canManage ? (
                     <>
                       <button
                         type="button"
@@ -1067,9 +1077,13 @@ export default function StaffManagement() {
                         <Trash2 size={14} /> Revoke Access
                       </button>
                     </>
-                  ) : (
+                  ) : isSelf ? (
                     <span className="text-xs text-gray-400 dark:text-slate-500 italic pr-2">
                       Active Account (Self)
+                    </span>
+                  ) : (
+                    <span className="text-xs text-purple-600 dark:text-purple-400 font-extrabold flex items-center gap-1.5 bg-purple-50 dark:bg-purple-950/40 px-3 py-1.5 rounded-lg border border-purple-200 dark:border-purple-800">
+                      <Shield size={13} /> Protected Administrator
                     </span>
                   )}
                 </div>

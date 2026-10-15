@@ -210,6 +210,11 @@ class AuthController extends Controller
     public function updateStaff(Request $request, $id)
     {
         $user = User::findOrFail($id);
+
+        if ($user->role === 'admin' && auth()->user()->role !== 'admin') {
+            return response()->json(['status' => 'error', 'message' => 'Only System Administrators can manage administrator accounts.'], 403);
+        }
+
         $oldValues = [
             'id' => $user->id,
             'name' => $user->name,
@@ -308,6 +313,11 @@ class AuthController extends Controller
         // Prevent deleting yourself
         if (auth()->id() == $user->id) {
             return response()->json(['status' => 'error', 'message' => 'Cannot revoke your own account.'], 400);
+        }
+
+        // Prevent non-admin users from revoking an admin account
+        if ($user->role === 'admin' && auth()->user()->role !== 'admin') {
+            return response()->json(['status' => 'error', 'message' => 'Only System Administrators can manage administrator accounts.'], 403);
         }
 
         $oldValues = [

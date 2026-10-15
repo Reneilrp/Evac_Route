@@ -6,7 +6,7 @@ import {
   MapPin, AlertTriangle, X, Cloud, Flame, Zap,
   ChevronRight, ChevronLeft, Moon, Satellite, Mountain,
   TriangleAlert, Droplets, Waves, Shield, SlidersHorizontal, Layers,
-  Eye, Wrench, Users, Navigation, Building2
+  Eye, Wrench, Users, Navigation, Building2, Search
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
@@ -1194,8 +1194,147 @@ const BARANGAY_COORDS = {
   'Baliwasan': [122.0571, 6.9150],
   'Tugbungan': [122.0975, 6.9231],
   'San Jose': [122.0673, 6.9118],
-  'Santa Maria': [122.0789, 6.9322]
+  'Santa Maria': [122.0789, 6.9322],
+  'Pasonanca': [122.0677, 6.9458],
+  'Tumaga': [122.0742, 6.9367],
+  'San Roque': [122.0583, 6.9361],
+  'Guiwan': [122.0972, 6.9278],
+  'Putik': [122.1128, 6.9389],
+  'Divisoria': [122.1283, 6.9492],
+  'Boalan': [122.1211, 6.9442],
+  'Sta. Catalina': [122.0850, 6.9078],
+  'Zone I (Poblacion)': [122.0750, 6.9056],
+  'Zone II (Poblacion)': [122.0780, 6.9070],
+  'Zone III (Poblacion)': [122.0730, 6.9090],
+  'Zone IV (Poblacion)': [122.0690, 6.9080],
+  'Canelar': [122.0689, 6.9142],
+  'Calarian': [122.0306, 6.9242],
+  'Ayala': [121.9619, 6.9639],
+  'Recodo': [121.9483, 6.9744],
+  'Cawit': [121.9286, 6.9856],
+  'Labuan': [121.9028, 7.0861],
+  'Mercedes': [122.1481, 6.9639],
+  'Culianan': [122.1642, 6.9750],
+  'Vitali': [122.2858, 7.3736],
+  'Curuan': [122.2389, 7.2389],
+  'Manicahan': [122.1956, 7.0372],
+  'Sangali': [122.2306, 7.0989],
+  'Taluksangay': [122.1742, 6.9878],
+  'Arena Blanco': [122.1333, 6.9028],
+  'Rio Hondo': [122.0833, 6.9000],
+  'Mampang': [122.1139, 6.9167],
+  'Talon-Talon': [122.1000, 6.8972]
 };
+
+function FloatingMapSearch({ shelters = [], onSelectLocation }) {
+  const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const results = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase().trim();
+    const matches = [];
+
+    // Search Barangays
+    Object.entries(BARANGAY_COORDS).forEach(([name, coords]) => {
+      if (name.toLowerCase().includes(q)) {
+        matches.push({
+          type: 'barangay',
+          name,
+          subtitle: 'Zamboanga City Barangay',
+          coords
+        });
+      }
+    });
+
+    // Search Shelters
+    shelters.forEach(s => {
+      if (s.name && s.name.toLowerCase().includes(q)) {
+        matches.push({
+          type: 'shelter',
+          name: s.name,
+          subtitle: `${s.status || 'Active'} · Cap: ${s.current_occupancy ?? 0}/${s.max_capacity ?? 0}`,
+          coords: [parseFloat(s.longitude), parseFloat(s.latitude)],
+          shelter: s
+        });
+      }
+    });
+
+    return matches.slice(0, 8);
+  }, [query, shelters]);
+
+  const handleSelect = (item) => {
+    onSelectLocation(item);
+    setQuery('');
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className="absolute top-3 left-4 z-40 w-72 sm:w-80 font-sans">
+      <div className="relative flex items-center bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl transition focus-within:border-blue-500/60 focus-within:ring-2 focus-within:ring-blue-500/20">
+        <Search size={15} className="ml-3.5 text-white/50 shrink-0" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
+          onFocus={() => setIsOpen(true)}
+          placeholder="Search barangay or shelter..."
+          className="w-full bg-transparent px-3 py-2 text-xs text-white placeholder-white/40 focus:outline-none"
+        />
+        {query && (
+          <button
+            onClick={() => { setQuery(''); setIsOpen(false); }}
+            className="mr-3 text-white/40 hover:text-white transition cursor-pointer"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {isOpen && results.length > 0 && (
+        <div className="mt-1.5 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1 divide-y divide-white/5 animate-in fade-in duration-150">
+          {results.map((res, i) => (
+            <div
+              key={i}
+              onClick={() => handleSelect(res)}
+              className="px-3.5 py-2.5 hover:bg-white/10 cursor-pointer flex items-center justify-between text-xs transition"
+            >
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                {res.type === 'shelter' ? (
+                  <Building2 size={15} className="text-emerald-400 shrink-0" />
+                ) : (
+                  <MapPin size={15} className="text-blue-400 shrink-0" />
+                )}
+                <div className="truncate">
+                  <div className="font-bold text-white text-xs truncate">{res.name}</div>
+                  <div className="text-[10px] text-white/50 truncate">{res.subtitle}</div>
+                </div>
+              </div>
+              <span className={`text-[9px] uppercase font-black px-1.5 py-0.5 rounded shrink-0 border ${
+                res.type === 'shelter'
+                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                  : 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+              }`}>
+                {res.type}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 
 // Derive a mock road-risk GeoJSON from hazards (until backend bbox road endpoint lands)
@@ -1378,6 +1517,39 @@ const MapViewer = React.memo(({
   setPinMode = null,
   isCSWDO = false,
 }) => {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+      if (map && map.resize) {
+        map.resize();
+      }
+    };
+
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver(() => {
+      handleResize();
+    });
+    ro.observe(containerRef.current);
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [mapRef]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+      if (map && map.resize) {
+        map.resize();
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [drawerOpen, mapRef]);
+
   const [viewState, setViewState] = useState({
     longitude: 122.0729,
     latitude: 6.9126,
@@ -1581,7 +1753,7 @@ const MapViewer = React.memo(({
   };
 
   return (
-    <div className="w-full h-full relative">
+    <div ref={containerRef} className="w-full h-full relative">
       <Map
         ref={mapRef}
         {...viewState}
@@ -2341,7 +2513,7 @@ export default function MapDashboard() {
           
           // Drop a temporary visual pin to highlight the spot
           setPinMode('incident');
-          setPendingLocation({ lng: parseFloat(focusLng), lat: parseFloat(focusLat) });
+          setPendingLocation({ longitude: parseFloat(focusLng), latitude: parseFloat(focusLat) });
           
           // Clean up the URL so it doesn't re-trigger on refresh
           setSearchParams(new URLSearchParams());
@@ -2377,7 +2549,15 @@ export default function MapDashboard() {
   // Dynamic Resident GPS Device Simulation for Siege & Disaster Proximity Protocol
   const [simulatedResidentCoords, setSimulatedResidentCoords] = useState([122.084, 6.918]); // Default Tetuan [lng, lat]
 
-
+  // 60-second inactivity timeout for inspect mode
+  useEffect(() => {
+    if (pinMode === 'inspect') {
+      const timer = setTimeout(() => {
+        setPinMode(null);
+      }, 60000);
+      return () => clearTimeout(timer);
+    }
+  }, [pinMode]);
 
   const handleSetLocalSimulation = useCallback((value) => {
     setShowLocalSimulation(value);
@@ -2403,9 +2583,17 @@ export default function MapDashboard() {
   }, []);
 
   const stopInspection = useCallback(() => {
-    const map = mapRef.current?.getMap();
+    const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
     if (map) {
       map.stop();
+      map.flyTo({
+        center: [122.0790, 6.9214],
+        zoom: 12.8,
+        pitch: is3D ? 45 : 0,
+        bearing: 0,
+        duration: 1500,
+        essential: true
+      });
     }
     if (orbitAnimationRef.current) {
       cancelAnimationFrame(orbitAnimationRef.current);
@@ -2414,7 +2602,7 @@ export default function MapDashboard() {
     isInspectingRef.current = false;
     setIsInspecting(false);
     setSimulationGeoJSON(null);
-  }, []);
+  }, [is3D]);
 
   const handleMapMouseMove = useCallback((e) => {
     if (pinMode === 'hazard' && pendingLocation && isDrawingRadius) {
@@ -2722,14 +2910,10 @@ export default function MapDashboard() {
         setPendingLocation({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
         setShowShelterForm(true);
       } else if (pinMode === 'hazard') {
-        if (!pendingLocation) {
-          setPendingLocation({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
-          setIsDrawingRadius(true);
-          setDrawingRadiusMeters(50);
-        } else if (isDrawingRadius) {
-          setIsDrawingRadius(false);
-          setShowHazardForm(true);
-        }
+        setPendingLocation({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
+        setDrawingRadiusMeters(50);
+        setIsDrawingRadius(false);
+        setShowHazardForm(true);
       } else if (pinMode === 'resident') {
         setSimulatedResidentCoords([e.lngLat.lng, e.lngLat.lat]);
         setPinMode(null);
@@ -2939,6 +3123,26 @@ export default function MapDashboard() {
         )}
       </div>
 
+      {/* Floating Place & Shelter Search Bar */}
+      <FloatingMapSearch
+        shelters={shelters}
+        onSelectLocation={(item) => {
+          const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+          if (map && item.coords) {
+            map.flyTo({
+              center: item.coords,
+              zoom: item.type === 'shelter' ? 16.5 : 15,
+              pitch: is3D ? 45 : 0,
+              duration: 1800,
+              essential: true
+            });
+            if (item.shelter) {
+              setSelectedShelter(item.shelter);
+            }
+          }
+        }}
+      />
+
       {isCSWDO ? (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-4 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] whitespace-nowrap">
           {/* Title & Subtitle Section */}
@@ -3145,9 +3349,10 @@ export default function MapDashboard() {
             </div>
             <button
               onClick={handleCancelPin}
-              className="bg-white/10 hover:bg-white/20 border border-white/10 text-white text-[10px] font-black px-3 py-1.5 rounded-lg transition"
+              title="Cancel Pin Mode (Esc)"
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-white/80 hover:text-white transition flex items-center justify-center cursor-pointer"
             >
-              Cancel
+              <X size={15} />
             </button>
           </div>
         )}
