@@ -129,7 +129,6 @@ export default function RescueDutyScreen({ navigation }) {
   const isSimulationActive = useRescueSimulationStore((state) => state.isSimulationActive);
   const simMission = useRescueSimulationStore((state) => state.simMission);
   const startSimulation = useRescueSimulationStore((state) => state.startSimulation);
-  const stopSimulation = useRescueSimulationStore((state) => state.stopSimulation);
   const acceptDispatch = useRescueSimulationStore((state) => state.acceptDispatch);
   const resetToStandby = useRescueSimulationStore((state) => state.resetToStandby);
 
@@ -358,47 +357,36 @@ export default function RescueDutyScreen({ navigation }) {
         </View>
       </View>
 
-      {/* ─── RESCUE SIMULATION MODE BANNER ─── */}
-      <View style={styles.simBanner}>
-        <View style={styles.simBannerInfo}>
-          <View style={[styles.simIndicatorCircle, isSimulationActive && styles.simIndicatorActive]}>
-            <Text style={{ fontSize: 13 }}>⚡</Text>
+      {/* ─── RESCUE SIMULATION MODE BANNER (When inactive) ─── */}
+      {!isSimulationActive && (
+        <View style={styles.simBanner}>
+          <View style={styles.simBannerInfo}>
+            <View style={styles.simIndicatorCircle}>
+              <Text style={{ fontSize: 13 }}>⚡</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.simBannerTitle}>GUIDED RESCUE SIMULATOR</Text>
+              <Text style={styles.simBannerSub} numberOfLines={1}>
+                Simulate 5-step mission with 10m/s tactical navigation
+              </Text>
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.simBannerTitle}>
-              {isSimulationActive ? 'SIMULATION MODE ACTIVE' : 'GUIDED RESCUE SIMULATOR'}
-            </Text>
-            <Text style={styles.simBannerSub} numberOfLines={1}>
-              {isSimulationActive
-                ? (currentMission?.status === 'dispatched'
-                  ? '🚨 New dispatch received • Accept to start'
-                  : `Phase: ${currentMission?.status?.toUpperCase()} • 10m/s Nav`)
-                : 'Simulate 5-step mission with 10m/s tactical navigation'}
-            </Text>
-          </View>
-        </View>
 
-        <TouchableOpacity
-          style={[styles.simToggleBtn, isSimulationActive && styles.simToggleBtnActive]}
-          onPress={() => {
-            if (isSimulationActive) {
-              stopSimulation();
-              Alert.alert('Simulation Stopped', 'Returned to live CDRRMO operations.');
-            } else {
+          <TouchableOpacity
+            style={styles.simToggleBtn}
+            onPress={() => {
               startSimulation();
               Alert.alert(
                 '⚡ Rescue Simulation Mode Active',
                 'An emergency search & rescue dispatch order has arrived! Review and accept the dispatch below to start tactical 10m/s navigation.'
               );
-            }
-          }}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.simToggleBtnText, isSimulationActive && styles.simToggleBtnTextActive]}>
-            {isSimulationActive ? 'STOP SIM' : 'START SIM'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.simToggleBtnText}>START SIM</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -460,31 +448,23 @@ export default function RescueDutyScreen({ navigation }) {
               </View>
             )}
 
-            {/* Incoming Simulated Dispatch Alert */}
-            {isSimulationActive && currentMission?.status === 'dispatched' && (
-              <View style={styles.simIncomingAlertBox}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <AlertTriangle size={15} color="#ffffff" />
-                  <Text style={styles.simIncomingAlertTitle}>INCOMING EMERGENCY DISPATCH ORDER</Text>
-                </View>
-                <Text style={styles.simIncomingAlertSub}>
-                  CDRRMO EOC assigned a high-priority flood rescue in Baliwasan Coastal. Accept dispatch to launch 10m/s tactical route navigation!
+            {/* 1. Priority & Control Banner */}
+            <View style={styles.missionHeaderBar}>
+              <View
+                style={[
+                  styles.triageBadge,
+                  currentMission.triage_level === 'critical'
+                    ? styles.triageCritical
+                    : styles.triageUrgent,
+                ]}
+              >
+                <AlertTriangle size={13} color="#ffffff" />
+                <Text style={styles.triageBadgeText}>
+                  {(currentMission.triage_level || 'CRITICAL').toUpperCase()} PRIORITY
                 </Text>
               </View>
-            )}
 
-            {/* 1. Priority & Control Banner */}
-            <View
-              style={[
-                styles.priorityBanner,
-                currentMission.triage_level === 'critical'
-                  ? styles.criticalBanner
-                  : styles.urgentBanner,
-              ]}
-            >
-              <AlertTriangle color={colors.white} size={16} />
-              <Text style={styles.priorityText}>
-                {currentMission.triage_level?.toUpperCase() || 'HIGH'} PRIORITY RESCUE •{' '}
+              <Text style={styles.controlNoText}>
                 {currentMission.control_no}
               </Text>
             </View>
@@ -493,12 +473,16 @@ export default function RescueDutyScreen({ navigation }) {
             <TouchableOpacity
               style={[
                 styles.heroNavigationCta,
-                isTransportPhase ? styles.heroCtaCyan : styles.heroCtaBlue,
+                currentMission.status === 'dispatched'
+                  ? styles.heroCtaDispatch
+                  : (isTransportPhase ? styles.heroCtaCyan : styles.heroCtaBlue),
                 isSimulationActive && currentMission?.status === 'dispatched' && styles.heroCtaDispatchPulse,
               ]}
               onPress={() => {
                 if (isSimulationActive && currentMission?.status === 'dispatched') {
                   acceptDispatch();
+                } else if (!isSimulationActive && currentMission?.status === 'dispatched') {
+                  handleUpdateMissionStatus({ id: currentMission.id, status: 'en_route' });
                 }
                 navigation.navigate('RescueMap', { missionId: currentMission.id, isSimulation: isSimulationActive });
               }}
@@ -506,22 +490,30 @@ export default function RescueDutyScreen({ navigation }) {
               accessibilityLabel="Launch Tactical Navigation Map"
             >
               <View style={styles.heroCtaIconCircle}>
-                <Compass size={24} color="#ffffff" />
+                {currentMission.status === 'dispatched' ? (
+                  <CheckCircle2 size={24} color="#ffffff" />
+                ) : (
+                  <Compass size={24} color="#ffffff" />
+                )}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.heroCtaTitle}>
-                  {isSuppressionMission 
-                    ? 'START TACTICAL ROUTING (MAP)' 
-                    : (isTransportPhase
-                      ? 'START ROUTE TO SHELTER (MAP)'
-                      : 'START ROUTE TO FAMILY (MAP)')}
+                  {currentMission.status === 'dispatched'
+                    ? 'ACCEPT DISPATCH & LAUNCH MAP'
+                    : (isSuppressionMission 
+                      ? 'START TACTICAL ROUTING (MAP)' 
+                      : (isTransportPhase
+                        ? 'START ROUTE TO SHELTER (MAP)'
+                        : 'START ROUTE TO FAMILY (MAP)'))}
                 </Text>
                 <Text style={styles.heroCtaSub}>
-                  {isSuppressionMission
-                    ? `Navigating to Incident Epicenter`
-                    : (isTransportPhase
-                      ? `Navigating to ${currentMission.target_shelter?.name || 'Safe Shelter'}`
-                      : `Turn-by-turn routing to ${currentMission.victim_name || 'Target'}`)}
+                  {currentMission.status === 'dispatched'
+                    ? `Acknowledge order • Launch 10m/s tactical routing to ${currentMission.victim_name || 'scene'}`
+                    : (isSuppressionMission
+                      ? 'Navigating to Incident Epicenter'
+                      : (isTransportPhase
+                        ? `Navigating to ${currentMission.target_shelter?.name || 'Safe Shelter'}`
+                        : `Turn-by-turn routing to ${currentMission.victim_name || 'Target'}`))}
                 </Text>
               </View>
               <ChevronRight size={22} color="#ffffff" />
@@ -625,8 +617,9 @@ export default function RescueDutyScreen({ navigation }) {
               </Text>
             </View>
 
-            {/* 5. Linear Single-Action Operational Stepper */}
-            <View style={styles.stepperContainer}>
+            {/* 5. Linear Single-Action Operational Stepper (Hidden in Simulation Mode) */}
+            {!isSimulationActive && (
+              <View style={styles.stepperContainer}>
               <View style={styles.stepperHeaderRow}>
                 <Text style={styles.stepperHeaderTitle}>MISSION OPERATIONAL STEPPER</Text>
                 <View style={styles.currentStatusPill}>
@@ -837,7 +830,8 @@ export default function RescueDutyScreen({ navigation }) {
                 </TouchableOpacity>
               )}
             </View>
-          </View>
+          )}
+        </View>
         ) : (
           /* Standby View */
           <View style={styles.standbyCard}>
@@ -1030,25 +1024,43 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   activeMissionContainer: {
     gap: 14,
   },
-  priorityBanner: {
+  missionHeaderBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radii.md,
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
+    marginBottom: -2,
   },
-  criticalBanner: {
+  triageBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radii.full,
+  },
+  triageCritical: {
     backgroundColor: '#dc2626',
   },
-  urgentBanner: {
+  triageUrgent: {
     backgroundColor: '#d97706',
   },
-  priorityText: {
-    color: colors.white,
-    fontSize: 11.5,
+  triageBadgeText: {
+    color: '#ffffff',
+    fontSize: 10.5,
     fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  controlNoText: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  heroCtaDispatch: {
+    backgroundColor: '#0284c7',
+    borderWidth: 1.5,
+    borderColor: '#38bdf8',
   },
 
   /* Hero Navigation CTA */
@@ -1142,17 +1154,17 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     gap: 6,
   },
   vulnerabilityChip: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
+    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.1)',
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: radii.sm,
   },
   vulnerabilityChipText: {
-    color: '#f87171',
+    color: colors.textPrimary,
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   locationDetailRow: {
     flexDirection: 'row',

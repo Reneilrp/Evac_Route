@@ -17,7 +17,7 @@ import {
   ArrowRight,
 } from 'lucide-react-native';
 import { spacing, radii } from '../styles/theme';
-import { useThemedStyles } from '../context/ThemeContext';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { useRescueSimulationStore } from '../context/useRescueSimulationStore';
 
 export default function RescueSimulationStepper({
@@ -25,6 +25,7 @@ export default function RescueSimulationStepper({
   currentScreen = 'duty', // 'duty' | 'map'
   onClose = null,
 }) {
+  const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
 
   const isSimulationActive = useRescueSimulationStore((state) => state.isSimulationActive);
@@ -121,6 +122,103 @@ export default function RescueSimulationStepper({
 
   if (!isSimulationActive) return null;
 
+  if (currentScreen === 'duty') {
+    return (
+      <View style={styles.dutyContainer}>
+        {/* Header Bar */}
+        <View style={styles.dutyHeaderRow}>
+          <View style={styles.headerTitleWrap}>
+            <Text style={{ fontSize: 12 }}>⚡</Text>
+            <Text style={styles.dutyHeaderTitle}>
+              RESCUE SIMULATION • STEP {currentStep} OF 5
+            </Text>
+          </View>
+
+          <View style={styles.dutyHeaderActions}>
+            <TouchableOpacity
+              style={styles.dutyRestartBtn}
+              onPress={handleRestartStep1}
+              activeOpacity={0.7}
+              accessibilityLabel="Restart Simulation"
+            >
+              <RotateCcw size={10} color={colors.textSecondary} />
+              <Text style={styles.dutyRestartText}>Restart</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.dutyExitBtn}
+              onPress={() => {
+                stopSimulation();
+              }}
+              activeOpacity={0.7}
+              accessibilityLabel="Exit Simulation"
+            >
+              <Text style={styles.dutyExitText}>Exit</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 5-Step Progress Nodes Strip */}
+        <View style={styles.stepperStrip}>
+          {[
+            { num: 1, label: 'Duty Hub' },
+            { num: 2, label: '10m/s Nav' },
+            { num: 3, label: '20m Victim' },
+            { num: 4, label: 'Shelter Nav' },
+            { num: 5, label: 'CSWDO Done' },
+          ].map((step, idx) => {
+            const isPast = step.num < currentStep;
+            const isCurrent = step.num === currentStep;
+            return (
+              <React.Fragment key={`step-${step.num}`}>
+                <TouchableOpacity
+                  style={[
+                    styles.stepNode,
+                    isCurrent && styles.stepNodeCurrent,
+                    isPast && styles.stepNodePast,
+                  ]}
+                  onPress={() => handleStepPress(step.num)}
+                  activeOpacity={0.8}
+                >
+                  {isPast ? (
+                    <Check size={11} color="#ffffff" />
+                  ) : (
+                    <Text style={[styles.stepNodeText, isCurrent && styles.stepNodeTextCurrent]}>
+                      {step.num}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                {idx < 4 && (
+                  <View
+                    style={[
+                      styles.stepConnector,
+                      isPast && styles.stepConnectorPast,
+                      isCurrent && styles.stepConnectorCurrent,
+                    ]}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </View>
+
+        {/* Concise Phase Label */}
+        <View style={styles.dutyPhaseRow}>
+          <Text style={styles.dutyPhaseLabel}>
+            CURRENT PHASE:{' '}
+            <Text style={styles.dutyPhaseValue}>
+              {currentStep === 1 && '1. Incoming Dispatch • Accept below to begin'}
+              {currentStep === 2 && '2. En Route • 10m/s navigation to distress resident'}
+              {currentStep === 3 && '3. On Scene (≤20m) • Proximity geofence triggered'}
+              {currentStep === 4 && '4. Transporting • 10m/s navigation to evacuation shelter'}
+              {currentStep === 5 && '5. Completed • CSWDO intake recorded & returned to standby'}
+            </Text>
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Header Bar */}
@@ -197,15 +295,15 @@ export default function RescueSimulationStepper({
 
         <Text style={styles.stepDesc}>
           {currentStep === 1 &&
-            'Step 1 starts in the Duty Hub. Review the incoming CDRRMO flood dispatch alert for the Mendoza Family in Baliwasan Coastal and accept the order.'}
+            'Review incoming dispatch alert in Duty Hub and accept to start.'}
           {currentStep === 2 &&
-            'Step 2 transitions to Tactical Map. Rescuer vessel navigates along the Amber polyline at 10m/s toward the Mendoza residence.'}
+            'Navigating along Amber polyline at 10m/s toward distress residence.'}
           {currentStep === 3 &&
-            'Step 3 triggers when entering the 20m geofence square at the scene. Secure the victims onboard and commence re-routing straight to Baliwasan Gym.'}
+            'Rescuer within 20m of victim. Secure onboard and reroute to shelter.'}
           {currentStep === 4 &&
-            'Step 4 follows the Cyan polyline at 10m/s to Baliwasan Gym Evacuation Center. Halts upon entering the 20m shelter gate geofence square.'}
+            'Navigating at 10m/s along Cyan polyline to shelter 20m geofence square.'}
           {currentStep === 5 &&
-            'Step 5 logs CSWDO intake occupancy (+4 persons), clears the tactical route, and returns the rescue unit to Standby in the Duty Hub.'}
+            'CSWDO intake logged (+4 persons). Resetting unit to standby.'}
         </Text>
 
         {/* Primary Action Button */}
@@ -262,6 +360,76 @@ export default function RescueSimulationStepper({
 }
 
 const getStyles = (colors, isDarkMode) => StyleSheet.create({
+  dutyContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(245, 158, 11, 0.4)' : '#f59e0b',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dutyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+    paddingHorizontal: 2,
+  },
+  dutyHeaderTitle: {
+    color: '#f59e0b',
+    fontSize: 10.5,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  dutyHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dutyRestartBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+    borderRadius: radii.sm,
+    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+  },
+  dutyRestartText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  dutyExitBtn: {
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: radii.sm,
+    backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+  },
+  dutyExitText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#ef4444',
+  },
+  dutyPhaseRow: {
+    paddingHorizontal: 4,
+    marginTop: 2,
+  },
+  dutyPhaseLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    letterSpacing: 0.4,
+  },
+  dutyPhaseValue: {
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+
   container: {
     backgroundColor: colors.surfaceElevated,
     borderRadius: radii.lg,
