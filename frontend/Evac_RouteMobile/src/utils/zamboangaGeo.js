@@ -93,3 +93,39 @@ export function clampToZamboanga(rawCoords, fallback = ZAMBOANGA_RESCUER_BASE) {
   // Outside Zamboanga -> anchor inside Zamboanga for testing purpose
   return fallback;
 }
+
+/**
+ * Creates a GeoJSON Feature representing a 20-meter square geofence perimeter around [lng, lat].
+ * @param {[number, number]} center - [lng, lat]
+ * @returns {object|null} GeoJSON Feature (Polygon)
+ */
+export function create20mGeofenceSquare(center) {
+  if (!center || center.length < 2) return null;
+  const lng = Number(center[0]);
+  const lat = Number(center[1]);
+  if (isNaN(lng) || isNaN(lat)) return null;
+
+  // In Zamboanga (~6.9 deg N):
+  // 20 meters latitude: 20 / 110574 = ~0.0001808 deg
+  // 20 meters longitude: 20 / (110574 * cos(6.9 * pi / 180)) = ~0.0001822 deg
+  const deltaLat = 20 / 110574;
+  const deltaLng = 20 / (110574 * Math.cos((lat * Math.PI) / 180));
+
+  return {
+    type: 'Feature',
+    properties: {
+      radiusMeters: 20,
+    },
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[
+        [lng - deltaLng, lat - deltaLat],
+        [lng + deltaLng, lat - deltaLat],
+        [lng + deltaLng, lat + deltaLat],
+        [lng - deltaLng, lat + deltaLat],
+        [lng - deltaLng, lat - deltaLat],
+      ]],
+    },
+  };
+}
+

@@ -40,6 +40,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { clampToZamboanga, ZAMBOANGA_RESCUER_BASE } from '../utils/zamboangaGeo';
 import { useRescueSimulationStore } from '../context/useRescueSimulationStore';
+import RescueSimulationStepper from '../components/RescueSimulationStepper';
 
 export default function RescueDutyScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -409,6 +410,16 @@ export default function RescueDutyScreen({ navigation }) {
           />
         }
       >
+        {/* Reusable Cross-Screen 5-Step Simulation Lifecycle Dock */}
+        {isSimulationActive && (
+          <View style={{ marginBottom: 12 }}>
+            <RescueSimulationStepper
+              navigation={navigation}
+              currentScreen="duty"
+            />
+          </View>
+        )}
+
         {isLoadingMissions ? (
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={colors.primary} />

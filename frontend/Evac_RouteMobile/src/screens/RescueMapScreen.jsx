@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Linking,
   Platform,
-  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -32,8 +31,6 @@ import {
   Radio,
   Sliders,
   RotateCcw,
-  MapPin,
-  Check,
   Play,
   Pause,
   FastForward,
@@ -43,12 +40,14 @@ import { spacing, radii } from '../styles/theme';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { useRescueSimulationStore } from '../context/useRescueSimulationStore';
+import RescueSimulationStepper from '../components/RescueSimulationStepper';
 import {
   MAPBOX_PUBLIC_TOKEN,
   clampToZamboanga,
   ZAMBOANGA_RESCUER_BASE,
   ZAMBOANGA_VICTIM_DEFAULT,
   ZAMBOANGA_SHELTER_DEFAULT,
+  create20mGeofenceSquare,
 } from '../utils/zamboangaGeo';
 import {
   fetchTacticalRescueRoute,
@@ -136,7 +135,7 @@ export default function RescueMapScreen({ navigation, route }) {
     [assignedUnit, user]
   );
 
-  const [selectedMissionId, setSelectedMissionId] = useState(route?.params?.missionId || null);
+  const selectedMissionId = route?.params?.missionId || null;
 
   // Available active missions for assigned unit or fleet
   const availableMissions = useMemo(() => {
@@ -203,7 +202,6 @@ export default function RescueMapScreen({ navigation, route }) {
 
   const startSimulation = useRescueSimulationStore((state) => state.startSimulation);
   const stopSimulation = useRescueSimulationStore((state) => state.stopSimulation);
-  const acceptDispatch = useRescueSimulationStore((state) => state.acceptDispatch);
   const setSimSpeed = useRescueSimulationStore((state) => state.setSimSpeed);
   const togglePause = useRescueSimulationStore((state) => state.togglePause);
   const setSimCoords = useRescueSimulationStore((state) => state.setSimCoords);
@@ -211,7 +209,6 @@ export default function RescueMapScreen({ navigation, route }) {
   const consumeFastForward = useRescueSimulationStore((state) => state.consumeFastForward);
   const confirmVictimSecured = useRescueSimulationStore((state) => state.confirmVictimSecured);
   const confirmHandoverAndStandby = useRescueSimulationStore((state) => state.confirmHandoverAndStandby);
-  const resetToStandby = useRescueSimulationStore((state) => state.resetToStandby);
 
   // Auto-start simulation if navigated from Duty Hub with simulation flag
   useEffect(() => {
@@ -268,7 +265,6 @@ export default function RescueMapScreen({ navigation, route }) {
     }
   }, [isSimulationActive, simPhase, simulationStepOverride, currentMission]);
 
-  const currentSimulationStep = simulationStep;
   const setSimulationStep = setSimulationStepOverride;
 
   const activeHazards = useMemo(
@@ -355,6 +351,17 @@ export default function RescueMapScreen({ navigation, route }) {
       ],
     };
   }, [routeData]);
+
+  // 20-Meter Visual Geofence Square Feature around active target
+  const activeGeofenceSquareFeature = useMemo(() => {
+    if (!activeTargetLngLat) return null;
+    const square = create20mGeofenceSquare(activeTargetLngLat);
+    if (!square) return null;
+    return {
+      type: 'FeatureCollection',
+      features: [square],
+    };
+  }, [activeTargetLngLat]);
 
   // Proximity Geofencing Triggers (prevent multiple prompts for same event)
   const hasTriggeredVictimArrival = useRef(false);
@@ -487,6 +494,17 @@ export default function RescueMapScreen({ navigation, route }) {
     const totalDist = cumulativeDistances[cumulativeDistances.length - 1];
     if (totalDist <= 0) return;
 
+    // Set initial tactical navigation camera angle & zoom once when navigation starts
+    if (cameraRef.current && coords[0]) {
+      cameraRef.current.setCamera({
+        centerCoordinate: coords[0],
+        heading: coords.length > 1 ? getBearing(coords[0][1], coords[0][0], coords[1][1], coords[1][0]) : 0,
+        pitch: 40,
+        zoomLevel: 16.8,
+        animationDuration: 800,
+      });
+    }
+
     const interval = setInterval(() => {
       const storeState = useRescueSimulationStore.getState();
       if (!storeState.isNavigating || storeState.isPaused) return;
@@ -525,12 +543,11 @@ export default function RescueMapScreen({ navigation, route }) {
 
       setSimCoords([currLng, currLat], heading);
 
+      // Smoothly follow vehicle position & heading without zoom-bouncing
       if (cameraRef.current) {
         cameraRef.current.setCamera({
           centerCoordinate: [currLng, currLat],
           heading,
-          pitch: 45,
-          zoomLevel: 17.2,
           animationDuration: 120,
         });
       }
@@ -743,81 +760,7 @@ export default function RescueMapScreen({ navigation, route }) {
     Linking.openURL(url);
   };
 
-  // ─── GUIDED 5-STEP SIMULATION HANDLERS ───
-  const handleStep1_EnRoute = () => {
-    setSimulationStep(1);
-    hasTriggeredVictimArrival.current = false;
-    hasTriggeredShelterArrival.current = false;
-    setSimulatedLocation(null);
-
-    if (isSimulationActive) {
-      acceptDispatch();
-    } else if (currentMission && !currentMission.id?.toString().startsWith('demo-')) {
-      safeUpdateMissionStatus({
-        id: currentMission.id,
-        status: 'en_route',
-      });
-    }
-
-    if (cameraRef.current && activeRescuerLocation && victimLngLat) {
-      const minLng = Math.min(activeRescuerLocation[0], victimLngLat[0]);
-      const maxLng = Math.max(activeRescuerLocation[0], victimLngLat[0]);
-      const minLat = Math.min(activeRescuerLocation[1], victimLngLat[1]);
-      const maxLat = Math.max(activeRescuerLocation[1], victimLngLat[1]);
-
-      cameraRef.current.setCamera({
-        bounds: {
-          ne: [maxLng + 0.003, maxLat + 0.003],
-          sw: [minLng - 0.003, minLat - 0.003],
-          paddingBottom: 240,
-          paddingTop: 140,
-          paddingLeft: 60,
-          paddingRight: 60,
-        },
-        animationDuration: 1000,
-      });
-    } else if (cameraRef.current && activeRescuerLocation) {
-      cameraRef.current.setCamera({
-        centerCoordinate: activeRescuerLocation,
-        zoomLevel: 15.8,
-        pitch: 35,
-        animationDuration: 800,
-      });
-    }
-  };
-
-  const handleStep2_SimVictim20m = () => {
-    if (!victimLngLat) return;
-    setSimulationStep(2);
-
-    if (isSimulationActive) {
-      skipToGeofence();
-    } else {
-      // 15 meters offset from victim
-      const sim = [victimLngLat[0] + 0.0001, victimLngLat[1] + 0.0001];
-      hasTriggeredVictimArrival.current = false;
-      setSimulatedLocation(sim);
-
-      if (cameraRef.current) {
-        cameraRef.current.setCamera({
-          centerCoordinate: sim,
-          zoomLevel: 17.5,
-          pitch: 45,
-          animationDuration: 900,
-        });
-      }
-
-      if (currentMission && !currentMission.id?.toString().startsWith('demo-')) {
-        safeUpdateMissionStatus({
-          id: currentMission.id,
-          status: 'on_scene',
-        });
-      }
-
-      Vibration.vibrate([0, 200, 100, 300, 100, 400]);
-      setShowVictimArrivalModal(true);
-    }
-  };
+  // ─── EXTRACTION & HANDOVER HANDLERS ───
 
   const handleStep3_ExtractAndReRoute = () => {
     setSimulationStep(3);
@@ -853,31 +796,6 @@ export default function RescueMapScreen({ navigation, route }) {
     }
   };
 
-  const handleStep4_SimShelter20m = () => {
-    if (!shelterLngLat) return;
-    setSimulationStep(4);
-
-    if (isSimulationActive) {
-      skipToGeofence();
-    } else {
-      // 15 meters offset from shelter gate
-      const sim = [shelterLngLat[0] + 0.0001, shelterLngLat[1] + 0.0001];
-      hasTriggeredShelterArrival.current = false;
-      setSimulatedLocation(sim);
-
-      if (cameraRef.current) {
-        cameraRef.current.setCamera({
-          centerCoordinate: sim,
-          zoomLevel: 17.5,
-          pitch: 45,
-          animationDuration: 900,
-        });
-      }
-
-      Vibration.vibrate([0, 250, 100, 250, 100, 500]);
-      setShowShelterArrivalModal(true);
-    }
-  };
 
   const handleStep5_HandoverAndStandby = () => {
     setSimulationStep(5);
@@ -897,20 +815,6 @@ export default function RescueMapScreen({ navigation, route }) {
     resetSimulation();
   };
 
-  const handleTriggerStep = (step) => {
-    if (step === 1) {
-      handleStep1_EnRoute();
-    } else if (step === 2) {
-      handleStep2_SimVictim20m();
-    } else if (step === 3) {
-      handleStep3_ExtractAndReRoute();
-    } else if (step === 4) {
-      handleStep4_SimShelter20m();
-    } else if (step === 5) {
-      handleStep5_HandoverAndStandby();
-    }
-  };
-
   const resetSimulation = () => {
     setSimulatedLocation(null);
     hasTriggeredVictimArrival.current = false;
@@ -926,35 +830,6 @@ export default function RescueMapScreen({ navigation, route }) {
         animationDuration: 800,
       });
     }
-  };
-
-  const handleResetMissionToDispatched = () => {
-    setSimulationStep(1);
-    hasTriggeredVictimArrival.current = false;
-    hasTriggeredShelterArrival.current = false;
-    setShowVictimArrivalModal(false);
-    setShowShelterArrivalModal(false);
-    setSimulatedLocation(null);
-
-    if (isSimulationActive) {
-      resetToStandby();
-      startSimulation();
-    } else if (currentMission && !currentMission.id?.toString().startsWith('demo-')) {
-      safeUpdateMissionStatus({
-        id: currentMission.id,
-        status: 'dispatched',
-      });
-    }
-
-    if (cameraRef.current && (simCoords || gpsLocation)) {
-      cameraRef.current.setCamera({
-        centerCoordinate: gpsLocation || ZAMBOANGA_RESCUER_BASE,
-        zoomLevel: 16.5,
-        pitch: 35,
-        animationDuration: 800,
-      });
-    }
-    Vibration.vibrate(30);
   };
 
   const isExpoGo = Constants.appOwnership === 'expo' || !Mapbox?.MapView;
@@ -1017,28 +892,74 @@ export default function RescueMapScreen({ navigation, route }) {
             id="rescue-map-route-source"
             shape={routeFeatureCollection}
           >
-            {/* Outer Glow */}
+            {/* Outer Glow / High-Contrast Casing */}
             <Mapbox.LineLayer
               id="rescue-map-route-glow"
               style={{
-                lineColor: isTransportPhase ? '#06b6d4' : '#f59e0b',
-                lineWidth: 9,
-                lineOpacity: 0.65,
+                lineColor: isDarkMode
+                  ? (isTransportPhase ? '#06b6d4' : '#f59e0b')
+                  : (isTransportPhase ? '#0891b2' : '#b45309'),
+                lineWidth: isDarkMode ? 9 : 11,
+                lineOpacity: isDarkMode ? 0.65 : 0.85,
                 lineCap: 'round',
                 lineJoin: 'round',
               }}
             />
-            {/* Core Solid Line */}
+            {/* Core Solid Line - High contrast in light theme */}
             <Mapbox.LineLayer
               id="rescue-map-route-core"
               style={{
-                lineColor: '#ffffff',
-                lineWidth: 4,
+                lineColor: isDarkMode
+                  ? '#ffffff'
+                  : (isTransportPhase ? '#06b6d4' : '#f59e0b'),
+                lineWidth: isDarkMode ? 4 : 6,
                 lineCap: 'round',
                 lineJoin: 'round',
               }}
             />
           </Mapbox.ShapeSource>
+        )}
+
+        {/* Visual 20-Meter Proximity Geofence Square Zone */}
+        {activeMission && activeGeofenceSquareFeature && (
+          <Mapbox.ShapeSource
+            id="geofence-20m-perimeter-source"
+            shape={activeGeofenceSquareFeature}
+          >
+            {/* Shaded Area Fill */}
+            <Mapbox.FillLayer
+              id="geofence-20m-fill"
+              style={{
+                fillColor: isTransportPhase ? '#06b6d4' : '#f59e0b',
+                fillOpacity: isDarkMode ? 0.22 : 0.32,
+              }}
+            />
+            {/* Glowing Border Line */}
+            <Mapbox.LineLayer
+              id="geofence-20m-border"
+              style={{
+                lineColor: isTransportPhase ? '#0891b2' : '#d97706',
+                lineWidth: 2.5,
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+          </Mapbox.ShapeSource>
+        )}
+
+        {/* 20m Geofence Perimeter Callout Tag */}
+        {activeMission && activeTargetLngLat && (
+          <Mapbox.PointAnnotation
+            key="geofence-20m-tag"
+            id="geofence-20m-tag"
+            coordinate={[activeTargetLngLat[0], activeTargetLngLat[1] + 0.00022]}
+          >
+            <View style={styles.geofenceTagWrap}>
+              <Text style={styles.geofenceTagText}>
+                ⚡ 20M GEOFENCE PERIMETER
+              </Text>
+            </View>
+          </Mapbox.PointAnnotation>
         )}
 
         {/* 1. Victim SOS Distress Pin */}
@@ -1248,13 +1169,9 @@ export default function RescueMapScreen({ navigation, route }) {
             if (isSimulationActive) {
               setShowDemoControls(!showDemoControls);
             } else {
-              const nextState = !showDemoControls;
-              setShowDemoControls(nextState);
-              if (nextState) {
-                startSimulation();
-              } else {
-                stopSimulation();
-                resetSimulation();
+              startSimulation();
+              if (navigation) {
+                navigation.navigate('Rescue');
               }
             }
           }}
@@ -1269,7 +1186,7 @@ export default function RescueMapScreen({ navigation, route }) {
         style={[
           styles.bottomLeftControls,
           {
-            bottom: (showDemoControls ? 410 : (activeMission ? 190 : 120)) + Math.max(insets.bottom, 14),
+            bottom: (showDemoControls ? 360 : (activeMission ? 170 : 110)) + Math.max(insets.bottom, 14),
           },
         ]}
       >
@@ -1286,284 +1203,87 @@ export default function RescueMapScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
-      {/* ─── FLOATING SIMULATION SPEED & PLAYBACK CONTROLLER ─── */}
-      {isSimulationActive && (
-        <View
-          style={[
-            styles.simControlFloatingBar,
-            {
-              bottom: (showDemoControls ? 410 : (activeMission ? 190 : 120)) + Math.max(insets.bottom, 14),
-            },
-          ]}
-        >
-          {/* Play / Pause Button */}
-          <TouchableOpacity
-            style={[styles.simPlayPauseBtn, isPaused && styles.simPlayPauseBtnPaused]}
-            onPress={togglePause}
-            accessibilityLabel={isPaused ? 'Resume Navigation' : 'Pause Navigation'}
-            activeOpacity={0.8}
-          >
-            {isPaused ? (
-              <Play size={16} color="#ffffff" fill="#ffffff" />
-            ) : (
-              <Pause size={16} color="#ffffff" fill="#ffffff" />
-            )}
-          </TouchableOpacity>
-
-          {/* Speed Multiplier Pills */}
-          <View style={styles.simSpeedPillGroup}>
-            {[1, 3, 5].map((spd) => {
-              const isSelected = simSpeed === spd;
-              return (
-                <TouchableOpacity
-                  key={`sim-speed-${spd}`}
-                  style={[styles.simSpeedPill, isSelected && styles.simSpeedPillActive]}
-                  onPress={() => setSimSpeed(spd)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.simSpeedPillText, isSelected && styles.simSpeedPillTextActive]}>
-                    {spd}x {spd === 1 ? '(10m/s)' : ''}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {/* Fast-Forward Skip to 20m Geofence */}
-          <TouchableOpacity
-            style={[
-              styles.simSkipBtn,
-              (!isNavigating || isPaused || simPhase === 'on_scene' || simPhase === 'shelter_arrival' || simPhase === 'completed') && styles.simBtnDisabled,
-            ]}
-            onPress={skipToGeofence}
-            disabled={!isNavigating || isPaused || simPhase === 'on_scene' || simPhase === 'shelter_arrival' || simPhase === 'completed'}
-            accessibilityLabel="Fast Forward to 20m Geofence"
-            activeOpacity={0.8}
-          >
-            <FastForward size={14} color="#ffffff" />
-            <Text style={styles.simSkipBtnText}>20m</Text>
-          </TouchableOpacity>
-
-          {/* Stop / Reset Simulation */}
-          <TouchableOpacity
-            style={styles.simStopBtn}
-            onPress={() => {
-              stopSimulation();
-              resetSimulation();
-            }}
-            accessibilityLabel="Stop Simulation"
-            activeOpacity={0.8}
-          >
-            <Text style={styles.simStopBtnText}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* ─── GUIDED 5-STEP SIMULATION FOCUS DOCK (COLLAPSIBLE) ─── */}
-      {showDemoControls ? (
+      {/* ─── GUIDED 5-STEP SIMULATION DOCK (COLLAPSIBLE) ─── */}
+      {showDemoControls && (
         <View style={[styles.guidedSimContainer, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-          {/* Header Bar */}
-          <View style={styles.guidedSimHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={{ fontSize: 13 }}>⚡</Text>
-              <Text style={styles.guidedSimTitle}>GUIDED RESCUE SIMULATION • 5-STEP FOCUS</Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => {
-                setShowDemoControls(false);
-                resetSimulation();
-              }}
-              style={styles.guidedSimCloseBtn}
-            >
-              <Text style={styles.guidedSimCloseText}>✕</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Floating Speed & Playback Controller Dock - Placed directly above the guided rescue simulator */}
+          {isSimulationActive && (
+            <View style={styles.simControlFloatingBarAttached}>
+              {/* Play / Pause Button */}
+              <TouchableOpacity
+                style={[styles.simPlayPauseBtn, isPaused && styles.simPlayPauseBtnPaused]}
+                onPress={togglePause}
+                accessibilityLabel={isPaused ? 'Resume Navigation' : 'Pause Navigation'}
+                activeOpacity={0.8}
+              >
+                {isPaused ? (
+                  <Play size={16} color="#ffffff" fill="#ffffff" />
+                ) : (
+                  <Pause size={16} color="#ffffff" fill="#ffffff" />
+                )}
+              </TouchableOpacity>
 
-          {/* Dual Critical Test Family Switcher */}
-          {availableMissions.length > 0 && (
-            <View style={styles.missionSwitcherBox}>
-              <Text style={styles.missionSwitcherLabel}>SELECT CRITICAL TEST TARGET:</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.missionChipScroll}>
-                {availableMissions.map((m) => {
-                  const isSelected = currentMission?.id === m.id;
+              {/* Speed Multiplier Pills */}
+              <View style={styles.simSpeedPillGroup}>
+                {[1, 3, 5].map((spd) => {
+                  const isSelected = simSpeed === spd;
                   return (
                     <TouchableOpacity
-                      key={m.id}
-                      style={[styles.missionChip, isSelected && styles.missionChipActive]}
-                      onPress={() => {
-                        setSelectedMissionId(m.id);
-                        setSimulationStep(1);
-                        resetSimulation();
-                      }}
+                      key={`sim-speed-${spd}`}
+                      style={[styles.simSpeedPill, isSelected && styles.simSpeedPillActive]}
+                      onPress={() => setSimSpeed(spd)}
                       activeOpacity={0.8}
                     >
-                      <AlertTriangle size={12} color={isSelected ? '#ffffff' : '#f59e0b'} />
-                      <Text style={[styles.missionChipText, isSelected && styles.missionChipTextActive]} numberOfLines={1}>
-                        {m.victim_name} ({m.headcount}p • {m.barangay || 'Sector'})
+                      <Text style={[styles.simSpeedPillText, isSelected && styles.simSpeedPillTextActive]}>
+                        {spd}x {spd === 1 ? '(10m/s)' : ''}
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
-              </ScrollView>
+              </View>
+
+              {/* Fast-Forward Skip to 20m Geofence */}
+              <TouchableOpacity
+                style={[
+                  styles.simSkipBtn,
+                  (!isNavigating || isPaused || simPhase === 'on_scene' || simPhase === 'shelter_arrival' || simPhase === 'completed') && styles.simBtnDisabled,
+                ]}
+                onPress={skipToGeofence}
+                disabled={!isNavigating || isPaused || simPhase === 'on_scene' || simPhase === 'shelter_arrival' || simPhase === 'completed'}
+                accessibilityLabel="Fast Forward to 20m Geofence"
+                activeOpacity={0.8}
+              >
+                <FastForward size={14} color="#ffffff" />
+                <Text style={styles.simSkipBtnText}>20m</Text>
+              </TouchableOpacity>
+
+              {/* Stop / Reset Simulation */}
+              <TouchableOpacity
+                style={styles.simStopBtn}
+                onPress={() => {
+                  stopSimulation();
+                  resetSimulation();
+                  setShowDemoControls(false);
+                }}
+                accessibilityLabel="Stop Simulation"
+                activeOpacity={0.8}
+              >
+                <Text style={styles.simStopBtnText}>✕</Text>
+              </TouchableOpacity>
             </View>
           )}
 
-          {/* 5-Step Progress Tracker Strip */}
-          <View style={styles.stepperProgressStrip}>
-            {[
-              { num: 1, label: 'En Route' },
-              { num: 2, label: '20m Victim' },
-              { num: 3, label: 'Re-Route' },
-              { num: 4, label: '20m Shelter' },
-              { num: 5, label: 'Standby' },
-            ].map((step, idx) => {
-              const isPast = step.num < currentSimulationStep;
-              const isCurrent = step.num === currentSimulationStep;
-              return (
-                <React.Fragment key={step.num}>
-                  <TouchableOpacity
-                    style={[
-                      styles.stepNode,
-                      isCurrent && styles.stepNodeCurrent,
-                      isPast && styles.stepNodePast,
-                    ]}
-                    onPress={() => handleTriggerStep(step.num)}
-                    activeOpacity={0.8}
-                  >
-                    {isPast ? (
-                      <Check size={12} color="#ffffff" />
-                    ) : (
-                      <Text style={[styles.stepNodeText, isCurrent && styles.stepNodeTextCurrent]}>
-                        {step.num}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                  {idx < 4 && (
-                    <View
-                      style={[
-                        styles.stepConnector,
-                        isPast && styles.stepConnectorPast,
-                        isCurrent && styles.stepConnectorCurrent,
-                      ]}
-                    />
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </View>
-
-          {/* Current Step Focus Card */}
-          <View style={styles.stepFocusCard}>
-            <View style={styles.stepFocusHeaderRow}>
-              <View style={styles.stepNumberBadge}>
-                <Text style={styles.stepNumberBadgeText}>STEP {currentSimulationStep} OF 5</Text>
-              </View>
-              <Text style={styles.stepFocusStageName}>
-                {currentSimulationStep === 1 && 'ACCEPT & EN ROUTE'}
-                {currentSimulationStep === 2 && '20M PROXIMITY GEOFENCE'}
-                {currentSimulationStep === 3 && 'EXTRACT & RE-ROUTE'}
-                {currentSimulationStep === 4 && '20M SHELTER GEOFENCE'}
-                {currentSimulationStep === 5 && 'HANDOVER & STANDBY RESET'}
-              </Text>
-            </View>
-
-            <Text style={styles.stepFocusDescription}>
-              {currentSimulationStep === 1 &&
-                'Accepts CDRRMO dispatch order. Calculates road/water navigation route to distress family and illuminates Amber polyline.'}
-              {currentSimulationStep === 2 &&
-                'Simulates vessel arriving within 15 meters of distress victim. Automatically triggers 20m Haversine geofence, camera fly-to, and updates status to on_scene.'}
-              {currentSimulationStep === 3 &&
-                'Victims safely secured onboard. Dynamically re-routes Mapbox navigation straight to the assigned Evacuation Center (Cyan polyline).'}
-              {currentSimulationStep === 4 &&
-                'Simulates vessel arriving within 15 meters of the shelter gate. Triggers shelter proximity geofence and displays Intake Handover modal.'}
-              {currentSimulationStep === 5 &&
-                'CSWDO shelter intake confirmed. Completes mission, clears route, and resets vehicle to Active Standby for next call.'}
-            </Text>
-
-            {/* Primary Action Button for Active Step */}
-            <TouchableOpacity
-              style={[
-                styles.stepPrimaryActionBtn,
-                currentSimulationStep === 1 && styles.btnBlue,
-                currentSimulationStep === 2 && styles.btnAmber,
-                currentSimulationStep === 3 && styles.btnCyan,
-                currentSimulationStep === 4 && styles.btnIndigo,
-                currentSimulationStep === 5 && styles.btnGreen,
-              ]}
-              onPress={() => {
-                if (currentSimulationStep === 1) {
-                  handleStep1_EnRoute();
-                  setSimulationStep(2);
-                } else if (currentSimulationStep === 2) {
-                  handleStep2_SimVictim20m();
-                  setSimulationStep(3);
-                } else if (currentSimulationStep === 3) {
-                  handleStep3_ExtractAndReRoute();
-                  setSimulationStep(4);
-                } else if (currentSimulationStep === 4) {
-                  handleStep4_SimShelter20m();
-                  setSimulationStep(5);
-                } else if (currentSimulationStep === 5) {
-                  handleStep5_HandoverAndStandby();
-                }
-              }}
-              disabled={updateStatusMutation.isPending}
-              activeOpacity={0.85}
-            >
-              {updateStatusMutation.isPending ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <>
-                  {currentSimulationStep === 1 && <Navigation size={17} color="#ffffff" />}
-                  {currentSimulationStep === 2 && <MapPin size={17} color="#ffffff" />}
-                  {currentSimulationStep === 3 && <Shield size={17} color="#ffffff" />}
-                  {currentSimulationStep === 4 && <Building size={17} color="#ffffff" />}
-                  {currentSimulationStep === 5 && <CheckCircle2 size={17} color="#ffffff" />}
-                  <Text style={styles.stepPrimaryActionBtnText}>
-                    {currentSimulationStep === 1 && '▶ 1. ACCEPT DISPATCH & EN ROUTE'}
-                    {currentSimulationStep === 2 && '📍 2. TRIGGER 20M GEOFENCE (ARRIVED)'}
-                    {currentSimulationStep === 3 && '🔄 3. EXTRACT & RE-ROUTE TO SHELTER'}
-                    {currentSimulationStep === 4 && '🏢 4. TRIGGER 20M GEOFENCE (SHELTER)'}
-                    {currentSimulationStep === 5 && '🏁 5. CONFIRM HANDOVER & STANDBY'}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            {/* Step Telemetry Row */}
-            <View style={styles.simTelemetryRow}>
-              <Text style={styles.simTelemetryText}>
-                🎯 Target: <Text style={{ color: '#ffffff', fontWeight: 'bold' }}>{activeTargetName}</Text> • Range:{' '}
-                <Text style={{ color: distanceToTarget <= 20 ? '#34d399' : '#38bdf8', fontWeight: 'bold' }}>
-                  {distanceToTarget}m {distanceToTarget <= 20 ? '(Geofence Active)' : ''}
-                </Text>
-              </Text>
-            </View>
-          </View>
-
-          {/* Quick Utility Actions Footer */}
-          <View style={styles.simFooterActionsRow}>
-            <TouchableOpacity
-              style={styles.simUtilityBtn}
-              onPress={handleResetMissionToDispatched}
-              activeOpacity={0.8}
-            >
-              <RotateCcw size={12} color="#94a3b8" />
-              <Text style={styles.simUtilityBtnText}>Restart Step 1</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.simUtilityBtn}
-              onPress={resetSimulation}
-              activeOpacity={0.8}
-            >
-              <Crosshair size={12} color="#38bdf8" />
-              <Text style={styles.simUtilityBtnText}>Reset to Live GPS</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Reusable 5-Step Simulation Lifecycle Stepper */}
+          <RescueSimulationStepper
+            navigation={navigation}
+            currentScreen="map"
+            onClose={() => setShowDemoControls(false)}
+          />
         </View>
-      ) : (
-        /* ─── BOTTOM MISSION CONTROL DOCK ─── */
+      )}
+
+      {/* ─── BOTTOM MISSION CONTROL DOCK ─── */}
+      {!showDemoControls && (
         <View style={[styles.bottomDock, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           {(currentMission || isSimulationActive) ? (
             <View>
@@ -2700,6 +2420,37 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
 
   /* ─── FLOATING SIMULATION SPEED & PLAYBACK CONTROLLER ─── */
+  simControlFloatingBarAttached: {
+    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+    borderRadius: radii.full,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderWidth: 1.5,
+    borderColor: '#f59e0b',
+    marginBottom: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+    gap: 6,
+  },
+  geofenceTagWrap: {
+    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255, 255, 255, 0.95)',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: radii.full,
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+  },
+  geofenceTagText: {
+    color: '#f59e0b',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
   simControlFloatingBar: {
     position: 'absolute',
     left: spacing.md,
