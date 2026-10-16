@@ -1,12 +1,9 @@
-import Constants from 'expo-constants';
-
 export const FALLBACK_MAPBOX_TOKEN =
   process.env.EXPO_PUBLIC_MAPBOX_TOKEN ||
   process.env.MAPBOX_TOKEN ||
   '';
 
 export const MAPBOX_PUBLIC_TOKEN =
-  Constants.expoConfig?.extra?.mapboxToken ||
   process.env.EXPO_PUBLIC_MAPBOX_TOKEN ||
   process.env.MAPBOX_TOKEN ||
   FALLBACK_MAPBOX_TOKEN;
@@ -23,6 +20,8 @@ export const ZAMBOANGA_BOUNDS = {
 export const ZAMBOANGA_RESCUER_BASE = [122.0750, 6.9210]; // Gov. Camins / City Hall / CDRRMO EOC
 export const ZAMBOANGA_VICTIM_DEFAULT = [122.0618, 6.9142]; // Baliwasan Coastal Flood Zone
 export const ZAMBOANGA_SHELTER_DEFAULT = [122.0573, 6.9126]; // Baliwasan Gym Evacuation Center
+export const ZAMBOANGA_WMSU = [122.0614, 6.9152]; // WMSU Campus (Baliwasan)
+export const ZAMBOANGA_TETUAN = [122.0865, 6.9214]; // Tetuan Landmark
 
 /**
  * Validates whether a given [longitude, latitude] coordinate is inside Zamboanga City.

@@ -27,7 +27,7 @@ import {
   getDistanceMeters,
 } from '../services/offlineDb';
 import { calculateOfflineRoute, fetchMapboxDirectionsRoute, determineTargetFacility } from '../utils/astarRouter';
-import { MAPBOX_PUBLIC_TOKEN } from '../utils/zamboangaGeo';
+import { MAPBOX_PUBLIC_TOKEN, clampToZamboanga, ZAMBOANGA_WMSU } from '../utils/zamboangaGeo';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -439,7 +439,7 @@ export default function EvacMapScreen({ navigation, route }) {
       }
       const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.BestForNavigation });
       if (initial?.coords) {
-        setLocation([initial.coords.longitude, initial.coords.latitude]);
+        setLocation(clampToZamboanga([initial.coords.longitude, initial.coords.latitude], ZAMBOANGA_WMSU));
       }
       
       subscription = await Location.watchPositionAsync(
@@ -450,7 +450,7 @@ export default function EvacMapScreen({ navigation, route }) {
         },
         (loc) => {
           if (loc?.coords) {
-            setLocation([loc.coords.longitude, loc.coords.latitude]);
+            setLocation(clampToZamboanga([loc.coords.longitude, loc.coords.latitude], ZAMBOANGA_WMSU));
           }
         }
       );
@@ -531,8 +531,8 @@ export default function EvacMapScreen({ navigation, route }) {
     });
   }, [safeShelters, selectedCategoryFilter, selectedDisasterFilter]);
 
-  // Default fallback to Zamboanga City (Tetuan) if GPS is completely unavailable
-  const defaultZamboangaPos = useMemo(() => [122.084, 6.918], []);
+  // Default fallback to Zamboanga City (WMSU) if GPS is completely unavailable
+  const defaultZamboangaPos = useMemo(() => ZAMBOANGA_WMSU, []);
   const isValidCoordinate = (pos) => {
     if (!pos || !Array.isArray(pos) || pos.length < 2) return false;
     const lng = Number(pos[0]);

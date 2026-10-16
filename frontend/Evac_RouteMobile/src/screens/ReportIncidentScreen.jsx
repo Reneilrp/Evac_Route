@@ -24,6 +24,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import EmergencySOSModal from '../components/EmergencySOSModal';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { getStyles } from '../styles/ReportIncidentScreen.styles';
+import { clampToZamboanga, ZAMBOANGA_WMSU } from '../utils/zamboangaGeo';
 
 const HAZARD_TYPES = [
   { value: 'flood', label: '🌊 Flood' },
@@ -126,9 +127,13 @@ export default function ReportIncidentScreen({ navigation, route }) {
     if (route?.params?.openCreate) {
       const timer = setTimeout(() => {
         if (route?.params?.initialCoords) {
+          const clamped = clampToZamboanga(
+            [Number(route.params.initialCoords.longitude), Number(route.params.initialCoords.latitude)],
+            ZAMBOANGA_WMSU
+          );
           const initCoords = {
-            latitude: Number(route.params.initialCoords.latitude),
-            longitude: Number(route.params.initialCoords.longitude),
+            latitude: clamped[1],
+            longitude: clamped[0],
           };
           setCoords(initCoords);
           reverseGeocodeCoords(initCoords.latitude, initCoords.longitude);
@@ -241,7 +246,8 @@ export default function ReportIncidentScreen({ navigation, route }) {
         return;
       }
 
-      const acquired = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+      const clamped = clampToZamboanga([loc.coords.longitude, loc.coords.latitude], ZAMBOANGA_WMSU);
+      const acquired = { latitude: clamped[1], longitude: clamped[0] };
       setCoords(acquired);
       await reverseGeocodeCoords(acquired.latitude, acquired.longitude);
     } catch (_e) {
@@ -346,9 +352,10 @@ export default function ReportIncidentScreen({ navigation, route }) {
     setSubmitting(true);
     try {
       const formData = new FormData();
+      const finalCoords = clampToZamboanga([coords.longitude, coords.latitude], ZAMBOANGA_WMSU);
       formData.append('name', name.trim());
-      formData.append('latitude', String(coords.latitude));
-      formData.append('longitude', String(coords.longitude));
+      formData.append('latitude', String(finalCoords[1]));
+      formData.append('longitude', String(finalCoords[0]));
       formData.append('hazard_type', hazardType);
       formData.append('severity_level', severityLevel);
 
