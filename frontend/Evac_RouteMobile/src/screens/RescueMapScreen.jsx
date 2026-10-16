@@ -79,6 +79,15 @@ function getBearing(lat1, lon1, lat2, lon2) {
   return (brng + 360) % 360;
 }
 
+// Safe vibration helper to prevent emulator Binder thread blocking
+const safeVibrate = (pattern) => {
+  try {
+    Vibration.vibrate(pattern);
+  } catch (_e) {
+    // Graceful fallback on emulators without haptic motors
+  }
+};
+
 export default function RescueMapScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -515,7 +524,7 @@ export default function RescueMapScreen({ navigation, route }) {
 
     const nextRoadblocks = [...activeRoadblocks, newBlockade];
     setActiveRoadblocks(nextRoadblocks);
-    Vibration.vibrate([0, 60, 40, 60]);
+    safeVibrate([0, 60, 40, 60]);
 
     // Recalculate route starting immediately from the vehicle's current position to target with updated roadblocks
     computeRoute(currentPos, target, nextRoadblocks);
@@ -527,30 +536,33 @@ export default function RescueMapScreen({ navigation, route }) {
     const currentPos = (isSimulationActive && simCoords) ? simCoords : activeRescuerLocation;
     const target = activeTargetLngLat;
     setActiveRoadblocks([]);
-    Vibration.vibrate(40);
+    safeVibrate(40);
     if (currentPos && target) {
       computeRoute(currentPos, target, []);
     }
   }, [activeRoadblocks, isSimulationActive, simCoords, activeRescuerLocation, activeTargetLngLat, computeRoute]);
 
   const lastTargetRef = useRef(null);
+  const activeRescuerLocationRef = useRef(activeRescuerLocation);
+  activeRescuerLocationRef.current = activeRescuerLocation;
 
   useEffect(() => {
     const timer = setTimeout(() => {
       // By default on the map, stay at rescuer location without premature routes
       // Only compute route if simulation is active OR an active live mission exists
       const hasLiveMission = currentMission && ['dispatched', 'en_route', 'on_scene', 'transporting'].includes(currentMission.status);
+      const rescuerLoc = activeRescuerLocationRef.current;
       if (isSimulationActive) {
         if (simPhase === 'completed' || simPhase === 'standby') {
           setRouteData(null);
           setActivePolylineCoords(null);
-        } else if (activeTargetLngLat && activeRescuerLocation) {
+        } else if (activeTargetLngLat && rescuerLoc) {
           const targetChanged = !lastTargetRef.current ||
             lastTargetRef.current[0] !== activeTargetLngLat[0] ||
             lastTargetRef.current[1] !== activeTargetLngLat[1];
           if (!routeData || targetChanged) {
             lastTargetRef.current = activeTargetLngLat;
-            computeRoute(activeRescuerLocation, activeTargetLngLat, activeRoadblocks);
+            computeRoute(rescuerLoc, activeTargetLngLat, activeRoadblocks);
           }
         }
       } else if (!showDemoControls && !hasLiveMission) {
@@ -559,22 +571,26 @@ export default function RescueMapScreen({ navigation, route }) {
       } else if (showDemoControls && simulationStep === 5) {
         setRouteData(null);
         setActivePolylineCoords(null);
-      } else if (activeTargetLngLat && activeRescuerLocation) {
-        computeRoute(activeRescuerLocation, activeTargetLngLat, activeRoadblocks);
+      } else if (activeTargetLngLat && rescuerLoc) {
+        computeRoute(rescuerLoc, activeTargetLngLat, activeRoadblocks);
       }
     }, 50);
     return () => clearTimeout(timer);
-  }, [computeRoute, activeRescuerLocation, activeTargetLngLat, currentMission, showDemoControls, simulationStep, isSimulationActive, simPhase, routeData, activeRoadblocks]);
+  }, [computeRoute, activeTargetLngLat, currentMission, showDemoControls, simulationStep, isSimulationActive, simPhase, routeData, activeRoadblocks]);
 
   // ─── TACTICAL 10M/S SIMULATION MOVEMENT ENGINE ───
   const traveledDistanceRef = useRef(0);
   const currentNavPhaseRef = useRef(simPhase);
+  const lastPolylineTrimTimeRef = useRef(0);
+  const lastTrimmedSegIdxRef = useRef(-1);
 
   // Reset traveled distance when simulation phase changes
   useEffect(() => {
     if (currentNavPhaseRef.current !== simPhase) {
       currentNavPhaseRef.current = simPhase;
       traveledDistanceRef.current = 0;
+      lastPolylineTrimTimeRef.current = 0;
+      lastTrimmedSegIdxRef.current = -1;
     }
   }, [simPhase]);
 
@@ -582,6 +598,8 @@ export default function RescueMapScreen({ navigation, route }) {
   useEffect(() => {
     if (routeData?.coordinates) {
       traveledDistanceRef.current = 0;
+      lastPolylineTrimTimeRef.current = 0;
+      lastTrimmedSegIdxRef.current = -1;
     }
   }, [routeData]);
 
@@ -621,7 +639,8 @@ export default function RescueMapScreen({ navigation, route }) {
         traveledDistanceRef.current = Math.max(0, totalDist - 18);
       } else {
         const currentSpeed = storeState.simSpeed || 1;
-        const deltaMeters = (10 * currentSpeed) * 0.1;
+        // 150ms tick: advances by (10m/s * speed) * 0.15s per tick (maintains exact 10m/s, 30m/s, 50m/s real-world pace)
+        const deltaMeters = (10 * currentSpeed) * 0.15;
         traveledDistanceRef.current += deltaMeters;
       }
 
@@ -650,17 +669,23 @@ export default function RescueMapScreen({ navigation, route }) {
 
       setSimCoords([currLng, currLat], heading);
 
-      // Dynamically trim polyline: show only remaining path ahead of the vehicle
-      if (coords.length > segIdx + 1) {
-        setActivePolylineCoords([[currLng, currLat], ...coords.slice(segIdx + 1)]);
+      // Throttled polyline trim: only update GeoJSON ShapeSource every ~450ms or on waypoint transition
+      // This eliminates 80% of native bridge re-tessellation overhead, keeping emulator buttons fully responsive!
+      const now = Date.now();
+      if (now - lastPolylineTrimTimeRef.current >= 450 || segIdx !== lastTrimmedSegIdxRef.current) {
+        lastPolylineTrimTimeRef.current = now;
+        lastTrimmedSegIdxRef.current = segIdx;
+        if (coords.length > segIdx + 1) {
+          setActivePolylineCoords([[currLng, currLat], ...coords.slice(segIdx + 1)]);
+        }
       }
 
-      // Smoothly follow vehicle position & heading (80ms animation < 100ms interval prevents Fabric queue saturation)
+      // Smoothly follow vehicle position & heading (110ms animation < 150ms interval leaves 40ms frame budget for touches)
       if (cameraRef.current) {
         cameraRef.current.setCamera({
           centerCoordinate: [currLng, currLat],
           heading,
-          animationDuration: 80,
+          animationDuration: 110,
         });
       }
 
@@ -669,15 +694,15 @@ export default function RescueMapScreen({ navigation, route }) {
         setActivePolylineCoords(null);
         if (storeState.simPhase === 'en_route') {
           useRescueSimulationStore.getState().setSimPhase('on_scene');
-          Vibration.vibrate([0, 200, 100, 300, 100, 400]);
+          safeVibrate([0, 200, 100, 300, 100, 400]);
           setShowVictimArrivalModal(true);
         } else if (storeState.simPhase === 'transporting') {
           useRescueSimulationStore.getState().setSimPhase('shelter_arrival');
-          Vibration.vibrate([0, 250, 100, 250, 100, 500]);
+          safeVibrate([0, 250, 100, 250, 100, 500]);
           setShowShelterArrivalModal(true);
         }
       }
-    }, 100);
+    }, 150);
 
     return () => clearInterval(interval);
   }, [
@@ -739,8 +764,10 @@ export default function RescueMapScreen({ navigation, route }) {
     updateStatusMutation.mutate(params);
   };
 
-  // ─── AUTOMATED 20-METER PROXIMITY ENGINE ───
+  // ─── AUTOMATED 20-METER PROXIMITY ENGINE (LIVE GPS MISSIONS) ───
   useEffect(() => {
+    // Simulation engine handles its own proximity triggers in the simulation loop
+    if (isSimulationActive) return;
     if (!currentMission || !activeRescuerLocation) return;
 
     // 1. Proximity to Victim (≤ 20 meters during dispatched or en_route)
@@ -755,7 +782,7 @@ export default function RescueMapScreen({ navigation, route }) {
       if (distVictim <= 20 && !hasTriggeredVictimArrival.current) {
         hasTriggeredVictimArrival.current = true;
         // Vibration pattern for arrival
-        Vibration.vibrate([0, 200, 100, 300, 100, 400]);
+        safeVibrate([0, 200, 100, 300, 100, 400]);
 
         // Auto-update status to on_scene on the backend!
         updateStatusMutation.mutate({
@@ -779,11 +806,12 @@ export default function RescueMapScreen({ navigation, route }) {
 
       if (distShelter <= 20 && !hasTriggeredShelterArrival.current) {
         hasTriggeredShelterArrival.current = true;
-        Vibration.vibrate([0, 250, 100, 250, 100, 500]);
+        safeVibrate([0, 250, 100, 250, 100, 500]);
         setShowShelterArrivalModal(true);
       }
     }
   }, [
+    isSimulationActive,
     activeRescuerLocation,
     currentMission,
     victimLngLat,
@@ -1549,10 +1577,11 @@ export default function RescueMapScreen({ navigation, route }) {
           style={[styles.floatingBtn, mapStyleMode === 'satellite' && styles.floatingBtnActive]}
           onPress={() => {
             setMapStyleMode((prev) => (prev === 'satellite' ? 'default' : 'satellite'));
-            Vibration.vibrate(25);
+            safeVibrate(25);
           }}
           accessibilityLabel="Toggle Satellite Layer"
-          activeOpacity={0.8}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Layers size={20} color={mapStyleMode === 'satellite' ? '#f59e0b' : colors.textPrimary} />
         </TouchableOpacity>
@@ -1560,16 +1589,20 @@ export default function RescueMapScreen({ navigation, route }) {
 
       {/* ─── GUIDED 5-STEP SIMULATION DOCK (COLLAPSIBLE) ─── */}
       {showDemoControls && (
-        <View style={[styles.guidedSimContainer, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+        <View
+          style={[styles.guidedSimContainer, { paddingBottom: Math.max(insets.bottom, 14) }]}
+          pointerEvents="box-none"
+        >
           {/* Floating Speed & Playback Controller Dock - Placed directly above the guided rescue simulator */}
           {isSimulationActive && (
-            <View style={styles.simControlFloatingBarAttached}>
+            <View style={styles.simControlFloatingBarAttached} pointerEvents="auto">
               {/* Play / Pause Button */}
               <TouchableOpacity
                 style={[styles.simPlayPauseBtn, isPaused && styles.simPlayPauseBtnPaused]}
                 onPress={togglePause}
                 accessibilityLabel={isPaused ? 'Resume Navigation' : 'Pause Navigation'}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 {isPaused ? (
                   <Play size={16} color="#ffffff" fill="#ffffff" />
@@ -1587,7 +1620,8 @@ export default function RescueMapScreen({ navigation, route }) {
                       key={`sim-speed-${spd}`}
                       style={[styles.simSpeedPill, isSelected && styles.simSpeedPillActive]}
                       onPress={() => setSimSpeed(spd)}
-                      activeOpacity={0.8}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
                     >
                       <Text style={[styles.simSpeedPillText, isSelected && styles.simSpeedPillTextActive]}>
                         {spd}x {spd === 1 ? '(10m/s)' : ''}
@@ -1606,7 +1640,8 @@ export default function RescueMapScreen({ navigation, route }) {
                 onPress={skipToGeofence}
                 disabled={!isNavigating || isPaused || simPhase === 'on_scene' || simPhase === 'shelter_arrival' || simPhase === 'completed'}
                 accessibilityLabel="Fast Forward to 20m Geofence"
-                activeOpacity={0.8}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
               >
                 <FastForward size={14} color="#ffffff" />
                 <Text style={styles.simSkipBtnText}>20m</Text>
@@ -1622,7 +1657,8 @@ export default function RescueMapScreen({ navigation, route }) {
                 onPress={handleDropRoadblock}
                 disabled={!isNavigating || isPaused || simPhase === 'on_scene' || simPhase === 'shelter_arrival' || simPhase === 'completed'}
                 accessibilityLabel="Report Impassable Roadblock Ahead"
-                activeOpacity={0.8}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
               >
                 <Text style={{ fontSize: 13 }}>🚧</Text>
               </TouchableOpacity>
@@ -1636,7 +1672,8 @@ export default function RescueMapScreen({ navigation, route }) {
                   setShowDemoControls(false);
                 }}
                 accessibilityLabel="Stop Simulation"
-                activeOpacity={0.8}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Text style={styles.simStopBtnText}>✕</Text>
               </TouchableOpacity>
@@ -1661,14 +1698,16 @@ export default function RescueMapScreen({ navigation, route }) {
               bottom: (activeMission ? 174 : 114) + Math.max(insets.bottom, 14),
             },
           ]}
+          pointerEvents="box-none"
         >
           <TouchableOpacity
             style={styles.simProgressPillBtn}
             onPress={() => {
               setShowDemoControls(true);
-              Vibration.vibrate(20);
+              safeVibrate(20);
             }}
-            activeOpacity={0.85}
+            activeOpacity={0.7}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             accessibilityLabel="Expand simulation controls"
           >
             <View style={styles.simPillDotPulse} />

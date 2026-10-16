@@ -20,6 +20,15 @@ import { spacing, radii } from '../styles/theme';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { useRescueSimulationStore } from '../context/useRescueSimulationStore';
 
+// Safe vibration helper to prevent emulator Binder thread blocking
+const safeVibrate = (pattern) => {
+  try {
+    Vibration.vibrate(pattern);
+  } catch (_e) {
+    // Graceful fallback on emulators without haptic motors
+  }
+};
+
 export default function RescueSimulationStepper({
   navigation,
   currentScreen = 'duty', // 'duty' | 'map'
@@ -60,7 +69,7 @@ export default function RescueSimulationStepper({
   })();
 
   const handleStepPress = (stepNum) => {
-    Vibration.vibrate(20);
+    safeVibrate(20);
     if (stepNum === 1) {
       resetToStandby();
       startSimulation();
@@ -104,7 +113,7 @@ export default function RescueSimulationStepper({
   };
 
   const handlePrimaryAction = () => {
-    Vibration.vibrate(25);
+    safeVibrate(25);
     if (currentStep === 1) {
       acceptDispatch();
       if (navigation) {
@@ -131,7 +140,7 @@ export default function RescueSimulationStepper({
   const handleRestartStep1 = () => {
     resetToStandby();
     startSimulation();
-    Vibration.vibrate(30);
+    safeVibrate(30);
     if (currentScreen !== 'duty' && navigation) {
       navigation.navigate('Rescue');
     }
@@ -275,7 +284,13 @@ export default function RescueSimulationStepper({
           <Text style={styles.headerTitle}>GUIDED RESCUE SIMULATION • 5-STEP LIFECYCLE</Text>
         </View>
         {onClose && (
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.8}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.closeBtn}
+            activeOpacity={0.7}
+            hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+            accessibilityLabel="Close simulation controls"
+          >
             <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
         )}
@@ -301,7 +316,8 @@ export default function RescueSimulationStepper({
                   isPast && styles.stepNodePast,
                 ]}
                 onPress={() => handleStepPress(step.num)}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
               >
                 {isPast ? (
                   <Check size={11} color="#ffffff" />
