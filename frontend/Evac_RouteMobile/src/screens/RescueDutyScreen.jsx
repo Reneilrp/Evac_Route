@@ -115,6 +115,8 @@ export default function RescueDutyScreen({ navigation }) {
 
   useEffect(() => {
     const syncDutyLocation = () => {
+      // If simulation is actively running on map, let RescueMapScreen be the sole telemetry source
+      if (useRescueSimulationStore.getState().isSimulationActive) return;
       const coords = rescuerGpsRef.current;
       if (!coords || !Array.isArray(coords) || coords.length < 2) return;
       api.post('/user/location', {

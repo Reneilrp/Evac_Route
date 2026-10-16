@@ -36,7 +36,7 @@ export const useRescueSimulationStore = create((set, get) => ({
   simMission: DEFAULT_SIMULATION_MISSION,
   simPhase: 'dispatched', // 'dispatched' | 'en_route' | 'on_scene' | 'transporting' | 'completed'
   simSpeed: 1, // 1 = 10m/s (1x), 3 = 30m/s (3x), 5 = 50m/s (5x)
-  simCoords: null, // [lng, lat]
+  simCoords: ZAMBOANGA_RESCUER_BASE, // [lng, lat]
   simHeading: 0,
   isNavigating: false,
   isPaused: false,
@@ -48,7 +48,7 @@ export const useRescueSimulationStore = create((set, get) => ({
       isSimulationActive: true,
       simMission: customMission || DEFAULT_SIMULATION_MISSION,
       simPhase: 'dispatched',
-      simCoords: null,
+      simCoords: ZAMBOANGA_RESCUER_BASE,
       simHeading: 0,
       isNavigating: false,
       isPaused: false,
@@ -61,7 +61,7 @@ export const useRescueSimulationStore = create((set, get) => ({
       isSimulationActive: false,
       simMission: DEFAULT_SIMULATION_MISSION,
       simPhase: 'dispatched',
-      simCoords: null,
+      simCoords: ZAMBOANGA_RESCUER_BASE,
       simHeading: 0,
       isNavigating: false,
       isPaused: false,

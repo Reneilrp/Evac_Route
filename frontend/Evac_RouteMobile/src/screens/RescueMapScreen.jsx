@@ -507,9 +507,19 @@ export default function RescueMapScreen({ navigation, route }) {
   // Multi-Roadblock Tracking State (Dynamic Obstacles like Collapsed Walls, Concrete Debris)
   const [activeRoadblocks, setActiveRoadblocks] = useState([]);
 
+  const lastComputedRouteKeyRef = useRef('');
+  const routeDataRef = useRef(routeData);
+  routeDataRef.current = routeData;
+
   // Compute Route to Active Target whenever Target Coords, Mode, or Roadblocks change
   const computeRoute = useCallback(async (start, end, customRoadblocks = activeRoadblocks) => {
     if (!start || !end) return;
+
+    const routeKey = `${start[0].toFixed(5)},${start[1].toFixed(5)}->${end[0].toFixed(5)},${end[1].toFixed(5)}_rb:${(customRoadblocks || []).map(r => r.id).join('-')}`;
+    if (routeKey === lastComputedRouteKeyRef.current && routeDataRef.current) {
+      return;
+    }
+
     setIsLoadingRoute(true);
     try {
       const result = await fetchTacticalRescueRoute(
@@ -521,6 +531,7 @@ export default function RescueMapScreen({ navigation, route }) {
         customRoadblocks
       );
       if (result && result.coordinates?.length > 0) {
+        lastComputedRouteKeyRef.current = routeKey;
         setRouteData(result);
         setActivePolylineCoords(result.coordinates);
         setCurrentStepIndex(0);
@@ -600,7 +611,10 @@ export default function RescueMapScreen({ navigation, route }) {
     setActiveRoadblocks(nextRoadblocks);
     safeVibrate([0, 60, 40, 60]);
 
-    // Recalculate route starting immediately from the vehicle's current position to target with updated roadblocks
+    // Detour starts immediately from current vehicle position
+    traveledDistanceRef.current = 0;
+    lastTrimmedSegIdxRef.current = -1;
+    lastComputedRouteKeyRef.current = '';
     computeRoute(currentPos, target, nextRoadblocks);
   }, [isSimulationActive, simCoords, activeRescuerLocation, activeTargetLngLat, routeData, simHeading, deviceHeading, activeRoadblocks, computeRoute]);
 
@@ -611,6 +625,9 @@ export default function RescueMapScreen({ navigation, route }) {
     const target = activeTargetLngLat;
     setActiveRoadblocks([]);
     safeVibrate(40);
+    traveledDistanceRef.current = 0;
+    lastTrimmedSegIdxRef.current = -1;
+    lastComputedRouteKeyRef.current = '';
     if (currentPos && target) {
       computeRoute(currentPos, target, []);
     }
@@ -657,25 +674,25 @@ export default function RescueMapScreen({ navigation, route }) {
   const currentNavPhaseRef = useRef(simPhase);
   const lastPolylineTrimTimeRef = useRef(0);
   const lastTrimmedSegIdxRef = useRef(-1);
+  const hasInitializedNavCameraRef = useRef(false);
 
-  // Reset traveled distance when simulation phase changes
+  // Reset traveled distance & camera initialized flag when simulation phase resets
   useEffect(() => {
     if (currentNavPhaseRef.current !== simPhase) {
       currentNavPhaseRef.current = simPhase;
       traveledDistanceRef.current = 0;
       lastPolylineTrimTimeRef.current = 0;
       lastTrimmedSegIdxRef.current = -1;
+      hasInitializedNavCameraRef.current = false;
     }
   }, [simPhase]);
 
-  // Reset traveled distance when new route is computed
+  // When navigation stops, allow camera to be re-initialized when started again
   useEffect(() => {
-    if (routeData?.coordinates) {
-      traveledDistanceRef.current = 0;
-      lastPolylineTrimTimeRef.current = 0;
-      lastTrimmedSegIdxRef.current = -1;
+    if (!isNavigating) {
+      hasInitializedNavCameraRef.current = false;
     }
-  }, [routeData]);
+  }, [isNavigating]);
 
   useEffect(() => {
     if (!isSimulationActive || !isNavigating || isPaused) return;
@@ -693,8 +710,9 @@ export default function RescueMapScreen({ navigation, route }) {
     const totalDist = cumulativeDistances[cumulativeDistances.length - 1];
     if (totalDist <= 0) return;
 
-    // Set initial tactical navigation camera angle & zoom once when navigation starts
-    if (cameraRef.current && coords[0]) {
+    // Set initial tactical navigation camera angle & zoom ONCE per navigation session (never snap back mid-drive)
+    if (!hasInitializedNavCameraRef.current && cameraRef.current && coords[0]) {
+      hasInitializedNavCameraRef.current = true;
       cameraRef.current.setCamera({
         centerCoordinate: coords[0],
         heading: coords.length > 1 ? getBearing(coords[0][1], coords[0][0], coords[1][1], coords[1][0]) : 0,
@@ -785,8 +803,10 @@ export default function RescueMapScreen({ navigation, route }) {
     isPaused,
     routeData,
     simPhase,
-    shelterLngLat,
-    victimLngLat,
+    shelterLngLat?.[0],
+    shelterLngLat?.[1],
+    victimLngLat?.[0],
+    victimLngLat?.[1],
     setSimCoords,
     consumeFastForward,
   ]);
