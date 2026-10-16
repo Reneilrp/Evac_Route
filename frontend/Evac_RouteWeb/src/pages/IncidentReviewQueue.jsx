@@ -214,8 +214,17 @@ export default function IncidentReviewQueue() {
               <div className="p-4 pt-0">
                 <div className="mb-3">
                   <button
-                    onClick={() => navigate(`/admin/map?focusLat=${incident.latitude}&focusLng=${incident.longitude}`)}
-                    className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-xs border border-slate-200 dark:border-slate-700"
+                    onClick={() => {
+                      const params = new URLSearchParams({
+                        focusLat: incident.latitude,
+                        focusLng: incident.longitude,
+                        incidentName: incident.name || 'Reported Incident',
+                        hazardType: incident.hazard_type || 'hazard',
+                        severity: incident.severity_level || 'medium',
+                      });
+                      navigate(`/admin/map?${params.toString()}`);
+                    }}
+                    className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-xs border border-slate-200 dark:border-slate-700 cursor-pointer"
                   >
                     📍 Locate on Live Map
                   </button>

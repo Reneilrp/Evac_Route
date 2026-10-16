@@ -141,10 +141,15 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
     }).not.toThrow();
   });
 
-  it('handles MapDashboard focusLat and focusLng URL query redirection without throwing', () => {
+  it('handles MapDashboard focusLat and focusLng URL query redirection and renders incident banner', () => {
     expect(() => {
-      const html = renderWithProviders(<MapDashboard />, ['/admin/map?focusLat=6.9214&focusLng=122.0790']);
+      const html = renderWithProviders(<MapDashboard />, [
+        '/admin/map?focusLat=6.9214&focusLng=122.0790&incidentName=Flooded%20Avenue'
+      ]);
       expect(html).toBeTruthy();
+      expect(html).toContain('Incident Report');
+      expect(html).toContain('Flooded Avenue');
+      expect(html).toContain('Back to Review Queue');
     }).not.toThrow();
   });
 

@@ -1386,6 +1386,9 @@ const MapViewer = React.memo(({
   activeRescueMissions = [],
   rescueUnits = [],
   missionRoutesGeoJSON = null,
+  focusLat = null,
+  focusLng = null,
+  incidentName = null,
 }) => {
   const containerRef = useRef(null);
 
@@ -1420,13 +1423,52 @@ const MapViewer = React.memo(({
     return () => clearTimeout(timer);
   }, [drawerOpen, mapRef]);
 
-  const [viewState, setViewState] = useState({
-    longitude: 122.0729,
-    latitude: 6.9126,
-    zoom: 13,
-    pitch: 52,
-    bearing: -15
+  const [viewState, setViewState] = useState(() => {
+    const lat = parseFloat(focusLat);
+    const lng = parseFloat(focusLng);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return {
+        longitude: lng,
+        latitude: lat,
+        zoom: 16.5,
+        pitch: is3D ? 52 : 0,
+        bearing: -15
+      };
+    }
+    return {
+      longitude: 122.0729,
+      latitude: 6.9126,
+      zoom: 13,
+      pitch: 52,
+      bearing: -15
+    };
   });
+
+  // Synchronize viewState and map camera whenever focusLat/focusLng change
+  useEffect(() => {
+    const lat = parseFloat(focusLat);
+    const lng = parseFloat(focusLng);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      setViewState(prev => ({
+        ...prev,
+        longitude: lng,
+        latitude: lat,
+        zoom: 16.5,
+        pitch: is3D ? 52 : 0
+      }));
+
+      const map = mapRef?.current?.getMap ? mapRef.current.getMap() : mapRef?.current;
+      if (map && map.flyTo) {
+        map.flyTo({
+          center: [lng, lat],
+          zoom: 16.5,
+          pitch: is3D ? 52 : 0,
+          duration: 1500,
+          essential: true
+        });
+      }
+    }
+  }, [focusLat, focusLng, is3D, mapRef]);
 
   const [hoveredFeature, setHoveredFeature] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -1895,7 +1937,17 @@ const MapViewer = React.memo(({
         {/* Pending pin */}
         {pendingLocation && !showShelterForm && !showHazardForm && (
           <Marker longitude={pendingLocation.longitude} latitude={pendingLocation.latitude} anchor="bottom">
-            <MapPin size={48} className={`${pinMode === 'shelter' ? 'text-blue-400 fill-blue-400/20' : 'text-red-400 fill-red-400/20'} animate-bounce drop-shadow-[0_0_12px_rgba(96,165,250,0.8)]`} />
+            {pinMode === 'incident' ? (
+              <div className="flex flex-col items-center group cursor-pointer animate-in fade-in zoom-in-75 duration-300">
+                <div className="px-2.5 py-1 rounded-lg bg-red-600 text-white font-bold text-xs shadow-xl mb-1 whitespace-nowrap border border-white/20 flex items-center gap-1.5 drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">
+                  <span>⚠️</span>
+                  <span>{incidentName || 'Reported Incident'}</span>
+                </div>
+                <MapPin size={46} className="text-red-500 fill-red-500/30 animate-bounce drop-shadow-[0_0_16px_rgba(239,68,68,0.9)]" />
+              </div>
+            ) : (
+              <MapPin size={48} className={`${pinMode === 'shelter' ? 'text-blue-400 fill-blue-400/20' : 'text-red-400 fill-red-400/20'} animate-bounce drop-shadow-[0_0_12px_rgba(96,165,250,0.8)]`} />
+            )}
           </Marker>
         )}
         {/* Drawing Circle Polygon Preview (Dynamic Hazard Reach) */}
@@ -2421,9 +2473,22 @@ export default function MapDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isCSWDO = user?.email?.toLowerCase().includes('logistics') || user?.email?.toLowerCase().includes('cswdo');
+  // ─── 1-Tap UX Redirection from Incident Queue ───
+  const focusLat = searchParams.get('focusLat');
+  const focusLng = searchParams.get('focusLng');
+  const incidentName = searchParams.get('incidentName');
 
-  const [pinMode, setPinMode] = useState(null);
-  const [pendingLocation, setPendingLocation] = useState(null);
+  const initialFocusCoords = useMemo(() => {
+    const lat = parseFloat(focusLat);
+    const lng = parseFloat(focusLng);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { latitude: lat, longitude: lng };
+    }
+    return null;
+  }, [focusLat, focusLng]);
+
+  const [pinMode, setPinMode] = useState(() => (initialFocusCoords ? 'incident' : null));
+  const [pendingLocation, setPendingLocation] = useState(() => initialFocusCoords);
   const [showShelterForm, setShowShelterForm] = useState(false);
   const [showHazardForm, setShowHazardForm] = useState(false);
   const [selectedShelter, setSelectedShelter] = useState(null);
@@ -2459,34 +2524,27 @@ export default function MapDashboard() {
   const [is3D, setIs3D] = useState(true);
   const mapRef = useRef(null);
 
-  // ─── 1-Tap UX Redirection from Incident Queue ───
   useEffect(() => {
-    const focusLat = searchParams.get('focusLat');
-    const focusLng = searchParams.get('focusLng');
-    
-    if (focusLat && focusLng && mapRef.current) {
-      const map = mapRef.current.getMap ? mapRef.current.getMap() : mapRef.current;
-      if (map) {
-        // Add a slight delay to ensure map has fully initialized
-        setTimeout(() => {
+    if (focusLat && focusLng) {
+      const lat = parseFloat(focusLat);
+      const lng = parseFloat(focusLng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        setPinMode('incident');
+        setPendingLocation({ longitude: lng, latitude: lat });
+
+        const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+        if (map && map.flyTo) {
           map.flyTo({
-            center: [parseFloat(focusLng), parseFloat(focusLat)],
+            center: [lng, lat],
             zoom: 16.5,
-            pitch: 60,
-            duration: 2500, // Smooth 2.5s cinematic flyTo
+            pitch: 52,
+            duration: 1800,
             essential: true
           });
-          
-          // Drop a temporary visual pin to highlight the spot
-          setPinMode('incident');
-          setPendingLocation({ longitude: parseFloat(focusLng), latitude: parseFloat(focusLat) });
-          
-          // Clean up the URL so it doesn't re-trigger on refresh
-          setSearchParams(new URLSearchParams());
-        }, 500);
+        }
       }
     }
-  }, [searchParams, setSearchParams, mapRef]);
+  }, [focusLat, focusLng, mapRef]);
 
   const [isInspecting, setIsInspecting] = useState(false);
   const isInspectingRef = useRef(false);
@@ -2922,6 +2980,9 @@ export default function MapDashboard() {
       } else if (pinMode === 'resident') {
         setSimulatedResidentCoords([e.lngLat.lng, e.lngLat.lat]);
         setPinMode(null);
+      } else if (pinMode === 'incident') {
+        // Inspecting an incident pin - clicking on map does not cancel unless closed
+        return;
       }
     }
   };
@@ -2936,6 +2997,9 @@ export default function MapDashboard() {
     if (simSetupState === 'placing') {
       setSimSetupState('configuring');
       setPlacementCoords(null);
+    }
+    if (searchParams.has('focusLat') || searchParams.has('focusLng')) {
+      setSearchParams(new URLSearchParams());
     }
   };
   const handleConfirmShelter = ({ name, max_capacity }) => addShelterMutation.mutate({ name, latitude: pendingLocation.latitude, longitude: pendingLocation.longitude, max_capacity });
@@ -3305,7 +3369,26 @@ export default function MapDashboard() {
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
             </span>
             <div className="text-xs">
-              {pinMode === 'shelter' ? (
+              {pinMode === 'incident' ? (
+                <div className="flex items-center gap-3">
+                  <div>
+                    <span className="font-black text-amber-300 uppercase tracking-wide">📍 Incident Report:</span>{' '}
+                    <span className="font-bold text-white">{incidentName || 'Reported Field Incident'}</span>
+                    {focusLat && focusLng && (
+                      <span className="ml-2 font-mono text-[11px] text-blue-100 bg-blue-900/60 px-2 py-0.5 rounded border border-blue-400/30">
+                        [{parseFloat(focusLat).toFixed(4)}, {parseFloat(focusLng).toFixed(4)}]
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/admin/incidents')}
+                    className="px-2.5 py-1 rounded bg-white/20 hover:bg-white/30 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer"
+                  >
+                    ← Back to Review Queue
+                  </button>
+                </div>
+              ) : pinMode === 'shelter' ? (
                 <span>📍 <strong className="font-black tracking-wide uppercase">Pinning Shelter:</strong> Click anywhere on the map to place a new evacuation shelter.</span>
               ) : pinMode === 'hazard' ? (
                 isDrawingRadius ? (
@@ -3526,6 +3609,9 @@ export default function MapDashboard() {
           activeRescueMissions={activeRescueMissions}
           rescueUnits={rescueUnits}
           missionRoutesGeoJSON={missionRoutesGeoJSON}
+          focusLat={focusLat}
+          focusLng={focusLng}
+          incidentName={incidentName}
         />
         <RiskAlertsDrawer
           hazards={hazards}
