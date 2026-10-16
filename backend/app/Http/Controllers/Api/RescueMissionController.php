@@ -241,8 +241,8 @@ class RescueMissionController extends Controller
                 'triage_level' => $validated['triage_level'] ?? 'urgent',
                 'victim_name' => $validated['victim_name'],
                 'victim_phone' => $validated['victim_phone'] ?? $validated['informant_contact'] ?? null,
-                'victim_latitude' => $validated['victim_latitude'],
-                'victim_longitude' => $validated['victim_longitude'],
+                'victim_latitude' => ($validated['victim_latitude'] < 6.75 || $validated['victim_latitude'] > 7.30) ? 6.9142 : $validated['victim_latitude'],
+                'victim_longitude' => ($validated['victim_longitude'] < 121.85 || $validated['victim_longitude'] > 122.35) ? 122.0618 : $validated['victim_longitude'],
                 'barangay' => $validated['barangay'] ?? null,
                 'headcount' => $validated['headcount'],
                 'special_needs' => $validated['special_needs'] ?? null,
@@ -469,11 +469,18 @@ class RescueMissionController extends Controller
             $situationDesc = "🚨 URGENT {$upperHazard} SOS: {$headcount} person(s) stranded.{$needsPart} Immediate rescue unit requested.";
         }
 
+        $incidentLat = (float) $validated['latitude'];
+        $incidentLng = (float) $validated['longitude'];
+        if ($incidentLat < 6.75 || $incidentLat > 7.30 || $incidentLng < 121.85 || $incidentLng > 122.35) {
+            $incidentLat = 6.9142;
+            $incidentLng = 122.0618;
+        }
+
         $incident = PendingIncident::create([
             'reported_by' => $user ? $user->id : 1, // Fallback to system admin if guest
             'name' => "EMERGENCY SOS: {$callerName} ({$headcount} people)",
-            'latitude' => $validated['latitude'],
-            'longitude' => $validated['longitude'],
+            'latitude' => $incidentLat,
+            'longitude' => $incidentLng,
             'hazard_type' => $hazardType,
             'severity_level' => 'high',
             'headcount' => $headcount,

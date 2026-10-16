@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
+import { clampToZamboanga, ZAMBOANGA_VICTIM_DEFAULT } from '../utils/zamboangaGeo';
 
 const HAZARD_OPTIONS = [
   {
@@ -180,8 +181,12 @@ export default function EmergencySOSModal({ visible, onClose, initialCoords, onS
     triggerHaptic('impact');
     setIsSubmitting(true);
 
-    const lat = coords?.latitude || 6.9214;
-    const lng = coords?.longitude || 122.0790;
+    const clamped = clampToZamboanga(
+      coords ? [coords.longitude, coords.latitude] : null,
+      ZAMBOANGA_VICTIM_DEFAULT
+    );
+    const lng = clamped[0];
+    const lat = clamped[1];
 
     const selectedModLabels = MODIFIER_OPTIONS
       .filter(m => selectedModifiers.includes(m.id))

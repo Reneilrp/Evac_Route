@@ -1993,6 +1993,8 @@ const MapViewer = React.memo(({
           const lat = parseFloat(m.victim_latitude);
           const lng = parseFloat(m.victim_longitude);
           if (isNaN(lat) || isNaN(lng) || m.status === 'transporting' || m.status === 'completed') return null;
+          // Ignore coordinates outside Zamboanga City (e.g. Android emulator default Mountain View, California)
+          if (lat < 6.75 || lat > 7.30 || lng < 121.85 || lng > 122.35) return null;
 
           return (
             <Marker
@@ -2683,11 +2685,18 @@ export default function MapDashboard() {
     if (!showRescueUnits || !activeRescueMissions || activeRescueMissions.length === 0) return null;
     const features = [];
 
+    const isInZamboanga = (lng, lat) => lat >= 6.75 && lat <= 7.30 && lng >= 121.85 && lng <= 122.35;
+
     activeRescueMissions.forEach((mission) => {
+      // 1. Only show active navigation route line when unit is ACTIVELY en route or transporting
+      // (Do NOT draw premature line if unit is still on dispatched or standby)
+      if (!['en_route', 'transporting'].includes(mission.status)) return;
+
       const unit = mission.rescue_unit;
       const uLat = parseFloat(unit?.current_latitude);
       const uLng = parseFloat(unit?.current_longitude);
       if (isNaN(uLat) || isNaN(uLng)) return;
+      if (!isInZamboanga(uLng, uLat)) return;
 
       let targetLng, targetLat, targetName;
       if (mission.status === 'transporting' && mission.target_shelter) {
@@ -2700,25 +2709,27 @@ export default function MapDashboard() {
         targetName = mission.victim_name || 'Victim in Distress';
       }
 
-      if (targetLat && targetLng && !isNaN(targetLat) && !isNaN(targetLng)) {
-        features.push({
-          type: 'Feature',
-          properties: {
-            missionId: mission.id,
-            controlNo: mission.control_no,
-            unitCallSign: unit.call_sign || unit.name,
-            status: mission.status,
-            targetName,
-          },
-          geometry: {
-            type: 'LineString',
-            coordinates: [
-              [uLng, uLat],
-              [targetLng, targetLat],
-            ],
-          },
-        });
-      }
+      // 2. Reject coordinates outside Zamboanga City (e.g. Android Emulator default Mountain View, California)
+      if (!targetLat || !targetLng || isNaN(targetLat) || isNaN(targetLng)) return;
+      if (!isInZamboanga(targetLng, targetLat)) return;
+
+      features.push({
+        type: 'Feature',
+        properties: {
+          missionId: mission.id,
+          controlNo: mission.control_no,
+          unitCallSign: unit.call_sign || unit.name,
+          status: mission.status,
+          targetName,
+        },
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [uLng, uLat],
+            [targetLng, targetLat],
+          ],
+        },
+      });
     });
 
     if (features.length === 0) return null;
