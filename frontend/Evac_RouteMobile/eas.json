@@ -24,8 +24,8 @@
         "EXPO_PUBLIC_ECHO_PORT": "443",
         "EXPO_PUBLIC_ECHO_SCHEME": "https",
         "EXPO_PUBLIC_REVERB_APP_KEY": "evac-route-key",
-        "ORG_GRADLE_PROJECT_reactNativeArchitectures": "armeabi-v7a,arm64-v8a",
-        "reactNativeArchitectures": "armeabi-v7a,arm64-v8a"
+        "ORG_GRADLE_PROJECT_reactNativeArchitectures": "armeabi-v7a,arm64-v8a,x86_64",
+        "reactNativeArchitectures": "armeabi-v7a,arm64-v8a,x86_64"
       },
       "android": {
         "buildType": "apk"
