@@ -226,9 +226,9 @@ export default function RescueMapScreen({ navigation, route }) {
   // Auto-start simulation if navigated from Duty Hub with simulation flag
   useEffect(() => {
     if (route?.params?.isSimulation && !isSimulationActive) {
-      startSimulation();
+      startSimulation(currentMission || null);
     }
-  }, [route?.params?.isSimulation, isSimulationActive, startSimulation]);
+  }, [route?.params?.isSimulation, isSimulationActive, startSimulation, currentMission]);
 
   const effectiveMission = isSimulationActive
     ? (simMission || DEMO_MISSION_FALLBACK)

@@ -399,15 +399,19 @@ export default function RescueDutyScreen({ navigation }) {
           <TouchableOpacity
             style={styles.simToggleBtn}
             onPress={() => {
-              startSimulation();
+              startSimulation(realMission || null);
               Alert.alert(
                 '⚡ Rescue Simulation Mode Active',
-                'An emergency search & rescue dispatch order has arrived! Review and accept the dispatch below to start tactical 10m/s navigation.'
+                realMission
+                  ? `Simulation loaded for assigned mission: ${realMission.victim_name || realMission.control_no}!`
+                  : 'An emergency search & rescue dispatch order has arrived! Review and accept the dispatch below to start tactical 10m/s navigation.'
               );
             }}
             activeOpacity={0.8}
           >
-            <Text style={styles.simToggleBtnText}>START SIM</Text>
+            <Text style={styles.simToggleBtnText}>
+              {realMission ? 'SIMULATE MISSION' : 'START SIM'}
+            </Text>
           </TouchableOpacity>
         </View>
       )}

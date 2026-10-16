@@ -3,6 +3,7 @@ import {
   ZAMBOANGA_RESCUER_BASE,
   ZAMBOANGA_VICTIM_DEFAULT,
   ZAMBOANGA_SHELTER_DEFAULT,
+  ZAMBOANGA_WMSU,
 } from '../utils/zamboangaGeo';
 
 export const DEFAULT_SIMULATION_MISSION = {
@@ -44,9 +45,19 @@ export const useRescueSimulationStore = create((set, get) => ({
 
   // ─── Actions ───
   startSimulation: (customMission = null) => {
+    let resolvedMission = DEFAULT_SIMULATION_MISSION;
+    if (customMission) {
+      resolvedMission = {
+        ...DEFAULT_SIMULATION_MISSION,
+        ...customMission,
+        victim_latitude: customMission.victim_latitude ? Number(customMission.victim_latitude) : ZAMBOANGA_WMSU[1],
+        victim_longitude: customMission.victim_longitude ? Number(customMission.victim_longitude) : ZAMBOANGA_WMSU[0],
+        target_shelter: customMission.target_shelter || DEFAULT_SIMULATION_MISSION.target_shelter,
+      };
+    }
     set({
       isSimulationActive: true,
-      simMission: customMission || DEFAULT_SIMULATION_MISSION,
+      simMission: resolvedMission,
       simPhase: 'dispatched',
       simCoords: ZAMBOANGA_RESCUER_BASE,
       simHeading: 0,
