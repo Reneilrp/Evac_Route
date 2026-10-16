@@ -36,6 +36,7 @@ import {
   Pause,
   FastForward,
   ChevronUp,
+  MapPin,
 } from 'lucide-react-native';
 import api from '../services/api';
 import { spacing, radii } from '../styles/theme';
@@ -346,6 +347,11 @@ export default function RescueMapScreen({ navigation, route }) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [mapStyleMode, setMapStyleMode] = useState('default'); // 'default' | 'satellite'
+
+  // Free camera exploration mode & destination centering
+  const [isFreeCam, setIsFreeCam] = useState(false);
+  const isFreeCamRef = useRef(false);
+  isFreeCamRef.current = isFreeCam;
 
   // Memoize valid GeoJSON FeatureCollection for Mapbox ShapeSource (dynamically trimmed)
   const routeFeatureCollection = useMemo(() => {
@@ -680,8 +686,8 @@ export default function RescueMapScreen({ navigation, route }) {
         }
       }
 
-      // Smoothly follow vehicle position & heading (110ms animation < 150ms interval leaves 40ms frame budget for touches)
-      if (cameraRef.current) {
+      // Smoothly follow vehicle position & heading ONLY when NOT in free cam mode
+      if (!isFreeCamRef.current && cameraRef.current) {
         cameraRef.current.setCamera({
           centerCoordinate: [currLng, currLat],
           heading,
@@ -819,8 +825,11 @@ export default function RescueMapScreen({ navigation, route }) {
     updateStatusMutation,
   ]);
 
-  // Recenter map camera on Rescuer
-  const handleRecenter = () => {
+  // Recenter map camera on Rescuer Vehicle and restore auto-follow
+  const handleCenterOnRescuer = useCallback(() => {
+    setIsFreeCam(false);
+    isFreeCamRef.current = false;
+    safeVibrate(20);
     if (cameraRef.current && activeRescuerLocation) {
       const forwardBearing =
         (isSimulationActive && simHeading)
@@ -839,10 +848,51 @@ export default function RescueMapScreen({ navigation, route }) {
         zoomLevel: 16.8,
         pitch: 35,
         heading: forwardBearing,
-        animationDuration: 1000,
+        animationDuration: 750,
       });
     }
-  };
+  }, [activeRescuerLocation, isSimulationActive, simHeading, routeData, deviceHeading]);
+
+  // Center camera specifically on Destination (Victim or Shelter) in Free Cam mode
+  const handleCenterOnDestination = useCallback(() => {
+    setIsFreeCam(true);
+    isFreeCamRef.current = true;
+    safeVibrate(20);
+    if (cameraRef.current && activeTargetLngLat) {
+      cameraRef.current.setCamera({
+        centerCoordinate: activeTargetLngLat,
+        pitch: 25,
+        zoomLevel: 17.2,
+        heading: 0,
+        animationDuration: 850,
+      });
+    }
+  }, [activeTargetLngLat]);
+
+  // Fit entire mission route overview in view (both rescuer and destination)
+  const handleFitOverview = useCallback(() => {
+    setIsFreeCam(true);
+    isFreeCamRef.current = true;
+    safeVibrate(20);
+    if (cameraRef.current && activeRescuerLocation && activeTargetLngLat) {
+      const minLng = Math.min(activeRescuerLocation[0], activeTargetLngLat[0]);
+      const maxLng = Math.max(activeRescuerLocation[0], activeTargetLngLat[0]);
+      const minLat = Math.min(activeRescuerLocation[1], activeTargetLngLat[1]);
+      const maxLat = Math.max(activeRescuerLocation[1], activeTargetLngLat[1]);
+      cameraRef.current.fitBounds([maxLng, maxLat], [minLng, minLat], [100, 60, 240, 60], 850);
+    }
+  }, [activeRescuerLocation, activeTargetLngLat]);
+
+  // Toggle Free Cam on / off
+  const toggleFreeCam = useCallback(() => {
+    if (isFreeCam) {
+      handleCenterOnRescuer();
+    } else {
+      setIsFreeCam(true);
+      isFreeCamRef.current = true;
+      safeVibrate(20);
+    }
+  }, [isFreeCam, handleCenterOnRescuer]);
 
   // Distance to current target in meters
   const distanceToTarget = useMemo(() => {
@@ -1082,6 +1132,18 @@ export default function RescueMapScreen({ navigation, route }) {
           attributionEnabled={false}
           compassEnabled={true}
           scaleBarEnabled={false}
+          onTouchMove={() => {
+            if (!isFreeCamRef.current && (isSimulationActive || activeMission)) {
+              setIsFreeCam(true);
+              isFreeCamRef.current = true;
+            }
+          }}
+          onCameraChanged={(e) => {
+            if (e?.gestures?.isGestureActive && !isFreeCamRef.current && (isSimulationActive || activeMission)) {
+              setIsFreeCam(true);
+              isFreeCamRef.current = true;
+            }
+          }}
         >
           <Mapbox.Camera
             ref={cameraRef}
@@ -1417,21 +1479,107 @@ export default function RescueMapScreen({ navigation, route }) {
         )}
       </View>
 
+      {/* ─── FREE CAM TACTICAL STATUS PILL & QUICK NAVIGATION BAR ─── */}
+      {isFreeCam && (isSimulationActive || activeMission) && (
+        <View
+          style={[
+            styles.freeCamPillContainer,
+            { top: insets.top + (activeMission ? 144 : 72) },
+          ]}
+          pointerEvents="box-none"
+        >
+          <View style={styles.freeCamBar}>
+            <View style={styles.freeCamBadge}>
+              <Text style={styles.freeCamBadgeText}>🎥 FREE CAM</Text>
+            </View>
+
+            {/* 1. Recenter to Vehicle */}
+            <TouchableOpacity
+              style={styles.freeCamActionBtn}
+              onPress={handleCenterOnRescuer}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              accessibilityLabel="Recenter on Rescuer Vehicle"
+            >
+              <Crosshair size={13} color="#10b981" />
+              <Text style={[styles.freeCamActionBtnText, { color: '#10b981' }]}>
+                RECENTER VEHICLE
+              </Text>
+            </TouchableOpacity>
+
+            {/* 2. Center specifically on Destination */}
+            {activeTargetLngLat && (
+              <TouchableOpacity
+                style={styles.freeCamActionBtn}
+                onPress={handleCenterOnDestination}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                accessibilityLabel="Center on Destination"
+              >
+                <MapPin size={13} color="#38bdf8" />
+                <Text style={[styles.freeCamActionBtnText, { color: '#38bdf8' }]}>
+                  {isTransportPhase ? 'SHELTER' : 'DESTINATION'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* 3. Fit Route Overview */}
+            <TouchableOpacity
+              style={styles.freeCamActionBtn}
+              onPress={handleFitOverview}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              accessibilityLabel="Fit Entire Route"
+            >
+              <Navigation size={13} color="#f59e0b" />
+              <Text style={[styles.freeCamActionBtnText, { color: '#f59e0b' }]}>
+                FIT ROUTE
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* ─── FLOATING ACTION CONTROLS (RIGHT) ─── */}
       <View style={styles.floatingControls}>
+        {/* Free Cam / Recenter Vehicle Toggle */}
         <TouchableOpacity
-          style={styles.floatingBtn}
-          onPress={handleRecenter}
-          accessibilityLabel="Recenter Map"
+          style={[
+            styles.floatingBtn,
+            isFreeCam && { borderColor: '#f59e0b', backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.95)' : '#fffbeb' },
+          ]}
+          onPress={isFreeCam ? handleCenterOnRescuer : toggleFreeCam}
+          accessibilityLabel={isFreeCam ? 'Recenter on Vehicle (Follow Mode)' : 'Enable Free Cam Mode'}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Crosshair size={20} color="#38bdf8" />
+          {isFreeCam ? (
+            <Crosshair size={20} color="#f59e0b" />
+          ) : (
+            <Navigation2 size={20} color="#10b981" />
+          )}
         </TouchableOpacity>
+
+        {/* Center to Destination Button (See specifically where victim or shelter is) */}
+        {activeTargetLngLat && (
+          <TouchableOpacity
+            style={[styles.floatingBtn, { borderColor: '#38bdf8' }]}
+            onPress={handleCenterOnDestination}
+            accessibilityLabel="Inspect Destination Location"
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MapPin size={18} color="#38bdf8" />
+          </TouchableOpacity>
+        )}
 
         {/* 1-Tap Roadblock Injection (Collapsed Wall / Concrete Barrier) */}
         <TouchableOpacity
           style={[styles.floatingBtn, { backgroundColor: '#dc2626', borderColor: '#f87171' }]}
           onPress={handleDropRoadblock}
           accessibilityLabel="Drop Physical Roadblock Ahead"
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Text style={{ fontSize: 16 }}>🚧</Text>
         </TouchableOpacity>
@@ -2498,6 +2646,57 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   tacticalStrategyText: {
     color: '#ffffff',
     fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+
+  /* ─── FREE CAM TACTICAL QUICK NAVIGATION BAR ─── */
+  freeCamPillContainer: {
+    position: 'absolute',
+    left: spacing.md,
+    right: spacing.md,
+    alignItems: 'center',
+    zIndex: 95,
+  },
+  freeCamBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+    borderRadius: radii.full,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderWidth: 1.5,
+    borderColor: '#f59e0b',
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 10,
+  },
+  freeCamBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: radii.full,
+  },
+  freeCamBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#f59e0b',
+    letterSpacing: 0.5,
+  },
+  freeCamActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.85)' : 'rgba(241, 245, 249, 0.95)',
+    paddingHorizontal: 9,
+    paddingVertical: 4.5,
+    borderRadius: radii.full,
+    gap: 4,
+  },
+  freeCamActionBtnText: {
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.3,
   },

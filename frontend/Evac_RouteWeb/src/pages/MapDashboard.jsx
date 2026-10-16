@@ -1575,17 +1575,16 @@ const MapViewer = React.memo(({
       const lng = parseFloat(h.longitude);
       const lat = parseFloat(h.latitude);
       const rad = parseFloat(h.radius_meters || 50);
-      const deg = Math.max(0.0004, rad / 111000);
+      const circleFeat = createCirclePolygon([lng, lat], rad);
       return {
-        type: 'Feature',
-        geometry: {
-          type: 'LineString',
-          coordinates: [
-            [lng - deg * 0.9, lat - deg * 0.45],
-            [lng + deg * 0.9, lat + deg * 0.45],
-          ],
-        },
-        properties: { id: h.id, name: h.name, hazard_type: h.hazard_type, severity_level: h.severity_level, radius: h.radius_meters }
+        ...circleFeat,
+        properties: {
+          id: h.id,
+          name: h.name,
+          hazard_type: h.hazard_type,
+          severity_level: h.severity_level,
+          radius: h.radius_meters,
+        }
       };
     };
 
@@ -1710,28 +1709,50 @@ const MapViewer = React.memo(({
           </Source>
         )}
 
-        {/* Hazard Zone Corridors (Active Emergency Hazards - Line instead of Circle) */}
+        {/* Hazard Zone Circles (Active Emergency Hazards) */}
         {showHazards && (
           <Source id="hazards-source" type="geojson" data={activeHazardsGeoJSON}>
-            {/* High-visibility line casing */}
-            <Layer id="hazards-line-casing" type="line" paint={{
-              'line-color': '#000000',
-              'line-width': 8,
-              'line-cap': 'round',
-              'line-join': 'round',
-            }} />
-            {/* Core road hazard line corridor */}
-            <Layer id="hazards-line-core" type="line" paint={{
-              'line-color': ['match', ['get', 'hazard_type'],
-                'flood', ['match', ['get', 'severity_level'], 'low', '#60a5fa', 'medium', '#3b82f6', 'high', '#ef4444', '#3b82f6'],
-                'landslide', ['match', ['get', 'severity_level'], 'low', '#d97706', 'medium', '#b45309', 'high', '#78350f', '#b45309'],
-                'building_fire', ['match', ['get', 'severity_level'], 'low', '#f97316', 'medium', '#ea580c', 'high', '#dc2626', '#ea580c'],
-                'earthquake', '#ef4444',
-                '#ef4444'],
-              'line-width': 5,
-              'line-cap': 'round',
-              'line-join': 'round',
-            }} />
+            {/* Shaded Area Fill */}
+            <Layer
+              id="hazards-circle-fill"
+              type="fill"
+              paint={{
+                'fill-color': [
+                  'match',
+                  ['get', 'hazard_type'],
+                  'flood', ['match', ['get', 'severity_level'], 'low', '#60a5fa', 'medium', '#3b82f6', 'high', '#ef4444', '#3b82f6'],
+                  'landslide', ['match', ['get', 'severity_level'], 'low', '#d97706', 'medium', '#b45309', 'high', '#78350f', '#b45309'],
+                  'building_fire', ['match', ['get', 'severity_level'], 'low', '#f97316', 'medium', '#ea580c', 'high', '#dc2626', '#ea580c'],
+                  'earthquake', '#ef4444',
+                  '#ef4444'
+                ],
+                'fill-opacity': [
+                  'match',
+                  ['get', 'severity_level'],
+                  'high', 0.32,
+                  'medium', 0.22,
+                  0.15
+                ],
+              }}
+            />
+            {/* Outer Perimeter Circle Border */}
+            <Layer
+              id="hazards-circle-border"
+              type="line"
+              paint={{
+                'line-color': [
+                  'match',
+                  ['get', 'hazard_type'],
+                  'flood', ['match', ['get', 'severity_level'], 'low', '#60a5fa', 'medium', '#3b82f6', 'high', '#ef4444', '#3b82f6'],
+                  'landslide', ['match', ['get', 'severity_level'], 'low', '#d97706', 'medium', '#b45309', 'high', '#78350f', '#b45309'],
+                  'building_fire', ['match', ['get', 'severity_level'], 'low', '#f97316', 'medium', '#ea580c', 'high', '#dc2626', '#ea580c'],
+                  'earthquake', '#ef4444',
+                  '#ef4444'
+                ],
+                'line-width': 2.5,
+                'line-opacity': 0.85,
+              }}
+            />
           </Source>
         )}
 
@@ -1873,8 +1894,8 @@ const MapViewer = React.memo(({
             <MapPin size={48} className={`${pinMode === 'shelter' ? 'text-blue-400 fill-blue-400/20' : 'text-red-400 fill-red-400/20'} animate-bounce drop-shadow-[0_0_12px_rgba(96,165,250,0.8)]`} />
           </Marker>
         )}
-        {/* Drawing Circle Polygon Preview */}
-        {pendingLocation && isDrawingRadius && drawingRadiusMeters && (
+        {/* Drawing Circle Polygon Preview (Dynamic Hazard Reach) */}
+        {pendingLocation && isDrawingRadius && drawingRadiusMeters > 0 && (
           <Source
             id="drawing-hazard-source"
             type="geojson"
@@ -1885,7 +1906,7 @@ const MapViewer = React.memo(({
               type="fill"
               paint={{
                 'fill-color': '#ef4444',
-                'fill-opacity': 0.25,
+                'fill-opacity': 0.28,
               }}
             />
             <Layer
@@ -1893,14 +1914,14 @@ const MapViewer = React.memo(({
               type="line"
               paint={{
                 'line-color': '#ef4444',
-                'line-width': 2,
-                'line-dasharray': [2, 2],
+                'line-width': 3,
+                'line-dasharray': [3, 2],
               }}
             />
           </Source>
         )}
 
-        {/* Dynamic Hazard Radius Line from Center to Cursor */}
+        {/* Dynamic Hazard Radius Guide Line from Center to Cursor */}
         {pinMode === 'hazard' && pendingLocation && isDrawingRadius && drawingEnd && (
           <>
             <Source
@@ -1922,15 +1943,15 @@ const MapViewer = React.memo(({
                 type="line"
                 paint={{
                   'line-color': '#f59e0b',
-                  'line-width': 2.5,
-                  'line-dasharray': [3, 2],
+                  'line-width': 2,
+                  'line-dasharray': [2, 2],
                 }}
               />
             </Source>
             <Marker longitude={drawingEnd.longitude} latitude={drawingEnd.latitude} anchor="left">
               <div className="ml-2 px-2 py-0.5 bg-gray-950/90 text-amber-300 font-mono text-[11px] font-black rounded-md border border-amber-500/60 shadow-xl whitespace-nowrap pointer-events-none flex items-center gap-1.5 backdrop-blur-sm">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
-                <span>📏 {drawingRadiusMeters}m radius ({drawingRadiusMeters * 2}m span)</span>
+                <span>⭕ {drawingRadiusMeters}m radius circle ({drawingRadiusMeters * 2}m diameter)</span>
               </div>
             </Marker>
           </>
