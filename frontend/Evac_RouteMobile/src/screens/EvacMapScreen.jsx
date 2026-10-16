@@ -94,6 +94,7 @@ export default function EvacMapScreen({ navigation, route }) {
   const [location, setLocation] = useState(null);
   const [isPinningHomeMode, setIsPinningHomeMode] = useState(false);
   const [showSOSModal, setShowSOSModal] = useState(false);
+  const [activePinDetails, setActivePinDetails] = useState(null); // 'user' | 'home' | null
 
   useEffect(() => {
     if (route?.params?.pinHome) {
@@ -577,6 +578,12 @@ export default function EvacMapScreen({ navigation, route }) {
 
     return defaultZamboangaPos;
   }, [location, homeLocation, user, defaultZamboangaPos]);
+
+  const homeDistanceKm = useMemo(() => {
+    if (!activeUserLocation || !homeLocation) return null;
+    const dMeters = getDistanceMeters(activeUserLocation[1], activeUserLocation[0], homeLocation[1], homeLocation[0]);
+    return (dMeters / 1000).toFixed(2);
+  }, [activeUserLocation, homeLocation]);
 
   // ─── Initial Map Camera Centering (guarantees view centers on Zamboanga City immediately) ───
   const hasInitialCenteredRef = useRef(false);
@@ -1283,8 +1290,19 @@ export default function EvacMapScreen({ navigation, route }) {
             key="user-location-avatar"
             id="user-location-avatar"
             coordinate={activeUserLocation}
+            onSelected={() => {
+              Vibration.vibrate(50);
+              setActivePinDetails('user');
+            }}
           >
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                Vibration.vibrate(50);
+                setActivePinDetails('user');
+              }}
+              style={{ alignItems: 'center', justifyContent: 'center' }}
+            >
               {/* YOU Pill Badge (ABOVE profile icon) */}
               <View style={{
                 backgroundColor: '#0f172a',
@@ -1335,7 +1353,7 @@ export default function EvacMapScreen({ navigation, route }) {
                   <User size={20} color="#ffffff" strokeWidth={2.5} />
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           </Mapbox.PointAnnotation>
         )}
 
@@ -1345,8 +1363,19 @@ export default function EvacMapScreen({ navigation, route }) {
             key="home-location-pin"
             id="home-location-pin"
             coordinate={homeLocation}
+            onSelected={() => {
+              Vibration.vibrate(50);
+              setActivePinDetails('home');
+            }}
           >
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                Vibration.vibrate(50);
+                setActivePinDetails('home');
+              }}
+              style={{ alignItems: 'center', justifyContent: 'center' }}
+            >
               {/* HOME Pill Badge (ABOVE house icon) */}
               <View style={{
                 backgroundColor: '#0f172a',
@@ -1383,7 +1412,7 @@ export default function EvacMapScreen({ navigation, route }) {
               }}>
                 <Home size={19} color="#ffffff" strokeWidth={2.5} />
               </View>
-            </View>
+            </TouchableOpacity>
           </Mapbox.PointAnnotation>
         )}
       </Mapbox.MapView>
@@ -3164,6 +3193,245 @@ export default function EvacMapScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* ─── PIN LOCATION DETAILS MODAL (YOU & HOME) ─── */}
+      <Modal
+        visible={activePinDetails !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActivePinDetails(null)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(2, 6, 23, 0.75)',
+            justifyContent: 'flex-end',
+            paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+            paddingHorizontal: 16,
+          }}
+          onPress={() => setActivePinDetails(null)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: '#0f172a',
+              borderRadius: 24,
+              borderWidth: 1.5,
+              borderColor: '#38bdf8',
+              padding: 20,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -4 },
+              shadowOpacity: 0.5,
+              shadowRadius: 16,
+              elevation: 20,
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Header with Icon, Title, and Close Button */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 8 }}>
+                <View style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: '#0284c7',
+                  borderWidth: 2,
+                  borderColor: '#38bdf8',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  {activePinDetails === 'user' ? (
+                    <User size={22} color="#ffffff" strokeWidth={2.5} />
+                  ) : (
+                    <Home size={22} color="#ffffff" strokeWidth={2.5} />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: '900', letterSpacing: 0.5 }}>
+                    {activePinDetails === 'user' ? 'YOU (CURRENT LOCATION)' : 'HOME (REGISTERED RESIDENCE)'}
+                  </Text>
+                  <Text style={{ color: '#38bdf8', fontSize: 11.5, fontWeight: '700', marginTop: 1 }}>
+                    {activePinDetails === 'user' ? '📍 Live Real-Time GPS Tracking' : '🏠 Primary Evacuation Origin'}
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => setActivePinDetails(null)}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <X size={18} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Content Details */}
+            {activePinDetails === 'user' ? (
+              <View style={{ gap: 10, marginBottom: 18 }}>
+                <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.08)', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.2)' }}>
+                  <Text style={{ color: '#e0f2fe', fontSize: 12.5, lineHeight: 18 }}>
+                    Your live GPS coordinates update automatically as you move. Routes and shelter travel times adapt in real time.
+                  </Text>
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                  <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600' }}>GPS Coordinates:</Text>
+                  <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                    {activeUserLocation ? `${activeUserLocation[1].toFixed(5)}, ${activeUserLocation[0].toFixed(5)}` : 'Detecting...'}
+                  </Text>
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                  <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600' }}>Barangay Area:</Text>
+                  <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>
+                    {user?.family_profile?.barangay || user?.barangay || 'Zamboanga City'}
+                  </Text>
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                  <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600' }}>Travel Mode:</Text>
+                  <Text style={{ color: '#38bdf8', fontSize: 12, fontWeight: '800' }}>
+                    {transportationMode === 'pedestrian' ? '🚶 Walking' : transportationMode === '2_wheel' ? '🏍️ 2-Wheel (Bike/Motor)' : '🚗 4-Wheel (Car/Vehicle)'}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={{ gap: 10, marginBottom: 18 }}>
+                <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.08)', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.2)' }}>
+                  <Text style={{ color: '#e0f2fe', fontSize: 12.5, lineHeight: 18 }}>
+                    This is your saved household address. If physical GPS is unavailable, EvacRoute uses this point as your evacuation starting location.
+                  </Text>
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                  <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600' }}>Barangay / Address:</Text>
+                  <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>
+                    {user?.family_profile?.barangay || user?.barangay || 'Zamboanga City'}
+                  </Text>
+                </View>
+
+                {homeDistanceKm && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                    <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600' }}>Distance from You:</Text>
+                    <Text style={{ color: '#38bdf8', fontSize: 12, fontWeight: '800' }}>
+                      {homeDistanceKm} km away
+                    </Text>
+                  </View>
+                )}
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                  <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600' }}>Coordinates:</Text>
+                  <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                    {homeLocation ? `${homeLocation[1].toFixed(5)}, ${homeLocation[0].toFixed(5)}` : 'Not set'}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Action Buttons */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {activePinDetails === 'user' ? (
+                <>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setActivePinDetails(null);
+                      if (cameraRef.current && activeUserLocation) {
+                        cameraRef.current.setCamera({
+                          centerCoordinate: activeUserLocation,
+                          zoomLevel: 16,
+                          animationDuration: 700,
+                        });
+                      }
+                      Vibration.vibrate(50);
+                    }}
+                    style={{
+                      flex: 1,
+                      backgroundColor: '#0284c7',
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '800' }}>🎯 Re-center On Me</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      setActivePinDetails(null);
+                      navigation.navigate('Safe Check-in');
+                      Vibration.vibrate(50);
+                    }}
+                    style={{
+                      flex: 1,
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 255, 255, 0.2)',
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700' }}>📱 View QR Profile</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setActivePinDetails(null);
+                      setIsPinningHomeMode(true);
+                      Vibration.vibrate(60);
+                    }}
+                    style={{
+                      flex: 1,
+                      backgroundColor: '#0284c7',
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '800' }}>📍 Re-pin Home Address</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      setActivePinDetails(null);
+                      if (cameraRef.current && homeLocation) {
+                        cameraRef.current.setCamera({
+                          centerCoordinate: homeLocation,
+                          zoomLevel: 16,
+                          animationDuration: 700,
+                        });
+                      }
+                      Vibration.vibrate(50);
+                    }}
+                    style={{
+                      flex: 1,
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 255, 255, 0.2)',
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700' }}>🎯 Center on Home</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Ordering-System Style Emergency SOS Modal */}
