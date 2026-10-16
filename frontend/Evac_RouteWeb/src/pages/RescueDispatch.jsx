@@ -149,10 +149,10 @@ export default function RescueDispatch() {
     refetchInterval: 10000,
   });
 
-  // 3. Fetch pending incidents / distress SOS queue
+  // 3. Fetch pending incidents / distress SOS queue (strictly Emergency SOS)
   const { data: incidentsData, refetch: refetchIncidents } = useQuery({
     queryKey: ['incidents-pending-rescue'],
-    queryFn: () => api.get('/incidents?status=pending').then(res => res.data.data),
+    queryFn: () => api.get('/incidents?status=pending&type=sos').then(res => res.data.data),
     refetchInterval: 10000,
   });
 
@@ -170,7 +170,12 @@ export default function RescueDispatch() {
 
   const units = unitsData ?? [];
   const missions = missionsData ?? [];
-  const pendingIncidents = incidentsData?.data ?? incidentsData ?? [];
+  const rawPending = incidentsData?.data ?? incidentsData ?? [];
+  const pendingIncidents = useMemo(() => {
+    return Array.isArray(rawPending)
+      ? rawPending.filter(inc => inc?.name?.startsWith('EMERGENCY SOS:') || inc?.modifiers !== null || inc?.headcount > 1 || !inc?.photos?.length)
+      : [];
+  }, [rawPending]);
   const shelters = sheltersData ?? [];
   const staff = staffData ?? [];
 

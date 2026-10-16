@@ -204,6 +204,7 @@ class IncidentController extends Controller
     public function index(Request $request)
     {
         $status = $request->query('status', 'pending');
+        $type = $request->query('type'); // 'sos' | 'report' | null
 
         // Automatically mark pending incidents as read by LGU when staff loads queue
         if ($status === 'pending') {
@@ -212,9 +213,20 @@ class IncidentController extends Controller
                 ->update(['read_at' => now()]);
         }
 
-        $incidents = PendingIncident::with(['reporter:id,name,email', 'reporter.familyProfile:id,user_id,barangay,contact_number'])
-            ->where('status', $status)
-            ->latest()
+        $query = PendingIncident::with(['reporter:id,name,email', 'reporter.familyProfile:id,user_id,barangay,contact_number'])
+            ->where('status', $status);
+
+        if ($type === 'sos') {
+            $query->where(function ($q) {
+                $q->where('name', 'LIKE', 'EMERGENCY SOS:%')
+                  ->orWhereNotNull('modifiers');
+            });
+        } elseif ($type === 'report') {
+            $query->where('name', 'NOT LIKE', 'EMERGENCY SOS:%')
+                  ->whereNull('modifiers');
+        }
+
+        $incidents = $query->latest()
             ->paginate(20);
 
         // Append photo_urls and frequency evaluation to each item

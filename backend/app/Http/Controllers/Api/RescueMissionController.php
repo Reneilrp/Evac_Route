@@ -145,6 +145,16 @@ class RescueMissionController extends Controller
 
             $unit->update(['status' => $initialStatus]);
 
+            if (!empty($validated['pending_incident_id'])) {
+                PendingIncident::where('id', $validated['pending_incident_id'])
+                    ->update([
+                        'status' => 'approved',
+                        'reviewed_by' => $request->user()->id,
+                        'reviewed_at' => now(),
+                        'review_note' => 'Dispatched to rescue unit: ' . $unit->name,
+                    ]);
+            }
+
             return $mission->load(['rescueUnit', 'targetShelter', 'stagingPoint']);
         });
 

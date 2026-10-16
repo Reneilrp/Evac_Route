@@ -40,8 +40,8 @@ export default function IncidentReviewQueue() {
   }, [reviewModal, activePhotoModal]);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['incidents', activeTab],
-    queryFn: () => api.get(`/incidents?status=${activeTab}`).then(r => r.data.data),
+    queryKey: ['incidents', activeTab, 'report'],
+    queryFn: () => api.get(`/incidents?status=${activeTab}&type=report`).then(r => r.data.data),
   });
 
   const reviewMutation = useMutation({
@@ -56,7 +56,10 @@ export default function IncidentReviewQueue() {
     },
   });
 
-  const incidents = data?.data ?? data ?? [];
+  const rawIncidents = data?.data ?? data ?? [];
+  const incidents = Array.isArray(rawIncidents)
+    ? rawIncidents.filter(inc => !inc?.name?.startsWith('EMERGENCY SOS:'))
+    : [];
 
   return (
     <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
