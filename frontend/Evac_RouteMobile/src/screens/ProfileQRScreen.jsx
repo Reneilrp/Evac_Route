@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, Modal, TextInput, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
-import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon, Edit3, Footprints, Bike, Car } from 'lucide-react-native';
+import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon, Edit3, Footprints, Bike, Car, Check } from 'lucide-react-native';
 import { useResidentStore } from '../context/useResidentStore';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
@@ -14,6 +14,39 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { getStyles } from '../styles/ProfileQRScreen.styles';
 import * as Crypto from 'expo-crypto';
 
+const TRANSPORTATION_OPTIONS = [
+  {
+    id: 'pedestrian',
+    label: 'Walking / Pedestrian',
+    badge: 'FOOT TRAVEL · NARROW ALLEYS',
+    icon: '🚶',
+    description: 'Evacuation on foot through residential corridors and alleys.',
+    pros: '✓ Accessible across narrow footpaths, stairs, and footbridges.',
+    floodWarning: '⚠️ Hazard: Avoid water depth >0.3m (knee deep) due to hidden open drains and strong currents.',
+    limits: '• Limited supply payload; higher fatigue risk over long distances.',
+  },
+  {
+    id: '2_wheel',
+    label: '2-Wheel (Motorcycle / Bike)',
+    badge: 'HIGH AGILITY · FAST EVAC',
+    icon: '🏍️',
+    description: 'Rapid escape through light traffic and residential side streets.',
+    pros: '✓ Fast bypass through traffic gridlock and narrow neighborhood roads.',
+    floodWarning: '⚠️ Hazard: Engine stalls if water reaches exhaust pipe (>0.2m depth); extreme slip hazard on wet mud/silt.',
+    limits: '• Capacity limited to 1 passenger and small emergency bug-out pack.',
+  },
+  {
+    id: '4_wheel',
+    label: '4-Wheel (Car / SUV / Truck)',
+    badge: 'FAMILY EVAC · PROVISION HAUL',
+    icon: '🚗',
+    description: 'Vehicle evacuation for entire household, provisions, and pets.',
+    pros: '✓ High capacity: transports entire family, seniors, children, and heavy supplies.',
+    floodWarning: '⚠️ Hazard: Strictly confined to wide roads; high risk of traffic gridlocks, fallen power lines, and tree blocks.',
+    limits: '• Cannot traverse footbridges or narrow alleys; water >0.4m causes vehicle floating and loss of steering.',
+  },
+];
+
 export default function ProfileQRScreen({ navigation }) {
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const styles = useThemedStyles(getStyles);
@@ -24,9 +57,12 @@ export default function ProfileQRScreen({ navigation }) {
   const homeLocation = useResidentStore(state => state.homeLocation);
   const setHomeLocation = useResidentStore(state => state.setHomeLocation);
   const setProfileData = useResidentStore(state => state.setProfileData);
+  const transportationMode = useResidentStore(state => state.transportationMode);
+  const setTransportationMode = useResidentStore(state => state.setTransportationMode);
   const { user, logout } = useAuth();
 
   const [isHomeModalOpen, setIsHomeModalOpen] = useState(false);
+  const [isTransportModalOpen, setIsTransportModalOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [customLat, setCustomLat] = useState(homeLocation ? homeLocation[1].toString() : '6.9185');
   const [customLng, setCustomLng] = useState(homeLocation ? homeLocation[0].toString() : '122.0882');
@@ -35,7 +71,7 @@ export default function ProfileQRScreen({ navigation }) {
   const effectiveName = profile?.name || user?.name || 'Resident';
   const effectiveBarangay = profile?.barangay || user?.family_profile?.barangay || user?.familyProfile?.barangay || 'Tetuan';
   const effectiveHeadcount = profile?.headcount || user?.family_profile?.headcount || user?.familyProfile?.headcount || 1;
-  const effectiveTransportMode = profile?.transportation_mode || user?.family_profile?.transportation_mode || user?.familyProfile?.transportation_mode || 'pedestrian';
+  const effectiveTransportMode = transportationMode || profile?.transportation_mode || user?.family_profile?.transportation_mode || user?.familyProfile?.transportation_mode || 'pedestrian';
   const effectiveQrHash = qrHash || user?.family_profile?.qr_code_hash || user?.familyProfile?.qr_code_hash || `family_hash_${effectiveId}`;
 
   const handleLogout = () => {
@@ -238,7 +274,11 @@ export default function ProfileQRScreen({ navigation }) {
                   Family of {effectiveHeadcount}
                 </Text>
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.surfaceElevated, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+              <TouchableOpacity
+                onPress={() => setIsTransportModalOpen(true)}
+                activeOpacity={0.7}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.surfaceElevated, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}
+              >
                 {effectiveTransportMode === '4_wheel' ? (
                   <Car size={11} color={colors.primary} />
                 ) : effectiveTransportMode === '2_wheel' ? (
@@ -249,7 +289,8 @@ export default function ProfileQRScreen({ navigation }) {
                 <Text style={{ color: colors.textSecondary, fontSize: 10, fontWeight: 'bold' }}>
                   {effectiveTransportMode === '4_wheel' ? 'Car (4-Wheel)' : effectiveTransportMode === '2_wheel' ? 'Bike (2-Wheel)' : 'Walking'}
                 </Text>
-              </View>
+                <Edit3 size={9} color={colors.primary} style={{ marginLeft: 2 }} />
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -302,6 +343,13 @@ export default function ProfileQRScreen({ navigation }) {
           </TouchableOpacity>
 
           {[
+            {
+              title: 'Transportation Mode & Safety',
+              subtitle: `${effectiveTransportMode === '4_wheel' ? '🚗 4-Wheel (Car / SUV)' : effectiveTransportMode === '2_wheel' ? '🏍️ 2-Wheel (Motorcycle)' : '🚶 Walking (Pedestrian)'} · Tap to change mode & safety guidance`,
+              icon: effectiveTransportMode === '4_wheel' ? <Car size={20} color={colors.primary} /> : effectiveTransportMode === '2_wheel' ? <Bike size={20} color={colors.primary} /> : <Footprints size={20} color={colors.primary} />,
+              iconBg: colors.primaryGlow,
+              onPress: () => setIsTransportModalOpen(true),
+            },
             {
               title: 'Pinpoint Home Address',
               subtitle: (Array.isArray(homeLocation) && homeLocation.length >= 2) ? `📍 Home set: ${Number(homeLocation[1]).toFixed(4)}, ${Number(homeLocation[0]).toFixed(4)}` : 'Tap to pinpoint home GPS coordinates for A* routing',
@@ -556,6 +604,145 @@ export default function ProfileQRScreen({ navigation }) {
                 </TouchableOpacity>
               )}
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─── TRANSPORTATION MODE & DISASTER PROTOCOL MODAL ─── */}
+      <Modal
+        visible={isTransportModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsTransportModalOpen(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: colors.modalBackdrop,
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 20,
+        }}>
+          <View style={{
+            width: '100%',
+            maxWidth: 400,
+            maxHeight: '85%',
+            backgroundColor: colors.card,
+            borderRadius: 24,
+            borderWidth: 1.5,
+            borderColor: colors.primary,
+            padding: 20,
+            elevation: 15,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.3,
+            shadowRadius: 12,
+          }}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: colors.primaryGlow,
+                  borderWidth: 1,
+                  borderColor: colors.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  {effectiveTransportMode === '4_wheel' ? (
+                    <Car size={20} color={colors.primary} />
+                  ) : effectiveTransportMode === '2_wheel' ? (
+                    <Bike size={20} color={colors.primary} />
+                  ) : (
+                    <Footprints size={20} color={colors.primary} />
+                  )}
+                </View>
+                <View>
+                  <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '900' }}>Transportation Mode</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 11 }}>A* Routing & Flood Safety Protocols</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setIsTransportModalOpen(false)}>
+                <X size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 10 }}>
+              {TRANSPORTATION_OPTIONS.map((opt) => {
+                const isSelected = effectiveTransportMode === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setTransportationMode(opt.id);
+                      setProfileData({
+                        ...(profile || {}),
+                        transportation_mode: opt.id,
+                      }, effectiveQrHash);
+                      setIsTransportModalOpen(false);
+                      Alert.alert(
+                        'Transportation Mode Updated',
+                        `Switched to ${opt.label}. Evacuation routes on the map will now adapt to this mode.`,
+                        [{ text: 'OK' }]
+                      );
+                    }}
+                    style={{
+                      backgroundColor: isSelected ? (isDarkMode ? 'rgba(56, 189, 248, 0.12)' : '#e0f2fe') : colors.surfaceElevated,
+                      borderWidth: 1.5,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      borderRadius: 16,
+                      padding: 14,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ fontSize: 22 }}>{opt.icon}</Text>
+                        <View>
+                          <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '900' }}>
+                            {opt.label}
+                          </Text>
+                          <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>
+                            {opt.badge}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 11,
+                        borderWidth: 1.5,
+                        borderColor: isSelected ? colors.primary : colors.border,
+                        backgroundColor: isSelected ? colors.primary : 'transparent',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        {isSelected && <Check size={14} color="#ffffff" strokeWidth={3} />}
+                      </View>
+                    </View>
+
+                    {/* Operational Protocols */}
+                    <View style={{
+                      backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.6)' : 'rgba(255, 255, 255, 0.8)',
+                      borderRadius: 10,
+                      padding: 10,
+                      gap: 4,
+                    }}>
+                      <Text style={{ color: colors.successLight, fontSize: 11, lineHeight: 15 }}>
+                        {opt.pros}
+                      </Text>
+                      <Text style={{ color: colors.warning, fontSize: 11, lineHeight: 15 }}>
+                        {opt.floodWarning}
+                      </Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 10.5, lineHeight: 14 }}>
+                        {opt.limits}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
         </View>
       </Modal>

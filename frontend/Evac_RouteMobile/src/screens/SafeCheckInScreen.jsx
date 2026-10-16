@@ -26,8 +26,12 @@ export default function SafeCheckInScreen({ navigation }) {
     if (navigation?.canGoBack?.()) {
       navigation.goBack();
     } else {
-      navigation.navigate('Profile');
+      navigation.navigate('Root', { screen: 'Profile' });
     }
+  };
+
+  const handleReturnToMap = () => {
+    navigation.navigate('Root', { screen: 'Evacuation Map' });
   };
 
   return (
@@ -96,7 +100,7 @@ export default function SafeCheckInScreen({ navigation }) {
 
             <PrimaryButton
               title="Return to Evacuation Map"
-              onPress={() => navigation.navigate('Evacuation Map')}
+              onPress={handleReturnToMap}
               style={{ width: '100%', marginBottom: 12 }}
             />
           </>

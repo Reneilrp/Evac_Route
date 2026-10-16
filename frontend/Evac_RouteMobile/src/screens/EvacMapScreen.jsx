@@ -1831,9 +1831,9 @@ export default function EvacMapScreen({ navigation, route }) {
             flexDirection: 'row',
             alignItems: 'center',
             backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255, 255, 255, 0.96)'),
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 24,
+            paddingHorizontal: 10,
+            paddingVertical: hazards.length > 0 ? 5 : 8,
+            borderRadius: 20,
             borderWidth: 1,
             borderColor: showSituationBrief ? colors.primary : (isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)')),
             elevation: 6,
@@ -1841,28 +1841,38 @@ export default function EvacMapScreen({ navigation, route }) {
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: isDarkMode ? 0.3 : 0.1,
             shadowRadius: 4,
-            gap: 6,
+            gap: 5,
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#22c55e' }} />
-            <Text style={{ color: isHighContrast ? '#FFFF00' : colors.textPrimary, fontSize: 11, fontWeight: 'bold' }}>{shelters.length} Shelters</Text>
-          </View>
-          {hazards.length > 0 && (
-            <>
-              <View style={{ width: 1, height: 12, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)' }} />
+          {hazards.length > 0 ? (
+            <View style={{ flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#ef4444' }} />
-                <Text style={{ color: isDarkMode ? '#f87171' : '#dc2626', fontSize: 11, fontWeight: 'bold' }}>{hazards.length} Hazards</Text>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#22c55e' }} />
+                <Text style={{ color: isHighContrast ? '#FFFF00' : colors.textPrimary, fontSize: 10.5, fontWeight: 'bold' }}>
+                  {shelters.length} Shelters
+                </Text>
               </View>
-            </>
-          )}
-          {isOffline && (
-            <View style={{ backgroundColor: '#eab308', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-              <Text style={{ color: '#0f172a', fontSize: 8, fontWeight: '900' }}>OFFLINE</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#ef4444' }} />
+                <Text style={{ color: isDarkMode ? '#f87171' : '#dc2626', fontSize: 10.5, fontWeight: 'bold' }}>
+                  {hazards.length} Hazards
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#22c55e' }} />
+              <Text style={{ color: isHighContrast ? '#FFFF00' : colors.textPrimary, fontSize: 11, fontWeight: 'bold' }}>
+                {shelters.length} Shelters
+              </Text>
             </View>
           )}
-          <Info size={13} color={colors.textMuted} />
+          {isOffline && (
+            <View style={{ backgroundColor: '#eab308', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4 }}>
+              <Text style={{ color: '#0f172a', fontSize: 7.5, fontWeight: '900' }}>OFFLINE</Text>
+            </View>
+          )}
+          <Info size={12} color={colors.textMuted} />
         </TouchableOpacity>
 
         {/* Right Side: Dual Dropdown Selector Pills (Disasters & Places) */}
