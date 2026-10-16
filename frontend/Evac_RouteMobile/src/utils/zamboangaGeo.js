@@ -129,3 +129,43 @@ export function create20mGeofenceSquare(center) {
   };
 }
 
+/**
+ * Creates a GeoJSON Feature representing a circular polygon of radiusInMeters around center [lng, lat].
+ * @param {[number, number]} center - [lng, lat]
+ * @param {number} radiusInMeters - radius in meters
+ * @param {number} points - number of perimeter vertices
+ * @param {object} properties - optional GeoJSON properties
+ * @returns {object|null} GeoJSON Feature (Polygon)
+ */
+export function createCirclePolygon(center, radiusInMeters, points = 32, properties = {}) {
+  if (!center || center.length < 2) return null;
+  const lng = Number(center[0]);
+  const lat = Number(center[1]);
+  if (isNaN(lng) || isNaN(lat)) return null;
+
+  const radius = Math.max(radiusInMeters || 30, 10);
+  const coords = [];
+  const distanceX = radius / (111320 * Math.cos((lat * Math.PI) / 180));
+  const distanceY = radius / 110540;
+
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * (2 * Math.PI);
+    const x = distanceX * Math.cos(theta);
+    const y = distanceY * Math.sin(theta);
+    coords.push([lng + x, lat + y]);
+  }
+  coords.push(coords[0]);
+
+  return {
+    type: 'Feature',
+    properties: {
+      radiusMeters: radius,
+      ...properties,
+    },
+    geometry: {
+      type: 'Polygon',
+      coordinates: [coords],
+    },
+  };
+}
+

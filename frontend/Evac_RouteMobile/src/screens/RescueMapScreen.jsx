@@ -51,6 +51,7 @@ import {
   ZAMBOANGA_VICTIM_DEFAULT,
   ZAMBOANGA_SHELTER_DEFAULT,
   create20mGeofenceSquare,
+  createCirclePolygon,
 } from '../utils/zamboangaGeo';
 import {
   fetchTacticalRescueRoute,
@@ -124,11 +125,11 @@ export default function RescueMapScreen({ navigation, route }) {
     queryFn: () => api.get('/shelters').then((r) => r.data.data),
   });
 
-  // 3. Fetch Hazards
+  // 3. Fetch Hazards (real-time hazard sync for fast dynamic disaster response)
   const { data: hazardsData } = useQuery({
     queryKey: ['hazards-list-rescue'],
     queryFn: () => api.get('/hazards').then((r) => r.data.data),
-    refetchInterval: 30000,
+    refetchInterval: 3000,
   });
 
   // 4. Fetch Rescue Units
@@ -297,6 +298,27 @@ export default function RescueMapScreen({ navigation, route }) {
     ? simCoords
     : (simulatedLocation || gpsLocation);
 
+  // Periodic rescuer location reporting to CDRRMO EOC Live Map (~3s interval)
+  const activeRescuerLocationRefForSync = useRef(activeRescuerLocation);
+  activeRescuerLocationRefForSync.current = activeRescuerLocation;
+
+  useEffect(() => {
+    const syncLocationToBackend = () => {
+      const coords = activeRescuerLocationRefForSync.current;
+      if (!coords || !Array.isArray(coords) || coords.length < 2) return;
+      api.post('/user/location', {
+        latitude: coords[1],
+        longitude: coords[0],
+      }).catch((_e) => {
+        // Silently tolerate background network variance
+      });
+    };
+
+    syncLocationToBackend();
+    const syncTimer = setInterval(syncLocationToBackend, 3000);
+    return () => clearInterval(syncTimer);
+  }, []);
+
   // Target Destination Coords
   const victimLngLat = useMemo(() => {
     if (effectiveMission?.victim_latitude && effectiveMission?.victim_longitude) {
@@ -382,6 +404,52 @@ export default function RescueMapScreen({ navigation, route }) {
       features: [square],
     };
   }, [activeTargetLngLat]);
+
+  // Memoize GeoJSON FeatureCollection of all active disaster hazards as circular danger zones
+  const hazardCirclesFeatureCollection = useMemo(() => {
+    if (!activeHazards || activeHazards.length === 0) return null;
+    const features = [];
+    activeHazards.forEach((h) => {
+      const lat = parseFloat(h.latitude);
+      const lng = parseFloat(h.longitude);
+      if (isNaN(lat) || isNaN(lng)) return;
+      const type = (h.hazard_type || 'hazard').toLowerCase();
+      const radius = parseFloat(h.radius_meters) || 50;
+
+      let fillColor = 'rgba(239, 68, 68, 0.35)';
+      let borderColor = '#f87171';
+      if (type.includes('fire')) {
+        fillColor = 'rgba(234, 88, 12, 0.35)';
+        borderColor = '#fdba74';
+      } else if (type.includes('flood') || type.includes('water')) {
+        fillColor = 'rgba(2, 132, 199, 0.35)';
+        borderColor = '#38bdf8';
+      } else if (type.includes('landslide')) {
+        fillColor = 'rgba(180, 83, 9, 0.35)';
+        borderColor = '#fde047';
+      } else if (type.includes('earthquake')) {
+        fillColor = 'rgba(147, 51, 234, 0.35)';
+        borderColor = '#d8b4fe';
+      }
+
+      const circleFeature = createCirclePolygon([lng, lat], radius, 32, {
+        id: h.id,
+        hazardType: type,
+        name: h.name || 'Disaster Hazard Zone',
+        fillColor,
+        borderColor,
+      });
+      if (circleFeature) {
+        features.push(circleFeature);
+      }
+    });
+
+    if (features.length === 0) return null;
+    return {
+      type: 'FeatureCollection',
+      features,
+    };
+  }, [activeHazards]);
 
   // Proximity Geofencing Triggers (prevent multiple prompts for same event)
   const hasTriggeredVictimArrival = useRef(false);
@@ -1215,6 +1283,32 @@ export default function RescueMapScreen({ navigation, route }) {
           </Mapbox.ShapeSource>
         )}
 
+        {/* Active Disaster Hazard Circular Warning Zones (Dynamic Flood, Fire, Landslide Polygons) */}
+        {hazardCirclesFeatureCollection && (
+          <Mapbox.ShapeSource
+            id="hazard-circles-source"
+            shape={hazardCirclesFeatureCollection}
+          >
+            <Mapbox.FillLayer
+              id="hazard-circles-fill"
+              style={{
+                fillColor: ['get', 'fillColor'],
+                fillOpacity: isDarkMode ? 0.35 : 0.45,
+              }}
+            />
+            <Mapbox.LineLayer
+              id="hazard-circles-stroke"
+              style={{
+                lineColor: ['get', 'borderColor'],
+                lineWidth: 2.5,
+                lineDasharray: [2, 2],
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+          </Mapbox.ShapeSource>
+        )}
+
         {/* 20m Geofence Perimeter Callout Tag */}
         {activeMission && activeTargetLngLat && (
           <Mapbox.PointAnnotation
@@ -1922,6 +2016,54 @@ export default function RescueMapScreen({ navigation, route }) {
                     : `Barangay: ${activeMission?.barangay || 'Baliwasan'} • Needs: ${activeMission?.special_needs || 'Standard evacuation'}`}
                 </Text>
               </View>
+
+              {/* 1-Click Fallback: Immediate Path Blocked & Tactical Reroute CTA */}
+              {(simPhase === 'en_route' || simPhase === 'transporting' || currentMission?.status === 'en_route' || currentMission?.status === 'transporting' || (isNavigating && !isPaused)) && (
+                <View style={{ marginTop: 8, marginBottom: 8, flexDirection: 'row', gap: 6 }}>
+                  <TouchableOpacity
+                    style={[styles.dockBtn, {
+                      flex: 1,
+                      backgroundColor: '#dc2626',
+                      borderColor: '#f87171',
+                      borderWidth: 1.5,
+                      paddingVertical: 10,
+                      shadowColor: '#dc2626',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.4,
+                      shadowRadius: 4,
+                      elevation: 4,
+                    }]}
+                    onPress={handleDropRoadblock}
+                    activeOpacity={0.75}
+                    accessibilityLabel="Path Blocked Reroute Detour"
+                  >
+                    <Text style={{ fontSize: 16 }}>🚧</Text>
+                    <Text style={[styles.dockBtnTextBold, { color: '#ffffff', fontSize: 12 }]}>
+                      PATH BLOCKED • REROUTE DETOUR
+                    </Text>
+                  </TouchableOpacity>
+
+                  {activeRoadblocks.length > 0 && (
+                    <TouchableOpacity
+                      style={[styles.dockBtn, {
+                        backgroundColor: '#1e293b',
+                        borderColor: '#475569',
+                        borderWidth: 1,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                      }]}
+                      onPress={handleClearRoadblocks}
+                      activeOpacity={0.75}
+                      accessibilityLabel="Reset Roadblock Detours"
+                    >
+                      <RotateCcw size={14} color="#94a3b8" />
+                      <Text style={[styles.dockBtnText, { color: '#94a3b8', fontSize: 11 }]}>
+                        Clear ({activeRoadblocks.length})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
 
               {/* Tactical Action Buttons Row */}
                 {/* Row 1: Communications & Utility Buttons */}

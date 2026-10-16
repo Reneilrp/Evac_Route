@@ -375,9 +375,21 @@ class AuthController extends Controller
             'longitude' => 'required|numeric',
         ]);
 
-        $request->user()->update([
+        $user = $request->user();
+        $user->update([
             'last_latitude' => $validated['latitude'],
             'last_longitude' => $validated['longitude'],
+        ]);
+
+        if ($user->assigned_rescue_unit_id) {
+            \App\Models\RescueUnit::where('id', $user->assigned_rescue_unit_id)->update([
+                'current_latitude' => $validated['latitude'],
+                'current_longitude' => $validated['longitude'],
+            ]);
+        }
+        \App\Models\RescueUnit::where('assigned_personnel_id', $user->id)->update([
+            'current_latitude' => $validated['latitude'],
+            'current_longitude' => $validated['longitude'],
         ]);
 
         return response()->json([

@@ -29,7 +29,7 @@ class RescueMissionController extends Controller
         $units = RescueUnit::with([
             'assignedPersonnel:id,name,email',
             'crewMembers:id,name,email,rescue_role,status,assigned_rescue_unit_id',
-            'activeMission.targetShelter:id,name',
+            'activeMission.targetShelter:id,name,latitude,longitude',
         ])
             ->orderByRaw("CASE status WHEN 'standby' THEN 1 WHEN 'on_scene' THEN 2 WHEN 'en_route' THEN 3 WHEN 'transporting' THEN 4 ELSE 5 END")
             ->get();
@@ -46,9 +46,9 @@ class RescueMissionController extends Controller
     public function missions(Request $request)
     {
         $query = RescueMission::with([
-            'rescueUnit:id,name,call_sign,unit_type,status,contact_number',
-            'targetShelter:id,name,barangay,current_occupancy,max_capacity',
-            'stagingPoint:id,name,facility_type,barangay,current_occupancy,max_capacity',
+            'rescueUnit:id,name,call_sign,unit_type,status,contact_number,current_latitude,current_longitude',
+            'targetShelter:id,name,barangay,current_occupancy,max_capacity,latitude,longitude',
+            'stagingPoint:id,name,facility_type,barangay,current_occupancy,max_capacity,latitude,longitude',
             'dispatcher:id,name',
             'incident:id,name,hazard_type,severity_level,photo_path',
         ]);

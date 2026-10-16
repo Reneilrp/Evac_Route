@@ -1382,6 +1382,10 @@ const MapViewer = React.memo(({
   isResidentNearShelter = false,
   setPinMode = null,
   isCSWDO = false,
+  showRescueUnits = true,
+  activeRescueMissions = [],
+  rescueUnits = [],
+  missionRoutesGeoJSON = null,
 }) => {
   const containerRef = useRef(null);
 
@@ -1960,6 +1964,135 @@ const MapViewer = React.memo(({
 
 
 
+        {/* Active Rescue Unit Operational Mission Corridors */}
+        {showRescueUnits && missionRoutesGeoJSON && (
+          <Source id="active-rescue-routes-source" type="geojson" data={missionRoutesGeoJSON}>
+            <Layer
+              id="active-rescue-routes-glow"
+              type="line"
+              paint={{
+                'line-color': '#0284c7',
+                'line-width': 8,
+                'line-opacity': 0.5,
+              }}
+            />
+            <Layer
+              id="active-rescue-routes-line"
+              type="line"
+              paint={{
+                'line-color': '#38bdf8',
+                'line-width': 3,
+                'line-dasharray': [3, 2],
+              }}
+            />
+          </Source>
+        )}
+
+        {/* Active Distress SOS Victims on Map */}
+        {showRescueUnits && activeRescueMissions.map((m) => {
+          const lat = parseFloat(m.victim_latitude);
+          const lng = parseFloat(m.victim_longitude);
+          if (isNaN(lat) || isNaN(lng) || m.status === 'transporting' || m.status === 'completed') return null;
+
+          return (
+            <Marker
+              key={`distress-victim-${m.id}`}
+              longitude={lng}
+              latitude={lat}
+              anchor="center"
+            >
+              <div className="flex flex-col items-center group relative cursor-pointer">
+                <div className="relative flex items-center justify-center">
+                  <span className="absolute inline-flex h-8 w-8 animate-ping rounded-full bg-red-500 opacity-75"></span>
+                  <div className="relative w-7 h-7 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-[0_0_12px_rgba(239,68,68,0.9)]">
+                    <span className="text-xs">🆘</span>
+                  </div>
+                </div>
+                <div className="bg-slate-950/95 text-red-300 border border-red-500/50 text-[9px] font-black px-1.5 py-0.5 rounded shadow mt-1 whitespace-nowrap">
+                  {m.victim_name || 'Distress Call'} ({m.headcount || 1}pax)
+                </div>
+              </div>
+            </Marker>
+          );
+        })}
+
+        {/* Active Rescue Units (Live GPS Vehicle Tracking) */}
+        {showRescueUnits && rescueUnits.map((unit) => {
+          const lat = parseFloat(unit.current_latitude);
+          const lng = parseFloat(unit.current_longitude);
+          if (isNaN(lat) || isNaN(lng)) return null;
+
+          const activeMission = activeRescueMissions.find((m) => m.rescue_unit_id === unit.id);
+          const isEnRoute = unit.status === 'en_route' || activeMission?.status === 'en_route';
+          const isTransporting = unit.status === 'transporting' || activeMission?.status === 'transporting';
+          const isOnScene = unit.status === 'on_scene' || activeMission?.status === 'on_scene';
+          const isBusy = isEnRoute || isTransporting || isOnScene;
+
+          return (
+            <Marker
+              key={`rescue-unit-marker-${unit.id}`}
+              longitude={lng}
+              latitude={lat}
+              anchor="center"
+            >
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  inspectLocation(lng, lat);
+                }}
+                className="flex flex-col items-center group relative cursor-pointer"
+              >
+                {/* Vehicle Beacon */}
+                <div className="relative flex items-center justify-center">
+                  {isBusy && (
+                    <span className="absolute inline-flex h-9 w-9 animate-ping rounded-full bg-cyan-400 opacity-75"></span>
+                  )}
+                  <div className={`relative w-8 h-8 rounded-full bg-slate-900 border-2 ${isBusy ? 'border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.85)]' : 'border-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]'} flex items-center justify-center hover:scale-110 active:scale-95 transition-transform`}>
+                    <span className="text-sm">🚒</span>
+                  </div>
+                </div>
+
+                {/* Callsign Tag */}
+                <div className="bg-slate-950/95 text-cyan-300 border border-cyan-400/50 text-[10px] font-black px-1.5 py-0.5 rounded shadow-lg mt-1 whitespace-nowrap flex items-center gap-1">
+                  <span>{unit.call_sign || unit.name}</span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isBusy ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+                </div>
+
+                {/* Hover Details Card */}
+                <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col w-64 bg-slate-950/95 border border-cyan-500/40 rounded-xl shadow-2xl p-3 z-50 text-white animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                    <span className="font-black text-xs text-cyan-300">{unit.name} ({unit.call_sign})</span>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${isBusy ? 'bg-amber-950 text-amber-300 border border-amber-500/40' : 'bg-emerald-950 text-emerald-300 border border-emerald-500/40'}`}>
+                      {unit.status}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 space-y-0.5 text-[11px] text-slate-300">
+                    <p>Type: <span className="font-semibold text-white capitalize">{unit.unit_type || 'QRT'}</span></p>
+                    {unit.contact_number && (
+                      <p>Radio: <span className="font-mono text-cyan-300">{unit.contact_number}</span></p>
+                    )}
+                  </div>
+                  {activeMission && (
+                    <div className="mt-2 pt-2 border-t border-white/10 bg-cyan-950/40 -mx-1 px-2 py-1.5 rounded">
+                      <p className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">
+                        Active Mission: {activeMission.control_no}
+                      </p>
+                      <p className="text-[11px] text-white font-medium mt-0.5">
+                        Victim: {activeMission.victim_name} ({activeMission.headcount} pax)
+                      </p>
+                      <p className="text-[10px] text-slate-300">
+                        Phase: <span className="font-bold text-cyan-300 capitalize">{activeMission.status}</span>
+                      </p>
+                    </div>
+                  )}
+                  <p className="text-[9px] text-cyan-400/70 mt-1.5 font-mono">
+                    Live GPS: {lat.toFixed(5)}°N, {lng.toFixed(5)}°E
+                  </p>
+                </div>
+              </div>
+            </Marker>
+          );
+        })}
 
         {/* Local Hydrological & Terrain Simulation Layer */}
         {simulationGeoJSON && simOverlayMode === 'flow' && (
@@ -2525,13 +2658,75 @@ export default function MapDashboard() {
   const [showShelters, setShowShelters] = useState(true);
   const [showHazards, setShowHazards] = useState(true);
   const [showRoadNetwork, setShowRoadNetwork] = useState(true);
+  const [showRescueUnits, setShowRescueUnits] = useState(true);
   const [layersOpen, setLayersOpen] = useState(false);
 
   const { data: dashboardData } = useQuery({
     queryKey: ['map-dashboard'],
     queryFn: () => api.get('/map/dashboard').then(r => r.data),
-    refetchInterval: 30000,
+    refetchInterval: 5000,
   });
+
+  const { data: activeRescueMissions = [] } = useQuery({
+    queryKey: ['active-rescue-missions'],
+    queryFn: () => api.get('/rescue/missions?active_only=1').then(r => r.data.data || []),
+    refetchInterval: 3000,
+  });
+
+  const { data: rescueUnits = [] } = useQuery({
+    queryKey: ['rescue-units-fleet'],
+    queryFn: () => api.get('/rescue/units').then(r => r.data.data || []),
+    refetchInterval: 3000,
+  });
+
+  const missionRoutesGeoJSON = useMemo(() => {
+    if (!showRescueUnits || !activeRescueMissions || activeRescueMissions.length === 0) return null;
+    const features = [];
+
+    activeRescueMissions.forEach((mission) => {
+      const unit = mission.rescue_unit;
+      const uLat = parseFloat(unit?.current_latitude);
+      const uLng = parseFloat(unit?.current_longitude);
+      if (isNaN(uLat) || isNaN(uLng)) return;
+
+      let targetLng, targetLat, targetName;
+      if (mission.status === 'transporting' && mission.target_shelter) {
+        targetLat = parseFloat(mission.target_shelter.latitude);
+        targetLng = parseFloat(mission.target_shelter.longitude);
+        targetName = mission.target_shelter.name || 'Shelter';
+      } else if (mission.victim_latitude && mission.victim_longitude) {
+        targetLat = parseFloat(mission.victim_latitude);
+        targetLng = parseFloat(mission.victim_longitude);
+        targetName = mission.victim_name || 'Victim in Distress';
+      }
+
+      if (targetLat && targetLng && !isNaN(targetLat) && !isNaN(targetLng)) {
+        features.push({
+          type: 'Feature',
+          properties: {
+            missionId: mission.id,
+            controlNo: mission.control_no,
+            unitCallSign: unit.call_sign || unit.name,
+            status: mission.status,
+            targetName,
+          },
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [uLng, uLat],
+              [targetLng, targetLat],
+            ],
+          },
+        });
+      }
+    });
+
+    if (features.length === 0) return null;
+    return {
+      type: 'FeatureCollection',
+      features,
+    };
+  }, [showRescueUnits, activeRescueMissions]);
 
   const { data: roadNetwork } = useQuery({
     queryKey: ['road-network'],
@@ -2831,6 +3026,16 @@ export default function MapDashboard() {
                 className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
               />
               Active Hazard Zones
+            </label>
+
+            <label className="flex items-center gap-3 cursor-pointer hover:text-cyan-400 transition text-xs font-semibold select-none">
+              <input
+                type="checkbox"
+                checked={showRescueUnits}
+                onChange={e => setShowRescueUnits(e.target.checked)}
+                className="rounded border-white/20 text-cyan-500 bg-white/10 focus:ring-0"
+              />
+              Active Rescue Units (Live GPS)
             </label>
 
             {!isCSWDO && (
@@ -3306,6 +3511,10 @@ export default function MapDashboard() {
           residentDistanceKm={residentDistanceKm}
           isResidentNearShelter={isResidentNearShelter}
           setPinMode={setPinMode}
+          showRescueUnits={showRescueUnits}
+          activeRescueMissions={activeRescueMissions}
+          rescueUnits={rescueUnits}
+          missionRoutesGeoJSON={missionRoutesGeoJSON}
         />
         <RiskAlertsDrawer
           hazards={hazards}
