@@ -23,7 +23,7 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
-import { clampToZamboanga, ZAMBOANGA_VICTIM_DEFAULT } from '../utils/zamboangaGeo';
+import { clampToZamboanga, ZAMBOANGA_VICTIM_DEFAULT, ZAMBOANGA_WMSU } from '../utils/zamboangaGeo';
 
 const HAZARD_OPTIONS = [
   {
@@ -109,10 +109,14 @@ export default function EmergencySOSModal({ visible, onClose, initialCoords, onS
             lat = loc.coords.latitude;
             lng = loc.coords.longitude;
           } else {
-            lat = 6.9214;
-            lng = 122.0790;
+            lat = 6.9152;
+            lng = 122.0614;
           }
         }
+
+        const clamped = clampToZamboanga([lng, lat], ZAMBOANGA_WMSU);
+        lng = clamped[0];
+        lat = clamped[1];
 
         if (isMounted) {
           setCoords({ latitude: lat, longitude: lng });
@@ -183,7 +187,7 @@ export default function EmergencySOSModal({ visible, onClose, initialCoords, onS
 
     const clamped = clampToZamboanga(
       coords ? [coords.longitude, coords.latitude] : null,
-      ZAMBOANGA_VICTIM_DEFAULT
+      ZAMBOANGA_WMSU
     );
     const lng = clamped[0];
     const lat = clamped[1];
