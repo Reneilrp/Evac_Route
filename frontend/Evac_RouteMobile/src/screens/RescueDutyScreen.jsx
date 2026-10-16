@@ -109,6 +109,27 @@ export default function RescueDutyScreen({ navigation }) {
     return () => locSub?.remove();
   }, []);
 
+  // Sync standby location to CDRRMO Live Map while on duty hub
+  const rescuerGpsRef = useRef(rescuerGps);
+  rescuerGpsRef.current = rescuerGps;
+
+  useEffect(() => {
+    const syncDutyLocation = () => {
+      const coords = rescuerGpsRef.current;
+      if (!coords || !Array.isArray(coords) || coords.length < 2) return;
+      api.post('/user/location', {
+        latitude: coords[1],
+        longitude: coords[0],
+      }).catch((_e) => {
+        // Silent failure in background
+      });
+    };
+
+    syncDutyLocation();
+    const interval = setInterval(syncDutyLocation, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   const assignedUnit =
     unitsData?.find((u) => u.id === user?.assigned_rescue_unit_id) ||
     (user?.role === 'admin' ? unitsData?.[0] : null);
