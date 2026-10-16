@@ -9,8 +9,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
-  Keyboard,
-  TouchableWithoutFeedback,
+  Pressable,
 } from 'react-native';
 import { ShieldAlert, Eye, EyeOff, Sparkles, Sun, Moon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +22,7 @@ export default function LoginScreen({ navigation }) {
   const { isDarkMode, toggleTheme, colors } = useTheme();
   const styles = useThemedStyles(getStyles);
   const insets = useSafeAreaInsets();
+  const emailInputRef = useRef(null);
   const passwordInputRef = useRef(null);
 
   const [email, setEmail] = useState('');
@@ -109,40 +109,40 @@ export default function LoginScreen({ navigation }) {
   });
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <Animated.View style={[styles.container, { backgroundColor }]}>
-        {/* Top Right Dark/Light Theme Icon Button */}
-        <View style={[styles.topRightThemeContainer, { top: insets.top + (Platform.OS === 'ios' ? 8 : 14) }]}>
-          <TouchableOpacity
-            onPress={toggleTheme}
-            activeOpacity={0.7}
-            style={[
-              styles.themeToggleBtn,
-              isDarkMode ? styles.themeToggleBtnDark : styles.themeToggleBtnLight,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {isDarkMode ? (
-              <Sun size={20} color="#fbbf24" />
-            ) : (
-              <Moon size={20} color="#1e293b" />
-            )}
-          </TouchableOpacity>
-        </View>
-
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardAvoid}
+    <Animated.View style={[styles.container, { backgroundColor }]}>
+      {/* Top Right Dark/Light Theme Icon Button */}
+      <View style={[styles.topRightThemeContainer, { top: insets.top + (Platform.OS === 'ios' ? 8 : 14) }]}>
+        <TouchableOpacity
+          onPress={toggleTheme}
+          activeOpacity={0.7}
+          style={[
+            styles.themeToggleBtn,
+            isDarkMode ? styles.themeToggleBtnDark : styles.themeToggleBtnLight,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
         >
-          <ScrollView
-            contentContainerStyle={[
-              styles.scrollContent,
-              { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 },
-            ]}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
+          {isDarkMode ? (
+            <Sun size={20} color="#fbbf24" />
+          ) : (
+            <Moon size={20} color="#1e293b" />
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboardAvoid}
+      >
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+        >
             {/* Header / Logo */}
             <View style={styles.logoSection}>
               <Animated.View
@@ -219,8 +219,14 @@ export default function LoginScreen({ navigation }) {
 
               {/* Form Section */}
               <View style={styles.formSection}>
-                <Text style={styles.inputLabel}>Email</Text>
+                <Text
+                  style={styles.inputLabel}
+                  onPress={() => emailInputRef.current?.focus()}
+                >
+                  Email
+                </Text>
                 <TextInput
+                  ref={emailInputRef}
                   style={[
                     styles.textInput,
                     isEmailFocused && styles.textInputFocused,
@@ -237,13 +243,21 @@ export default function LoginScreen({ navigation }) {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  autoComplete="email"
+                  textContentType="emailAddress"
                   returnKeyType="next"
                   onSubmitEditing={() => passwordInputRef.current?.focus()}
                   editable={!loading}
                 />
 
-                <Text style={styles.inputLabel}>Password</Text>
-                <View
+                <Text
+                  style={styles.inputLabel}
+                  onPress={() => passwordInputRef.current?.focus()}
+                >
+                  Password
+                </Text>
+                <Pressable
+                  onPress={() => passwordInputRef.current?.focus()}
                   style={[
                     styles.passwordInputContainer,
                     isPasswordFocused && styles.passwordInputContainerFocused,
@@ -264,6 +278,9 @@ export default function LoginScreen({ navigation }) {
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
+                    autoComplete="password"
+                    textContentType="password"
+                    importantForAutofill="yes"
                     returnKeyType="go"
                     onSubmitEditing={handleLoginSubmit}
                     editable={!loading}
@@ -272,6 +289,7 @@ export default function LoginScreen({ navigation }) {
                     style={styles.eyeIconButton}
                     onPress={() => setShowPassword(!showPassword)}
                     activeOpacity={0.7}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   >
                     {showPassword ? (
                       <EyeOff size={18} color={colors.textSecondary} />
@@ -279,7 +297,7 @@ export default function LoginScreen({ navigation }) {
                       <Eye size={18} color={colors.textSecondary} />
                     )}
                   </TouchableOpacity>
-                </View>
+                </Pressable>
 
                 {error ? (
                   <View style={styles.errorBox}>
@@ -318,6 +336,5 @@ export default function LoginScreen({ navigation }) {
           </ScrollView>
         </KeyboardAvoidingView>
       </Animated.View>
-    </TouchableWithoutFeedback>
   );
 }
