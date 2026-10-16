@@ -12,7 +12,7 @@ import {
   Modal,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
@@ -26,19 +26,10 @@ import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { getStyles } from '../styles/ReportIncidentScreen.styles';
 
 const HAZARD_TYPES = [
-  // Natural Hazards
   { value: 'flood', label: '🌊 Flood' },
-  { value: 'earthquake', label: '🏚️ Earthquake' },
-  { value: 'typhoon', label: '🌀 Typhoon / Storm' },
   { value: 'landslide', label: '⛰️ Landslide' },
-  
-  // Man-Made Threats
-  { value: 'siege', label: '⚔️ Siege / Conflict' },
   { value: 'building_fire', label: '🔥 Building Fire' },
-  { value: 'chemical_spill', label: '🧪 Chemical Spill' },
-  { value: 'gas_leak', label: '⚠️ Gas Leak' },
-  { value: 'active_shooter', label: '🚨 Security Threat' },
-  { value: 'structural_collapse', label: '🏗️ Collapse' },
+  { value: 'earthquake', label: '🏚️ Earthquake' },
 ];
 
 const CONTEXTUAL_SEVERITY = {
@@ -70,6 +61,7 @@ const CONTEXTUAL_SEVERITY = {
 };
 
 export default function ReportIncidentScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const { colors, isDarkMode } = useTheme();
   const styles = useThemedStyles(getStyles);
   const queryClient = useQueryClient();
@@ -84,15 +76,9 @@ export default function ReportIncidentScreen({ navigation, route }) {
 
   const HAZARD_HINTS = {
     flood: '🌊 Flood: Note whether water is ankle, knee, or waist-deep, and if light vehicles can pass.',
+    landslide: '⛰️ Landslide: Note whether soil or debris blocks the entire lane or access road.',
     building_fire: '🔥 Fire: Note if structural, commercial, or residential, and if spread is imminent.',
     earthquake: '🏚️ Earthquake: Note structural cracks, collapsed walls, or damaged power lines.',
-    typhoon: '🌀 Typhoon / Storm: Note fallen trees, flooded gutters, or blown iron sheets.',
-    landslide: '⛰️ Landslide: Note whether soil or debris blocks the entire lane or access road.',
-    active_shooter: '🚨 Security Threat: Stay safe. Note location and avoid escalating.',
-    siege: '⚔️ Security Incident: Evacuate immediately if possible and stay hidden.',
-    chemical_spill: '🧪 Chemical Hazard: Avoid fumes and note hazardous container markings.',
-    gas_leak: '⚠️ Gas Leak: Strong odor detected. Avoid electrical sparks or ignition.',
-    structural_collapse: '🏗️ Collapse: Danger of secondary collapse; keep safe perimeter.',
   };
 
   const PHOTO_ROLE_LABELS = [
@@ -641,11 +627,11 @@ export default function ReportIncidentScreen({ navigation, route }) {
               {historyTab === 'archived' ? 'Archived Reports' : 'Incident Reports'}
             </Text>
           </View>
-          <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
-            {historyTab === 'archived'
-              ? 'Past and resolved incident reports history'
-              : 'Community field hazards with GPS & 4 photos'}
-          </Text>
+          {historyTab === 'archived' && (
+            <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
+              Past and resolved incident reports history
+            </Text>
+          )}
         </View>
 
         {/* Header Action Buttons: [+ File Report] & [Archive History] */}
@@ -801,6 +787,7 @@ export default function ReportIncidentScreen({ navigation, route }) {
             borderWidth: 1,
             borderColor: '#fca5a5',
             shadowColor: '#dc2626',
+            paddingHorizontal: 12,
             shadowOffset: { width: 0, height: 3 },
             shadowOpacity: 0.4,
             shadowRadius: 6,
@@ -809,8 +796,13 @@ export default function ReportIncidentScreen({ navigation, route }) {
           activeOpacity={0.85}
         >
           <Text style={{ fontSize: 16 }}>🚨</Text>
-          <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '900', letterSpacing: 0.6 }}>
-            LAUNCH EMERGENCY SOS (ORDER RESCUE)
+          <Text
+            style={{ color: '#ffffff', fontSize: 12.5, fontWeight: '900', letterSpacing: 0.5 }}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
+          >
+            EMERGENCY SOS (ORDER RESCUE)
           </Text>
         </TouchableOpacity>
       </View>
@@ -934,7 +926,7 @@ export default function ReportIncidentScreen({ navigation, route }) {
           data={displayedIncidents}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderIncidentCard}
-          contentContainerStyle={{ padding: 16, paddingBottom: 95 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: Math.max(115, insets.bottom + 100) }}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} colors={[colors.primary]} />
           }
@@ -944,7 +936,10 @@ export default function ReportIncidentScreen({ navigation, route }) {
       {/* Fixed Bottom-Right (+ icon) Floating Action Button - Positioned safely above FloatingDock */}
       <TouchableOpacity
         onPress={() => setShowCreateModal(true)}
-        style={styles.fabRepositioned}
+        style={[
+          styles.fabRepositioned,
+          { bottom: Math.max(88, insets.bottom + 80) },
+        ]}
         activeOpacity={0.85}
         accessibilityLabel="Report New Incident"
       >
@@ -1113,10 +1108,10 @@ export default function ReportIncidentScreen({ navigation, route }) {
               </View>
             )}
 
-            {/* Photos (Up to 4 photos for credibility) */}
+            {/* Photos */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 6 }}>
-              <Text style={styles.label}>Credibility Photos (Up to 4 Photos)</Text>
-              <Text style={{ fontSize: 12, color: colors.textMuted }}>{photos.length}/4 photos</Text>
+              <Text style={styles.label}>Photos</Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted, fontWeight: '700' }}>{photos.length}/4</Text>
             </View>
 
             {photos.length > 0 && (
@@ -1149,7 +1144,7 @@ export default function ReportIncidentScreen({ navigation, route }) {
               <TouchableOpacity style={styles.photoBtn} onPress={showPhotoPicker}>
                 <Camera color={colors.textMuted} size={24} />
                 <Text style={styles.photoBtnText}>
-                  {photos.length === 0 ? 'Tap to add photos (Up to 4 for credibility)' : `Add Photo ${photos.length + 1} of 4 (${PHOTO_ROLE_LABELS[photos.length]})`}
+                  {photos.length === 0 ? 'Tap to add photos' : `Add Photo ${photos.length + 1} of 4 (${PHOTO_ROLE_LABELS[photos.length]})`}
                 </Text>
                 <Text style={styles.photoBtnHint}>Include wide scene, depth indicator & landmarks</Text>
               </TouchableOpacity>
