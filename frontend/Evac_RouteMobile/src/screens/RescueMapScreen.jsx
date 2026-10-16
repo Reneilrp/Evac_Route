@@ -333,13 +333,15 @@ export default function RescueMapScreen({ navigation, route }) {
 
   // Route calculation state
   const [routeData, setRouteData] = useState(null);
+  const [activePolylineCoords, setActivePolylineCoords] = useState(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [mapStyleMode, setMapStyleMode] = useState('default'); // 'default' | 'satellite'
 
-  // Memoize valid GeoJSON FeatureCollection for Mapbox ShapeSource
+  // Memoize valid GeoJSON FeatureCollection for Mapbox ShapeSource (dynamically trimmed)
   const routeFeatureCollection = useMemo(() => {
-    if (!routeData?.coordinates || routeData.coordinates.length < 2) return null;
+    const coords = activePolylineCoords || routeData?.coordinates;
+    if (!coords || coords.length < 2) return null;
     return {
       type: 'FeatureCollection',
       features: [
@@ -348,12 +350,12 @@ export default function RescueMapScreen({ navigation, route }) {
           properties: {},
           geometry: {
             type: 'LineString',
-            coordinates: routeData.coordinates,
+            coordinates: coords,
           },
         },
       ],
     };
-  }, [routeData]);
+  }, [activePolylineCoords, routeData]);
 
   // 20-Meter Visual Geofence Square Feature around active target
   const activeGeofenceSquareFeature = useMemo(() => {
@@ -437,6 +439,7 @@ export default function RescueMapScreen({ navigation, route }) {
       );
       if (result && result.coordinates?.length > 0) {
         setRouteData(result);
+        setActivePolylineCoords(result.coordinates);
         setCurrentStepIndex(0);
       }
     } catch (e) {
@@ -540,6 +543,7 @@ export default function RescueMapScreen({ navigation, route }) {
       if (isSimulationActive) {
         if (simPhase === 'completed' || simPhase === 'standby') {
           setRouteData(null);
+          setActivePolylineCoords(null);
         } else if (activeTargetLngLat && activeRescuerLocation) {
           const targetChanged = !lastTargetRef.current ||
             lastTargetRef.current[0] !== activeTargetLngLat[0] ||
@@ -551,8 +555,10 @@ export default function RescueMapScreen({ navigation, route }) {
         }
       } else if (!showDemoControls && !hasLiveMission) {
         setRouteData(null);
+        setActivePolylineCoords(null);
       } else if (showDemoControls && simulationStep === 5) {
         setRouteData(null);
+        setActivePolylineCoords(null);
       } else if (activeTargetLngLat && activeRescuerLocation) {
         computeRoute(activeRescuerLocation, activeTargetLngLat, activeRoadblocks);
       }
@@ -644,17 +650,23 @@ export default function RescueMapScreen({ navigation, route }) {
 
       setSimCoords([currLng, currLat], heading);
 
-      // Smoothly follow vehicle position & heading without zoom-bouncing
+      // Dynamically trim polyline: show only remaining path ahead of the vehicle
+      if (coords.length > segIdx + 1) {
+        setActivePolylineCoords([[currLng, currLat], ...coords.slice(segIdx + 1)]);
+      }
+
+      // Smoothly follow vehicle position & heading (80ms animation < 100ms interval prevents Fabric queue saturation)
       if (cameraRef.current) {
         cameraRef.current.setCamera({
           centerCoordinate: [currLng, currLat],
           heading,
-          animationDuration: 120,
+          animationDuration: 80,
         });
       }
 
       if (distToTarget <= 20 || currentDist >= totalDist - 10) {
         clearInterval(interval);
+        setActivePolylineCoords(null);
         if (storeState.simPhase === 'en_route') {
           useRescueSimulationStore.getState().setSimPhase('on_scene');
           Vibration.vibrate([0, 200, 100, 300, 100, 400]);
@@ -901,6 +913,7 @@ export default function RescueMapScreen({ navigation, route }) {
   const resetSimulation = () => {
     setSimulatedLocation(null);
     setActiveRoadblocks([]);
+    setActivePolylineCoords(null);
     hasTriggeredVictimArrival.current = false;
     hasTriggeredShelterArrival.current = false;
     if (isSimulationActive) {
@@ -915,6 +928,34 @@ export default function RescueMapScreen({ navigation, route }) {
       });
     }
   };
+
+  const handleBackToDutyHub = useCallback(() => {
+    // 1. Instantly pause simulation navigation to halt interval camera animations and avoid Fabric race condition (Tag 338)
+    if (isSimulationActive) {
+      const store = useRescueSimulationStore.getState();
+      if (store.isNavigating && !store.isPaused) {
+        store.togglePause();
+      }
+    }
+    // 2. Dismiss any open modals
+    setShowVictimArrivalModal(false);
+    setShowShelterArrivalModal(false);
+    setShowStartSimModal(false);
+
+    // 3. Stop active camera animations
+    if (cameraRef.current) {
+      try {
+        cameraRef.current.stop();
+      } catch (_e) {
+        // Safe ignore
+      }
+    }
+
+    // 4. Safely navigate to Duty Hub
+    if (navigation) {
+      navigation.navigate('Rescue');
+    }
+  }, [isSimulationActive, navigation]);
 
   const handleStep5_HandoverAndStandby = () => {
     setSimulationStep(5);
@@ -1250,14 +1291,15 @@ export default function RescueMapScreen({ navigation, route }) {
       )}
 
       {/* ─── TOP TACTICAL NAVIGATION HUD ─── */}
-      <View style={[styles.topHudContainer, { paddingTop: insets.top + spacing.xs }]}>
+      <View style={[styles.topHudContainer, { paddingTop: insets.top + spacing.xs }]} pointerEvents="box-none">
         {/* Header Bar */}
-        <View style={styles.topHudHeader}>
+        <View style={styles.topHudHeader} pointerEvents="auto">
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => navigation.navigate('Rescue')}
-            activeOpacity={0.8}
+            onPress={handleBackToDutyHub}
+            activeOpacity={0.7}
             accessibilityLabel="Back to Duty Hub"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <ArrowLeft size={18} color={isDarkMode ? colors.white : colors.textPrimary} />
             <Text style={styles.backBtnText}>Duty Hub</Text>
@@ -1817,6 +1859,11 @@ export default function RescueMapScreen({ navigation, route }) {
         onRequestClose={() => setShowVictimArrivalModal(false)}
       >
         <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowVictimArrivalModal(false)}
+          />
           <View style={styles.arrivalModalContent}>
             <View style={[styles.arrivalIconCircle, styles.arrivalIconVictim]}>
               <AlertTriangle size={32} color="#ffffff" />
@@ -1883,6 +1930,11 @@ export default function RescueMapScreen({ navigation, route }) {
         onRequestClose={() => setShowShelterArrivalModal(false)}
       >
         <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowShelterArrivalModal(false)}
+          />
           <View style={styles.arrivalModalContent}>
             <View style={[styles.arrivalIconCircle, styles.arrivalIconShelter]}>
               <Building size={32} color="#ffffff" />
@@ -2244,6 +2296,8 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     backgroundColor: isDarkMode ? 'rgba(10, 15, 29, 0.88)' : 'rgba(255, 255, 255, 0.94)',
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    zIndex: 100,
+    elevation: 10,
   },
   topHudHeader: {
     flexDirection: 'row',
