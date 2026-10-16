@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Linking, Alert, Platform, Animated, PanResponder, Vibration, Modal, Pressable } from 'react-native';
-import { AlertTriangle, Navigation, Phone, X, User, ChevronDown, Info, Layers, ShieldAlert, Activity, CheckCircle2, Footprints, Bike, Car, LifeBuoy } from 'lucide-react-native';
+import { AlertTriangle, Navigation, Phone, X, User, ChevronDown, Info, Layers, ShieldAlert, Activity, CheckCircle2, Footprints, Bike, Car, Home } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
@@ -1284,44 +1284,14 @@ export default function EvacMapScreen({ navigation, route }) {
             id="user-location-avatar"
             coordinate={activeUserLocation}
           >
-            <View style={{ alignItems: 'center', justifyContent: 'center', width: 72, height: 72 }}>
-              {/* Outer Pulsing Beacon Aura */}
-              <View style={{
-                position: 'absolute',
-                width: 64,
-                height: 64,
-                borderRadius: 32,
-                backgroundColor: 'rgba(56, 189, 248, 0.35)',
-                borderWidth: 2,
-                borderColor: 'rgba(56, 189, 248, 0.7)',
-              }} />
-
-              {/* Inner Avatar Head Circle */}
-              <View style={{
-                width: 42,
-                height: 42,
-                borderRadius: 21,
-                backgroundColor: '#0284c7',
-                borderWidth: 3,
-                borderColor: '#ffffff',
-                alignItems: 'center',
-                justifyContent: 'center',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.5,
-                shadowRadius: 6,
-                elevation: 12,
-              }}>
-                <User size={22} color="#ffffff" />
-              </View>
-
-              {/* YOU Pill Badge */}
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {/* YOU Pill Badge (ABOVE profile icon) */}
               <View style={{
                 backgroundColor: '#0f172a',
-                paddingHorizontal: 7,
-                paddingVertical: 2,
+                paddingHorizontal: 8,
+                paddingVertical: 2.5,
                 borderRadius: 10,
-                marginTop: -4,
+                marginBottom: 3,
                 borderWidth: 1.5,
                 borderColor: '#38bdf8',
                 elevation: 10,
@@ -1331,6 +1301,39 @@ export default function EvacMapScreen({ navigation, route }) {
                 shadowRadius: 4,
               }}>
                 <Text style={{ color: '#ffffff', fontSize: 10, fontWeight: '900', letterSpacing: 0.5 }}>YOU</Text>
+              </View>
+
+              {/* Profile Avatar Icon & Pulsing Beacon */}
+              <View style={{ alignItems: 'center', justifyContent: 'center', width: 56, height: 56 }}>
+                {/* Outer Pulsing Beacon Aura */}
+                <View style={{
+                  position: 'absolute',
+                  width: 54,
+                  height: 54,
+                  borderRadius: 27,
+                  backgroundColor: 'rgba(56, 189, 248, 0.35)',
+                  borderWidth: 2,
+                  borderColor: 'rgba(56, 189, 248, 0.7)',
+                }} />
+
+                {/* Inner Avatar Head Circle */}
+                <View style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 19,
+                  backgroundColor: '#0284c7',
+                  borderWidth: 2.5,
+                  borderColor: '#ffffff',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.5,
+                  shadowRadius: 6,
+                  elevation: 12,
+                }}>
+                  <User size={20} color="#ffffff" strokeWidth={2.5} />
+                </View>
               </View>
             </View>
           </Mapbox.PointAnnotation>
@@ -1343,11 +1346,33 @@ export default function EvacMapScreen({ navigation, route }) {
             id="home-location-pin"
             coordinate={homeLocation}
           >
-            <View style={{ alignItems: 'center' }}>
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {/* HOME Pill Badge (ABOVE house icon) */}
+              <View style={{
+                backgroundColor: '#0f172a',
+                paddingHorizontal: 7,
+                paddingVertical: 2,
+                borderRadius: 8,
+                marginBottom: 3,
+                borderWidth: 1.5,
+                borderColor: '#38bdf8',
+                elevation: 8,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.4,
+                shadowRadius: 3,
+              }}>
+                <Text style={{ color: '#38bdf8', fontSize: 9.5, fontWeight: '900', letterSpacing: 0.5 }}>HOME</Text>
+              </View>
+
+              {/* House Icon Circle */}
               <View style={{
                 backgroundColor: '#0284c7',
-                padding: 7,
-                borderRadius: 18,
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                alignItems: 'center',
+                justifyContent: 'center',
                 borderWidth: 2.5,
                 borderColor: '#ffffff',
                 elevation: 10,
@@ -1356,18 +1381,7 @@ export default function EvacMapScreen({ navigation, route }) {
                 shadowOpacity: 0.6,
                 shadowRadius: 8,
               }}>
-                <Text style={{ fontSize: 16 }}>🏠</Text>
-              </View>
-              <View style={{
-                backgroundColor: '#0f172a',
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-                borderRadius: 8,
-                marginTop: -4,
-                borderWidth: 1,
-                borderColor: '#38bdf8',
-              }}>
-                <Text style={{ color: '#38bdf8', fontSize: 9, fontWeight: '900' }}>HOME</Text>
+                <Home size={19} color="#ffffff" strokeWidth={2.5} />
               </View>
             </View>
           </Mapbox.PointAnnotation>
@@ -2305,52 +2319,6 @@ export default function EvacMapScreen({ navigation, route }) {
           <Navigation size={18} color={colors.textPrimary} />
         </TouchableOpacity>
 
-        {/* Emergency Rescue SOS Dispatch Trigger */}
-        <TouchableOpacity
-          onPress={() => {
-            Vibration.vibrate(80);
-            setShowSOSModal(true);
-          }}
-          style={[
-            styles.mapStyleBtn,
-            {
-              backgroundColor: '#dc2626',
-              borderColor: '#fca5a5',
-              borderWidth: 1.5,
-              elevation: 8,
-              shadowColor: '#dc2626',
-              shadowOpacity: 0.5,
-              shadowRadius: 6,
-            },
-          ]}
-          accessibilityLabel="Emergency SOS Distress Signal"
-        >
-          <LifeBuoy size={20} color="#ffffff" strokeWidth={2.5} />
-        </TouchableOpacity>
-
-        {/* Report Hazard at Map Pin */}
-        <TouchableOpacity
-          onPress={() => {
-            Vibration.vibrate(50);
-            const targetCoords = activeUserLocation
-              ? { latitude: activeUserLocation[1], longitude: activeUserLocation[0] }
-              : (mapCenter ? { latitude: mapCenter[1], longitude: mapCenter[0] } : null);
-            navigation.navigate('Report Hazard', {
-              openCreate: true,
-              initialCoords: targetCoords,
-            });
-          }}
-          style={[
-            styles.mapStyleBtn,
-            {
-              backgroundColor: colors.warning,
-              borderColor: '#f59e0b',
-            },
-          ]}
-          accessibilityLabel="Report Hazard at Current Location"
-        >
-          <AlertTriangle size={18} color="#ffffff" strokeWidth={2.5} />
-        </TouchableOpacity>
 
         {/* High Contrast Mode Toggle */}
         <TouchableOpacity
