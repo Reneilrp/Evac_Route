@@ -63,7 +63,7 @@ export function getRescuerCapabilityProfile(assignedUnit, user) {
  * 1. Critical impassable hazards (must detour even for rescue units)
  * 2. Passable / penetrable hazards (can wade or boat through)
  */
-export function evaluateHazardsForRescuer(hazards, capability) {
+export function evaluateHazardsForRescuer(hazards, capability, customRoadblocks = []) {
   const activeList = (hazards || []).filter(
     (h) =>
       h &&
@@ -78,7 +78,7 @@ export function evaluateHazardsForRescuer(hazards, capability) {
   for (const h of activeList) {
     const isCriticalSeverity = (h.severity_level || '').toLowerCase() === 'critical';
     const isSevereBlockade =
-      ['debris', 'structural_collapse', 'siege', 'chemical'].includes(h.hazard_type) &&
+      ['debris', 'structural_collapse', 'roadblock', 'wall_collapse', 'siege', 'chemical'].includes(h.hazard_type) &&
       (h.severity_level === 'high' || isCriticalSeverity);
 
     if (capability.isWaterCraft) {
@@ -112,6 +112,21 @@ export function evaluateHazardsForRescuer(hazards, capability) {
     }
   }
 
+  // Inject user-dropped field roadblocks as absolute critical obstacles (impassable to ALL vehicles)
+  for (const rb of (customRoadblocks || [])) {
+    if (rb && rb.latitude && rb.longitude) {
+      criticalObstacles.push({
+        id: rb.id || `rb-${Date.now()}`,
+        name: rb.label || 'Field Roadblock (Wall/Debris)',
+        hazard_type: 'structural_collapse',
+        severity_level: 'critical',
+        latitude: parseFloat(rb.latitude),
+        longitude: parseFloat(rb.longitude),
+        radius_meters: parseFloat(rb.radius_meters || 50),
+      });
+    }
+  }
+
   return { criticalObstacles, passableFloods };
 }
 
@@ -123,42 +138,51 @@ export async function fetchTacticalRescueRoute(
   endCoord,
   token,
   capability = { isWaterCraft: false, isHighClearanceTruck: true },
-  hazards = []
+  hazards = [],
+  customRoadblocks = []
 ) {
   if (!startCoord || !endCoord) return null;
 
-  const { criticalObstacles, passableFloods } = evaluateHazardsForRescuer(hazards, capability);
+  const { criticalObstacles, passableFloods } = evaluateHazardsForRescuer(hazards, capability, customRoadblocks);
 
   // If critical obstacles exist, build Mapbox exclude points so the router forces a tactical detour
   let excludeParam = '';
   if (criticalObstacles.length > 0) {
     const excludePoints = [];
-    for (const h of criticalObstacles.slice(0, 3)) {
+    for (const h of criticalObstacles.slice(0, 5)) {
       const cLng = parseFloat(h.longitude);
       const cLat = parseFloat(h.latitude);
-      const radMeters = parseFloat(h.radius_meters || 120);
+      const radMeters = parseFloat(h.radius_meters || 50);
 
       const deltaLat = radMeters / 111320;
       const cosLat = Math.cos((cLat * Math.PI) / 180);
       const deltaLng = radMeters / (111320 * (cosLat > 0 ? cosLat : 1));
 
-      excludePoints.push(`point(${cLng} ${cLat})`);
-      excludePoints.push(`point(${cLng} ${(cLat + deltaLat).toFixed(6)})`);
-      excludePoints.push(`point(${cLng} ${(cLat - deltaLat).toFixed(6)})`);
-      excludePoints.push(`point(${(cLng + deltaLng).toFixed(6)} ${cLat})`);
-      excludePoints.push(`point(${(cLng - deltaLng).toFixed(6)} ${cLat})`);
+      excludePoints.push(`point(${cLng.toFixed(6)} ${cLat.toFixed(6)})`);
+      excludePoints.push(`point(${cLng.toFixed(6)} ${(cLat + deltaLat).toFixed(6)})`);
+      excludePoints.push(`point(${cLng.toFixed(6)} ${(cLat - deltaLat).toFixed(6)})`);
+      excludePoints.push(`point(${(cLng + deltaLng).toFixed(6)} ${cLat.toFixed(6)})`);
+      excludePoints.push(`point(${(cLng - deltaLng).toFixed(6)} ${cLat.toFixed(6)})`);
     }
     if (excludePoints.length > 0) {
-      excludeParam = `&exclude=${encodeURIComponent(excludePoints.slice(0, 10).join(','))}`;
+      excludeParam = `&exclude=${encodeURIComponent(excludePoints.slice(0, 15).join(','))}`;
     }
   }
 
   // 1. Try Mapbox Driving with critical obstacles excluded (passable floods are NOT excluded!)
   if (token) {
     try {
-      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startCoord[0]},${startCoord[1]};${endCoord[0]},${endCoord[1]}?geometries=geojson&overview=full&steps=true${excludeParam}&access_token=${token}`;
-      const res = await fetch(url);
-      const data = await res.json();
+      let url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startCoord[0]},${startCoord[1]};${endCoord[0]},${endCoord[1]}?geometries=geojson&overview=full&steps=true${excludeParam}&access_token=${token}`;
+      let res = await fetch(url);
+      let data = await res.json();
+
+      // If strict multi-exclusion fails to find any route, retry with center-only exclusions
+      if ((!data.routes || data.routes.length === 0) && excludeParam && criticalObstacles.length > 0) {
+        const centerOnly = criticalObstacles.slice(0, 4).map(h => `point(${parseFloat(h.longitude).toFixed(6)} ${parseFloat(h.latitude).toFixed(6)})`).join(',');
+        url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startCoord[0]},${startCoord[1]};${endCoord[0]},${endCoord[1]}?geometries=geojson&overview=full&steps=true&exclude=${encodeURIComponent(centerOnly)}&access_token=${token}`;
+        res = await fetch(url);
+        data = await res.json();
+      }
 
       if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
         const route = data.routes[0];

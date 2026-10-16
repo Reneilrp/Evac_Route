@@ -419,8 +419,11 @@ export default function RescueMapScreen({ navigation, route }) {
     };
   }, []);
 
-  // Compute Route to Active Target whenever Target Coords or Mode change
-  const computeRoute = useCallback(async (start, end) => {
+  // Multi-Roadblock Tracking State (Dynamic Obstacles like Collapsed Walls, Concrete Debris)
+  const [activeRoadblocks, setActiveRoadblocks] = useState([]);
+
+  // Compute Route to Active Target whenever Target Coords, Mode, or Roadblocks change
+  const computeRoute = useCallback(async (start, end, customRoadblocks = activeRoadblocks) => {
     if (!start || !end) return;
     setIsLoadingRoute(true);
     try {
@@ -429,7 +432,8 @@ export default function RescueMapScreen({ navigation, route }) {
         end,
         MAPBOX_PUBLIC_TOKEN,
         rescuerProfile,
-        activeHazards
+        activeHazards,
+        customRoadblocks
       );
       if (result && result.coordinates?.length > 0) {
         setRouteData(result);
@@ -440,7 +444,93 @@ export default function RescueMapScreen({ navigation, route }) {
     } finally {
       setIsLoadingRoute(false);
     }
-  }, [rescuerProfile, activeHazards]);
+  }, [rescuerProfile, activeHazards, activeRoadblocks]);
+
+  // Drop Physical Roadblock ahead on the current route and dynamically recalculate detour
+  const handleDropRoadblock = useCallback(() => {
+    const currentPos = (isSimulationActive && simCoords) ? simCoords : activeRescuerLocation;
+    const target = activeTargetLngLat;
+    if (!currentPos || !target) {
+      Alert.alert('No Active Route', 'Start navigation or simulation before reporting a roadblock.');
+      return;
+    }
+
+    let obstacleCoord = null;
+
+    // 1. Try to find point ~45m ahead along the current route coordinates
+    if (routeData?.coordinates && routeData.coordinates.length >= 2) {
+      const coords = routeData.coordinates;
+      let closestIdx = 0;
+      let minDistance = Infinity;
+      for (let i = 0; i < coords.length; i++) {
+        const d = getHaversineDistanceMeters(currentPos[1], currentPos[0], coords[i][1], coords[i][0]);
+        if (d < minDistance) {
+          minDistance = d;
+          closestIdx = i;
+        }
+      }
+
+      let accumulated = 0;
+      for (let i = closestIdx; i < coords.length - 1; i++) {
+        const segD = getHaversineDistanceMeters(coords[i][1], coords[i][0], coords[i + 1][1], coords[i + 1][0]);
+        if (accumulated + segD >= 45) {
+          const remain = 45 - accumulated;
+          const ratio = segD > 0 ? remain / segD : 0;
+          obstacleCoord = [
+            coords[i][0] + (coords[i + 1][0] - coords[i][0]) * ratio,
+            coords[i][1] + (coords[i + 1][1] - coords[i][1]) * ratio,
+          ];
+          break;
+        }
+        accumulated += segD;
+      }
+
+      if (!obstacleCoord && coords.length > closestIdx + 1) {
+        obstacleCoord = coords[Math.min(closestIdx + 2, coords.length - 1)];
+      }
+    }
+
+    // 2. Fallback: project 45m ahead along current heading
+    if (!obstacleCoord) {
+      const heading = isSimulationActive ? (simHeading || 0) : (deviceHeading || 0);
+      const headingRad = (heading * Math.PI) / 180;
+      const dMeters = 45;
+      const dLat = (dMeters * Math.cos(headingRad)) / 111320;
+      const dLng = (dMeters * Math.sin(headingRad)) / (111320 * Math.cos((currentPos[1] * Math.PI) / 180));
+      obstacleCoord = [currentPos[0] + dLng, currentPos[1] + dLat];
+    }
+
+    const newBlockade = {
+      id: `roadblock-${Date.now()}-${activeRoadblocks.length + 1}`,
+      number: activeRoadblocks.length + 1,
+      latitude: obstacleCoord[1],
+      longitude: obstacleCoord[0],
+      label: `Roadblock #${activeRoadblocks.length + 1}`,
+      radius_meters: 50,
+      timestamp: Date.now(),
+    };
+
+    const nextRoadblocks = [...activeRoadblocks, newBlockade];
+    setActiveRoadblocks(nextRoadblocks);
+    Vibration.vibrate([0, 60, 40, 60]);
+
+    // Recalculate route starting immediately from the vehicle's current position to target with updated roadblocks
+    computeRoute(currentPos, target, nextRoadblocks);
+  }, [isSimulationActive, simCoords, activeRescuerLocation, activeTargetLngLat, routeData, simHeading, deviceHeading, activeRoadblocks, computeRoute]);
+
+  // Clear all dropped roadblocks and restore optimal route
+  const handleClearRoadblocks = useCallback(() => {
+    if (activeRoadblocks.length === 0) return;
+    const currentPos = (isSimulationActive && simCoords) ? simCoords : activeRescuerLocation;
+    const target = activeTargetLngLat;
+    setActiveRoadblocks([]);
+    Vibration.vibrate(40);
+    if (currentPos && target) {
+      computeRoute(currentPos, target, []);
+    }
+  }, [activeRoadblocks, isSimulationActive, simCoords, activeRescuerLocation, activeTargetLngLat, computeRoute]);
+
+  const lastTargetRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -451,18 +541,24 @@ export default function RescueMapScreen({ navigation, route }) {
         if (simPhase === 'completed' || simPhase === 'standby') {
           setRouteData(null);
         } else if (activeTargetLngLat && activeRescuerLocation) {
-          computeRoute(activeRescuerLocation, activeTargetLngLat);
+          const targetChanged = !lastTargetRef.current ||
+            lastTargetRef.current[0] !== activeTargetLngLat[0] ||
+            lastTargetRef.current[1] !== activeTargetLngLat[1];
+          if (!routeData || targetChanged) {
+            lastTargetRef.current = activeTargetLngLat;
+            computeRoute(activeRescuerLocation, activeTargetLngLat, activeRoadblocks);
+          }
         }
       } else if (!showDemoControls && !hasLiveMission) {
         setRouteData(null);
       } else if (showDemoControls && simulationStep === 5) {
         setRouteData(null);
       } else if (activeTargetLngLat && activeRescuerLocation) {
-        computeRoute(activeRescuerLocation, activeTargetLngLat);
+        computeRoute(activeRescuerLocation, activeTargetLngLat, activeRoadblocks);
       }
     }, 50);
     return () => clearTimeout(timer);
-  }, [computeRoute, activeRescuerLocation, activeTargetLngLat, isTransportPhase, currentMission, showDemoControls, simulationStep, isSimulationActive, simPhase]);
+  }, [computeRoute, activeRescuerLocation, activeTargetLngLat, currentMission, showDemoControls, simulationStep, isSimulationActive, simPhase, routeData, activeRoadblocks]);
 
   // ─── TACTICAL 10M/S SIMULATION MOVEMENT ENGINE ───
   const traveledDistanceRef = useRef(0);
@@ -804,6 +900,7 @@ export default function RescueMapScreen({ navigation, route }) {
 
   const resetSimulation = () => {
     setSimulatedLocation(null);
+    setActiveRoadblocks([]);
     hasTriggeredVictimArrival.current = false;
     hasTriggeredShelterArrival.current = false;
     if (isSimulationActive) {
@@ -1129,6 +1226,26 @@ export default function RescueMapScreen({ navigation, route }) {
             </Mapbox.PointAnnotation>
           );
         })}
+
+        {/* 5. Field Roadblocks (Impassable Obstacles) */}
+        {activeRoadblocks.map((rb) => (
+          <Mapbox.PointAnnotation
+            key={`roadblock-${rb.id}`}
+            id={`roadblock-${rb.id}`}
+            coordinate={[rb.longitude, rb.latitude]}
+          >
+            <View style={styles.roadblockMarkerWrap}>
+              <View style={styles.roadblockPinCircle}>
+                <Text style={{ fontSize: 15 }}>🚧</Text>
+              </View>
+              <View style={styles.roadblockCallout}>
+                <Text style={styles.roadblockCalloutText}>
+                  {`BLOCKADE #${rb.number || 1}`}
+                </Text>
+              </View>
+            </View>
+          </Mapbox.PointAnnotation>
+        ))}
       </Mapbox.MapView>
       )}
 
@@ -1239,6 +1356,26 @@ export default function RescueMapScreen({ navigation, route }) {
         >
           <Crosshair size={20} color="#38bdf8" />
         </TouchableOpacity>
+
+        {/* 1-Tap Roadblock Injection (Collapsed Wall / Concrete Barrier) */}
+        <TouchableOpacity
+          style={[styles.floatingBtn, { backgroundColor: '#dc2626', borderColor: '#f87171' }]}
+          onPress={handleDropRoadblock}
+          accessibilityLabel="Drop Physical Roadblock Ahead"
+        >
+          <Text style={{ fontSize: 16 }}>🚧</Text>
+        </TouchableOpacity>
+
+        {/* Clear Roadblocks Button (Shown when roadblocks exist) */}
+        {activeRoadblocks.length > 0 && (
+          <TouchableOpacity
+            style={[styles.floatingBtn, { backgroundColor: '#0284c7', borderColor: '#38bdf8' }]}
+            onPress={handleClearRoadblocks}
+            accessibilityLabel="Clear Roadblocks"
+          >
+            <RotateCcw size={18} color="#ffffff" />
+          </TouchableOpacity>
+        )}
 
         {/* Disaster Situational View Toggle Button */}
         <TouchableOpacity
@@ -1431,6 +1568,21 @@ export default function RescueMapScreen({ navigation, route }) {
               >
                 <FastForward size={14} color="#ffffff" />
                 <Text style={styles.simSkipBtnText}>20m</Text>
+              </TouchableOpacity>
+
+              {/* Drop Roadblock Ahead (Wall / Barrier Encounter) */}
+              <TouchableOpacity
+                style={[
+                  styles.simSkipBtn,
+                  { backgroundColor: '#dc2626' },
+                  (!isNavigating || isPaused || simPhase === 'on_scene' || simPhase === 'shelter_arrival' || simPhase === 'completed') && styles.simBtnDisabled,
+                ]}
+                onPress={handleDropRoadblock}
+                disabled={!isNavigating || isPaused || simPhase === 'on_scene' || simPhase === 'shelter_arrival' || simPhase === 'completed'}
+                accessibilityLabel="Report Impassable Roadblock Ahead"
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13 }}>🚧</Text>
               </TouchableOpacity>
 
               {/* Stop / Reset Simulation */}
@@ -2046,6 +2198,40 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     borderColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  roadblockMarkerWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roadblockPinCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#dc2626',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  roadblockCallout: {
+    marginTop: 3,
+    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#f87171',
+  },
+  roadblockCalloutText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.3,
   },
 
   /* ─── TOP TACTICAL HUD ─── */
