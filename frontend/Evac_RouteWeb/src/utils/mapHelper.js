@@ -22,6 +22,25 @@ export function createCirclePolygon(center, radiusInMeters, points = 64) {
   };
 }
 
+// --- Helper: Road Hazard Corridor Line Generator (High-Visibility Road Line instead of Circle) ---
+export function createHazardRoadCorridorLine(center, radiusInMeters = 50) {
+  const [lng, lat] = center;
+  const radius = Math.max(30, radiusInMeters);
+  const distanceX = radius / (111320 * Math.cos((lat * Math.PI) / 180));
+  const distanceY = radius / 110540;
+
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'LineString',
+      coordinates: [
+        [lng - distanceX * 0.9, lat - distanceY * 0.45],
+        [lng + distanceX * 0.9, lat + distanceY * 0.45],
+      ],
+    },
+  };
+}
+
 // --- Helper: Convert Web Mercator pixel coordinates to Lng/Lat ---
 export function tilePixelToLngLat(tx, ty, px, py, zoom) {
   const n = Math.pow(2, zoom);

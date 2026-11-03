@@ -14,7 +14,7 @@ import { useAuth } from '../context/AuthContext';
 import ConfirmationModal from '../components/common/ConfirmationModal';
 import ProactiveDisasterModal from '../components/disaster/ProactiveDisasterModal';
 import { showSuccess, showError } from '../utils/toast';
-import { createCirclePolygon, getHaversineDistance } from '../utils/mapHelper';
+import { createCirclePolygon, createHazardRoadCorridorLine, getHaversineDistance } from '../utils/mapHelper';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
@@ -1664,9 +1664,9 @@ const MapViewer = React.memo(({
       const lng = parseFloat(h.longitude);
       const lat = parseFloat(h.latitude);
       const rad = parseFloat(h.radius_meters || 50);
-      const circleFeat = createCirclePolygon([lng, lat], rad);
+      const lineFeat = createHazardRoadCorridorLine([lng, lat], rad);
       return {
-        ...circleFeat,
+        ...lineFeat,
         properties: {
           id: h.id,
           name: h.name,
@@ -1798,35 +1798,24 @@ const MapViewer = React.memo(({
           </Source>
         )}
 
-        {/* Hazard Zone Circles (Active Emergency Hazards) */}
+        {/* Hazard Zone Road Corridors (Active Emergency Hazards: Line instead of Circle) */}
         {showHazards && (
           <Source id="hazards-source" type="geojson" data={activeHazardsGeoJSON}>
-            {/* Shaded Area Fill */}
+            {/* Outer Casing / High-Contrast Black Halo */}
             <Layer
-              id="hazards-circle-fill"
-              type="fill"
+              id="hazards-line-casing"
+              type="line"
               paint={{
-                'fill-color': [
-                  'match',
-                  ['get', 'hazard_type'],
-                  'flood', ['match', ['get', 'severity_level'], 'low', '#60a5fa', 'medium', '#3b82f6', 'high', '#ef4444', '#3b82f6'],
-                  'landslide', ['match', ['get', 'severity_level'], 'low', '#d97706', 'medium', '#b45309', 'high', '#78350f', '#b45309'],
-                  'building_fire', ['match', ['get', 'severity_level'], 'low', '#f97316', 'medium', '#ea580c', 'high', '#dc2626', '#ea580c'],
-                  'earthquake', '#ef4444',
-                  '#ef4444'
-                ],
-                'fill-opacity': [
-                  'match',
-                  ['get', 'severity_level'],
-                  'high', 0.32,
-                  'medium', 0.22,
-                  0.15
-                ],
+                'line-color': '#000000',
+                'line-width': 9,
+                'line-opacity': 0.95,
+                'line-cap': 'round',
+                'line-join': 'round',
               }}
             />
-            {/* Outer Perimeter Circle Border */}
+            {/* Core Road Hazard Line Corridor */}
             <Layer
-              id="hazards-circle-border"
+              id="hazards-line-core"
               type="line"
               paint={{
                 'line-color': [
@@ -1838,8 +1827,10 @@ const MapViewer = React.memo(({
                   'earthquake', '#ef4444',
                   '#ef4444'
                 ],
-                'line-width': 2.5,
-                'line-opacity': 0.85,
+                'line-width': 5.5,
+                'line-opacity': 1.0,
+                'line-cap': 'round',
+                'line-join': 'round',
               }}
             />
           </Source>
@@ -1848,16 +1839,26 @@ const MapViewer = React.memo(({
         {/* Flood Susceptibility Zones (Prone Areas / Passive) */}
         {showHazards && (
           <Source id="susceptible-source" type="geojson" data={susceptibleGeoJSON}>
-            <Layer id="susceptible-fill" type="fill" paint={{
-              'fill-color': '#38bdf8', /* Light Blue */
-              'fill-opacity': 0.15,
-              'fill-color-transition': { duration: 300 },
-            }} />
-            <Layer id="susceptible-line" type="line" paint={{
-              'line-color': '#7dd3fc',
-              'line-width': 2,
-              'line-dasharray': ['literal', [4, 4]]
-            }} />
+            <Layer
+              id="susceptible-line-casing"
+              type="line"
+              paint={{
+                'line-color': '#000000',
+                'line-width': 6,
+                'line-opacity': 0.6,
+                'line-cap': 'round',
+              }}
+            />
+            <Layer
+              id="susceptible-line"
+              type="line"
+              paint={{
+                'line-color': '#38bdf8',
+                'line-width': 3.5,
+                'line-dasharray': ['literal', [4, 4]],
+                'line-cap': 'round',
+              }}
+            />
           </Source>
         )}
 
@@ -1993,28 +1994,31 @@ const MapViewer = React.memo(({
             )}
           </Marker>
         )}
-        {/* Drawing Circle Polygon Preview (Dynamic Hazard Reach) */}
+        {/* Drawing Road Hazard Line Corridor Preview (Dynamic Hazard Reach: Line instead of Circle) */}
         {pendingLocation && isDrawingRadius && drawingRadiusMeters > 0 && (
           <Source
             id="drawing-hazard-source"
             type="geojson"
-            data={createCirclePolygon([pendingLocation.longitude, pendingLocation.latitude], drawingRadiusMeters)}
+            data={createHazardRoadCorridorLine([pendingLocation.longitude, pendingLocation.latitude], drawingRadiusMeters)}
           >
             <Layer
-              id="drawing-hazard-layer"
-              type="fill"
+              id="drawing-hazard-casing"
+              type="line"
               paint={{
-                'fill-color': '#ef4444',
-                'fill-opacity': 0.28,
+                'line-color': '#000000',
+                'line-width': 9,
+                'line-opacity': 0.9,
+                'line-cap': 'round',
               }}
             />
             <Layer
-              id="drawing-hazard-outline"
+              id="drawing-hazard-core"
               type="line"
               paint={{
                 'line-color': '#ef4444',
-                'line-width': 3,
-                'line-dasharray': [3, 2],
+                'line-width': 5,
+                'line-dasharray': ['literal', [3, 2]],
+                'line-cap': 'round',
               }}
             />
           </Source>

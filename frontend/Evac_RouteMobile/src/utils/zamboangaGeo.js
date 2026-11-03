@@ -168,3 +168,36 @@ export function createCirclePolygon(center, radiusInMeters, points = 32, propert
   };
 }
 
+/**
+ * Creates a GeoJSON Feature representing a road hazard corridor line segment (Line instead of Circle)
+ * @param {[number, number]} center - [lng, lat]
+ * @param {number} radiusInMeters - radius in meters
+ * @param {object} properties - optional GeoJSON properties
+ * @returns {object|null} GeoJSON Feature (LineString)
+ */
+export function createHazardRoadCorridorLine(center, radiusInMeters = 50, properties = {}) {
+  if (!center || center.length < 2) return null;
+  const lng = Number(center[0]);
+  const lat = Number(center[1]);
+  if (isNaN(lng) || isNaN(lat)) return null;
+
+  const radius = Math.max(30, radiusInMeters || 50);
+  const distanceX = radius / (111320 * Math.cos((lat * Math.PI) / 180));
+  const distanceY = radius / 110540;
+
+  return {
+    type: 'Feature',
+    properties: {
+      radiusMeters: radius,
+      ...properties,
+    },
+    geometry: {
+      type: 'LineString',
+      coordinates: [
+        [lng - distanceX * 0.9, lat - distanceY * 0.45],
+        [lng + distanceX * 0.9, lat + distanceY * 0.45],
+      ],
+    },
+  };
+}
+

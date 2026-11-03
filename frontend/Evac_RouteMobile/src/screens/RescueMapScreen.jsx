@@ -52,7 +52,7 @@ import {
   ZAMBOANGA_VICTIM_DEFAULT,
   ZAMBOANGA_SHELTER_DEFAULT,
   create20mGeofenceSquare,
-  createCirclePolygon,
+  createHazardRoadCorridorLine,
 } from '../utils/zamboangaGeo';
 import {
   fetchTacticalRescueRoute,
@@ -406,8 +406,8 @@ export default function RescueMapScreen({ navigation, route }) {
     };
   }, [activeTargetLngLat]);
 
-  // Memoize GeoJSON FeatureCollection of all active disaster hazards as circular danger zones
-  const hazardCirclesFeatureCollection = useMemo(() => {
+  // Memoize GeoJSON FeatureCollection of all active disaster hazards as road corridor lines (Line instead of Circle)
+  const hazardLinesFeatureCollection = useMemo(() => {
     if (!activeHazards || activeHazards.length === 0) return null;
     const features = [];
     activeHazards.forEach((h) => {
@@ -417,31 +417,25 @@ export default function RescueMapScreen({ navigation, route }) {
       const type = (h.hazard_type || 'hazard').toLowerCase();
       const radius = parseFloat(h.radius_meters) || 50;
 
-      let fillColor = 'rgba(239, 68, 68, 0.35)';
-      let borderColor = '#f87171';
+      let lineColor = '#ef4444';
       if (type.includes('fire')) {
-        fillColor = 'rgba(234, 88, 12, 0.35)';
-        borderColor = '#fdba74';
+        lineColor = '#ea580c';
       } else if (type.includes('flood') || type.includes('water')) {
-        fillColor = 'rgba(2, 132, 199, 0.35)';
-        borderColor = '#38bdf8';
+        lineColor = '#0284c7';
       } else if (type.includes('landslide')) {
-        fillColor = 'rgba(180, 83, 9, 0.35)';
-        borderColor = '#fde047';
+        lineColor = '#d97706';
       } else if (type.includes('earthquake')) {
-        fillColor = 'rgba(147, 51, 234, 0.35)';
-        borderColor = '#d8b4fe';
+        lineColor = '#9333ea';
       }
 
-      const circleFeature = createCirclePolygon([lng, lat], radius, 32, {
+      const lineFeature = createHazardRoadCorridorLine([lng, lat], radius, {
         id: h.id,
         hazardType: type,
-        name: h.name || 'Disaster Hazard Zone',
-        fillColor,
-        borderColor,
+        name: h.name || 'Disaster Hazard Corridor',
+        lineColor,
       });
-      if (circleFeature) {
-        features.push(circleFeature);
+      if (lineFeature) {
+        features.push(lineFeature);
       }
     });
 
@@ -1340,25 +1334,28 @@ export default function RescueMapScreen({ navigation, route }) {
           </Mapbox.ShapeSource>
         )}
 
-        {/* Active Disaster Hazard Circular Warning Zones (Dynamic Flood, Fire, Landslide Polygons) */}
-        {hazardCirclesFeatureCollection && (
+        {/* Active Disaster Hazard Road Corridors (High-Visibility Line instead of Circle) */}
+        {hazardLinesFeatureCollection && (
           <Mapbox.ShapeSource
-            id="hazard-circles-source"
-            shape={hazardCirclesFeatureCollection}
+            id="hazard-lines-source"
+            shape={hazardLinesFeatureCollection}
           >
-            <Mapbox.FillLayer
-              id="hazard-circles-fill"
+            {/* Outer Casing / High-Contrast Black Halo */}
+            <Mapbox.LineLayer
+              id="hazard-lines-casing"
               style={{
-                fillColor: ['get', 'fillColor'],
-                fillOpacity: isDarkMode ? 0.35 : 0.45,
+                lineColor: '#000000',
+                lineWidth: 9,
+                lineCap: 'round',
+                lineJoin: 'round',
               }}
             />
+            {/* Core Road Hazard Line Corridor */}
             <Mapbox.LineLayer
-              id="hazard-circles-stroke"
+              id="hazard-lines-core"
               style={{
-                lineColor: ['get', 'borderColor'],
-                lineWidth: 2.5,
-                lineDasharray: [2, 2],
+                lineColor: ['get', 'lineColor'],
+                lineWidth: 5.5,
                 lineCap: 'round',
                 lineJoin: 'round',
               }}
