@@ -28,6 +28,7 @@ import {
 } from '../services/offlineDb';
 import { calculateOfflineRoute, fetchMapboxDirectionsRoute, determineTargetFacility } from '../utils/astarRouter';
 import { MAPBOX_PUBLIC_TOKEN, clampToZamboanga, ZAMBOANGA_WMSU } from '../utils/zamboangaGeo';
+import NavigationPuck from '../components/NavigationPuck';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -1284,7 +1285,7 @@ export default function EvacMapScreen({ navigation, route }) {
           </Mapbox.ShapeSource>
         )}
 
-        {/* ─── TOP HIERARCHY: Resident Avatar Location Pin ─── */}
+        {/* ─── TOP HIERARCHY: Resident Location Marker (Google Maps Style 3D Navigation Puck) ─── */}
         {activeUserLocation && (
           <Mapbox.PointAnnotation
             key="user-location-avatar"
@@ -1303,7 +1304,7 @@ export default function EvacMapScreen({ navigation, route }) {
               }}
               style={{ alignItems: 'center', justifyContent: 'center' }}
             >
-              {/* YOU Pill Badge (ABOVE profile icon) */}
+              {/* YOU Pill Badge (ABOVE Puck) */}
               <View style={{
                 backgroundColor: '#0f172a',
                 paddingHorizontal: 8,
@@ -1321,38 +1322,14 @@ export default function EvacMapScreen({ navigation, route }) {
                 <Text style={{ color: '#ffffff', fontSize: 10, fontWeight: '900', letterSpacing: 0.5 }}>YOU</Text>
               </View>
 
-              {/* Profile Avatar Icon & Pulsing Beacon */}
-              <View style={{ alignItems: 'center', justifyContent: 'center', width: 56, height: 56 }}>
-                {/* Outer Pulsing Beacon Aura */}
-                <View style={{
-                  position: 'absolute',
-                  width: 54,
-                  height: 54,
-                  borderRadius: 27,
-                  backgroundColor: 'rgba(56, 189, 248, 0.35)',
-                  borderWidth: 2,
-                  borderColor: 'rgba(56, 189, 248, 0.7)',
-                }} />
-
-                {/* Inner Avatar Head Circle */}
-                <View style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 19,
-                  backgroundColor: '#0284c7',
-                  borderWidth: 2.5,
-                  borderColor: '#ffffff',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.5,
-                  shadowRadius: 6,
-                  elevation: 12,
-                }}>
-                  <User size={20} color="#ffffff" strokeWidth={2.5} />
-                </View>
-              </View>
+              {/* Google Navigation 3D Chevron Puck */}
+              <NavigationPuck
+                heading={deviceHeading || 0}
+                theme="resident"
+                size={44}
+                showBeam={isActiveTurnByTurn || isNavigating}
+                isNavigating={isActiveTurnByTurn || isNavigating}
+              />
             </TouchableOpacity>
           </Mapbox.PointAnnotation>
         )}

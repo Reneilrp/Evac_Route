@@ -2566,6 +2566,10 @@ export default function MapDashboard() {
   const [activeDisasterSim, setActiveDisasterSim] = useState('none'); // 'none' | 'flood' | 'siege' | 'fire' | 'chemical'
   const [siegeTestMode, setSiegeTestMode] = useState('none'); // 'none' | 'siege_near' | 'siege_far'
 
+  // Live Road-Snapped Mission Corridors Cache (Mapbox Directions API)
+  const [cachedMissionRoutes, setCachedMissionRoutes] = useState({});
+  const activeRouteKeysRef = useRef(new Set());
+
   // Dynamic Resident GPS Device Simulation for Siege & Disaster Proximity Protocol
   const [simulatedResidentCoords, setSimulatedResidentCoords] = useState([122.084, 6.918]); // Default Tetuan [lng, lat]
 
@@ -2739,6 +2743,48 @@ export default function MapDashboard() {
     refetchInterval: 3000,
   });
 
+  // Asynchronously query Mapbox Directions API for active rescue mission corridors
+  useEffect(() => {
+    if (!showRescueUnits || !activeRescueMissions || activeRescueMissions.length === 0 || !MAPBOX_TOKEN) return;
+
+    activeRescueMissions.forEach((mission) => {
+      if (!['en_route', 'transporting'].includes(mission.status)) return;
+      const unit = mission.rescue_unit;
+      const uLat = parseFloat(unit?.current_latitude);
+      const uLng = parseFloat(unit?.current_longitude);
+      if (isNaN(uLat) || isNaN(uLng)) return;
+
+      let targetLng, targetLat;
+      if (mission.status === 'transporting' && mission.target_shelter) {
+        targetLat = parseFloat(mission.target_shelter.latitude);
+        targetLng = parseFloat(mission.target_shelter.longitude);
+      } else if (mission.victim_latitude && mission.victim_longitude) {
+        targetLat = parseFloat(mission.victim_latitude);
+        targetLng = parseFloat(mission.victim_longitude);
+      }
+      if (!targetLat || !targetLng || isNaN(targetLat) || isNaN(targetLng)) return;
+
+      const cacheKey = `${mission.id}_${uLng.toFixed(4)},${uLat.toFixed(4)}->${targetLng.toFixed(4)},${targetLat.toFixed(4)}`;
+      if (activeRouteKeysRef.current.has(cacheKey)) return;
+
+      activeRouteKeysRef.current.add(cacheKey);
+
+      fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${uLng},${uLat};${targetLng},${targetLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.code === 'Ok' && data.routes && data.routes[0]?.geometry?.coordinates) {
+            setCachedMissionRoutes((prev) => ({
+              ...prev,
+              [mission.id]: data.routes[0].geometry.coordinates,
+            }));
+          }
+        })
+        .catch(() => {
+          // Keep resilient street-grid fallback
+        });
+    });
+  }, [showRescueUnits, activeRescueMissions]);
+
   const missionRoutesGeoJSON = useMemo(() => {
     if (!showRescueUnits || !activeRescueMissions || activeRescueMissions.length === 0) return null;
     const features = [];
@@ -2771,6 +2817,16 @@ export default function MapDashboard() {
       if (!targetLat || !targetLng || isNaN(targetLat) || isNaN(targetLng)) return;
       if (!isInZamboanga(targetLng, targetLat)) return;
 
+      // Road-snapped geometry: Uses cached Mapbox route or orthogonal street-grid corner instead of diagonal straight cut
+      const cachedCoords = cachedMissionRoutes[mission.id];
+      const coords = (cachedCoords && cachedCoords.length > 1)
+        ? cachedCoords
+        : [
+            [uLng, uLat],
+            [targetLng, uLat],
+            [targetLng, targetLat],
+          ];
+
       features.push({
         type: 'Feature',
         properties: {
@@ -2782,10 +2838,7 @@ export default function MapDashboard() {
         },
         geometry: {
           type: 'LineString',
-          coordinates: [
-            [uLng, uLat],
-            [targetLng, targetLat],
-          ],
+          coordinates: coords,
         },
       });
     });
@@ -2795,7 +2848,7 @@ export default function MapDashboard() {
       type: 'FeatureCollection',
       features,
     };
-  }, [showRescueUnits, activeRescueMissions]);
+  }, [showRescueUnits, activeRescueMissions, cachedMissionRoutes]);
 
   const { data: roadNetwork } = useQuery({
     queryKey: ['road-network'],

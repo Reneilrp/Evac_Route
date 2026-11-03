@@ -44,6 +44,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { useRescueSimulationStore } from '../context/useRescueSimulationStore';
 import RescueSimulationStepper from '../components/RescueSimulationStepper';
+import NavigationPuck from '../components/NavigationPuck';
 import {
   MAPBOX_PUBLIC_TOKEN,
   clampToZamboanga,
@@ -511,6 +512,14 @@ export default function RescueMapScreen({ navigation, route }) {
   const routeDataRef = useRef(routeData);
   routeDataRef.current = routeData;
 
+  // Tactical Simulation Movement Refs (Declared before computeRoute & roadblock callbacks)
+  const traveledDistanceRef = useRef(0);
+  const currentNavPhaseRef = useRef(simPhase);
+  const currentStepIndexRef = useRef(0);
+  const lastPolylineTrimTimeRef = useRef(0);
+  const lastTrimmedSegIdxRef = useRef(-1);
+  const hasInitializedNavCameraRef = useRef(false);
+
   // Compute Route to Active Target whenever Target Coords, Mode, or Roadblocks change
   const computeRoute = useCallback(async (start, end, customRoadblocks = activeRoadblocks) => {
     if (!start || !end) return;
@@ -670,11 +679,6 @@ export default function RescueMapScreen({ navigation, route }) {
   }, [computeRoute, activeTargetLngLat, currentMission, showDemoControls, simulationStep, isSimulationActive, simPhase, routeData, activeRoadblocks]);
 
   // ─── TACTICAL 10M/S SIMULATION MOVEMENT ENGINE ───
-  const traveledDistanceRef = useRef(0);
-  const currentNavPhaseRef = useRef(simPhase);
-  const lastPolylineTrimTimeRef = useRef(0);
-  const lastTrimmedSegIdxRef = useRef(-1);
-  const hasInitializedNavCameraRef = useRef(false);
 
   // Reset traveled distance & camera initialized flag when simulation phase resets
   useEffect(() => {
@@ -713,11 +717,16 @@ export default function RescueMapScreen({ navigation, route }) {
     // Set initial tactical navigation camera angle & zoom ONCE per navigation session (never snap back mid-drive)
     if (!hasInitializedNavCameraRef.current && cameraRef.current && coords[0]) {
       hasInitializedNavCameraRef.current = true;
+      const initialHeading = coords.length > 1 ? getBearing(coords[0][1], coords[0][0], coords[1][1], coords[1][0]) : 0;
+      const aheadHeadingRad = (initialHeading * Math.PI) / 180;
+      const initAheadLat = coords[0][1] + (45 * Math.cos(aheadHeadingRad)) / 111320;
+      const initAheadLng = coords[0][0] + (45 * Math.sin(aheadHeadingRad)) / (111320 * Math.cos((coords[0][1] * Math.PI) / 180));
+
       cameraRef.current.setCamera({
-        centerCoordinate: coords[0],
-        heading: coords.length > 1 ? getBearing(coords[0][1], coords[0][0], coords[1][1], coords[1][0]) : 0,
-        pitch: 40,
-        zoomLevel: 16.8,
+        centerCoordinate: [initAheadLng, initAheadLat],
+        heading: initialHeading,
+        pitch: 50,
+        zoomLevel: 17.2,
         animationDuration: 800,
       });
     }
@@ -761,6 +770,28 @@ export default function RescueMapScreen({ navigation, route }) {
 
       setSimCoords([currLng, currLat], heading);
 
+      // Dynamically advance turn-by-turn maneuver step as vehicle progresses
+      if (routeData?.steps && routeData.steps.length > 0) {
+        let accumulated = 0;
+        let stepIdx = 0;
+        for (let i = 0; i < routeData.steps.length; i++) {
+          const stepDist = routeData.steps[i].distanceMeters || 0;
+          if (currentDist < accumulated + stepDist) {
+            stepIdx = i;
+            break;
+          }
+          accumulated += stepDist;
+          if (i === routeData.steps.length - 1) {
+            stepIdx = i;
+          }
+        }
+        if (stepIdx !== currentStepIndexRef.current) {
+          currentStepIndexRef.current = stepIdx;
+          setCurrentStepIndex(stepIdx);
+          safeVibrate(25);
+        }
+      }
+
       // Throttled polyline trim: only update GeoJSON ShapeSource every ~450ms or on waypoint transition
       // This eliminates 80% of native bridge re-tessellation overhead, keeping emulator buttons fully responsive!
       const now = Date.now();
@@ -772,12 +803,18 @@ export default function RescueMapScreen({ navigation, route }) {
         }
       }
 
-      // Smoothly follow vehicle position & heading ONLY when NOT in free cam mode
+      // Smoothly follow vehicle position & heading in 3D driver perspective (offset ahead 48m so puck sits in lower screen)
       if (!isFreeCamRef.current && cameraRef.current) {
+        const aheadHeadingRad = (heading * Math.PI) / 180;
+        const aheadLat = currLat + (48 * Math.cos(aheadHeadingRad)) / 111320;
+        const aheadLng = currLng + (48 * Math.sin(aheadHeadingRad)) / (111320 * Math.cos((currLat * Math.PI) / 180));
+
         cameraRef.current.setCamera({
-          centerCoordinate: [currLng, currLat],
+          centerCoordinate: [aheadLng, aheadLat],
           heading,
-          animationDuration: 110,
+          pitch: 50,
+          zoomLevel: 17.2,
+          animationDuration: 130,
         });
       }
 
@@ -1386,7 +1423,7 @@ export default function RescueMapScreen({ navigation, route }) {
           </Mapbox.PointAnnotation>
         )}
 
-        {/* 3. Rescuer Live Vehicle Pin */}
+        {/* 3. Rescuer Live Vehicle Pin (Google Maps Style 3D Tactical Navigation Puck) */}
         {activeRescuerLocation && (
           <Mapbox.PointAnnotation
             key="rescuer-vehicle-marker"
@@ -1394,25 +1431,20 @@ export default function RescueMapScreen({ navigation, route }) {
             coordinate={activeRescuerLocation}
           >
             <View style={styles.rescuerMarkerWrap}>
-              <View style={styles.rescuerAura} />
-              <View
-                style={[
-                  styles.rescuerVehicleCircle,
-                  {
-                    transform: [
-                      { rotate: `${isSimulationActive ? (simHeading || 0) : (deviceHeading || 0)}deg` },
-                    ],
-                  },
-                ]}
+              <NavigationPuck
+                heading={isSimulationActive ? (simHeading || 0) : (deviceHeading || 0)}
+                theme="rescue"
+                size={44}
+                showBeam={isSimulationActive || isNavigating}
+                isNavigating={isSimulationActive || isNavigating}
               >
-                <Navigation2 size={18} color="#ffffff" fill="#ffffff" />
-              </View>
-              <View style={styles.rescuerCallout}>
-                <View style={styles.rescuerStatusDot} />
-                <Text style={styles.rescuerCalloutText} numberOfLines={1}>
-                  {assignedUnit?.call_sign || 'QRT DELTA-3'}
-                </Text>
-              </View>
+                <View style={[styles.rescuerCallout, { marginTop: 4 }]}>
+                  <View style={styles.rescuerStatusDot} />
+                  <Text style={styles.rescuerCalloutText} numberOfLines={1}>
+                    {assignedUnit?.call_sign || 'QRT DELTA-3'}
+                  </Text>
+                </View>
+              </NavigationPuck>
             </View>
           </Mapbox.PointAnnotation>
         )}

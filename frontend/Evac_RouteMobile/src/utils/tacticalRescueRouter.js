@@ -178,20 +178,76 @@ export async function fetchTacticalRescueRoute(
 
       // If strict multi-exclusion fails to find any route, retry with center-only exclusions
       if ((!data.routes || data.routes.length === 0) && excludeParam && criticalObstacles.length > 0) {
-        const centerOnly = criticalObstacles.slice(0, 4).map(h => `point(${parseFloat(h.longitude).toFixed(6)} ${parseFloat(h.latitude).toFixed(6)})`).join(',');
+        const centerOnly = criticalObstacles.slice(0, 3).map(h => `point(${parseFloat(h.longitude).toFixed(6)} ${parseFloat(h.latitude).toFixed(6)})`).join(',');
         url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startCoord[0]},${startCoord[1]};${endCoord[0]},${endCoord[1]}?geometries=geojson&overview=full&steps=true&exclude=${encodeURIComponent(centerOnly)}&access_token=${token}`;
         res = await fetch(url);
         data = await res.json();
+      }
+
+      // If still no route due to over-restrictive exclusion, try unconstrained driving route
+      if ((!data.routes || data.routes.length === 0)) {
+        const cleanUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${startCoord[0]},${startCoord[1]};${endCoord[0]},${endCoord[1]}?geometries=geojson&overview=full&steps=true&access_token=${token}`;
+        const cleanRes = await fetch(cleanUrl);
+        const cleanData = await cleanRes.json();
+        if (cleanData.code === 'Ok' && cleanData.routes && cleanData.routes.length > 0) {
+          data = cleanData;
+
+          // Check if clean route intersects any critical roadblock, and attempt a tangent detour waypoint
+          if (criticalObstacles.length > 0) {
+            const rawCoords = data.routes[0].geometry.coordinates;
+            let hitObstacle = null;
+            for (const pt of rawCoords) {
+              for (const obs of criticalObstacles) {
+                const dist = getHaversineDistanceMeters(pt[1], pt[0], parseFloat(obs.latitude), parseFloat(obs.longitude));
+                if (dist <= parseFloat(obs.radius_meters || 50) + 15) {
+                  hitObstacle = obs;
+                  break;
+                }
+              }
+              if (hitObstacle) break;
+            }
+
+            if (hitObstacle) {
+              const obsLat = parseFloat(hitObstacle.latitude);
+              const obsLng = parseFloat(hitObstacle.longitude);
+              const midLat = (startCoord[1] + endCoord[1]) / 2;
+              const midLng = (startCoord[0] + endCoord[0]) / 2;
+              let dx = midLng - obsLng;
+              let dy = midLat - obsLat;
+              let len = Math.sqrt(dx * dx + dy * dy);
+              if (len < 0.0001) { dx = 1; dy = 1; len = Math.sqrt(2); }
+
+              const safeOffset = (parseFloat(hitObstacle.radius_meters || 50) + 90);
+              const dLat = (safeOffset / 111320) * (dy / len);
+              const cosLat = Math.cos((obsLat * Math.PI) / 180);
+              const dLng = (safeOffset / (111320 * (cosLat > 0 ? cosLat : 1))) * (dx / len);
+              const detourPoint = [obsLng + dLng, obsLat + dLat];
+
+              const detourUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${startCoord[0]},${startCoord[1]};${detourPoint[0].toFixed(6)},${detourPoint[1].toFixed(6)};${endCoord[0]},${endCoord[1]}?geometries=geojson&overview=full&steps=true&access_token=${token}`;
+              const detourRes = await fetch(detourUrl);
+              const detourData = await detourRes.json();
+              if (detourData.code === 'Ok' && detourData.routes && detourData.routes.length > 0) {
+                data = detourData;
+              }
+            }
+          }
+        }
       }
 
       if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
         const route = data.routes[0];
         const rawSteps = route.legs?.[0]?.steps || [];
         const steps = rawSteps.map((s) => ({
-          instruction: s.maneuver?.instruction || 'Proceed forward',
+          name: s.name || '',
+          instruction: (s.maneuver?.instruction || 'Proceed forward')
+            .replace(/head\s+(north|south|east|west|northwest|northeast|southwest|southeast)/gi, 'Proceed forward')
+            .replace(/\b(north|south|east|west|northwest|northeast|southwest|southeast)\b/gi, 'forward'),
           distanceMeters: Math.round(s.distance || 0),
+          durationSeconds: Math.round(s.duration || 0),
           type: s.maneuver?.type || 'straight',
           modifier: s.maneuver?.modifier || '',
+          location: s.maneuver?.location || null,
+          lanes: s.intersections?.[0]?.lanes || null,
         }));
 
         const coordinates = route.geometry.coordinates;
@@ -269,8 +325,16 @@ export async function fetchTacticalRescueRoute(
   );
   const isWater = capability.isWaterCraft;
 
+  // Resilient street-grid corridor interpolation (avoids cutting diagonally through buildings)
+  let fallbackCoords = [startCoord, endCoord];
+  if (directDist > 60) {
+    // Follow orthogonal urban grid corner instead of diagonal cut across city blocks
+    const cornerPoint = [endCoord[0], startCoord[1]];
+    fallbackCoords = [startCoord, cornerPoint, endCoord];
+  }
+
   return {
-    coordinates: [startCoord, endCoord],
+    coordinates: fallbackCoords,
     distanceMeters: Math.round(directDist),
     durationSeconds: Math.round(directDist / (isWater ? 9 : 12)), // ~32 km/h water, ~43 km/h road
     steps: [

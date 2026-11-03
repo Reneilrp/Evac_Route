@@ -602,8 +602,13 @@ function reconstructPath(cameFrom, currentId, userLocation, shelterLocation) {
     curr = step.fromNode;
   }
 
-  // If path is empty, return straight line fallback
+  // If path is empty, return orthogonal street grid fallback (prevents diagonal cutting across buildings)
   if (pathCoords.length === 0) {
+    const dLat = Math.abs(shelterLocation[1] - userLocation[1]);
+    const dLng = Math.abs(shelterLocation[0] - userLocation[0]);
+    if (dLat > 0.0004 || dLng > 0.0004) {
+      return [userLocation, [shelterLocation[0], userLocation[1]], shelterLocation];
+    }
     return [userLocation, shelterLocation];
   }
 
