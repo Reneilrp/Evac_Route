@@ -23,7 +23,7 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
-import { clampToZamboanga, ZAMBOANGA_VICTIM_DEFAULT, ZAMBOANGA_WMSU } from '../utils/zamboangaGeo';
+import { clampToZamboanga, ZAMBOANGA_WMSU, getNearestBarangay } from '../utils/zamboangaGeo';
 
 const HAZARD_OPTIONS = [
   {
@@ -120,27 +120,28 @@ export default function EmergencySOSModal({ visible, onClose, initialCoords, onS
 
         if (isMounted) {
           setCoords({ latitude: lat, longitude: lng });
+          const nearestBgy = getNearestBarangay(lng, lat);
           try {
             const geocoded = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
             if (geocoded && geocoded.length > 0) {
               const g = geocoded[0];
               const parts = [
                 g.name || g.street,
-                g.district || g.subregion || g.city,
+                g.district || g.subregion || `Brgy. ${nearestBgy}`,
                 'Zamboanga City',
               ].filter(Boolean);
               setAddressLabel(parts.join(', '));
             } else {
-              setAddressLabel(`${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`);
+              setAddressLabel(`Brgy. ${nearestBgy}, Zamboanga City`);
             }
           } catch {
-            setAddressLabel(`${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`);
+            setAddressLabel(`Brgy. ${nearestBgy}, Zamboanga City`);
           }
         }
       } catch (_err) {
         if (isMounted) {
           setCoords({ latitude: 6.9214, longitude: 122.0790 });
-          setAddressLabel('Zamboanga City (Default)');
+          setAddressLabel('Brgy. Tetuan, Zamboanga City');
         }
       }
     }
@@ -264,15 +265,30 @@ export default function EmergencySOSModal({ visible, onClose, initialCoords, onS
             </TouchableOpacity>
           </View>
 
-          {/* GPS Location Bar */}
+          {/* GPS Location & Barangay Bar (Coordinates Permanently Visible) */}
           <View style={[
             styles.locationBar,
-            { backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc', borderColor: isDarkMode ? '#334155' : '#e2e8f0' }
+            {
+              backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc',
+              borderColor: isDarkMode ? '#334155' : '#e2e8f0',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              gap: 2,
+            }
           ]}>
-            <MapPin size={14} color="#ef4444" />
-            <Text style={[styles.locationText, { color: isDarkMode ? '#cbd5e1' : '#334155' }]} numberOfLines={1}>
-              {addressLabel}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, width: '100%' }}>
+              <MapPin size={14} color="#ef4444" />
+              <Text style={[styles.locationText, { color: isDarkMode ? '#f8fafc' : '#0f172a', fontWeight: '700', fontSize: 13, flex: 1 }]} numberOfLines={1}>
+                {addressLabel}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 20 }}>
+              <Text style={{ color: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '600' }}>
+                GPS: {coords?.latitude ? `${Number(coords.latitude).toFixed(5)}°N, ${Number(coords.longitude).toFixed(5)}°E` : 'Locating...'}
+              </Text>
+            </View>
           </View>
 
           <ScrollView style={styles.bodyScroll} showsVerticalScrollIndicator={false}>

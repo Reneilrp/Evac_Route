@@ -2,6 +2,28 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { getNearestBarangay } from '../utils/mapHelper';
+
+function getBarangayDisplay(incident) {
+  if (!incident) return 'Zamboanga City';
+  if (incident.description && incident.description.includes('Barangay:')) {
+    const match = incident.description.match(/Barangay:\s*([^|\]\n]+)/i);
+    if (match && match[1]) {
+      const bgy = match[1].trim();
+      const addrMatch = incident.description.match(/Address:\s*([^|\]\n]+)/i);
+      const addr = addrMatch ? addrMatch[1].trim() : '';
+      return addr ? `${addr}, Brgy. ${bgy}` : `Brgy. ${bgy}`;
+    }
+  }
+  const lng = parseFloat(incident.longitude);
+  const lat = parseFloat(incident.latitude);
+  if (!isNaN(lng) && !isNaN(lat)) {
+    return `Brgy. ${getNearestBarangay(lng, lat)}, Zamboanga City`;
+  }
+  return incident.reporter?.family_profile?.barangay
+    ? `Brgy. ${incident.reporter.family_profile.barangay}, Zamboanga City`
+    : 'Zamboanga City';
+}
 
 const STATUS_TABS = ['pending', 'approved', 'rejected'];
 
@@ -238,7 +260,12 @@ export default function IncidentReviewQueue() {
                           id: incident.id,
                           action: 'approve',
                           hazard_type: incident.hazard_type,
-                          evaluation: evalData
+                          evaluation: evalData,
+                          name: incident.name,
+                          latitude: incident.latitude,
+                          longitude: incident.longitude,
+                          description: incident.description,
+                          reporter: incident.reporter,
                         });
                         setNote('');
                         setIsFixedFloodSpot(shouldRecommendFixed);
@@ -250,7 +277,17 @@ export default function IncidentReviewQueue() {
                     </button>
                     <button
                       onClick={() => {
-                        setReviewModal({ id: incident.id, action: 'reject' });
+                        setReviewModal({
+                          id: incident.id,
+                          action: 'reject',
+                          hazard_type: incident.hazard_type,
+                          evaluation: evalData,
+                          name: incident.name,
+                          latitude: incident.latitude,
+                          longitude: incident.longitude,
+                          description: incident.description,
+                          reporter: incident.reporter,
+                        });
                         setNote('');
                       }}
                       className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-xs"
@@ -284,6 +321,32 @@ export default function IncidentReviewQueue() {
                 ? 'This will promote the report to an official hazard on the live map.'
                 : 'Provide a reason for rejection.'}
             </p>
+
+            {/* Incident Summary Card with Address/Barangay & Coordinates Permanently Visible */}
+            {reviewModal.name && (
+              <div className="mb-4 bg-slate-50 dark:bg-slate-950/70 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                  <span className="truncate max-w-[240px]">{reviewModal.name}</span>
+                  {reviewModal.hazard_type && (
+                    <span className="capitalize px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 text-[10px]">
+                      {reviewModal.hazard_type}
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-700 dark:text-slate-300 font-semibold mb-1 flex items-center gap-1.5">
+                  <span className="text-red-500">📍</span>
+                  <span>{getBarangayDisplay(reviewModal)}</span>
+                </div>
+                {reviewModal.latitude && reviewModal.longitude && (
+                  <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <span>🌐</span>
+                    <span>
+                      GPS: {parseFloat(reviewModal.latitude).toFixed(5)}°N, {parseFloat(reviewModal.longitude).toFixed(5)}°E
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {reviewModal.action === 'approve' && (
               <div className="mb-4 bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800">

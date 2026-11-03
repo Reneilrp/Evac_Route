@@ -24,7 +24,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import EmergencySOSModal from '../components/EmergencySOSModal';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { getStyles } from '../styles/ReportIncidentScreen.styles';
-import { clampToZamboanga, ZAMBOANGA_WMSU } from '../utils/zamboangaGeo';
+import { clampToZamboanga, ZAMBOANGA_WMSU, getNearestBarangay } from '../utils/zamboangaGeo';
 
 const HAZARD_TYPES = [
   { value: 'flood', label: '🌊 Flood' },
@@ -106,16 +106,19 @@ export default function ReportIncidentScreen({ navigation, route }) {
   // --- Reverse geocode coordinates to human-readable street/barangay ---
   const reverseGeocodeCoords = useCallback(async (latitude, longitude) => {
     try {
+      const nearest = getNearestBarangay(longitude, latitude);
       const results = await Location.reverseGeocodeAsync({ latitude, longitude });
       if (results && results.length > 0) {
         const item = results[0];
         const street = item.street || item.name || '';
-        const district = item.district || item.subregion || item.city || '';
+        const district = item.district || item.subregion || nearest;
         if (street) setStreetAddress(street);
-        if (district) setBarangayName(district);
+        setBarangayName(district || nearest);
+      } else {
+        setBarangayName(nearest);
       }
     } catch (_e) {
-      // Gracefully ignore reverse geocoding errors
+      setBarangayName(getNearestBarangay(longitude, latitude));
     }
   }, []);
 
