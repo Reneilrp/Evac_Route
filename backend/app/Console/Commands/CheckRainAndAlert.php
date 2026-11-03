@@ -120,31 +120,13 @@ class CheckRainAndAlert extends Command
         foreach ($fixedSpots as $hazard) {
             $hazard->update(['is_active' => true]);
 
-            // Query residents within their own alert radius
-            if ($isSqlite) {
-                $users = User::whereNotNull('push_token')
-                    ->whereNotNull('last_latitude')
-                    ->whereNotNull('last_longitude')
-                    ->get();
-
-                $residents = $users->filter(function ($user) use ($hazard) {
-                    $dist = $this->haversine(
-                        (float) $user->last_latitude, (float) $user->last_longitude,
-                        (float) $hazard->latitude, (float) $hazard->longitude
-                    );
-
-                    return $dist <= ($user->alert_radius_meters ?? 500);
-                });
-            } else {
-                $residents = User::whereNotNull('push_token')
-                    ->whereNotNull('last_latitude')
-                    ->whereNotNull('last_longitude')
-                    ->whereRaw('ST_Distance_Sphere(POINT(last_latitude, last_longitude), POINT(?, ?)) <= alert_radius_meters', [
-                        $hazard->latitude, $hazard->longitude,
-                    ])->get();
-            }
-
-            $tokens = $residents->pluck('push_token')->toArray();
+            // Query residents targeted by home barangay OR live GPS proximity (prevents alert fatigue)
+            $tokens = PushNotificationService::getTargetedTokens(
+                (float) $hazard->latitude,
+                (float) $hazard->longitude,
+                (float) ($hazard->radius_meters ?? 500),
+                $hazard->barangay ? [$hazard->barangay] : []
+            );
 
             if (! empty($tokens)) {
                 $this->info('Sending targeted push alert to '.count($tokens)." residents near {$hazard->name}");

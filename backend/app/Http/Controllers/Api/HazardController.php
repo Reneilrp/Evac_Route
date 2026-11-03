@@ -201,12 +201,18 @@ class HazardController extends Controller
                     'title' => $alertTitle,
                     'message' => $alertBody,
                     'severity' => in_array($severity, ['critical', 'high']) ? 'critical' : 'warning',
-                    'scope' => 'all',
+                    'scope' => 'barangay',
+                    'barangay' => $barangay,
                     'created_by' => auth()->id() ?? 1,
                 ]);
 
-                // Send Expo Push Notification to users
-                $tokens = User::whereNotNull('push_token')->pluck('push_token')->toArray();
+                // Send targeted Expo Push Notification only to affected residents (home barangay OR live GPS proximity)
+                $tokens = PushNotificationService::getTargetedTokens(
+                    (float) $hazard->latitude,
+                    (float) $hazard->longitude,
+                    (float) $hazard->radius_meters,
+                    [$barangay]
+                );
                 if (!empty($tokens)) {
                     PushNotificationService::send($tokens, $alertTitle, $alertBody, [
                         'type' => 'hazard_zone_declared',
@@ -328,11 +334,18 @@ class HazardController extends Controller
                 'title' => $alertTitle,
                 'message' => $alertMessage,
                 'severity' => 'critical',
-                'scope' => 'all',
+                'scope' => 'barangay',
+                'barangay' => implode(', ', $preset['barangays']),
                 'created_by' => auth()->id() ?? 1,
             ]);
 
-            $tokens = User::whereNotNull('push_token')->pluck('push_token')->toArray();
+            // Targeted push alerts: only to residents whose registered home is in the affected barangays OR currently nearby
+            $tokens = PushNotificationService::getTargetedTokens(
+                (float) $hazard->latitude,
+                (float) $hazard->longitude,
+                (float) $hazard->radius_meters,
+                $preset['barangays'] ?? []
+            );
             if (!empty($tokens)) {
                 PushNotificationService::send($tokens, $alertTitle, $alertMessage, [
                     'type' => 'geohazard_preset_activated',
