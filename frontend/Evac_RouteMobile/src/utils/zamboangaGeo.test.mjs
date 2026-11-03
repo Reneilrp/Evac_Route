@@ -8,6 +8,8 @@ import {
   ZAMBOANGA_TETUAN,
   isValidZamboangaLocation,
   clampToZamboanga,
+  createHazardRoadCorridorLine,
+  getNearestBarangay,
 } from './zamboangaGeo.js';
 
 console.log('🧪 Starting Zamboanga Geo & Emulator Clamping Tests...\n');
@@ -58,4 +60,26 @@ const clampedLocalObj = clampToZamboanga(localObjCoord, ZAMBOANGA_WMSU);
 assert.deepStrictEqual(clampedLocalObj, [122.0712, 6.9189], 'Local object coordinate should be preserved as [lng, lat]');
 
 console.log('✅ In-bounds coordinates properly preserved.\n');
+
+// 5. Testing Nearest Barangay Geocoding
+console.log('🏘️ 5. Testing nearest barangay geocoding from lat/lng...');
+const bgyTetuan = getNearestBarangay(122.0886, 6.9192);
+assert.strictEqual(bgyTetuan, 'Tetuan', 'Coordinate [122.0886, 6.9192] should resolve to Tetuan');
+
+const bgyBaliwasan = getNearestBarangay(122.0571, 6.9150);
+assert.strictEqual(bgyBaliwasan, 'Baliwasan', 'Coordinate [122.0571, 6.9150] should resolve to Baliwasan');
+
+const bgySantaMaria = getNearestBarangay(122.0789, 6.9322);
+assert.strictEqual(bgySantaMaria, 'Santa Maria', 'Coordinate [122.0789, 6.9322] should resolve to Santa Maria');
+console.log('✅ Nearest barangay lookup correctly identifies Zamboanga City barangays.\n');
+
+// 6. Testing Road Corridor Line Generation (Line instead of Circle)
+console.log('🛣️ 6. Testing road hazard corridor line generator (line instead of circle)...');
+const hazardLine = createHazardRoadCorridorLine([122.0750, 6.9210], 75);
+assert.strictEqual(hazardLine.type, 'Feature', 'Must return GeoJSON Feature');
+assert.strictEqual(hazardLine.geometry.type, 'LineString', 'Must be LineString instead of Polygon');
+assert.strictEqual(hazardLine.geometry.coordinates.length, 2, 'LineString must have 2 corridor endpoints');
+assert(hazardLine.geometry.coordinates[0][0] < hazardLine.geometry.coordinates[1][0], 'Coordinates should span west-to-east along roadway');
+console.log('✅ Road hazard corridor line correctly outputs GeoJSON LineString.\n');
+
 console.log('🎉 ALL ZAMBOANGA GEO & EMULATOR CLAMPING TESTS PASSED!');
