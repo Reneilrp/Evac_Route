@@ -2524,6 +2524,12 @@ export default function MapDashboard() {
   const focusLat = searchParams.get('focusLat');
   const focusLng = searchParams.get('focusLng');
   const incidentName = searchParams.get('incidentName');
+  const incidentId = searchParams.get('incidentId');
+  const incidentHazardType = searchParams.get('hazardType') || 'flood';
+  const incidentSeverity = searchParams.get('severity') || 'medium';
+  const isRecurringDrainage = searchParams.get('isRecurring') === '1';
+
+  const [approvingIncident, setApprovingIncident] = useState(false);
 
   const initialFocusCoords = useMemo(() => {
     const lat = parseFloat(focusLat);
@@ -3121,6 +3127,54 @@ export default function MapDashboard() {
   };
   const handleResolveHazard = () => resolveHazardMutation.mutate(selectedHazard.id);
 
+  const handleApproveIncidentOnMap = async (asFixedSpot = false) => {
+    if (!incidentId) return;
+    setApprovingIncident(true);
+    try {
+      await api.post(`/incidents/${incidentId}/approve`, {
+        is_fixed_flood_spot: asFixedSpot,
+        radius_meters: asFixedSpot ? 350 : 100,
+        hazard_type: incidentHazardType,
+        severity_level: incidentSeverity,
+        note: asFixedSpot
+          ? 'Approved directly from Live Map as weather-triggered chronic flood spot.'
+          : 'Approved directly from Live Map as active hazard zone.',
+      });
+      showSuccess(
+        asFixedSpot
+          ? '✓ Incident approved & promoted as Chronic Drainage Flood Spot!'
+          : '✓ Incident approved & promoted to Active Hazard!'
+      );
+      queryClient.invalidateQueries(['mapDashboard']);
+      queryClient.invalidateQueries(['hazards']);
+      queryClient.invalidateQueries(['incidents']);
+      handleCancelPin();
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to approve incident');
+    } finally {
+      setApprovingIncident(false);
+    }
+  };
+
+  const handleRejectIncidentOnMap = async () => {
+    if (!incidentId) return;
+    const reason = window.prompt('Enter reason for rejecting this incident report:');
+    if (!reason) return;
+    setApprovingIncident(true);
+    try {
+      await api.post(`/incidents/${incidentId}/reject`, {
+        note: reason,
+      });
+      showSuccess('Incident report rejected.');
+      queryClient.invalidateQueries(['incidents']);
+      handleCancelPin();
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to reject incident');
+    } finally {
+      setApprovingIncident(false);
+    }
+  };
+
   const toggleSimulation = (mode) => {
     setSimulationMode(prev => {
       const nextMode = prev === mode ? null : mode;
@@ -3561,16 +3615,53 @@ export default function MapDashboard() {
             </span>
             <div className="text-xs">
               {pinMode === 'incident' ? (
-                <div className="flex items-center gap-3">
-                  <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <span className="font-black text-amber-300 uppercase tracking-wide">📍 Incident Report:</span>{' '}
-                    <span className="font-bold text-white">{incidentName || 'Reported Field Incident'}</span>
+                    <span className="font-bold text-white max-w-[200px] truncate">{incidentName || 'Reported Incident'}</span>
                     {focusLat && focusLng && (
-                      <span className="ml-2 font-mono text-[11px] text-blue-100 bg-blue-900/60 px-2 py-0.5 rounded border border-blue-400/30">
+                      <span className="font-mono text-[11px] text-blue-100 bg-blue-900/60 px-2 py-0.5 rounded border border-blue-400/30">
                         [{parseFloat(focusLat).toFixed(4)}, {parseFloat(focusLng).toFixed(4)}]
                       </span>
                     )}
+                    {isRecurringDrainage && (
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 animate-pulse">
+                        🌧️ Chronic Drainage
+                      </span>
+                    )}
                   </div>
+
+                  {incidentId && (
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      <button
+                        type="button"
+                        disabled={approvingIncident}
+                        onClick={() => handleApproveIncidentOnMap(true)}
+                        className="px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+                        title="Promote directly as Weather-Triggered Fixed Flood Spot"
+                      >
+                        ⚡ Pin Chronic Flood Spot
+                      </button>
+                      <button
+                        type="button"
+                        disabled={approvingIncident}
+                        onClick={() => handleApproveIncidentOnMap(false)}
+                        className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+                        title="Promote directly as Active Hazard Zone"
+                      >
+                        🚨 Pin Active Hazard
+                      </button>
+                      <button
+                        type="button"
+                        disabled={approvingIncident}
+                        onClick={handleRejectIncidentOnMap}
+                        className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-red-200 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                      >
+                        ✕ Reject
+                      </button>
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => navigate('/admin/incidents')}

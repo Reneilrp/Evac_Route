@@ -321,21 +321,36 @@ class IncidentController extends Controller
             'note' => 'nullable|string',
             'is_fixed_flood_spot' => 'nullable|boolean',
             'radius_meters' => 'nullable|numeric|min:1|max:5000',
+            'hazard_type' => 'nullable|string|max:50',
+            'severity_level' => 'nullable|string|in:low,medium,high',
+            'name' => 'nullable|string|max:255',
         ]);
 
         $isFixed = (bool) ($validated['is_fixed_flood_spot'] ?? false);
+        $finalHazardType = $validated['hazard_type'] ?? $incident->hazard_type;
+        $finalSeverity = $validated['severity_level'] ?? $incident->severity_level;
+        $finalName = $validated['name'] ?? $incident->name;
+
+        // Extract barangay if present in description
+        $barangay = null;
+        if (! empty($incident->description) && preg_match('/Barangay:\s*([^|\]\n]+)/i', $incident->description, $matches)) {
+            $barangay = trim($matches[1]);
+        }
 
         // Promote to official hazard
         $hazard = Hazard::create([
-            'name' => $incident->name,
+            'name' => $finalName,
             'latitude' => $incident->latitude,
             'longitude' => $incident->longitude,
             'radius_meters' => $validated['radius_meters'] ?? 75,
-            'hazard_type' => $incident->hazard_type,
-            'severity_level' => $incident->severity_level,
+            'hazard_type' => $finalHazardType,
+            'severity_level' => $finalSeverity,
             'reported_by' => $incident->reported_by,
             'is_fixed_flood_spot' => $isFixed,
             'is_active' => ! $isFixed,
+            'origin_type' => $isFixed ? 'chronic_drainage' : 'resident_report',
+            'barangay' => $barangay,
+            'disaster_category' => in_array($finalHazardType, ['flood', 'landslide', 'earthquake', 'debris']) ? 'natural' : 'man_made',
         ]);
 
         // Mark incident as approved

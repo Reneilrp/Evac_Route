@@ -94,6 +94,7 @@ export default function ReportIncidentScreen({ navigation, route }) {
   const [description, setDescription] = useState('');
   const [hazardType, setHazardType] = useState('flood');
   const [severityLevel, setSeverityLevel] = useState('medium');
+  const [isRecurringDrainage, setIsRecurringDrainage] = useState(false);
   const [photos, setPhotos] = useState([]); // array of { uri, type, fileName }, max 4
   const [coords, setCoords] = useState(null); // { latitude, longitude }
   const [streetAddress, setStreetAddress] = useState('');
@@ -313,6 +314,7 @@ export default function ReportIncidentScreen({ navigation, route }) {
     setDescription('');
     setHazardType('flood');
     setSeverityLevel('medium');
+    setIsRecurringDrainage(false);
     setPhotos([]);
     setCoords(null);
     setStreetAddress('');
@@ -366,6 +368,10 @@ export default function ReportIncidentScreen({ navigation, route }) {
       const locationParts = [];
       if (barangayName.trim()) locationParts.push(`Barangay: ${barangayName.trim()}`);
       if (streetAddress.trim()) locationParts.push(`Address: ${streetAddress.trim()}`);
+      if (isRecurringDrainage) {
+        locationParts.push('RECURRING DRAINAGE HOTSPOT');
+        formData.append('is_recurring_drainage', '1');
+      }
       if (locationParts.length > 0) {
         finalDescription = `[${locationParts.join(' | ')}]` + (finalDescription ? `\n\n${finalDescription}` : '');
       }
@@ -1023,6 +1029,61 @@ export default function ReportIncidentScreen({ navigation, route }) {
               <View style={styles.hazardHintBox}>
                 <Text style={styles.hazardHintText}>{HAZARD_HINTS[hazardType]}</Text>
               </View>
+            )}
+
+            {/* Chronic / Bad Drainage Hotspot 1-Tap Toggle */}
+            {hazardType === 'flood' && (
+              <TouchableOpacity
+                onPress={() => setIsRecurringDrainage(!isRecurringDrainage)}
+                activeOpacity={0.8}
+                style={{
+                  backgroundColor: isRecurringDrainage
+                    ? (isDarkMode ? '#1e3a5f' : '#e0f2fe')
+                    : (isDarkMode ? '#1e293b' : '#f8fafc'),
+                  borderWidth: 1.5,
+                  borderColor: isRecurringDrainage
+                    ? '#0284c7'
+                    : (isDarkMode ? '#334155' : '#cbd5e1'),
+                  borderRadius: 12,
+                  padding: 12,
+                  marginBottom: 14,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                }}
+              >
+                <View style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 6,
+                  borderWidth: 2,
+                  borderColor: isRecurringDrainage ? '#0284c7' : '#94a3b8',
+                  backgroundColor: isRecurringDrainage ? '#0284c7' : 'transparent',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  {isRecurringDrainage && <Text style={{ color: '#fff', fontSize: 14, fontWeight: '900' }}>✓</Text>}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: 13,
+                    fontWeight: '800',
+                    color: isRecurringDrainage
+                      ? (isDarkMode ? '#7dd3fc' : '#0369a1')
+                      : colors.textPrimary,
+                  }}>
+                    🌧️ Frequent / Chronic Flooding Area
+                  </Text>
+                  <Text style={{
+                    fontSize: 11,
+                    color: isDarkMode ? '#94a3b8' : '#64748b',
+                    marginTop: 2,
+                    lineHeight: 15,
+                  }}>
+                    Check if this street/corner always gets flooded during heavy rain due to clogged canals or low ground.
+                  </Text>
+                </View>
+              </TouchableOpacity>
             )}
 
             {/* Severity Level (Contextual Disaster Severity Basis) */}

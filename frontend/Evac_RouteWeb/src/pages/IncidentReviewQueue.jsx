@@ -211,6 +211,13 @@ export default function IncidentReviewQueue() {
                     </div>
                   ) : null}
 
+                  {incident.description?.includes('RECURRING DRAINAGE HOTSPOT') && (
+                    <div className="mb-3 px-2.5 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-950/70 border border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-300 text-xs font-bold flex items-center gap-1.5">
+                      <span>🌧️</span>
+                      <span>Resident Flagged: Chronic Bad Drainage Hotspot</span>
+                    </div>
+                  )}
+
                   {incident.description && (
                     <p className="text-xs text-gray-500 dark:text-slate-400 mb-3 line-clamp-2">{incident.description}</p>
                   )}
@@ -237,12 +244,15 @@ export default function IncidentReviewQueue() {
                 <div className="mb-3">
                   <button
                     onClick={() => {
+                      const isRecurring = incident.description?.includes('RECURRING DRAINAGE HOTSPOT');
                       const params = new URLSearchParams({
                         focusLat: incident.latitude,
                         focusLng: incident.longitude,
                         incidentName: incident.name || 'Reported Incident',
                         hazardType: incident.hazard_type || 'hazard',
                         severity: incident.severity_level || 'medium',
+                        incidentId: String(incident.id),
+                        isRecurring: isRecurring ? '1' : '0',
                       });
                       navigate(`/admin/map?${params.toString()}`);
                     }}
@@ -255,7 +265,8 @@ export default function IncidentReviewQueue() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
-                        const shouldRecommendFixed = evalData?.recommended_fixed_spot || incident.hazard_type === 'flood';
+                        const isRecurring = incident.description?.includes('RECURRING DRAINAGE HOTSPOT');
+                        const shouldRecommendFixed = evalData?.recommended_fixed_spot || isRecurring || incident.hazard_type === 'flood';
                         setReviewModal({
                           id: incident.id,
                           action: 'approve',
