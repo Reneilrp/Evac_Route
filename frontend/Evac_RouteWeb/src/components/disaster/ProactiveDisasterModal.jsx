@@ -355,17 +355,42 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
-                      Severity Level
+                      Basis of Severity ({hazardType === 'fire' ? 'BFP Fire Alarm' : hazardType})
                     </label>
                     <select
                       value={severityLevel}
                       onChange={(e) => setSeverityLevel(e.target.value)}
                       className="w-full bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-bold text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-red-500 outline-none"
                     >
-                      <option value="critical">🔴 Critical (Mandatory Evacuation)</option>
-                      <option value="high">🟠 High (Pre-emptive Evacuation)</option>
-                      <option value="medium">🟡 Medium (Advisory Alert)</option>
-                      <option value="low">⚪ Low (Standby)</option>
+                      {hazardType === 'fire' ? (
+                        <>
+                          <option value="critical">🔴 3rd Alarm / General (Conflagration)</option>
+                          <option value="high">🟠 2nd Alarm (Multiple Engines / Spreading)</option>
+                          <option value="medium">🟡 1st Alarm (Initial Engine / Single Room)</option>
+                          <option value="low">⚪ Minor / Smoldering (Standby)</option>
+                        </>
+                      ) : hazardType === 'landslide' ? (
+                        <>
+                          <option value="critical">🔴 Critical (Complete Slope Collapse / Road Buried)</option>
+                          <option value="high">🟠 High (Partial Lane Blockage / Active Mudflow)</option>
+                          <option value="medium">🟡 Medium (Shoulder Erosion / Rockfall)</option>
+                          <option value="low">⚪ Low (Soil Slumping / Standby)</option>
+                        </>
+                      ) : hazardType === 'flood' ? (
+                        <>
+                          <option value="critical">🔴 Critical (Chest-Deep &gt;1m / Mandatory Evacuation)</option>
+                          <option value="high">🟠 High (Waist-Deep 0.8-1.0m / Trucks Only)</option>
+                          <option value="medium">🟡 Medium (Knee-Deep 0.3-0.6m / Advisory Alert)</option>
+                          <option value="low">⚪ Low (Ankle-Deep 0.1-0.2m / Standby)</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="critical">🔴 Critical (Mandatory Evacuation)</option>
+                          <option value="high">🟠 High (Pre-emptive Evacuation)</option>
+                          <option value="medium">🟡 Medium (Advisory Alert)</option>
+                          <option value="low">⚪ Low (Standby)</option>
+                        </>
+                      )}
                     </select>
                   </div>
 

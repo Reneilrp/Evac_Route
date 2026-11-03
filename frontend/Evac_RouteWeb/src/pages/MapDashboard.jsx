@@ -695,6 +695,42 @@ function HazardFormModal({ location, initialRadius = 50, onConfirm, onCancel, is
 
   const isSeverityLocked = hazardType === 'earthquake';
 
+  const severityOptions = useMemo(() => {
+    if (hazardType === 'building_fire' || hazardType === 'fire') {
+      return [
+        { value: 'low', label: '1st Alarm (Initial Engine / Single Room)', desc: 'Fire confined to room or point of origin.' },
+        { value: 'medium', label: '2nd Alarm (Multiple Engines / Spreading)', desc: 'Fire spreading across structure, heavy smoke.' },
+        { value: 'high', label: '3rd Alarm / General (Major Conflagration)', desc: 'Multiple structures engulfed, citywide backup requested.' },
+      ];
+    }
+    if (hazardType === 'landslide') {
+      return [
+        { value: 'low', label: 'Low (Minor Shoulder Rockfall / Erosion)', desc: 'Soil slumping on roadside ditch; roadway remains passable.' },
+        { value: 'medium', label: 'Medium (Partial Lane Mudflow)', desc: 'Mud and boulders blocking single lane; clearance crew needed.' },
+        { value: 'high', label: 'High (Complete Slope Collapse / Buried)', desc: 'Entire road buried, evacuation corridor severed.' },
+      ];
+    }
+    if (hazardType === 'flood') {
+      return [
+        { value: 'low', label: 'Low (Ankle-deep 10-25cm)', desc: 'Passable to all vehicles; gutters overflowing.' },
+        { value: 'medium', label: 'Medium (Knee-deep 25-60cm)', desc: 'Passable only to 4x4 trucks; ground floors threatened.' },
+        { value: 'high', label: 'High (Chest-deep >1m / Impassable)', desc: 'Completely impassable; rescue boats and air extraction needed.' },
+      ];
+    }
+    if (hazardType === 'earthquake') {
+      return [
+        { value: 'high', label: 'Critical (Structural Collapse / Debris)', desc: 'Fissures and collapsed walls blocking thoroughfare.' },
+      ];
+    }
+    return [
+      { value: 'low', label: 'Low Severity', desc: 'Minor hazard, manageable locally.' },
+      { value: 'medium', label: 'Medium Severity', desc: 'Significant hazard affecting travel.' },
+      { value: 'high', label: 'High Severity', desc: 'Severe emergency threatening life safety.' },
+    ];
+  }, [hazardType]);
+
+  const activeSeverityDesc = severityOptions.find(o => o.value === severityLevel)?.desc;
+
   return (
     <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
@@ -735,17 +771,24 @@ function HazardFormModal({ location, initialRadius = 50, onConfirm, onCancel, is
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Severity</label>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">
+                Basis of Severity ({hazardType === 'building_fire' ? 'BFP Fire Alarm' : hazardType})
+              </label>
               <select
                 className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 disabled:bg-gray-100 dark:disabled:bg-slate-950 disabled:text-gray-500 dark:disabled:text-slate-650"
                 value={severityLevel}
                 onChange={e => setSeverityLevel(e.target.value)}
                 disabled={isSeverityLocked}
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
+                {severityOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
+              {activeSeverityDesc && (
+                <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
+                  ℹ️ {activeSeverityDesc}
+                </p>
+              )}
             </div>
           </div>
           <div>
