@@ -274,3 +274,42 @@ test('resident cannot declare disaster zones or perform hotline intake', functio
         'intake_source' => 'hotline_911',
     ])->assertStatus(403);
 });
+
+test('dynamic rain duration threshold automatically triggers chronic flood spots', function () {
+    \App\Models\Setting::set('auto_flood_rain_threshold_minutes', 30);
+    \App\Models\Setting::set('auto_flood_activation_enabled', true);
+
+    $user = User::factory()->create();
+    $hazard = Hazard::create([
+        'name' => 'Guiwan Drainage Bottleneck',
+        'latitude' => 6.9280,
+        'longitude' => 122.0830,
+        'radius_meters' => 300,
+        'hazard_type' => 'flood',
+        'severity_level' => 'high',
+        'is_fixed_flood_spot' => true,
+        'is_active' => false,
+        'reported_by' => $user->id,
+    ]);
+
+    $this->mock(WeatherService::class, function ($mock) {
+        $mock->shouldReceive('isCurrentlyRaining')->andReturn(true);
+    });
+
+    // Test at 25 minutes: should not trigger yet
+    Cache::put('rain_started_at', now()->subMinutes(25)->toIso8601String(), 3600);
+    $res1 = $this->getJson('/api/weather/live-status');
+    $hazard->refresh();
+    expect((bool) $hazard->is_active)->toBeFalse()
+        ->and($res1->json('data.flood_trigger_threshold_minutes'))->toBe(30)
+        ->and($res1->json('data.fixed_flood_spots_triggered'))->toBeFalse();
+
+    // Test at 35 minutes: exceeds dynamic threshold of 30m, should auto-trigger
+    Cache::put('rain_started_at', now()->subMinutes(35)->toIso8601String(), 3600);
+    $res2 = $this->getJson('/api/weather/live-status');
+    $hazard->refresh();
+    expect((bool) $hazard->is_active)->toBeTrue()
+        ->and($res2->json('data.fixed_flood_spots_triggered'))->toBeTrue()
+        ->and($res2->json('data.active_fixed_flood_spots_count'))->toBe(1)
+        ->and($res2->json('data.system_recommendation'))->toContain('reached configured 30m threshold');
+});

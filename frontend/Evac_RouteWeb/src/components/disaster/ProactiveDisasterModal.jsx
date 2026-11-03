@@ -177,7 +177,12 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
             </span>
             {weatherData?.continuous_rain_duration_minutes > 0 && (
               <span className="bg-blue-200 dark:bg-blue-900 text-blue-900 dark:text-blue-200 font-extrabold px-2 py-0.5 rounded-md text-[11px]">
-                {weatherData.continuous_rain_duration_minutes} mins continuous
+                {weatherData.continuous_rain_duration_minutes}m continuous ({weatherData.flood_trigger_threshold_minutes || 45}m threshold)
+              </span>
+            )}
+            {weatherData?.fixed_flood_spots_triggered && (
+              <span className="bg-rose-200 dark:bg-rose-950 text-rose-800 dark:text-rose-300 font-black px-2 py-0.5 rounded-md text-[11px] animate-pulse">
+                ⚡ {weatherData.active_fixed_flood_spots_count || 5} Chronic Drainage Spots Active
               </span>
             )}
           </div>

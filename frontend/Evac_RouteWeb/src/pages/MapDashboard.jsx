@@ -3401,9 +3401,9 @@ export default function MapDashboard() {
               onClick={() => setIsProactiveModalOpen(true)}
               className={`flex items-center gap-2 px-2.5 xl:px-3 py-1.5 rounded-lg border text-xs font-bold transition shadow-md cursor-pointer whitespace-nowrap ${
                 weatherTelemetry?.is_raining
-                  ? (weatherTelemetry.continuous_rain_duration_minutes >= 60
+                  ? (weatherTelemetry.continuous_rain_duration_minutes >= (weatherTelemetry?.flood_trigger_threshold_minutes || 45)
                       ? 'bg-rose-950/90 hover:bg-rose-900/90 border-rose-500 text-rose-200 animate-pulse'
-                      : weatherTelemetry.continuous_rain_duration_minutes >= 30
+                      : weatherTelemetry.continuous_rain_duration_minutes >= Math.max(15, (weatherTelemetry?.flood_trigger_threshold_minutes || 45) - 15)
                         ? 'bg-amber-950/90 hover:bg-amber-900/90 border-amber-500 text-amber-200'
                         : 'bg-blue-950/90 hover:bg-blue-900/90 border-blue-500 text-blue-200')
                   : 'bg-slate-800/90 hover:bg-slate-700/90 border-slate-700 text-slate-300'
@@ -3417,7 +3417,11 @@ export default function MapDashboard() {
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
                   </span>
                   <span className="font-extrabold text-white">
-                    🌧️ {weatherTelemetry.continuous_rain_duration_minutes > 0 ? `${weatherTelemetry.continuous_rain_duration_minutes}m Rain` : 'Rain Starting'}
+                    {weatherTelemetry.continuous_rain_duration_minutes >= (weatherTelemetry?.flood_trigger_threshold_minutes || 45)
+                      ? `🚨 ${weatherTelemetry.continuous_rain_duration_minutes}m Rain (Auto-EOC Active)`
+                      : weatherTelemetry.continuous_rain_duration_minutes >= Math.max(15, (weatherTelemetry?.flood_trigger_threshold_minutes || 45) - 15)
+                        ? `🌧️ ${weatherTelemetry.continuous_rain_duration_minutes}m (Auto-EOC in ${(weatherTelemetry?.flood_trigger_threshold_minutes || 45) - weatherTelemetry.continuous_rain_duration_minutes}m)`
+                        : `🌧️ ${weatherTelemetry.continuous_rain_duration_minutes > 0 ? `${weatherTelemetry.continuous_rain_duration_minutes}m Rain` : 'Rain Starting'}`}
                   </span>
                   {weatherTelemetry.rain_mm > 0 && (
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 text-cyan-300">
@@ -3520,16 +3524,25 @@ export default function MapDashboard() {
           </div>
         )}
 
-        {/* Prolonged Rain (PAGASA Threshold ≥60 mins) Visual Early Warning Alert */}
-        {weatherTelemetry?.is_raining && weatherTelemetry.continuous_rain_duration_minutes >= 60 && (
+        {/* Prolonged Rain (Dynamic Threshold) Visual Early Warning Alert */}
+        {weatherTelemetry?.is_raining && weatherTelemetry.continuous_rain_duration_minutes >= (weatherTelemetry?.flood_trigger_threshold_minutes || 45) && (
           <div className={`absolute ${activeDisasterSim !== 'none' || pinMode ? 'top-32' : 'top-16'} left-1/2 -translate-x-1/2 z-40 bg-rose-950/95 backdrop-blur-md border-2 border-rose-500 text-white rounded-2xl px-5 py-2.5 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300`}>
             <span className="flex h-3 w-3 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
             </span>
             <div className="text-xs">
-              <span className="font-black text-rose-300 uppercase tracking-wide">🚨 PROLONGED RAINFALL ALERT:</span>{' '}
-              <span>Zamboanga City has recorded <strong>{weatherTelemetry.continuous_rain_duration_minutes} continuous minutes</strong> of rain ({weatherTelemetry.rain_mm > 0 ? `${weatherTelemetry.rain_mm} mm/h` : 'Precipitation active'}). High flood risk for river basins &amp; low-lying barangays.</span>
+              <span className="font-black text-rose-300 uppercase tracking-wide">🚨 PROLONGED RAINFALL &amp; DRAINAGE FLOOD ALERT:</span>{' '}
+              <span>
+                Zamboanga City recorded <strong>{weatherTelemetry.continuous_rain_duration_minutes} continuous minutes</strong> of rain (surpassed configured <strong>{weatherTelemetry?.flood_trigger_threshold_minutes || 45}m</strong> threshold).
+                {weatherTelemetry?.fixed_flood_spots_triggered && weatherTelemetry?.active_fixed_flood_spots_count > 0 ? (
+                  <span className="ml-1 text-amber-300 font-bold">
+                    ⚡ {weatherTelemetry.active_fixed_flood_spots_count} chronic bad-drainage flood spots automatically activated on map.
+                  </span>
+                ) : (
+                  <span> High flood risk for river basins &amp; low-lying barangays.</span>
+                )}
+              </span>
             </div>
             <button
               onClick={() => setIsProactiveModalOpen(true)}

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Hazard;
+use App\Models\Setting;
 use App\Services\WeatherService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -36,6 +37,9 @@ class WeatherController extends Controller
             $telemetry = [];
         }
 
+        $thresholdMinutes = (int) Setting::get('auto_flood_rain_threshold_minutes', 45);
+        $autoActivationEnabled = filter_var(Setting::get('auto_flood_activation_enabled', true), FILTER_VALIDATE_BOOLEAN);
+
         $rainStartedAt = Cache::get('rain_started_at');
 
         if ($isRaining) {
@@ -47,6 +51,9 @@ class WeatherController extends Controller
             if ($rainStartedAt) {
                 Cache::forget('rain_started_at');
                 Cache::forget('fixed_flood_spots_triggered');
+                Hazard::where('hazard_type', 'flood')
+                    ->where('is_fixed_flood_spot', true)
+                    ->update(['is_active' => false]);
                 $rainStartedAt = null;
             }
         }
@@ -54,6 +61,17 @@ class WeatherController extends Controller
         $durationMinutes = 0;
         if ($rainStartedAt) {
             $durationMinutes = (int) round(abs(now()->diffInMinutes(Carbon::parse($rainStartedAt))));
+        }
+
+        $fixedFloodSpotsTriggered = (bool) Cache::get('fixed_flood_spots_triggered', false);
+
+        // Auto-activate chronic drainage flood spots if duration meets or exceeds threshold
+        if ($isRaining && $autoActivationEnabled && $durationMinutes >= $thresholdMinutes && ! $fixedFloodSpotsTriggered) {
+            Hazard::where('hazard_type', 'flood')
+                ->where('is_fixed_flood_spot', true)
+                ->update(['is_active' => true]);
+            Cache::forever('fixed_flood_spots_triggered', true);
+            $fixedFloodSpotsTriggered = true;
         }
 
         $activePresetsCount = Hazard::whereNotNull('preset_key')
@@ -82,13 +100,15 @@ class WeatherController extends Controller
                 'telemetry_source' => $telemetry['source'] ?? 'telemetry',
                 'rain_started_at' => $rainStartedAt,
                 'continuous_rain_duration_minutes' => $durationMinutes,
-                'fixed_flood_spots_triggered' => Cache::get('fixed_flood_spots_triggered', false),
+                'flood_trigger_threshold_minutes' => $thresholdMinutes,
+                'auto_activation_enabled' => $autoActivationEnabled,
+                'fixed_flood_spots_triggered' => $fixedFloodSpotsTriggered,
                 'active_presets_count' => $activePresetsCount,
                 'active_fixed_flood_spots_count' => $activeFixedFloodSpotsCount,
                 'system_recommendation' => $isRaining
-                    ? ($durationMinutes >= 45
-                        ? 'High flood risk: Immediate proactive river basin preset activation recommended.'
-                        : 'Rain detected: Monitor river levels and stand by for Tumaga/Saaz alerts.')
+                    ? ($durationMinutes >= $thresholdMinutes
+                        ? "High flood risk: Continuous rain duration ({$durationMinutes}m) reached configured {$thresholdMinutes}m threshold. Chronic drainage flood corridors active."
+                        : "Rain detected: Continuous for {$durationMinutes}m ({$thresholdMinutes}m auto-trigger threshold).")
                     : 'Clear / Normal operational state.',
                 'checked_at' => now()->toIso8601String(),
             ],

@@ -305,6 +305,89 @@ class DatabaseSeeder extends Seeder
             'reported_by' => $admin->id,
         ]);
 
+        // 2b. Chronic Bad Drainage Lowland Flood Spots (Auto-Triggered on Prolonged Rain)
+        $chronicDrainageSpots = [
+            [
+                'name' => 'Guiwan Highway Drainage Bottleneck',
+                'barangay' => 'Guiwan',
+                'latitude' => 6.9280,
+                'longitude' => 122.0830,
+                'radius_meters' => 350,
+                'hazard_type' => 'flood',
+                'severity_level' => 'high',
+                'is_fixed_flood_spot' => true,
+                'is_active' => false,
+                'origin_type' => 'chronic_drainage',
+                'disaster_category' => 'natural',
+                'estimated_duration_hours' => 6,
+                'reported_by' => $admin->id,
+            ],
+            [
+                'name' => 'Tugbungan Main Canal Outlet Chokepoint',
+                'barangay' => 'Tugbungan',
+                'latitude' => 6.9180,
+                'longitude' => 122.0845,
+                'radius_meters' => 400,
+                'hazard_type' => 'flood',
+                'severity_level' => 'high',
+                'is_fixed_flood_spot' => true,
+                'is_active' => false,
+                'origin_type' => 'chronic_drainage',
+                'disaster_category' => 'natural',
+                'estimated_duration_hours' => 6,
+                'reported_by' => $admin->id,
+            ],
+            [
+                'name' => 'Baliwasan Shoreline Culvert Inundation',
+                'barangay' => 'Baliwasan',
+                'latitude' => 6.9140,
+                'longitude' => 122.0520,
+                'radius_meters' => 300,
+                'hazard_type' => 'flood',
+                'severity_level' => 'high',
+                'is_fixed_flood_spot' => true,
+                'is_active' => false,
+                'origin_type' => 'chronic_drainage',
+                'disaster_category' => 'natural',
+                'estimated_duration_hours' => 6,
+                'reported_by' => $admin->id,
+            ],
+            [
+                'name' => 'Tetuan Highway River Depression',
+                'barangay' => 'Tetuan',
+                'latitude' => 6.9240,
+                'longitude' => 122.0790,
+                'radius_meters' => 350,
+                'hazard_type' => 'flood',
+                'severity_level' => 'high',
+                'is_fixed_flood_spot' => true,
+                'is_active' => false,
+                'origin_type' => 'chronic_drainage',
+                'disaster_category' => 'natural',
+                'estimated_duration_hours' => 6,
+                'reported_by' => $admin->id,
+            ],
+            [
+                'name' => 'San Jose Gusu Canal Overflow Crossing',
+                'barangay' => 'San Jose',
+                'latitude' => 6.9195,
+                'longitude' => 122.0430,
+                'radius_meters' => 350,
+                'hazard_type' => 'flood',
+                'severity_level' => 'high',
+                'is_fixed_flood_spot' => true,
+                'is_active' => false,
+                'origin_type' => 'chronic_drainage',
+                'disaster_category' => 'natural',
+                'estimated_duration_hours' => 6,
+                'reported_by' => $admin->id,
+            ],
+        ];
+
+        foreach ($chronicDrainageSpots as $spot) {
+            Hazard::create($spot);
+        }
+
         // 3. Fire Simulation Hazard (Baliwasan Market)
         Hazard::create([
             'name' => 'Baliwasan Commercial Market Fire Hazard Zone',

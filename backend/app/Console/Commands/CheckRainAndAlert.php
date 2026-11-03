@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Hazard;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\PushNotificationService;
 use App\Services\WeatherService;
@@ -59,8 +60,11 @@ class CheckRainAndAlert extends Command
                 $durationMinutes = abs(now()->diffInMinutes($started));
                 $this->info("Rain has been continuous for {$durationMinutes} minutes.");
 
-                // If rain lasts longer than 1 hour (60 minutes)
-                if ($durationMinutes >= 60) {
+                // Dynamic threshold check (default 60 minutes or CDRRMO configured)
+                $thresholdMinutes = (int) Setting::get('auto_flood_rain_threshold_minutes', 60);
+                $autoEnabled = filter_var(Setting::get('auto_flood_activation_enabled', true), FILTER_VALIDATE_BOOLEAN);
+
+                if ($autoEnabled && $durationMinutes >= $thresholdMinutes) {
                     $this->triggerFloodAlerts();
                 }
             }

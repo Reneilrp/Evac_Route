@@ -917,6 +917,8 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
   const [audioAlerts, setAudioAlerts] = useState(true);
   const [sirenVolume, setSirenVolume] = useState(70);
   const [retentionDays, setRetentionDays] = useState(90);
+  const [autoFloodThreshold, setAutoFloodThreshold] = useState(45);
+  const [autoFloodEnabled, setAutoFloodEnabled] = useState(true);
 
   // Sync profile values when user changes or modal opens
   useEffect(() => {
@@ -945,6 +947,8 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
           setAudioAlerts(cfg.audio_alerts_enabled);
           setSirenVolume(cfg.siren_volume);
           setRetentionDays(cfg.audit_log_retention_days);
+          setAutoFloodThreshold(cfg.auto_flood_rain_threshold_minutes ?? 45);
+          setAutoFloodEnabled(cfg.auto_flood_activation_enabled === true || cfg.auto_flood_activation_enabled === 'true' || cfg.auto_flood_activation_enabled === 1 || cfg.auto_flood_activation_enabled === '1');
         })
         .catch(err => {
           console.error("Failed to load system configurations", err);
@@ -1019,6 +1023,8 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
         audio_alerts_enabled: audioAlerts ? 1 : 0,
         siren_volume: parseInt(sirenVolume),
         audit_log_retention_days: parseInt(retentionDays),
+        auto_flood_rain_threshold_minutes: parseInt(autoFloodThreshold),
+        auto_flood_activation_enabled: autoFloodEnabled ? 1 : 0,
       };
       await api.post('/settings', payload);
       toast.success("System configurations saved successfully!");
@@ -1300,6 +1306,41 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
                     required
                   />
                   <span className="text-[10px] text-gray-400 dark:text-slate-500 block mt-1">Triggers system alert toast when occupancy rate matches or exceeds this percentage.</span>
+                </div>
+
+                <h4 className="font-bold text-sm text-gray-800 dark:text-slate-200 border-b border-gray-200 dark:border-slate-800 pb-2 pt-2">🌧️ Dynamic Rainfall &amp; Automated Flood EOC</h4>
+                
+                {/* Auto Flood Spot Activation Switch */}
+                <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-lg flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-gray-800 dark:text-slate-200 block">Automated Bad-Drainage Flood Activation</span>
+                    <span className="text-[10px] text-gray-400 dark:text-slate-500 block mt-0.5">
+                      Automatically activates chronic drainage bottlenecks &amp; road hazards when sustained rainfall reaches the configured threshold.
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={autoFloodEnabled}
+                      onChange={e => setAutoFloodEnabled(e.target.checked)}
+                    />
+                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">Prolonged Rain Flood Trigger Threshold (Minutes)</label>
+                  <input 
+                    type="number" 
+                    min="10"
+                    max="240"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                    value={autoFloodThreshold}
+                    onChange={e => setAutoFloodThreshold(e.target.value)}
+                    required
+                  />
+                  <span className="text-[10px] text-gray-400 dark:text-slate-500 block mt-1">CDRRMO early warning duration limit. Example: 45 or 60 continuous minutes of precipitation triggers auto-EOC.</span>
                 </div>
 
                 <button 

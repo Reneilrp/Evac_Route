@@ -29,6 +29,8 @@ class SettingController extends Controller
             'audio_alerts_enabled' => true,
             'siren_volume' => 70,
             'audit_log_retention_days' => 90,
+            'auto_flood_rain_threshold_minutes' => 45,
+            'auto_flood_activation_enabled' => true,
         ];
 
         // Fetch settings from database
@@ -40,6 +42,8 @@ class SettingController extends Controller
         // Ensure boolean casts
         $merged['audio_alerts_enabled'] = filter_var($merged['audio_alerts_enabled'], FILTER_VALIDATE_BOOLEAN);
         $merged['master_emergency_active'] = filter_var($merged['master_emergency_active'], FILTER_VALIDATE_BOOLEAN);
+        $merged['auto_flood_activation_enabled'] = filter_var($merged['auto_flood_activation_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN);
+        $merged['auto_flood_rain_threshold_minutes'] = (int) ($merged['auto_flood_rain_threshold_minutes'] ?? 45);
 
         return response()->json([
             'status' => 'success',
@@ -65,6 +69,8 @@ class SettingController extends Controller
             'audio_alerts_enabled' => 'nullable|boolean',
             'siren_volume' => 'nullable|integer|min:0|max:100',
             'audit_log_retention_days' => 'nullable|integer|min:1',
+            'auto_flood_rain_threshold_minutes' => 'nullable|integer|min:10|max:240',
+            'auto_flood_activation_enabled' => 'nullable|boolean',
         ]);
 
         foreach ($validated as $key => $value) {
