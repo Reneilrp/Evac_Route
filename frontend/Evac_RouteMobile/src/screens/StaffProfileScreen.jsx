@@ -24,6 +24,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { spacing, radii, typography, shadows } from '../styles/theme';
+import { APP_FULL_VERSION } from '../config/version';
 
 export default function StaffProfileScreen({ navigation }) {
   const { user, logout } = useAuth();
@@ -248,7 +249,7 @@ export default function StaffProfileScreen({ navigation }) {
         <Text style={styles.footerNote}>
           Signing out concludes your active duty session on this mobile device.
         </Text>
-        <Text style={styles.versionText}>EVAC_ROUTE MOBILE • v1.0.1</Text>
+        <Text style={styles.versionText}>{APP_FULL_VERSION}</Text>
       </ScrollView>
 
       {/* Styled Logout Confirmation Modal */}

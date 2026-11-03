@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
+import { MOBILE_APP_CONFIG } from '../config/mobileRelease';
 
 export default function LandingPage() {
   const { darkMode, toggleDarkMode } = useTheme();
@@ -244,8 +245,8 @@ export default function LandingPage() {
   const handleDownload = () => {
     setDownloading(true);
     const link = document.createElement('a');
-    link.href = '/downloads/EvacRoute.apk';
-    link.setAttribute('download', 'EvacRoute.apk');
+    link.href = MOBILE_APP_CONFIG.downloadPath;
+    link.setAttribute('download', MOBILE_APP_CONFIG.apkFileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -383,7 +384,7 @@ export default function LandingPage() {
             >
               <Download size={14} className="shrink-0" />
               <span>Download APK</span>
-              <span className="text-[10px] bg-white/20 px-1.5 py-0.2 rounded font-mono">v1.2.0</span>
+              <span className="text-[10px] bg-white/20 px-1.5 py-0.2 rounded font-mono">{MOBILE_APP_CONFIG.versionTag}</span>
             </button>
           </div>
 
@@ -425,7 +426,7 @@ export default function LandingPage() {
                 className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer text-left"
               >
                 <Download size={15} />
-                <span>Download App (v1.2.0)</span>
+                <span>Download App ({MOBILE_APP_CONFIG.versionTag})</span>
               </button>
 
               <button
@@ -517,7 +518,7 @@ export default function LandingPage() {
                     >
                       <Download size={16} />
                       <span>{downloading ? 'Preparing Download...' : 'Download EvacRoute APK'}</span>
-                      <span className="text-[11px] font-mono bg-blue-800/60 px-1.5 py-0.5 rounded">149 MB</span>
+                      <span className="text-[11px] font-mono bg-blue-800/60 px-1.5 py-0.5 rounded">{MOBILE_APP_CONFIG.fileSize}</span>
                     </button>
 
                     <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
@@ -1429,7 +1430,7 @@ export default function LandingPage() {
               Download the Official Package
             </h3>
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Save the verified <span className="font-semibold text-blue-600 dark:text-blue-400">EvacRoute.apk</span> (~149 MB) package directly to your phone via the download button.
+              Save the verified <span className="font-semibold text-blue-600 dark:text-blue-400">{MOBILE_APP_CONFIG.apkFileName}</span> (~{MOBILE_APP_CONFIG.fileSize}) package directly to your phone via the download button.
             </p>
           </div>
 
@@ -1476,7 +1477,7 @@ export default function LandingPage() {
             className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-xs sm:text-sm rounded-lg transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
           >
             <Download size={16} />
-            <span>{downloading ? 'Preparing Package...' : 'Download EvacRoute.apk (v1.2.0)'}</span>
+            <span>{downloading ? 'Preparing Package...' : `Download ${MOBILE_APP_CONFIG.apkFileName} (${MOBILE_APP_CONFIG.versionTag})`}</span>
           </button>
         </div>
 
@@ -1533,7 +1534,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500">
             <p>© 2026 City Disaster Risk Reduction &amp; Management Office (CDRRMO), Zamboanga City.</p>
             <div className="flex items-center gap-4">
-              <span>v1.2.0</span>
+              <span>{MOBILE_APP_CONFIG.versionTag}</span>
               <span>•</span>
               <button onClick={handleDownload} className="text-blue-400 hover:underline cursor-pointer">Download APK</button>
               <span>•</span>

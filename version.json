@@ -1,0 +1,11 @@
+{
+  "appName": "EvacRoute Mobile",
+  "version": "1.2.0",
+  "versionCode": 8,
+  "versionTag": "v1.2.0",
+  "apkFileName": "EvacRoute.apk",
+  "fileSize": "149 MB",
+  "minAndroid": "Android 8.0+ (Oreo)",
+  "releaseDate": "November 2026",
+  "releaseChannel": "Production Stable"
+}

@@ -13,6 +13,7 @@ import EmptyState from '../components/EmptyState';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getStyles } from '../styles/ProfileQRScreen.styles';
 import * as Crypto from 'expo-crypto';
+import { APP_FULL_VERSION } from '../config/version';
 
 const TRANSPORTATION_OPTIONS = [
   {
@@ -469,6 +470,19 @@ export default function ProfileQRScreen({ navigation }) {
             icon={<LogOut size={16} color={colors.textMuted} />}
           />
         </View>
+
+        {/* ─── App Version Stamp (Synced via Hub) ─── */}
+        <Text style={{
+          textAlign: 'center',
+          color: colors.textMuted,
+          fontSize: 11,
+          fontWeight: '700',
+          letterSpacing: 0.8,
+          marginBottom: 24,
+          opacity: 0.8,
+        }}>
+          {APP_FULL_VERSION}
+        </Text>
 
       </ScrollView>
 

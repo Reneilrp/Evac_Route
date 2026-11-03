@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import { getStyles } from '../styles/LoginScreen.styles';
+import { APP_FULL_VERSION } from '../config/version';
 
 export default function LoginScreen({ navigation }) {
   const { loginWithCredentials } = useAuth();
@@ -332,7 +333,7 @@ export default function LoginScreen({ navigation }) {
               </View>
             </Animated.View>
 
-            <Text style={styles.versionText}>EVAC_ROUTE MOBILE • v1.0.1</Text>
+            <Text style={styles.versionText}>{APP_FULL_VERSION}</Text>
           </ScrollView>
         </KeyboardAvoidingView>
       </Animated.View>
