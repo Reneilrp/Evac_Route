@@ -67,7 +67,7 @@ class CheckInController extends Controller
                             $shelter->status = 'open';
                         }
                         $shelter->save();
-                        broadcast(new ShelterStatusUpdated($shelter));
+                        $this->safeBroadcast(new ShelterStatusUpdated($shelter));
 
                         $activeLog->save();
 
@@ -89,7 +89,7 @@ class CheckInController extends Controller
                                 $oldShelter->status = 'open';
                             }
                             $oldShelter->save();
-                            broadcast(new ShelterStatusUpdated($oldShelter));
+                            $this->safeBroadcast(new ShelterStatusUpdated($oldShelter));
                         }
 
                         $activeLog->checked_out_at = now();
@@ -101,7 +101,7 @@ class CheckInController extends Controller
                             $shelter->status = 'full';
                         }
                         $shelter->save();
-                        broadcast(new ShelterStatusUpdated($shelter));
+                        $this->safeBroadcast(new ShelterStatusUpdated($shelter));
 
                         // Allocate rations (Eager loaded & locked in sorted order to prevent deadlocks)
                         $activeRation = RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
@@ -181,7 +181,7 @@ class CheckInController extends Controller
                     $shelter->status = 'full';
                 }
                 $shelter->save();
-                broadcast(new ShelterStatusUpdated($shelter));
+                $this->safeBroadcast(new ShelterStatusUpdated($shelter));
 
                 $isOverflow = $shelter->current_occupancy > $shelter->max_capacity;
                 $overflowCount = max(0, $shelter->current_occupancy - $shelter->max_capacity);
@@ -302,7 +302,7 @@ class CheckInController extends Controller
                     $shelter->status = 'full';
                 }
                 $shelter->save();
-                broadcast(new ShelterStatusUpdated($shelter));
+                $this->safeBroadcast(new ShelterStatusUpdated($shelter));
 
                 $isOverflow = $shelter->current_occupancy > $shelter->max_capacity;
                 $overflowCount = max(0, $shelter->current_occupancy - $shelter->max_capacity);
@@ -587,7 +587,7 @@ class CheckInController extends Controller
                             $oldShelter->status = 'open';
                         }
                         $oldShelter->save();
-                        broadcast(new ShelterStatusUpdated($oldShelter));
+                        $this->safeBroadcast(new ShelterStatusUpdated($oldShelter));
                     }
                     $activeLog->checked_out_at = now();
                     $activeLog->save();
@@ -599,7 +599,7 @@ class CheckInController extends Controller
                     $shelter->status = 'full';
                 }
                 $shelter->save();
-                broadcast(new ShelterStatusUpdated($shelter));
+                $this->safeBroadcast(new ShelterStatusUpdated($shelter));
 
                 $log = EvacuationLog::create([
                     'family_profile_id' => $family->id,
@@ -632,6 +632,18 @@ class CheckInController extends Controller
                 'status' => 'error',
                 'message' => $e->getMessage(),
             ], 400);
+        }
+    }
+
+    /**
+     * Broadcast safely without failing critical database transactions if Reverb is offline.
+     */
+    protected function safeBroadcast($event): void
+    {
+        try {
+            broadcast($event);
+        } catch (\Throwable $e) {
+            \Log::warning('Broadcast warning: ' . $e->getMessage());
         }
     }
 }

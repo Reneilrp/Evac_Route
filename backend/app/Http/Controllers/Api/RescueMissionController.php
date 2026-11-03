@@ -159,7 +159,11 @@ class RescueMissionController extends Controller
         });
 
         // Broadcast real-time dispatch notification
-        event(new RescueMissionDispatched($mission));
+        try {
+            event(new RescueMissionDispatched($mission));
+        } catch (\Throwable $e) {
+            \Log::warning('RescueMissionDispatched broadcast warning: ' . $e->getMessage());
+        }
 
         AuditLog::create([
             'user_id' => $request->user()->id,
@@ -269,7 +273,11 @@ class RescueMissionController extends Controller
         });
 
         // Broadcast real-time dispatch notification
-        event(new RescueMissionDispatched($mission));
+        try {
+            event(new RescueMissionDispatched($mission));
+        } catch (\Throwable $e) {
+            \Log::warning('RescueMissionDispatched broadcast warning: ' . $e->getMessage());
+        }
 
         AuditLog::create([
             'user_id' => $request->user()->id,
@@ -366,7 +374,11 @@ class RescueMissionController extends Controller
                 $stagingShelter = Shelter::find($validated['staging_point_id']);
                 if ($stagingShelter) {
                     $stagingShelter->increment('current_occupancy', $mission->headcount);
-                    event(new ShelterStatusUpdated($stagingShelter));
+                    try {
+                        event(new ShelterStatusUpdated($stagingShelter));
+                    } catch (\Throwable $e) {
+                        \Log::warning('ShelterStatusUpdated broadcast warning: ' . $e->getMessage());
+                    }
                 }
             }
 
@@ -424,14 +436,22 @@ class RescueMissionController extends Controller
                     ]);
 
                     // Broadcast real-time shelter occupancy change to CSWDO & CDRRMO
-                    event(new ShelterStatusUpdated($shelter));
+                    try {
+                        event(new ShelterStatusUpdated($shelter));
+                    } catch (\Throwable $e) {
+                        \Log::warning('ShelterStatusUpdated broadcast warning: ' . $e->getMessage());
+                    }
                 }
             }
         });
 
         $mission->refresh()->load(['rescueUnit', 'targetShelter', 'stagingPoint']);
 
-        event(new RescueMissionStatusUpdated($mission));
+        try {
+            event(new RescueMissionStatusUpdated($mission));
+        } catch (\Throwable $e) {
+            \Log::warning('RescueMissionStatusUpdated broadcast warning: ' . $e->getMessage());
+        }
 
         AuditLog::create([
             'user_id' => $request->user()->id,
