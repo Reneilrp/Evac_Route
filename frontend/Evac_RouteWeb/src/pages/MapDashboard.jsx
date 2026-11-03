@@ -6,7 +6,7 @@ import {
   MapPin, AlertTriangle, X, Cloud, Flame, Zap,
   ChevronRight, ChevronLeft, Moon, Satellite, Mountain,
   TriangleAlert, Droplets, Waves, Shield, SlidersHorizontal, Layers,
-  Eye, Users, Building2, Search, ShieldAlert
+  Eye, Users, Building2, Search, ShieldAlert, CloudRain, Sun
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
@@ -2790,6 +2790,13 @@ export default function MapDashboard() {
     refetchInterval: 3000,
   });
 
+  // Live OpenWeather & continuous rainfall telemetry for Zamboanga City
+  const { data: weatherTelemetry } = useQuery({
+    queryKey: ['weather/live-status'],
+    queryFn: () => api.get('/weather/live-status').then(r => r.data?.data),
+    refetchInterval: 30000,
+  });
+
   // Asynchronously query Mapbox Directions API for active rescue mission corridors
   useEffect(() => {
     if (!showRescueUnits || !activeRescueMissions || activeRescueMissions.length === 0 || !MAPBOX_TOKEN) return;
@@ -3384,6 +3391,58 @@ export default function MapDashboard() {
 
           <div className="w-px bg-white/10 self-stretch my-1" />
 
+          {/* Live OpenWeather & Continuous Rain Telemetry HUD */}
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] font-black uppercase tracking-widest mb-1 select-none whitespace-nowrap flex items-center gap-1 text-cyan-400">
+              <CloudRain size={10} />
+              <span>Zamboanga Weather</span>
+            </span>
+            <button
+              onClick={() => setIsProactiveModalOpen(true)}
+              className={`flex items-center gap-2 px-2.5 xl:px-3 py-1.5 rounded-lg border text-xs font-bold transition shadow-md cursor-pointer whitespace-nowrap ${
+                weatherTelemetry?.is_raining
+                  ? (weatherTelemetry.continuous_rain_duration_minutes >= 60
+                      ? 'bg-rose-950/90 hover:bg-rose-900/90 border-rose-500 text-rose-200 animate-pulse'
+                      : weatherTelemetry.continuous_rain_duration_minutes >= 30
+                        ? 'bg-amber-950/90 hover:bg-amber-900/90 border-amber-500 text-amber-200'
+                        : 'bg-blue-950/90 hover:bg-blue-900/90 border-blue-500 text-blue-200')
+                  : 'bg-slate-800/90 hover:bg-slate-700/90 border-slate-700 text-slate-300'
+              }`}
+              title="OpenWeather / Open-Meteo Live Telemetry. Click to open Proactive Early Warning EOC & River Basin Controls"
+            >
+              {weatherTelemetry?.is_raining ? (
+                <>
+                  <span className="flex h-2.5 w-2.5 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
+                  </span>
+                  <span className="font-extrabold text-white">
+                    🌧️ {weatherTelemetry.continuous_rain_duration_minutes > 0 ? `${weatherTelemetry.continuous_rain_duration_minutes}m Rain` : 'Rain Starting'}
+                  </span>
+                  {weatherTelemetry.rain_mm > 0 && (
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 text-cyan-300">
+                      {weatherTelemetry.rain_mm} mm/h
+                    </span>
+                  )}
+                  {weatherTelemetry.temp_c && (
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      {weatherTelemetry.temp_c}°C
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Sun size={13} className="text-amber-400" />
+                  <span className="text-slate-300 font-semibold">
+                    ☀️ Clear {weatherTelemetry?.temp_c ? `(${weatherTelemetry.temp_c}°C)` : ''}
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="w-px bg-white/10 self-stretch my-1" />
+
           {/* Proactive Early Warning & Presets Command */}
           <div className="flex flex-col items-center">
             <span className="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1 select-none whitespace-nowrap">Early Warning</span>
@@ -3461,6 +3520,25 @@ export default function MapDashboard() {
           </div>
         )}
 
+        {/* Prolonged Rain (PAGASA Threshold ≥60 mins) Visual Early Warning Alert */}
+        {weatherTelemetry?.is_raining && weatherTelemetry.continuous_rain_duration_minutes >= 60 && (
+          <div className={`absolute ${activeDisasterSim !== 'none' || pinMode ? 'top-32' : 'top-16'} left-1/2 -translate-x-1/2 z-40 bg-rose-950/95 backdrop-blur-md border-2 border-rose-500 text-white rounded-2xl px-5 py-2.5 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300`}>
+            <span className="flex h-3 w-3 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+            </span>
+            <div className="text-xs">
+              <span className="font-black text-rose-300 uppercase tracking-wide">🚨 PROLONGED RAINFALL ALERT:</span>{' '}
+              <span>Zamboanga City has recorded <strong>{weatherTelemetry.continuous_rain_duration_minutes} continuous minutes</strong> of rain ({weatherTelemetry.rain_mm > 0 ? `${weatherTelemetry.rain_mm} mm/h` : 'Precipitation active'}). High flood risk for river basins &amp; low-lying barangays.</span>
+            </div>
+            <button
+              onClick={() => setIsProactiveModalOpen(true)}
+              className="ml-2 px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-md whitespace-nowrap"
+            >
+              Open EOC
+            </button>
+          </div>
+        )}
 
         {pinMode && !isCSWDO && (
           <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-blue-600/95 backdrop-blur-md border border-blue-500/50 text-white rounded-2xl px-5 py-3.5 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-300">

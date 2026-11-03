@@ -26,9 +26,32 @@ class WeatherController extends Controller
     public function liveStatus(Request $request): JsonResponse
     {
         $isRaining = $this->weatherService->isCurrentlyRaining();
-        $rainStartedAt = Cache::get('rain_started_at');
-        $durationMinutes = 0;
+        $telemetry = [];
 
+        try {
+            if (method_exists($this->weatherService, 'getLiveTelemetry')) {
+                $telemetry = $this->weatherService->getLiveTelemetry();
+            }
+        } catch (\Throwable $e) {
+            $telemetry = [];
+        }
+
+        $rainStartedAt = Cache::get('rain_started_at');
+
+        if ($isRaining) {
+            if (! $rainStartedAt) {
+                $rainStartedAt = now()->toIso8601String();
+                Cache::forever('rain_started_at', $rainStartedAt);
+            }
+        } else {
+            if ($rainStartedAt) {
+                Cache::forget('rain_started_at');
+                Cache::forget('fixed_flood_spots_triggered');
+                $rainStartedAt = null;
+            }
+        }
+
+        $durationMinutes = 0;
         if ($rainStartedAt) {
             $durationMinutes = (int) round(abs(now()->diffInMinutes(Carbon::parse($rainStartedAt))));
         }
@@ -51,6 +74,12 @@ class WeatherController extends Controller
                     'longitude' => 122.0729,
                 ],
                 'is_raining' => $isRaining,
+                'condition' => $telemetry['condition'] ?? ($isRaining ? 'Rain' : 'Clear'),
+                'description' => $telemetry['description'] ?? ($isRaining ? 'Precipitation detected' : 'Clear skies'),
+                'temp_c' => $telemetry['temp_c'] ?? 29.0,
+                'humidity' => $telemetry['humidity'] ?? 75,
+                'rain_mm' => $telemetry['rain_mm'] ?? 0.0,
+                'telemetry_source' => $telemetry['source'] ?? 'telemetry',
                 'rain_started_at' => $rainStartedAt,
                 'continuous_rain_duration_minutes' => $durationMinutes,
                 'fixed_flood_spots_triggered' => Cache::get('fixed_flood_spots_triggered', false),
