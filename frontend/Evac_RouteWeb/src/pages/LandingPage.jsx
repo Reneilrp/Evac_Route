@@ -6,8 +6,6 @@ import {
   Smartphone,
   Navigation,
   QrCode,
-  Flame,
-  Radio,
   MapPin,
   CheckCircle2,
   Building2,
@@ -16,24 +14,17 @@ import {
   ShieldCheck,
   Menu,
   X,
-  Compass,
-  Zap,
-  ArrowDown,
-  Heart,
-  Users,
-  AlertCircle,
-  HelpCircle,
   Lock,
-  ArrowUpRight,
   Check,
   AlertTriangle,
+  PhoneCall,
+  ArrowLeft,
+  ChevronRight,
   User,
   Camera,
   Layers,
-  PhoneCall,
-  ArrowRight,
-  ArrowLeft,
-  ChevronRight,
+  Compass,
+  FileCheck2,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
@@ -42,7 +33,16 @@ export default function LandingPage() {
   const { darkMode, toggleDarkMode } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const [isIOS] = useState(() => {
+    if (typeof navigator !== 'undefined') {
+      const userAgent = navigator.userAgent || '';
+      return (
+        /iPad|iPhone|iPod/.test(userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+      );
+    }
+    return false;
+  });
   const [activeSection, setActiveSection] = useState('overview');
   const [activeResidentScreen, setActiveResidentScreen] = useState('map'); // 'map' | 'report' | 'profile'
   const [householdStats, setHouseholdStats] = useState({
@@ -52,18 +52,7 @@ export default function LandingPage() {
   });
   const [downloading, setDownloading] = useState(false);
 
-  // Platform detection for mobile touch & iOS HIG styling
-  useEffect(() => {
-    if (typeof navigator !== 'undefined') {
-      const userAgent = navigator.userAgent || '';
-      const isApple =
-        /iPad|iPhone|iPod/.test(userAgent) ||
-        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      setIsIOS(isApple);
-    }
-  }, []);
-
-  // Interactive phone preview states
+  // Interactive resident preview states
   const [isNavigating, setIsNavigating] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [passSaved, setPassSaved] = useState(false);
@@ -86,10 +75,8 @@ export default function LandingPage() {
     if (!touchStartXRef.current || !touchEndXRef.current) return;
     const distance = touchStartXRef.current - touchEndXRef.current;
     if (distance > 45) {
-      // Swiped left -> slide to Mobile UI Showcasing
       setOverviewSlide(1);
     } else if (distance < -45) {
-      // Swiped right -> slide back to Overview
       setOverviewSlide(0);
     }
   };
@@ -101,9 +88,9 @@ export default function LandingPage() {
 
   const navItems = [
     { id: 'overview', label: 'Overview', shortLabel: 'Overview', icon: Smartphone },
-    { id: 'protection', label: 'How It Protects You', shortLabel: 'Protection', icon: ShieldCheck },
+    { id: 'protection', label: 'Household Protection', shortLabel: 'Protection', icon: ShieldCheck },
     { id: 'shelters', label: 'Safe Shelters', shortLabel: 'Shelters', icon: Building2 },
-    { id: 'install-guide', label: 'Installation Guide', shortLabel: 'Install', icon: Download },
+    { id: 'install-guide', label: 'Installation', shortLabel: 'Install', icon: Download },
   ];
 
   const residentProtectionStats = [
@@ -116,31 +103,31 @@ export default function LandingPage() {
     {
       stat: '0%',
       color: 'text-emerald-600 dark:text-emerald-400',
-      title: 'Walk into Danger',
-      desc: 'Avoids active flood & fire zones',
+      title: 'Walk into Hazard Zones',
+      desc: 'Avoids active flood surges & blocked paths',
     },
     {
       stat: '< 30s',
       color: 'text-red-600 dark:text-red-400',
       title: 'SOS Alert Delivery',
-      desc: 'Transmitted directly to rescue units',
+      desc: 'Dispatched directly to CDRRMO rescue units',
     },
     {
       stat: '98',
       color: 'text-amber-600 dark:text-amber-400',
       title: 'Barangays Covered',
-      desc: 'Complete Zamboanga City safety net',
+      desc: 'Citywide Zamboanga DRRM safety matrix',
     },
   ];
 
-  // Sliding underline position calculation
+  // Sliding underline calculation
   const updateUnderline = useCallback(() => {
     const activeEl = navRefs.current[activeSection];
     if (activeEl) {
       const inset = 6;
       setUnderlineStyle({
         left: activeEl.offsetLeft + inset,
-        width: Math.max(0, activeEl.offsetWidth - (inset * 2)),
+        width: Math.max(0, activeEl.offsetWidth - inset * 2),
         opacity: 1,
       });
     }
@@ -156,14 +143,12 @@ export default function LandingPage() {
     };
   }, [updateUnderline]);
 
-  // Clean up any pending scroll timeout on unmount
   useEffect(() => {
     return () => {
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     };
   }, []);
 
-  // Cancel programmatic smooth scroll lock immediately when user manually scrolls or touches
   useEffect(() => {
     const handleUserInteraction = () => {
       if (isClickScrollingRef.current) {
@@ -185,25 +170,22 @@ export default function LandingPage() {
     };
   }, []);
 
-  // Monitor scroll for blurred header transition & active section spy
+  // Active section scroll spy
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY;
       setScrolled(scrollY > 20);
 
-      // Prevent scroll-spy from jittering through intermediate sections while smoothly scrolling programmatically
       if (isClickScrollingRef.current) return;
 
       const sectionIds = ['overview', 'protection', 'shelters', 'install-guide'];
-      const scrollThreshold = 140; // pixel offset below header
+      const scrollThreshold = 140;
 
-      // At or near very top of page activates overview
       if (scrollY < 80) {
         setActiveSection('overview');
         return;
       }
 
-      // Near bottom of page activates the last section
       if (window.innerHeight + scrollY >= document.documentElement.scrollHeight - 50) {
         setActiveSection(sectionIds[sectionIds.length - 1]);
         return;
@@ -227,7 +209,6 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close mobile showcase on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && overviewSlide === 1) {
@@ -238,7 +219,7 @@ export default function LandingPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [overviewSlide]);
 
-  // Fetch real database household & resident statistics on mount
+  // Fetch real public database household stats
   useEffect(() => {
     let isMounted = true;
     api
@@ -253,7 +234,7 @@ export default function LandingPage() {
         }
       })
       .catch(() => {
-        // Fallback gracefully without throwing errors
+        // Fallback gracefully without breaking UI
       });
     return () => {
       isMounted = false;
@@ -262,8 +243,6 @@ export default function LandingPage() {
 
   const handleDownload = () => {
     setDownloading(true);
-    
-    // Direct browser download
     const link = document.createElement('a');
     link.href = '/downloads/EvacRoute.apk';
     link.setAttribute('download', 'EvacRoute.apk');
@@ -304,7 +283,6 @@ export default function LandingPage() {
       }
     }
 
-    // Release programmatic scroll lock once smooth scroll completes
     scrollTimeoutRef.current = setTimeout(() => {
       isClickScrollingRef.current = false;
       scrollTimeoutRef.current = null;
@@ -312,47 +290,61 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 selection:bg-blue-500 selection:text-white transition-colors duration-200">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-600 selection:text-white transition-colors duration-150">
       
-      {/* ── Fixed Navigation Bar (Resident-Focused, No Public Admin Buttons) ── */}
+      {/* ── Fixed Navigation Bar ── */}
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${
           overviewSlide === 1 ? 'hidden md:block' : 'block'
         } ${
           scrolled
-            ? 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 shadow-md py-3'
-            : 'bg-transparent border-b border-transparent py-5'
+            ? 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 py-3'
+            : 'bg-transparent border-b border-transparent py-4'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          {/* Brand Logo */}
+          
+          {/* Brand Identity with Civic Attribution */}
           <a
             href="#overview"
-            onClick={(e) => { e.preventDefault(); scrollToSection('overview'); }}
+            onClick={(e) => {
+              e.preventDefault();
+              scrollToSection('overview');
+            }}
             className="flex items-center gap-3 group focus:outline-none cursor-pointer"
           >
-            <div className="h-10 w-10 rounded-xl bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform">
-              <ShieldAlert size={22} className="text-white" />
+            <div className="h-9 w-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shrink-0 group-hover:bg-blue-700 transition-colors">
+              <ShieldAlert size={20} className="text-white" />
             </div>
             <div>
-              <span className="text-lg font-black tracking-wider text-slate-900 dark:text-white">
-                EvacRoute
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-base font-black tracking-tight text-slate-900 dark:text-white">
+                  EvacRoute
+                </span>
+                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded">
+                  CDRRMO
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium hidden sm:block">
+                Zamboanga City Emergency Network
+              </p>
             </div>
           </a>
 
-          {/* Desktop Navigation Links with Sliding Underline Indicator */}
-          <nav className="relative hidden md:flex items-center gap-1 lg:gap-2 py-1">
+          {/* Desktop Navigation Links */}
+          <nav className="relative hidden md:flex items-center gap-1 py-1">
             {navItems.map((item) => {
               const isActive = activeSection === item.id;
               return (
                 <button
                   key={item.id}
-                  ref={(el) => { navRefs.current[item.id] = el; }}
+                  ref={(el) => {
+                    navRefs.current[item.id] = el;
+                  }}
                   onClick={() => scrollToSection(item.id)}
-                  className={`px-3 py-2 text-xs font-bold transition-colors duration-200 cursor-pointer select-none ${
+                  className={`px-3 py-1.5 text-xs font-semibold transition-colors duration-150 cursor-pointer select-none rounded-md ${
                     isActive
-                      ? 'text-blue-600 dark:text-blue-400'
+                      ? 'text-blue-600 dark:text-blue-400 font-bold'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
@@ -361,9 +353,9 @@ export default function LandingPage() {
               );
             })}
 
-            {/* Sliding Underline Indicator Bar */}
+            {/* Sliding Underline Indicator */}
             <span
-              className="absolute bottom-0 h-[2.5px] bg-blue-600 dark:bg-blue-400 rounded-full shadow-sm shadow-blue-500/50 transition-all duration-300 ease-out pointer-events-none"
+              className="absolute bottom-0 h-[2px] bg-blue-600 dark:bg-blue-400 rounded-full transition-all duration-200 ease-out pointer-events-none"
               style={{
                 left: `${underlineStyle.left}px`,
                 width: `${underlineStyle.width}px`,
@@ -372,104 +364,88 @@ export default function LandingPage() {
             />
           </nav>
 
-          {/* Desktop Right Action Buttons (hidden on phone, visible md+) */}
-          <div className="hidden md:flex items-center gap-2.5 shrink-0">
-            {/* Dark / Light Mode Toggle */}
+          {/* Desktop Right Action Controls */}
+          <div className="hidden md:flex items-center gap-3 shrink-0">
+            {/* Theme Toggle */}
             <button
               onClick={toggleDarkMode}
-              className="p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition shadow-sm cursor-pointer shrink-0"
-              title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+              className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
               aria-label="Toggle theme"
             >
-              {darkMode ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-slate-700" />}
+              {darkMode ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-slate-700" />}
             </button>
 
-            {/* Direct Citizen Download CTA Button */}
+            {/* Direct Flat Download CTA */}
             <button
               onClick={handleDownload}
-              className="inline-flex items-center gap-2 px-4 lg:px-5 py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 tracking-wide cursor-pointer shrink-0"
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] rounded-lg transition duration-150 cursor-pointer shrink-0"
             >
               <Download size={14} className="shrink-0" />
               <span>Download APK</span>
-              <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-bold">v1.1.1</span>
+              <span className="text-[10px] bg-white/20 px-1.5 py-0.2 rounded font-mono">v1.2.0</span>
             </button>
           </div>
 
-          {/* Mobile Header Menu Trigger (Phone only) */}
+          {/* Mobile Header Menu Trigger */}
           <div className="flex md:hidden items-center gap-2">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label={mobileMenuOpen ? 'Close quick action menu' : 'Open quick action menu'}
-              className={`p-2 rounded-xl transition-all cursor-pointer relative ${
-                mobileMenuOpen ? 'z-[60]' : 'z-10'
-              } ${
-                isIOS
-                  ? 'border border-slate-200/60 dark:border-slate-800/60 bg-white/60 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 active:scale-90'
-                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 shadow-sm border border-slate-200 dark:border-slate-800 active:scale-95'
-              }`}
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              className="p-2 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 active:scale-95 transition cursor-pointer"
             >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
+
         </div>
       </header>
 
-      {/* ── Mobile Top-Right Quick Action Menu (Download App & Theme Toggle Only) ── */}
+      {/* ── Mobile Quick Action Drawer ── */}
       {mobileMenuOpen && (
         <>
-          {/* Backdrop overlay — dims top header, hero content, and bottom nav */}
           <div
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs md:hidden animate-enter"
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs md:hidden"
             onClick={() => setMobileMenuOpen(false)}
             aria-hidden="true"
           />
 
-          {/* Floating Quick Action Dropdown Menu (40-50% screen width, right-aligned) */}
           <div
             data-testid="mobile-top-action-menu"
-            className={`fixed top-[calc(3.75rem+env(safe-area-inset-top,0px))] right-[max(0.75rem,env(safe-area-inset-right))] w-[50%] min-w-[175px] max-w-[220px] z-[60] p-2 rounded-2xl border shadow-2xl md:hidden animate-enter ${
-              isIOS
-                ? 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border-slate-200/70 dark:border-slate-800/70 ring-1 ring-white/10 shadow-black/25'
-                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-[0_12px_32px_rgba(0,0,0,0.35)]'
-            }`}
+            className="fixed top-16 right-4 w-52 z-[60] p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl md:hidden"
           >
             <div className="flex flex-col gap-1">
-              {/* Download App */}
               <button
                 type="button"
                 onClick={() => {
                   setMobileMenuOpen(false);
                   handleDownload();
                 }}
-                className="flex items-center gap-2.5 w-full px-2.5 py-2.5 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer text-left"
+                className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer text-left"
               >
-                <Download size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />
-                <span className="truncate">Download App</span>
+                <Download size={15} />
+                <span>Download App (v1.2.0)</span>
               </button>
 
-              {/* Theme Toggle (Light / Dark mode) */}
               <button
                 type="button"
                 onClick={() => {
                   toggleDarkMode();
                   setMobileMenuOpen(false);
                 }}
-                className="flex items-center gap-2.5 w-full px-2.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left"
+                className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer text-left"
               >
-                {darkMode ? (
-                  <Sun size={15} className="text-amber-400 shrink-0" />
-                ) : (
-                  <Moon size={15} className="text-blue-600 shrink-0" />
-                )}
-                <span className="truncate">{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                {darkMode ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} className="text-blue-600" />}
+                <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
               </button>
             </div>
           </div>
         </>
       )}
 
-      {/* ── SECTION 1: CITIZEN PLATFORM OVERVIEW (UNIFIED HERO FOLD - FITS SCREEN ONLY) ── */}
+      {/* ── SECTION 1: CITIZEN PLATFORM OVERVIEW (SUBSTANTIAL HERO) ── */}
+      {/* ── SECTION 1: CITIZEN PLATFORM OVERVIEW (1:1 UNIFIED HERO FOLD) ── */}
       <section
         id="overview"
         className={`relative h-[100svh] min-h-[100svh] md:h-screen md:min-h-screen ${
@@ -500,66 +476,62 @@ export default function LandingPage() {
                   : 'translate-x-0 items-center my-auto'
               }`}
             >
-              {/* Column 1 / Slide 0: Dynamic Viewport Fitting & Proportional Spacing (from GURO-App) */}
+              {/* Column 1 / Slide 0: Dynamic Viewport Fitting & Proportional Spacing */}
               <div className="w-full min-w-full shrink-0 md:min-w-0 md:w-full md:col-span-7 xl:col-span-7 flex flex-col items-center md:items-start justify-evenly md:justify-center gap-[clamp(0.75rem,2.2vh,1.65rem)] md:gap-6 text-center md:text-left my-auto px-2 sm:px-4 md:px-0">
                 
-                {/* Scaled Headline & Concise Subtitle */}
+                {/* 2-Line Strict Display Headline (No Gradient Text) */}
                 <div className="w-full">
-                  <h1 className="text-[clamp(1.65rem,5.6vw,2.75rem)] sm:text-4xl md:text-3xl lg:text-4xl xl:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.14] sm:leading-[1.12] w-full max-w-sm sm:max-w-xl md:max-w-none mx-auto md:mx-0 mb-4 sm:mb-4.5">
-                    Smart Evacuation Routes &amp; Emergency Protection for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Every Household.</span>
+                  <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.12] max-w-2xl mx-auto md:mx-0 mb-3">
+                    Intelligent Evacuation Routing for Every Household.
                   </h1>
-                  <p className="text-[clamp(0.82rem,2.4vw,0.98rem)] sm:text-base lg:text-lg text-slate-600 dark:text-slate-300 w-full max-w-[22rem] sm:max-w-lg md:max-w-xl mx-auto md:mx-0 leading-[1.55] font-medium">
-                    Real-time flood evasion routing to safe high-ground shelters and offline family passes.
+                  <p className="text-sm sm:text-base lg:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto md:mx-0 leading-relaxed font-normal">
+                    Live flood-evasion navigation to high-ground shelters and verified offline relief passes across Zamboanga City.
                   </p>
                 </div>
 
-                {/* Micro Citizen Trust Row - Positioned directly above Download APK */}
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1.5 text-[clamp(0.7rem,2.3vw,0.82rem)] text-slate-500 dark:text-slate-400 mb-4.5 sm:mb-3">
-                  <div className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-slate-300">
-                    <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
-                    <span>SHA-256 Clean</span>
+                {/* Grounded Trust Signals (No Cheesy Icons or Badges) */}
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-xs text-slate-600 dark:text-slate-300 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>SHA-256 Verified Build</span>
                   </div>
-                  <span className="text-slate-300 dark:text-slate-700 hidden xs:inline">•</span>
-                  <div className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-slate-300">
-                    <CheckCircle2 size={14} className="text-blue-500 shrink-0" />
-                    <span>100% Free · No Ads</span>
+                  <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span>100% Free Public Tool</span>
                   </div>
-                  <span className="text-slate-300 dark:text-slate-700 hidden xs:inline">•</span>
-                  <div className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-slate-300">
-                    <QrCode size={14} className="text-emerald-500 shrink-0" />
-                    <span>Works 100% Offline</span>
+                  <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+                  <div className="flex items-center gap-1.5">
+                    <QrCode size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Works Completely Offline</span>
                   </div>
                 </div>
 
-                {/* Direct APK Download & Action Buttons */}
-                <div className="w-full max-w-[20rem] sm:max-w-none mx-auto md:mx-0">
-                  <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2.5 sm:gap-4 w-full">
+                {/* Primary Action Buttons (Solid Fills, No Gradients) */}
+                <div className="w-full max-w-sm sm:max-w-none">
+                  <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 w-full">
                     <button
                       onClick={handleDownload}
                       disabled={downloading}
-                      className="w-full sm:w-auto px-6 sm:px-7 py-3 sm:py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-extrabold text-xs sm:text-sm lg:text-base rounded-2xl shadow-xl shadow-blue-600/25 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer group"
+                      className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <Download size={16} className="group-hover:translate-y-0.5 transition-transform" />
-                      <span>{downloading ? "Preparing Download..." : "Download APK"}</span>
-                      <span className="text-[10px] sm:text-xs font-semibold py-0.5 px-2 bg-white/20 rounded-md">90.2 MB</span>
+                      <Download size={16} />
+                      <span>{downloading ? 'Preparing Download...' : 'Download EvacRoute APK'}</span>
+                      <span className="text-[11px] font-mono bg-blue-800/60 px-1.5 py-0.5 rounded">149 MB</span>
                     </button>
 
-                    {/* Secondary Actions Row: On mobile, split between How It Protects and One-Click Interactive Preview */}
                     <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
                       <button
                         onClick={() => scrollToSection('protection')}
-                        className="w-full sm:w-auto px-3.5 sm:px-6 py-2.5 sm:py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md transition flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer active:scale-98"
+                        className="w-full sm:w-auto px-4 py-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[0.98] text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 transition flex items-center justify-center gap-1.5 cursor-pointer"
                       >
-                        <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
-                        <span className="truncate">How It Protects</span>
-                        <ArrowDown size={12} className="text-slate-400 shrink-0 hidden sm:inline" />
+                        <span>How It Protects</span>
                       </button>
 
-                      {/* One-Click Interactive Mobile App Showcase Trigger (Mobile Only) */}
                       <button
                         type="button"
                         onClick={() => setOverviewSlide(1)}
-                        className="sm:hidden w-full px-3 py-2.5 bg-blue-50/90 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 font-bold text-xs rounded-2xl border border-blue-200/80 dark:border-blue-900/60 shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                        className="sm:hidden w-full px-3.5 py-2.5 bg-blue-50/90 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 font-bold text-xs rounded-xl border border-blue-200/80 dark:border-blue-900/60 shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                       >
                         <Smartphone size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />
                         <span className="truncate">App Preview</span>
@@ -569,30 +541,30 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Group 4: Compact Emergency Hotline & Live Protection Footer */}
-                <div className="pt-2 sm:pt-3 border-t border-slate-200/70 dark:border-slate-800/70 flex flex-col sm:flex-row items-center justify-center md:justify-between gap-1.5 sm:gap-2.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 w-full max-w-[24rem] sm:max-w-none mx-auto md:mx-0">
+                {/* Emergency Hotlines & Verified Community Coverage */}
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-center md:justify-between gap-2 text-xs text-slate-500 dark:text-slate-400 w-full">
                   <div className="flex items-center gap-2">
-                    <PhoneCall size={12} className="text-red-500 shrink-0 animate-pulse" />
-                    <span className="font-medium text-slate-600 dark:text-slate-300">Emergency:</span>
-                    <a href="tel:911" className="font-extrabold text-red-600 dark:text-red-400 hover:underline">
-                      Dial 911
+                    <PhoneCall size={13} className="text-red-600 dark:text-red-400 shrink-0" />
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">CDRRMO Hotlines:</span>
+                    <a href="tel:911" className="font-bold text-red-600 dark:text-red-400 hover:underline">
+                      911
                     </a>
-                    <span className="text-slate-300 dark:text-slate-700">|</span>
-                    <a href="tel:0629923181" className="font-semibold text-slate-700 dark:text-slate-300 hover:underline">
+                    <span>|</span>
+                    <a href="tel:0629923181" className="font-medium text-slate-700 dark:text-slate-300 hover:underline">
                       (062) 992-3181
                     </a>
                   </div>
 
                   <div className="flex items-center gap-1.5 font-medium">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                     <span>
                       {householdStats.loaded && householdStats.households > 0 ? (
                         <>
-                          <strong className="text-slate-900 dark:text-white font-bold">{householdStats.households.toLocaleString()}</strong> households protected
+                          <strong className="text-slate-900 dark:text-white tabular-nums">{householdStats.households.toLocaleString()}</strong> households registered
                         </>
                       ) : (
                         <>
-                          Covering <strong className="text-slate-900 dark:text-white font-bold">98 Barangays</strong> in Zamboanga City
+                          Covering <strong className="text-slate-900 dark:text-white">98 Barangays</strong> in Zamboanga City
                         </>
                       )}
                     </span>
@@ -827,21 +799,38 @@ export default function LandingPage() {
                         )}
                       </div>
 
-                      {/* Floating Map Controls (Right & Left) */}
-                      <div className="relative z-10 px-3 flex justify-between items-end mb-2 pointer-events-none">
-                        {/* Layers FAB (Left) */}
-                        <div className="pointer-events-auto w-7 h-7 rounded-full bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-md transition-colors">
-                          <Layers size={13} />
+                      {/* Floating Map Controls Canvas Overlay */}
+                      <div className="relative flex-1 pointer-events-none z-10 w-full min-h-0">
+                        {/* Top-Right Compass Heading Indicator */}
+                        <div className="absolute top-2.5 right-3 pointer-events-auto">
+                          <div
+                            className="w-8 h-8 rounded-full bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700 shadow-md flex items-center justify-center text-blue-600 dark:text-blue-400 transition-colors"
+                            title="Compass Heading"
+                          >
+                            <Compass size={16} />
+                          </div>
                         </div>
 
-                        {/* Zoom & Recenter Controls (Right) */}
-                        <div className="pointer-events-auto space-y-1.5">
-                          <div className="w-7 h-7 rounded-full bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-md transition-colors">
-                            <Compass size={13} className="text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <div className="w-7 h-7 rounded-full bg-blue-600 border border-blue-400 flex items-center justify-center text-white shadow-md">
-                            <Navigation size={13} />
-                          </div>
+                        {/* Bottom-Left Layers FAB (Docked cleanly above the bottom sheet) */}
+                        <div className="absolute bottom-2.5 left-3 pointer-events-auto">
+                          <button
+                            type="button"
+                            className="w-8 h-8 rounded-full bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700 shadow-md flex items-center justify-center text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer active:scale-95 transition-all"
+                            title="Map Layers"
+                          >
+                            <Layers size={15} />
+                          </button>
+                        </div>
+
+                        {/* Bottom-Right Recenter & GPS Navigation FAB (Docked cleanly above the bottom sheet) */}
+                        <div className="absolute bottom-2.5 right-3 pointer-events-auto flex flex-col gap-1.5 items-center">
+                          <button
+                            type="button"
+                            className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 border border-blue-400 shadow-md flex items-center justify-center text-white cursor-pointer active:scale-95 transition-all"
+                            title="Recenter GPS Location"
+                          >
+                            <Navigation size={15} />
+                          </button>
                         </div>
                       </div>
 
@@ -1163,208 +1152,239 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── SECTION 2: HOW EVACROUTE PROTECTS YOUR HOUSEHOLD (NEXT SCREEN) ── */}
-      <section id="protection" className="scroll-mt-14 sm:scroll-mt-16">
-        {/* Resident Protection Metrics Infinite Ticker (Rightward Marquee) - Top of Next Screen */}
-        <div className="py-3.5 sm:py-4.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-y border-slate-200/80 dark:border-slate-800/80 overflow-hidden relative transition-colors select-none">
-          {/* Left & Right gradient edge fades for smooth entry/exit */}
-          <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-r from-white dark:from-slate-900 to-transparent z-10 pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-l from-white dark:from-slate-900 to-transparent z-10 pointer-events-none" />
-
-          {/* Continuous Marquee Track moving right */}
+      {/* ── SECTION 2: HOW EVACROUTE PROTECTS YOUR HOUSEHOLD ── */}
+      <section id="protection" className="scroll-mt-16 border-t border-slate-200 dark:border-slate-800">
+        
+        {/* Continuous Telemetry Metric Ticker */}
+        <div className="py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 overflow-hidden select-none">
           <div className="flex animate-marquee-right items-center">
-            {/* Half 1 */}
             <div className="flex items-center shrink-0">
               {[...residentProtectionStats, ...residentProtectionStats].map((item, idx) => (
                 <div key={`stat-1-${idx}`} className="flex items-center shrink-0">
-                  <div className="flex items-center gap-3 sm:gap-4 px-5 sm:px-8 py-1">
-                    <span className={`text-xl sm:text-2xl font-black tracking-tight shrink-0 ${item.color}`}>
+                  <div className="flex items-center gap-3 px-6 py-1">
+                    <span className={`text-xl font-black tracking-tight shrink-0 tabular-nums ${item.color}`}>
                       {item.stat}
                     </span>
                     <div className="text-left leading-tight">
-                      <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">
                         {item.title}
                       </p>
-                      <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      <p className="text-[10px] text-slate-500 whitespace-nowrap">
                         {item.desc}
                       </p>
                     </div>
                   </div>
-                  {/* Styled vertical divider line between metrics */}
-                  <div className="h-6 sm:h-7 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 dark:via-slate-700 to-transparent shrink-0" />
+                  <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 shrink-0" />
                 </div>
               ))}
             </div>
 
-            {/* Half 2 (Exact Duplicate for Infinite Seamless Loop) */}
             <div className="flex items-center shrink-0" aria-hidden="true">
               {[...residentProtectionStats, ...residentProtectionStats].map((item, idx) => (
                 <div key={`stat-2-${idx}`} className="flex items-center shrink-0">
-                  <div className="flex items-center gap-3 sm:gap-4 px-5 sm:px-8 py-1">
-                    <span className={`text-xl sm:text-2xl font-black tracking-tight shrink-0 ${item.color}`}>
+                  <div className="flex items-center gap-3 px-6 py-1">
+                    <span className={`text-xl font-black tracking-tight shrink-0 tabular-nums ${item.color}`}>
                       {item.stat}
                     </span>
                     <div className="text-left leading-tight">
-                      <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">
                         {item.title}
                       </p>
-                      <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      <p className="text-[10px] text-slate-500 whitespace-nowrap">
                         {item.desc}
                       </p>
                     </div>
                   </div>
-                  {/* Styled vertical divider line between metrics */}
-                  <div className="h-6 sm:h-7 w-[1.5px] bg-gradient-to-b from-transparent via-slate-300 dark:via-slate-700 to-transparent shrink-0" />
+                  <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 shrink-0" />
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Protection Content Container */}
-        <div className="py-10 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-2">
-            <Zap size={13} /> Resident Protection
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            How EvacRoute Keeps Your Family Safe
-          </h2>
-          <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm mt-2 max-w-xl mx-auto leading-relaxed">
-            Built specifically to solve real-world emergency hurdles faced by Zamboanga City residents during severe typhoons, storm surges, and fires.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        {/* Asymmetrical 3-Pillar Architectural Layout (Replaces the Generic 6-Card Icon Grid) */}
+        <div className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          {/* Card 1 */}
-          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex flex-col">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3.5 shrink-0">
-              <Navigation size={20} />
-            </div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">Smart Threat-Avoidance Routing</h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Standard GPS maps can lead you into flooded streets or blocked bridges. EvacRoute dynamically steers your family around active hazard zones to safe high ground.
+          <div className="max-w-3xl mb-12 text-left">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">
+              How EvacRoute Keeps Your Family Safe
+            </h2>
+            <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
+              Engineered specifically to solve real-world emergency hurdles faced by Zamboanga City residents during severe typhoons, storm surges, and fires.
             </p>
           </div>
 
-          {/* Card 2 */}
-          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex flex-col">
-            <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/80 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 flex items-center justify-center mb-3.5 shrink-0">
-              <Radio size={20} />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Pillar 1: Dynamic Threat-Avoidance Routing (Hero Feature Spanning 7 Cols) */}
+            <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    Core Operational Capability
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                    Active Roadway Telemetry
+                  </span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-2">
+                  Dynamic Threat-Avoidance Routing
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
+                  Standard consumer navigation apps direct vehicles and pedestrians along the shortest geographic path, frequently steering families into rising flood basins, submerged underpasses, or blocked bridges. EvacRoute continuously calculates detour vectors using real-time field reports, steering households to verified high-ground evacuation centers.
+                </p>
+              </div>
+
+              {/* Technical Comparison Strip */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs">
+                <div className="p-3 bg-red-50 dark:bg-red-950/40 rounded-xl border border-red-200 dark:border-red-900/60">
+                  <div className="font-bold text-red-700 dark:text-red-400 mb-0.5">Commercial Navigation</div>
+                  <div className="text-slate-600 dark:text-slate-400 text-[11px]">Unaware of active flood surges. Directs traffic through impassable river channels.</div>
+                </div>
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-900/60">
+                  <div className="font-bold text-emerald-700 dark:text-emerald-400 mb-0.5">EvacRoute Telemetry</div>
+                  <div className="text-slate-600 dark:text-slate-400 text-[11px]">Dynamic routing via ridge bypasses, guaranteeing elevation above storm surge waterlines.</div>
+                </div>
+              </div>
             </div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">Instant Emergency SOS</h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              If floodwaters rise or family members are trapped, tap Emergency SOS. Your exact GPS coordinates and household headcount are immediately dispatched to CDRRMO rescue units.
-            </p>
+
+            {/* Pillar 2: Offline Cryptographic Family Passes (Spanning 5 Cols) */}
+            <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                    Zero-Connectivity Mode
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                    CSWDO Relief Sync
+                  </span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-2">
+                  Offline Cryptographic Family Passports
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
+                  During widespread grid failures and cellular outages, digital tools that require server round-trips become unusable. EvacRoute caches your household registration and QR token directly in your device storage, allowing immediate admission and relief ration scanning at shelter gates without internet.
+                </p>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                <div>
+                  <p className="font-bold text-slate-900 dark:text-white">Tamper-Proof QR Generation</p>
+                  <p className="text-[11px] text-slate-500">Instant registration at CSWDO checkpoints</p>
+                </div>
+                <FileCheck2 size={20} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+              </div>
+            </div>
+
+            {/* Pillar 3: Sub-30s SOS Alert Dispatch (Full Width Banner) */}
+            <div className="lg:col-span-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                <div className="md:col-span-2">
+                  <span className="text-xs font-mono font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">
+                    Emergency Rescue Pipeline
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mt-1 mb-2">
+                    Sub-30-Second Emergency SOS Propagation
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    When trapped by rising water or structural collapse, one tap on Emergency SOS broadcasts your verified coordinates, household headcount, and registered medical vulnerabilities directly to CDRRMO fleet dispatchers, bypassing noisy social media channels.
+                  </p>
+                </div>
+
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/70 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Dispatch Latency:</span>
+                    <span className="font-bold text-red-600 dark:text-red-400">&lt; 30 Seconds</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Transmitted Payload:</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">GPS + Family Roster</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Receiving Desk:</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">CDRRMO Rescue Operations</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          {/* Card 3 */}
-          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex flex-col">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3.5 shrink-0">
-              <QrCode size={20} />
+          {/* Secondary Civic Systems Strip (Clean Spec Points) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+            <div className="p-4 bg-slate-100/60 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
+              <p className="text-xs font-bold text-slate-900 dark:text-white mb-1">112 Official Safe Shelters</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Calibrated elevation meter readings, real-time capacities, and water amenities across all 98 barangays.</p>
             </div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">Offline Family QR Passports</h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              During blackouts or cell network failures, your digital pass remains ready offline. Shelter staff scan your QR code for rapid entry and relief goods without manual forms.
-            </p>
+
+            <div className="p-4 bg-slate-100/60 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
+              <p className="text-xs font-bold text-slate-900 dark:text-white mb-1">Official Municipal Advisories</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Direct disaster bulletins issued by local DRRM officials without social media distortion or rumors.</p>
+            </div>
+
+            <div className="p-4 bg-slate-100/60 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
+              <p className="text-xs font-bold text-slate-900 dark:text-white mb-1">Household Vulnerability Profiles</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Pre-registered infant formula, elderly mobility, and medication needs for rapid triage at camp reception.</p>
+            </div>
           </div>
 
-          {/* Card 4 */}
-          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex flex-col">
-            <div className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-950/80 border border-cyan-200 dark:border-cyan-800 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mb-3.5 shrink-0">
-              <Building2 size={20} />
-            </div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">112 Official Safe Shelters</h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Find verified evacuation centers in your barangay with live open/closed status, current occupancy levels, elevation meters, and available relief amenities.
-            </p>
-          </div>
-
-          {/* Card 5 */}
-          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex flex-col">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-3.5 shrink-0">
-              <AlertCircle size={20} />
-            </div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">Authoritative Neighborhood Alerts</h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Receive verified emergency alerts directly from Zamboanga City DRRM without false social media rumors or delayed text advisories.
-            </p>
-          </div>
-
-          {/* Card 6 */}
-          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex flex-col">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-3.5 shrink-0">
-              <Users size={20} />
-            </div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">Household Profile Preparedness</h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Pre-register family members, infant needs, and elderly mobility requirements so rescue teams and camp managers understand your exact household needs.
-            </p>
-          </div>
-
-        </div>
         </div>
       </section>
 
       {/* ── SECTION 3: 112 OFFICIAL SAFE SHELTERS DIRECTORY ── */}
-      <section id="shelters" className="py-12 sm:py-16 lg:py-20 bg-slate-100/70 dark:bg-slate-900/60 border-y border-slate-200 dark:border-slate-800 transition-colors">
+      <section id="shelters" className="py-16 bg-slate-100/60 dark:bg-slate-900/40 border-y border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             
-            <div className="lg:col-span-6 space-y-5 sm:space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold uppercase tracking-wider">
-                <MapPin size={14} /> Citywide Coverage
-              </div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-                Know Your Nearest High-Ground Haven Before Disaster Strikes
+            <div className="lg:col-span-6 space-y-4">
+              <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                Geographic Coverage
+              </span>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+                Know Your Nearest High-Ground Haven Before Disaster Strikes.
               </h2>
-              <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm lg:text-base leading-relaxed">
+              <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
                 Zamboanga City has 112 official evacuation shelters calibrated into the EvacRoute mobile network. The app automatically identifies your closest safe haven based on your location and road conditions.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2">
-                <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-                  <div className="text-emerald-500 font-bold text-base sm:text-lg mb-1 flex items-center gap-2">
-                    <MapPin size={18} /> High-Ground Havens
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Pasonanca Park, Tetuan Elevated Ridge, and safe high hills.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div className="text-emerald-600 dark:text-emerald-400 font-bold text-sm mb-0.5">High-Ground Ridges</div>
+                  <p className="text-xs text-slate-500">Pasonanca Park (+45m), Upper La Paz, and elevated mountain clusters safe from coastal surges.</p>
                 </div>
 
-                <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-                  <div className="text-blue-500 font-bold text-base sm:text-lg mb-1 flex items-center gap-2">
-                    <Building2 size={18} /> Primary Centers
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Equipped with clean water, solar backup, and medical stations.</p>
+                <div className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div className="text-blue-600 dark:text-blue-400 font-bold text-sm mb-0.5">Primary Centers</div>
+                  <p className="text-xs text-slate-500">Equipped with clean water filtration, solar backup generators, and CSWDO medical stations.</p>
                 </div>
               </div>
             </div>
 
-            {/* Quick Resident Shelter Reference Card */}
-            <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-5 sm:p-7 lg:p-8 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-5 sm:space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+            {/* Verified Shelter Directory Card */}
+            <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div>
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white">Sample Verified High-Ground Shelters</h3>
-                  <p className="text-xs text-slate-500">Available offline in the EvacRoute app</p>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Sample Verified High-Ground Centers</h3>
+                  <p className="text-xs text-slate-500">Cached in full within the mobile offline database</p>
                 </div>
-                <span className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-xs font-black rounded-lg">
-                  VERIFIED
+                <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold rounded">
+                  OFFICIAL
                 </span>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-2.5">
                 {[
-                  { name: "Tetuan Central Evacuation Center", type: "Primary Center", cap: "600 Persons", elev: "14m" },
-                  { name: "Pasonanca Park High-Ground Safe Haven", type: "Tsunami/Flood Ridge", cap: "1,200 Persons", elev: "45m" },
-                  { name: "Tumaga Riverbank Primary Evacuation Court", type: "Primary Cluster", cap: "500 Persons", elev: "18m" },
-                  { name: "Guiwan Barangay Staging Court", type: "Secondary Shelter", cap: "350 Persons", elev: "12m" },
+                  { name: 'Tetuan Central Evacuation Center', type: 'Primary Center', cap: '600 Persons', elev: '+14m' },
+                  { name: 'Pasonanca Park Safe Haven', type: 'High-Ground Ridge', cap: '1,200 Persons', elev: '+45m' },
+                  { name: 'Tumaga Riverbank Primary Court', type: 'Primary Cluster', cap: '500 Persons', elev: '+18m' },
+                  { name: 'Guiwan Barangay Staging Center', type: 'Secondary Shelter', cap: '350 Persons', elev: '+12m' },
                 ].map((s, idx) => (
-                  <div key={idx} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700 flex justify-between items-center">
+                  <div key={idx} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex justify-between items-center text-xs">
                     <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-white">{s.name}</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{s.type} · Elevation: {s.elev}</p>
+                      <p className="font-bold text-slate-900 dark:text-white">{s.name}</p>
+                      <p className="text-[11px] text-slate-500">{s.type} · Ground Elevation: {s.elev}</p>
                     </div>
-                    <span className="text-xs font-black text-blue-600 dark:text-blue-400">{s.cap}</span>
+                    <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{s.cap}</span>
                   </div>
                 ))}
               </div>
@@ -1372,10 +1392,10 @@ export default function LandingPage() {
               <div className="pt-2">
                 <button
                   onClick={handleDownload}
-                  className="w-full py-3 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition cursor-pointer"
+                  className="w-full py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-[0.98] text-slate-800 dark:text-slate-200 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 transition cursor-pointer"
                 >
                   <Download size={14} />
-                  <span>Download App to Access All 112 Shelters Offline</span>
+                  <span>Download App to Access All 112 Centers Offline</span>
                 </button>
               </div>
             </div>
@@ -1384,161 +1404,159 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── SECTION 4: 3-STEP INSTALLATION GUIDE ── */}
-      <section id="install-guide" className="py-10 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider mb-2">
-            <Download size={13} /> Direct Android Download
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+      {/* ── SECTION 4: VERIFIED INSTALLATION GUIDE ── */}
+      <section id="install-guide" className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl mb-10 text-left">
+          <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+            Android Sideloading Walkthrough
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-1 mb-2">
             How to Install EvacRoute on Your Phone
           </h2>
-          <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm mt-2">
-            Install the official application in 3 simple steps directly on your Android device.
+          <p className="text-slate-600 dark:text-slate-300 text-sm">
+            Deploy the verified municipal emergency application directly to your Android device in three straightforward steps.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+        {/* Clean Semantic Step Progression (No Circled Number Badges) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           
-          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-center relative shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white font-extrabold text-base flex items-center justify-center mx-auto mb-3.5 shadow-md shadow-blue-500/20">
-              1
-            </div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">1. Download the APK</h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Tap the download button to save the verified <span className="font-bold text-blue-600 dark:text-blue-400">EvacRoute.apk</span> (~90.2 MB) directly to your phone.
-            </p>
-          </div>
-
-          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-center relative shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white font-extrabold text-base flex items-center justify-center mx-auto mb-3.5 shadow-md shadow-blue-500/20">
-              2
-            </div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">2. Allow Unknown Sources</h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              When prompted by Android, tap <span className="font-semibold text-slate-800 dark:text-slate-200">Settings</span> and toggle on <span className="font-semibold text-slate-800 dark:text-slate-200">"Install apps from this source"</span>.
-            </p>
-          </div>
-
-          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-center relative shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white font-extrabold text-base flex items-center justify-center mx-auto mb-3.5 shadow-md shadow-blue-500/20">
-              3
-            </div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1.5">3. Open &amp; Register Household</h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Tap <span className="font-semibold text-slate-800 dark:text-slate-200">Install</span>. Launch the app and register your household profile to generate your offline family pass!
-            </p>
-          </div>
-
-        </div>
-
-        {/* Download Banner CTA */}
-        <div className="mt-8 sm:mt-10 p-5 sm:p-8 lg:p-10 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 text-center shadow-sm relative overflow-hidden">
-          <div className="relative z-10 max-w-2xl mx-auto space-y-4">
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              Protect Your Household Today
+          <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+            <span className="text-xs font-mono font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">
+              Phase 01
+            </span>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">
+              Download the Official Package
             </h3>
-            <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm leading-relaxed max-w-xl mx-auto">
-              Download the official EvacRoute app now. Always free, zero telemetry tracking, and built to safeguard every family in Zamboanga City.
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Save the verified <span className="font-semibold text-blue-600 dark:text-blue-400">EvacRoute.apk</span> (~149 MB) package directly to your phone via the download button.
             </p>
-            <div className="pt-1 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button
-                onClick={handleDownload}
-                disabled={downloading}
-                className="w-full sm:w-auto px-7 py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 transition duration-200 flex items-center justify-center gap-2.5 cursor-pointer"
-              >
-                <Download size={18} />
-                <span>{downloading ? "Preparing Download..." : "Download EvacRoute.apk (v1.1.1)"}</span>
-              </button>
-            </div>
-            <div className="flex items-center justify-center gap-1.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span>
-                {householdStats.loaded && householdStats.households > 0
-                  ? `Protecting ${householdStats.households.toLocaleString()} registered households · Verified Android Build`
-                  : "Official City Emergency Tool · Verified Android Build"}
-              </span>
-            </div>
           </div>
+
+          <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+            <span className="text-xs font-mono font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">
+              Phase 02
+            </span>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">
+              Enable Package Installation
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              When prompted by Android Security, navigate to <span className="font-semibold text-slate-800 dark:text-slate-200">Settings</span> and toggle on <span className="font-semibold text-slate-800 dark:text-slate-200">"Install apps from this source"</span>.
+            </p>
+          </div>
+
+          <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+            <span className="text-xs font-mono font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">
+              Phase 03
+            </span>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">
+              Register Household Profile
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Launch the application, enter your household members, and generate your offline relief pass for immediate emergency preparedness.
+            </p>
+          </div>
+
         </div>
+
+        {/* Action Callout */}
+        <div className="mt-8 p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              Equip Your Household Before Storm Season
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Always free, zero surveillance telemetry, built for the citizens of Zamboanga City.
+            </p>
+          </div>
+
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-xs sm:text-sm rounded-lg transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
+          >
+            <Download size={16} />
+            <span>{downloading ? 'Preparing Package...' : 'Download EvacRoute.apk (v1.2.0)'}</span>
+          </button>
+        </div>
+
       </section>
 
-      {/* ── Footer with City Hotlines & Discreet Staff Link ── */}
-      <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 pt-10 sm:pt-14 pb-28 md:pb-12 transition-colors">
+      {/* ── FOOTER & OFFICIAL CITY DIRECTORY ── */}
+      <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 pt-12 pb-24 md:pb-12 text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-8 pb-8 border-b border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-8 pb-8 border-b border-slate-800">
             
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-white font-black text-lg">
-                <ShieldAlert size={22} className="text-blue-500" />
+              <div className="flex items-center gap-2 text-white font-black text-base">
+                <ShieldAlert size={20} className="text-blue-500" />
                 <span>EvacRoute</span>
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Smart hazard-aware emergency evacuation planning and family protection platform for the citizens of Zamboanga City.
+              <p className="leading-relaxed text-slate-400">
+                Civic emergency evacuation planning and household protection platform operated by CDRRMO Zamboanga City.
               </p>
             </div>
 
             <div>
-              <p className="text-xs font-bold text-white uppercase tracking-wider mb-3">Quick Navigation</p>
-              <ul className="space-y-2 text-xs">
-                <li><button onClick={() => scrollToSection('overview')} className="hover:text-blue-400 transition cursor-pointer">Overview</button></li>
-                <li><button onClick={() => scrollToSection('protection')} className="hover:text-blue-400 transition cursor-pointer">How It Protects You</button></li>
+              <p className="font-bold text-white uppercase tracking-wider mb-3">Quick Navigation</p>
+              <ul className="space-y-2">
+                <li><button onClick={() => scrollToSection('overview')} className="hover:text-blue-400 transition cursor-pointer">Platform Overview</button></li>
+                <li><button onClick={() => scrollToSection('protection')} className="hover:text-blue-400 transition cursor-pointer">Household Protection</button></li>
                 <li><button onClick={() => scrollToSection('shelters')} className="hover:text-blue-400 transition cursor-pointer">112 Safe Shelters</button></li>
                 <li><button onClick={() => scrollToSection('install-guide')} className="hover:text-blue-400 transition cursor-pointer">Installation Guide</button></li>
               </ul>
             </div>
 
             <div>
-              <p className="text-xs font-bold text-white uppercase tracking-wider mb-3">Zamboanga Emergency Hotlines</p>
-              <ul className="space-y-1.5 text-xs">
-                <li><span className="text-slate-300 font-bold">City Emergency (CDRRMO):</span> 0917-DRRM-911 / 911</li>
-                <li><span className="text-slate-300 font-bold">Bureau of Fire Protection (BFP):</span> 0917-FIRE-160 / 160</li>
-                <li><span className="text-slate-300 font-bold">Police Station 11 (Central):</span> 0917-POLICE-911</li>
-                <li><span className="text-slate-300 font-bold">Zamboanga City Medical Center:</span> 0917-ZCMC-999</li>
+              <p className="font-bold text-white uppercase tracking-wider mb-3">Zamboanga Emergency Hotlines</p>
+              <ul className="space-y-1.5">
+                <li><span className="text-slate-300 font-semibold">City Emergency (CDRRMO):</span> 911 / (062) 992-3181</li>
+                <li><span className="text-slate-300 font-semibold">Bureau of Fire Protection:</span> 160 / 0917-FIRE-160</li>
+                <li><span className="text-slate-300 font-semibold">Police Station 11 (Central):</span> 0917-POLICE-911</li>
+                <li><span className="text-slate-300 font-semibold">Zamboanga City Medical Center:</span> (062) 991-0573</li>
               </ul>
             </div>
 
             <div>
-              <p className="text-xs font-bold text-white uppercase tracking-wider mb-3">Resident Support</p>
-              <p className="text-xs text-slate-400 mb-3">
-                Have questions about your barangay evacuation routes or safe shelters? Reach out to your local Barangay DRRM Committee.
+              <p className="font-bold text-white uppercase tracking-wider mb-3">Barangay Coordination</p>
+              <p className="text-slate-400 mb-2 leading-relaxed">
+                For questions regarding your designated high-ground cluster, coordinate directly with your local Barangay DRRM Council.
               </p>
-              <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
-                <CheckCircle2 size={15} />
-                <span>Always Free &amp; Community Supported</span>
+              <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                <CheckCircle2 size={14} />
+                <span>Public Civic Safety Asset</span>
               </div>
             </div>
 
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-            <p>© 2026 EvacRoute • City Disaster Risk Reduction &amp; Management Office (CDRRMO), Zamboanga City.</p>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500">
+            <p>© 2026 City Disaster Risk Reduction &amp; Management Office (CDRRMO), Zamboanga City.</p>
             <div className="flex items-center gap-4">
-              <span>Version 1.0.1</span>
+              <span>v1.2.0</span>
               <span>•</span>
               <button onClick={handleDownload} className="text-blue-400 hover:underline cursor-pointer">Download APK</button>
               <span>•</span>
-              {/* Discreet, unhighlighted link for authorized LGU staff only */}
-              <Link to="/admin/login" className="text-slate-600 hover:text-slate-400 transition flex items-center gap-1" title="Official Staff Access">
+              <Link to="/admin/login" className="text-slate-600 hover:text-slate-400 transition flex items-center gap-1" title="Authorized Staff Access">
                 <Lock size={11} />
-                <span className="text-[11px]">Staff Access</span>
+                <span>Staff Portal</span>
               </Link>
             </div>
           </div>
         </div>
       </footer>
 
-      {/* ── Mobile Bottom Navigation Bar (iOS Frosted Glass / Android M3 Elevation) ── */}
+      {/* ── Mobile Bottom Navigation Bar (iOS Blur & Clean Elevations) ── */}
       <nav
-        aria-label="Mobile bottom navigation"
-        className={`${overviewSlide === 1 ? 'hidden' : 'md:hidden fixed'} bottom-0 left-0 right-0 z-40 flex justify-center px-4 transition-transform duration-300 ease-in-out`}
-        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}
+        aria-label="Mobile navigation"
+        className={`${overviewSlide === 1 ? 'hidden' : 'md:hidden fixed'} bottom-0 left-0 right-0 z-40 flex justify-center px-4`}
+        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0.75rem))' }}
       >
         <div
-          className={`flex items-center justify-around px-2 pt-2 pb-1.5 w-full max-w-sm rounded-2xl border transition-all duration-200 ${
+          className={`flex items-center justify-around px-2 py-1.5 w-full max-w-sm rounded-xl border transition-all ${
             isIOS
-              ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border-slate-200/60 dark:border-slate-800/60 shadow-2xl shadow-black/20 ring-1 ring-inset ring-white/10'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-[0_8px_30px_rgba(0,0,0,0.25)]'
+              ? 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-slate-200/80 dark:border-slate-800 shadow-xl'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-lg'
           }`}
         >
           {navItems.map((item) => {
@@ -1549,28 +1567,21 @@ export default function LandingPage() {
                 key={item.id}
                 onClick={() => scrollToSection(item.id)}
                 aria-label={`Jump to ${item.label}`}
-                className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl transition-all duration-150 cursor-pointer ${
-                  isIOS ? 'active:scale-90' : 'active:scale-95 active:bg-slate-100 dark:active:bg-slate-800'
-                }`}
+                className="flex flex-col items-center justify-center flex-1 py-1 rounded-lg cursor-pointer transition active:scale-95"
               >
-                <div
-                  className={`flex items-center justify-center transition-all duration-200 ${
-                    isIOS
-                      ? isActive
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-slate-400 dark:text-slate-500'
-                      : isActive
-                        ? 'px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400'
-                        : 'px-3 py-1 rounded-full text-slate-400 dark:text-slate-500'
-                  }`}
-                >
-                  <Icon size={18} className={isActive && !isIOS ? 'scale-105' : ''} />
-                </div>
+                <Icon
+                  size={17}
+                  className={
+                    isActive
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-slate-400 dark:text-slate-500'
+                  }
+                />
                 <span
-                  className={`text-[10px] tracking-tight mt-0.5 transition-colors ${
+                  className={`text-[10px] mt-0.5 ${
                     isActive
                       ? 'font-bold text-blue-600 dark:text-blue-400'
-                      : 'font-medium text-slate-500 dark:text-slate-400'
+                      : 'text-slate-500 dark:text-slate-400'
                   }`}
                 >
                   {item.shortLabel || item.label}
@@ -1584,3 +1595,4 @@ export default function LandingPage() {
     </div>
   );
 }
+
