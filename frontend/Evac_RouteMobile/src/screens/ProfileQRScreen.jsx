@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, Modal, TextInput, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
-import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon, Edit3, Footprints, Bike, Car, Check } from 'lucide-react-native';
+import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon, Edit3, Footprints, Bike, Car, Check, Vibrate, VibrateOff } from 'lucide-react-native';
 import { useResidentStore } from '../context/useResidentStore';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
@@ -59,6 +59,8 @@ export default function ProfileQRScreen({ navigation }) {
   const setProfileData = useResidentStore(state => state.setProfileData);
   const transportationMode = useResidentStore(state => state.transportationMode);
   const setTransportationMode = useResidentStore(state => state.setTransportationMode);
+  const hapticFeedbackEnabled = useResidentStore(state => state.hapticFeedbackEnabled);
+  const setHapticFeedbackEnabled = useResidentStore(state => state.setHapticFeedbackEnabled);
   const { user, logout } = useAuth();
 
   const [isHomeModalOpen, setIsHomeModalOpen] = useState(false);
@@ -341,6 +343,49 @@ export default function ProfileQRScreen({ navigation }) {
               thumbColor={isDarkMode ? colors.primary : '#f8fafc'}
             />
           </TouchableOpacity>
+
+          {/* Touch Haptic Feedback Toggle (Default: OFF) */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              padding: 14,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
+          >
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: hapticFeedbackEnabled ? 'rgba(2, 132, 199, 0.15)' : (isDarkMode ? '#334155' : '#e2e8f0'),
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 12,
+            }}>
+              {hapticFeedbackEnabled ? (
+                <Vibrate size={20} color={colors.primary} />
+              ) : (
+                <VibrateOff size={20} color={isDarkMode ? '#94a3b8' : '#64748b'} />
+              )}
+            </View>
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: 'bold', marginBottom: 2 }}>
+                Touch Haptic Feedback
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 10 }}>
+                {hapticFeedbackEnabled
+                  ? 'Vibration enabled for button taps'
+                  : 'Vibration disabled for regular taps (Default). Emergency alarms remain active.'}
+              </Text>
+            </View>
+            <Switch
+              value={hapticFeedbackEnabled}
+              onValueChange={setHapticFeedbackEnabled}
+              trackColor={{ false: '#cbd5e1', true: colors.primaryDark }}
+              thumbColor={hapticFeedbackEnabled ? colors.primary : '#f8fafc'}
+            />
+          </View>
 
           {[
             {

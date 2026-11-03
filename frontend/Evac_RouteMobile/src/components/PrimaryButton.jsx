@@ -1,7 +1,8 @@
 import { useRef, useCallback } from 'react';
-import { TouchableOpacity, Text, Animated, ActivityIndicator, Vibration, StyleSheet } from 'react-native';
+import { TouchableOpacity, Text, Animated, ActivityIndicator, StyleSheet } from 'react-native';
 import { radii, spacing } from '../styles/theme';
 import { useTheme } from '../context/ThemeContext';
+import { triggerCasualHaptic } from '../utils/haptics';
 
 /**
  * PrimaryButton — Animated pressable button with haptic feedback.
@@ -50,7 +51,7 @@ export default function PrimaryButton({
     lastPressRef.current = now;
 
     if (haptic) {
-      Vibration.vibrate(10);
+      triggerCasualHaptic(10);
     }
     onPress?.();
   }, [disabled, loading, throttleMs, haptic, onPress]);

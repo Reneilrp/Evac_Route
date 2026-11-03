@@ -13,8 +13,11 @@ export const useResidentStore = create(
       alertHistory: [], // alert notification history list
       // Home pinpoint location coordinates [lng, lat] for testing & evacuation routing
       homeLocation: null,
+      // Haptic touch feedback toggle (Default: OFF to prevent intrusive mechanical buzzing on casual clicks)
+      hapticFeedbackEnabled: false,
 
       // ─── Actions ───
+      setHapticFeedbackEnabled: (enabled) => set({ hapticFeedbackEnabled: Boolean(enabled) }),
       setHomeLocation: (coords) => {
         set({ homeLocation: coords });
         if (coords && coords.length >= 2) {

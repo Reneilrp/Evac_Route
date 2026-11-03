@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions
 import { AlertTriangle, Navigation, Phone, X, User, ChevronDown, Info, Layers, ShieldAlert, Activity, CheckCircle2, Footprints, Bike, Car, Home } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Mapbox from '@rnmapbox/maps';
+import { triggerCasualHaptic } from '../utils/haptics';
 import * as Location from 'expo-location';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Constants from 'expo-constants';
@@ -1183,7 +1184,7 @@ export default function EvacMapScreen({ navigation, route }) {
                 onSelected={() => {
                   setSelectedShelter(shelter);
                   setSelectedFacilityDetails(shelter);
-                  Vibration.vibrate(40);
+                  triggerCasualHaptic(40);
                 }}
               >
                 <View 
@@ -1292,14 +1293,14 @@ export default function EvacMapScreen({ navigation, route }) {
             id="user-location-avatar"
             coordinate={activeUserLocation}
             onSelected={() => {
-              Vibration.vibrate(50);
+              triggerCasualHaptic(50);
               setActivePinDetails('user');
             }}
           >
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => {
-                Vibration.vibrate(50);
+                triggerCasualHaptic(50);
                 setActivePinDetails('user');
               }}
               style={{ alignItems: 'center', justifyContent: 'center' }}
@@ -1341,14 +1342,14 @@ export default function EvacMapScreen({ navigation, route }) {
             id="home-location-pin"
             coordinate={homeLocation}
             onSelected={() => {
-              Vibration.vibrate(50);
+              triggerCasualHaptic(50);
               setActivePinDetails('home');
             }}
           >
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => {
-                Vibration.vibrate(50);
+                triggerCasualHaptic(50);
                 setActivePinDetails('home');
               }}
               style={{ alignItems: 'center', justifyContent: 'center' }}
@@ -1485,7 +1486,7 @@ export default function EvacMapScreen({ navigation, route }) {
                 setIsActiveTurnByTurn(false);
                 setIsNavigating(false);
                 setCachedRoute(null);
-                Vibration.vibrate(50);
+                triggerCasualHaptic(50);
               }}
               style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', padding: 8, borderRadius: 20, borderWidth: 1, borderColor: '#ef4444' }}
             >
@@ -1517,7 +1518,7 @@ export default function EvacMapScreen({ navigation, route }) {
                     heading: forwardBearing,
                     animationDuration: 600,
                   });
-                  Vibration.vibrate(40);
+                  triggerCasualHaptic(40);
                 }
               }}
               style={{ backgroundColor: '#0284c7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}
@@ -1582,7 +1583,7 @@ export default function EvacMapScreen({ navigation, route }) {
                 setIsNavigating(false);
                 setCachedRoute(null);
                 setSelectedShelter(null);
-                Vibration.vibrate(30);
+                triggerCasualHaptic(30);
               }}
               style={{
                 backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -1845,7 +1846,7 @@ export default function EvacMapScreen({ navigation, route }) {
             setIsDisasterFilterExpanded(false);
             setIsFilterExpanded(false);
             setIsStyleMenuOpen(false);
-            Vibration.vibrate(40);
+            triggerCasualHaptic(40);
           }}
           style={{
             flexDirection: 'row',
@@ -1904,7 +1905,7 @@ export default function EvacMapScreen({ navigation, route }) {
               setIsFilterExpanded(false);
               setShowSituationBrief(false);
               setIsStyleMenuOpen(false);
-              Vibration.vibrate(40);
+              triggerCasualHaptic(40);
             }}
             style={{
               flexDirection: 'row',
@@ -1951,7 +1952,7 @@ export default function EvacMapScreen({ navigation, route }) {
               setIsDisasterFilterExpanded(false);
               setShowSituationBrief(false);
               setIsStyleMenuOpen(false);
-              Vibration.vibrate(40);
+              triggerCasualHaptic(40);
             }}
             style={{
               flexDirection: 'row',
@@ -2052,7 +2053,7 @@ export default function EvacMapScreen({ navigation, route }) {
           <TouchableOpacity
             onPress={() => {
               setSelectedDisasterFilter('all');
-              Vibration.vibrate(30);
+              triggerCasualHaptic(30);
             }}
             style={{
               backgroundColor: 'rgba(0,0,0,0.3)',
@@ -2102,7 +2103,7 @@ export default function EvacMapScreen({ navigation, route }) {
               onPress={() => {
                 setSelectedDisasterFilter(dItem.key);
                 setIsDisasterFilterExpanded(false);
-                Vibration.vibrate(30);
+                triggerCasualHaptic(30);
               }}
               style={{
                 flexDirection: 'row',
@@ -2161,7 +2162,7 @@ export default function EvacMapScreen({ navigation, route }) {
               onPress={() => {
                 setSelectedCategoryFilter(item.key);
                 setIsFilterExpanded(false);
-                Vibration.vibrate(30);
+                triggerCasualHaptic(30);
               }}
               style={{
                 flexDirection: 'row',
@@ -2194,7 +2195,7 @@ export default function EvacMapScreen({ navigation, route }) {
             setIsDisasterFilterExpanded(false);
             setIsFilterExpanded(false);
             setShowSituationBrief(false);
-            Vibration.vibrate(30);
+            triggerCasualHaptic(30);
           }}
           style={{
             width: 42,
@@ -2244,7 +2245,7 @@ export default function EvacMapScreen({ navigation, route }) {
                 onPress={() => {
                   setMapStyleMode(s.key);
                   setIsStyleMenuOpen(false);
-                  Vibration.vibrate(30);
+                  triggerCasualHaptic(30);
                 }}
                 style={{
                   flexDirection: 'row',
@@ -2282,7 +2283,7 @@ export default function EvacMapScreen({ navigation, route }) {
                 zoomLevel: nextZoom,
                 animationDuration: 250,
               });
-              Vibration.vibrate(30);
+              triggerCasualHaptic(30);
             }
           }}
           style={styles.mapStyleBtn}
@@ -2300,7 +2301,7 @@ export default function EvacMapScreen({ navigation, route }) {
                 zoomLevel: nextZoom,
                 animationDuration: 250,
               });
-              Vibration.vibrate(30);
+              triggerCasualHaptic(30);
             }
           }}
           style={styles.mapStyleBtn}
@@ -2317,7 +2318,7 @@ export default function EvacMapScreen({ navigation, route }) {
                 zoomLevel: 15,
                 animationDuration: 1000,
               });
-              Vibration.vibrate(50);
+              triggerCasualHaptic(50);
             }
           }}
           style={styles.mapStyleBtn}
@@ -2330,7 +2331,7 @@ export default function EvacMapScreen({ navigation, route }) {
         <TouchableOpacity
           onPress={() => {
             setIsHighContrast(o => !o);
-            Vibration.vibrate(80);
+            triggerCasualHaptic(80);
           }}
           style={[
             styles.mapStyleBtn,
@@ -2414,7 +2415,7 @@ export default function EvacMapScreen({ navigation, route }) {
                 <TouchableOpacity
                   onPress={() => {
                     setActiveSubTab('info');
-                    Vibration.vibrate(40);
+                    triggerCasualHaptic(40);
                   }}
                   style={{ marginRight: 16, paddingVertical: 4, borderBottomWidth: activeSubTab === 'info' ? 2 : 0, borderBottomColor: isHighContrast ? '#FFFF00' : colors.primary }}
                 >
@@ -2425,7 +2426,7 @@ export default function EvacMapScreen({ navigation, route }) {
                 <TouchableOpacity
                   onPress={() => {
                     setActiveSubTab('checklist');
-                    Vibration.vibrate(40);
+                    triggerCasualHaptic(40);
                   }}
                   style={{ paddingVertical: 4, borderBottomWidth: activeSubTab === 'checklist' ? 2 : 0, borderBottomColor: isHighContrast ? '#FFFF00' : colors.primary }}
                 >
@@ -2467,7 +2468,7 @@ export default function EvacMapScreen({ navigation, route }) {
                           ]}
                           onPress={() => {
                             setTransportationMode(m.key);
-                            Vibration.vibrate(50);
+                            triggerCasualHaptic(50);
                           }}
                           accessibilityLabel={`Switch mode to ${m.label}`}
                         >
@@ -2574,7 +2575,7 @@ export default function EvacMapScreen({ navigation, route }) {
                         handleOneClickEvacuate(nearestShelter);
                       } else {
                         setIsNavigating(false);
-                        Vibration.vibrate(80);
+                        triggerCasualHaptic(80);
                       }
                     }}
                     variant={isNavigating ? "outline" : "primary"}
@@ -3010,7 +3011,7 @@ export default function EvacMapScreen({ navigation, route }) {
               <TouchableOpacity
                 onPress={() => {
                   setShowDestinationProximityModal(false);
-                  Vibration.vibrate(40);
+                  triggerCasualHaptic(40);
                 }}
                 style={{
                   backgroundColor: '#334155',
@@ -3032,7 +3033,7 @@ export default function EvacMapScreen({ navigation, route }) {
                   if (proximityTargetFacility) {
                     proceedWithNavigation(proximityTargetFacility);
                   }
-                  Vibration.vibrate(60);
+                  triggerCasualHaptic(60);
                 }}
                 style={{
                   backgroundColor: 'transparent',
@@ -3149,7 +3150,7 @@ export default function EvacMapScreen({ navigation, route }) {
             <TouchableOpacity
               onPress={() => {
                 setHasDismissedEarthquakeModal(true);
-                Vibration.vibrate(40);
+                triggerCasualHaptic(40);
               }}
               style={{
                 backgroundColor: '#eab308',
@@ -3325,7 +3326,7 @@ export default function EvacMapScreen({ navigation, route }) {
                           animationDuration: 700,
                         });
                       }
-                      Vibration.vibrate(50);
+                      triggerCasualHaptic(50);
                     }}
                     style={{
                       flex: 1,
@@ -3343,7 +3344,7 @@ export default function EvacMapScreen({ navigation, route }) {
                     onPress={() => {
                       setActivePinDetails(null);
                       navigation.navigate('Safe Check-in');
-                      Vibration.vibrate(50);
+                      triggerCasualHaptic(50);
                     }}
                     style={{
                       flex: 1,
@@ -3365,7 +3366,7 @@ export default function EvacMapScreen({ navigation, route }) {
                     onPress={() => {
                       setActivePinDetails(null);
                       setIsPinningHomeMode(true);
-                      Vibration.vibrate(60);
+                      triggerCasualHaptic(60);
                     }}
                     style={{
                       flex: 1,
@@ -3389,7 +3390,7 @@ export default function EvacMapScreen({ navigation, route }) {
                           animationDuration: 700,
                         });
                       }
-                      Vibration.vibrate(50);
+                      triggerCasualHaptic(50);
                     }}
                     style={{
                       flex: 1,

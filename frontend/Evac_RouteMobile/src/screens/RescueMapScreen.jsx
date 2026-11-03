@@ -17,6 +17,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
+import { triggerCasualHaptic } from '../utils/haptics';
 import {
   Navigation,
   Navigation2,
@@ -1838,7 +1839,7 @@ export default function RescueMapScreen({ navigation, route }) {
           style={[styles.floatingBtn, showDisasterView && styles.floatingBtnActive]}
           onPress={() => {
             setShowDisasterView(prev => !prev);
-            Vibration.vibrate(20);
+            triggerCasualHaptic(20);
           }}
           accessibilityLabel="Disaster Situational View"
         >
