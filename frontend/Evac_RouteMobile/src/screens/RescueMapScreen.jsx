@@ -455,6 +455,7 @@ export default function RescueMapScreen({ navigation, route }) {
   const [showShelterArrivalModal, setShowShelterArrivalModal] = useState(false);
   const [showStartSimModal, setShowStartSimModal] = useState(false);
   const [showDisasterView, setShowDisasterView] = useState(false);
+  const [proximityAnnouncement, setProximityAnnouncement] = useState(null);
 
   // Location watching effect - constrained to Zamboanga City bounds for testing
   useEffect(() => {
@@ -674,6 +675,25 @@ export default function RescueMapScreen({ navigation, route }) {
 
   // ─── TACTICAL 10M/S SIMULATION MOVEMENT ENGINE ───
 
+  const resetSimulation = useCallback(() => {
+    setSimulatedLocation(null);
+    setActiveRoadblocks([]);
+    setActivePolylineCoords(null);
+    hasTriggeredVictimArrival.current = false;
+    hasTriggeredShelterArrival.current = false;
+    if (isSimulationActive) {
+      stopSimulation();
+    }
+    if (cameraRef.current && (simCoords || gpsLocation)) {
+      cameraRef.current.setCamera({
+        centerCoordinate: gpsLocation || ZAMBOANGA_RESCUER_BASE,
+        zoomLevel: 16.5,
+        pitch: 35,
+        animationDuration: 800,
+      });
+    }
+  }, [isSimulationActive, stopSimulation, simCoords, gpsLocation]);
+
   // Reset traveled distance & camera initialized flag when simulation phase resets
   useEffect(() => {
     if (currentNavPhaseRef.current !== simPhase) {
@@ -818,11 +838,33 @@ export default function RescueMapScreen({ navigation, route }) {
         if (storeState.simPhase === 'en_route') {
           useRescueSimulationStore.getState().setSimPhase('on_scene');
           safeVibrate([0, 200, 100, 300, 100, 400]);
-          setShowVictimArrivalModal(true);
+          setProximityAnnouncement({
+            title: '🎯 ARRIVED ON SCENE (≤ 20M)',
+            subtitle: isSuppressionMission ? 'Threat Neutralized • Mission Complete' : 'Victims Secured • Auto-Commencing Shelter Transport',
+            color: '#f59e0b',
+          });
+          setTimeout(() => setProximityAnnouncement(null), 4000);
+          // Hands-free: Automatically transition without requiring button click
+          if (isSuppressionMission) {
+            confirmHandoverAndStandby();
+            setRouteData(null);
+            resetSimulation();
+          } else {
+            confirmVictimSecured(shelters[0]);
+          }
         } else if (storeState.simPhase === 'transporting') {
           useRescueSimulationStore.getState().setSimPhase('shelter_arrival');
           safeVibrate([0, 250, 100, 250, 100, 500]);
-          setShowShelterArrivalModal(true);
+          setProximityAnnouncement({
+            title: '🏁 ARRIVED AT SHELTER (≤ 20M)',
+            subtitle: 'Safe CSWDO Intake Confirmed • Unit Reset to Standby',
+            color: '#10b981',
+          });
+          setTimeout(() => setProximityAnnouncement(null), 4000);
+          // Hands-free: Automatically complete handover & standby
+          confirmHandoverAndStandby();
+          setRouteData(null);
+          resetSimulation();
         }
       }
     }, 150);
@@ -883,11 +925,11 @@ export default function RescueMapScreen({ navigation, route }) {
 
   const isUpdatingStatusRef = useRef(false);
 
-  const safeUpdateMissionStatus = (params) => {
+  const safeUpdateMissionStatus = useCallback((params) => {
     if (updateStatusMutation.isPending || isUpdatingStatusRef.current) return;
     isUpdatingStatusRef.current = true;
     updateStatusMutation.mutate(params);
-  };
+  }, [updateStatusMutation]);
 
   // ─── AUTOMATED 20-METER PROXIMITY ENGINE (LIVE GPS MISSIONS) ───
   useEffect(() => {
@@ -915,8 +957,28 @@ export default function RescueMapScreen({ navigation, route }) {
           status: 'on_scene',
         });
 
-        // Show Arrival Confirmation Modal
-        setShowVictimArrivalModal(true);
+        setProximityAnnouncement({
+          title: '🎯 ARRIVED ON SCENE (≤ 20M)',
+          subtitle: isSuppressionMission ? 'Threat Neutralized • Mission Complete' : 'Victims Secured • Auto-Commencing Shelter Transport',
+          color: '#f59e0b',
+        });
+        setTimeout(() => setProximityAnnouncement(null), 4000);
+
+        // Hands-free: Automatically transition to next phase after brief scene intake without requiring button press
+        setTimeout(() => {
+          if (isSuppressionMission) {
+            safeUpdateMissionStatus({
+              id: currentMission.id,
+              status: 'completed',
+            });
+          } else {
+            safeUpdateMissionStatus({
+              id: currentMission.id,
+              status: 'transporting',
+              target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
+            });
+          }
+        }, 800);
       }
     }
 
@@ -932,7 +994,20 @@ export default function RescueMapScreen({ navigation, route }) {
       if (distShelter <= 20 && !hasTriggeredShelterArrival.current) {
         hasTriggeredShelterArrival.current = true;
         safeVibrate([0, 250, 100, 250, 100, 500]);
-        setShowShelterArrivalModal(true);
+
+        setProximityAnnouncement({
+          title: '🏁 ARRIVED AT SHELTER (≤ 20M)',
+          subtitle: 'Safe CSWDO Intake Confirmed • Unit Reset to Standby',
+          color: '#10b981',
+        });
+        setTimeout(() => setProximityAnnouncement(null), 4000);
+
+        // Hands-free: Automatically complete CSWDO intake turnover without requiring button click
+        safeUpdateMissionStatus({
+          id: currentMission.id,
+          status: 'completed',
+          target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
+        });
       }
     }
   }, [
@@ -942,6 +1017,9 @@ export default function RescueMapScreen({ navigation, route }) {
     victimLngLat,
     shelterLngLat,
     updateStatusMutation,
+    isSuppressionMission,
+    shelters,
+    safeUpdateMissionStatus,
   ]);
 
   // Recenter map camera on Rescuer Vehicle and restore auto-follow
@@ -1107,24 +1185,7 @@ export default function RescueMapScreen({ navigation, route }) {
   };
 
 
-  const resetSimulation = () => {
-    setSimulatedLocation(null);
-    setActiveRoadblocks([]);
-    setActivePolylineCoords(null);
-    hasTriggeredVictimArrival.current = false;
-    hasTriggeredShelterArrival.current = false;
-    if (isSimulationActive) {
-      stopSimulation();
-    }
-    if (cameraRef.current && (simCoords || gpsLocation)) {
-      cameraRef.current.setCamera({
-        centerCoordinate: gpsLocation || ZAMBOANGA_RESCUER_BASE,
-        zoomLevel: 16.5,
-        pitch: 35,
-        animationDuration: 800,
-      });
-    }
-  };
+
 
   const handleBackToDutyHub = useCallback(() => {
     // 1. Instantly pause simulation navigation to halt interval camera animations and avoid Fabric race condition (Tag 338)
@@ -1679,6 +1740,40 @@ export default function RescueMapScreen({ navigation, route }) {
                 FIT ROUTE
               </Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* ─── HANDS-FREE AUTOMATED PROXIMITY HUD ANNOUNCEMENT (≤ 20M) ─── */}
+      {proximityAnnouncement && (
+        <View style={{
+          position: 'absolute',
+          top: insets.top + 72,
+          left: 16,
+          right: 16,
+          backgroundColor: '#0f172a',
+          borderRadius: 14,
+          padding: 12,
+          borderWidth: 2,
+          borderColor: proximityAnnouncement.color,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.4,
+          shadowRadius: 10,
+          elevation: 10,
+          zIndex: 9999,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+        }}>
+          <View style={{ width: 6, height: 36, borderRadius: 3, backgroundColor: proximityAnnouncement.color }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '900', letterSpacing: 0.3 }}>
+              {proximityAnnouncement.title}
+            </Text>
+            <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '600', marginTop: 1 }}>
+              {proximityAnnouncement.subtitle}
+            </Text>
           </View>
         </View>
       )}
