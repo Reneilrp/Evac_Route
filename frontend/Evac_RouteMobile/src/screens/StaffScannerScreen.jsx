@@ -1,21 +1,53 @@
-import { useState, useRef } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Vibration, ScrollView } from 'react-native';
+import { useState, useRef, useEffect } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Vibration,
+  ScrollView,
+  Linking,
+  AppState,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { QrCode, CheckCircle, XCircle, AlertTriangle, RefreshCw, Send, Users, Home } from 'lucide-react-native';
+import {
+  QrCode,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  RefreshCw,
+  Send,
+  Users,
+  Home,
+  Settings,
+  Camera as CameraIcon,
+  RotateCcw,
+} from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import api from '../services/api';
 import { spacing, radii, typography, shadows } from '../styles/theme';
 
+const BARCODE_SETTINGS = {
+  barcodeTypes: ['qr'],
+};
+
 export default function StaffScannerScreen() {
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const { user } = useAuth();
   const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
-  const [permission, requestPermission] = useCameraPermissions();
+
+  const [permission, requestPermission, getPermission] = useCameraPermissions();
   const [manualOnlyMode, setManualOnlyMode] = useState(false);
-  
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
+
   const [scanned, setScanned] = useState(false);
   const [manualHash, setManualHash] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,6 +60,56 @@ export default function StaffScannerScreen() {
 
   const isClaimingRef = useRef(false);
   const isCheckingInRef = useRef(false);
+  const hasAutoPromptedRef = useRef(false);
+
+  // Auto-request camera permission on initial screen entry if undetermined
+  useEffect(() => {
+    if (isFocused && permission && !permission.granted && permission.canAskAgain && !hasAutoPromptedRef.current) {
+      hasAutoPromptedRef.current = true;
+      requestPermission().catch((err) => {
+        console.warn('Auto camera permission request failed:', err);
+      });
+    }
+  }, [isFocused, permission, requestPermission]);
+
+  // Re-check permission when app returns from background (e.g. after toggling in device App Settings)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && typeof getPermission === 'function') {
+        getPermission().catch(() => {});
+      }
+    });
+    return () => subscription.remove();
+  }, [getPermission]);
+
+  // Re-check permission when the tab gains focus
+  useEffect(() => {
+    if (isFocused && typeof getPermission === 'function') {
+      getPermission().catch(() => {});
+    }
+  }, [isFocused, getPermission]);
+
+  const handleRequestPermission = async () => {
+    try {
+      const res = await requestPermission();
+      if (!res?.granted && !res?.canAskAgain) {
+        await Linking.openSettings();
+      }
+    } catch (err) {
+      console.warn('Permission request error:', err);
+      try {
+        await Linking.openSettings();
+      } catch (_e) {}
+    }
+  };
+
+  const handleOpenSettings = async () => {
+    try {
+      await Linking.openSettings();
+    } catch (err) {
+      console.warn('Failed to open app settings:', err);
+    }
+  };
 
   // Reset scanner state
   const resetScanner = () => {
@@ -37,6 +119,7 @@ export default function StaffScannerScreen() {
     setManualHash('');
     setClaimSuccess(null);
     setCheckInSuccess(null);
+    setCameraError(null);
   };
 
   const handleBarCodeScanned = ({ data }) => {
@@ -51,12 +134,12 @@ export default function StaffScannerScreen() {
     setError(null);
     setScanResult(null);
     setClaimSuccess(null);
-    
+
     try {
       const response = await api.get('/relief/status', {
-        params: { qr_code_hash: hash }
+        params: { qr_code_hash: hash },
       });
-      
+
       setScanResult({
         hash,
         familyName: response.data.family_name,
@@ -85,25 +168,25 @@ export default function StaffScannerScreen() {
     isClaimingRef.current = true;
     setClaimLoading(true);
     setError(null);
-    
+
     try {
       const response = await api.post('/relief/claim', {
-        qr_code_hash: scanResult.hash
+        qr_code_hash: scanResult.hash,
       });
-      
+
       Vibration.vibrate([0, 200, 100, 200]); // Success vibration pattern
       setClaimSuccess({
         familyName: response.data.family_name,
         headcount: response.data.headcount,
         claimedAt: response.data.claimed_at,
-        message: response.data.message || 'Ration claimed recorded.'
+        message: response.data.message || 'Ration claimed recorded.',
       });
-      
+
       // Update local scan state to match
-      setScanResult(prev => ({
+      setScanResult((prev) => ({
         ...prev,
         rationClaimed: true,
-        claimedAt: response.data.claimed_at
+        claimedAt: response.data.claimed_at,
       }));
     } catch (err) {
       Vibration.vibrate([0, 100, 100, 100]);
@@ -135,7 +218,7 @@ export default function StaffScannerScreen() {
     }
 
     if (!targetShelterId) {
-      setError("No evacuation shelter assigned to your marshal profile. Please contact CSWDO supervisor.");
+      setError('No evacuation shelter assigned to your marshal profile. Please contact CSWDO supervisor.');
       return;
     }
 
@@ -156,7 +239,7 @@ export default function StaffScannerScreen() {
       });
 
       // Update scanResult state to checkedIn
-      setScanResult(prev => ({
+      setScanResult((prev) => ({
         ...prev,
         checkedIn: true,
         shelter: admittedShelter,
@@ -170,8 +253,8 @@ export default function StaffScannerScreen() {
     }
   };
 
+  // If permission object is not yet loaded from native bridge
   if (!permission) {
-    // Camera permissions are still loading
     return (
       <View
         style={[
@@ -185,13 +268,15 @@ export default function StaffScannerScreen() {
         ]}
       >
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Accessing Camera...</Text>
+        <Text style={styles.loadingText}>Initializing Scanner Hardware...</Text>
       </View>
     );
   }
 
+  // Permission not granted and not explicitly in manual-only fallback
   if (!permission.granted && !manualOnlyMode) {
-    // Camera permissions are not granted yet
+    const isPermanentlyDenied = !permission.canAskAgain;
+
     return (
       <View
         style={[
@@ -204,16 +289,60 @@ export default function StaffScannerScreen() {
           },
         ]}
       >
-        <QrCode size={80} color={colors.primary} style={styles.permissionIcon} />
-        <Text style={styles.permissionTitle}>Camera Permission Required</Text>
-        <Text style={styles.permissionSubtitle}>
-          Zamboanga Evac_Route requires camera access to scan resident QR codes at distribution desks.
+        <View style={styles.permissionIconWrap}>
+          {isPermanentlyDenied ? (
+            <AlertTriangle size={64} color={colors.warning} />
+          ) : (
+            <QrCode size={64} color={colors.primary} />
+          )}
+        </View>
+
+        <Text style={styles.permissionTitle}>
+          {isPermanentlyDenied ? 'Camera Access Blocked in Device Settings' : 'Camera Permission Required'}
         </Text>
-        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>Enable Camera Access</Text>
+
+        <Text style={styles.permissionSubtitle}>
+          {isPermanentlyDenied
+            ? 'Camera access was permanently disabled for EvacRoute. To scan resident digital QR IDs, please open device settings and allow camera access.'
+            : 'EvacRoute requires camera access to rapidly scan and verify resident digital QR passes at evacuation intake and relief distribution desks.'}
+        </Text>
+
+        {isPermanentlyDenied ? (
+          <TouchableOpacity
+            style={styles.permissionButton}
+            onPress={handleOpenSettings}
+            activeOpacity={0.85}
+          >
+            <Settings size={18} color={colors.white} style={{ marginRight: 8 }} />
+            <Text style={styles.permissionButtonText}>Open Device Settings</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.permissionButton}
+            onPress={handleRequestPermission}
+            activeOpacity={0.85}
+          >
+            <CameraIcon size={18} color={colors.white} style={{ marginRight: 8 }} />
+            <Text style={styles.permissionButtonText}>Enable Camera Access</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={styles.refreshPermBtn}
+          onPress={() => getPermission?.().catch(() => {})}
+          activeOpacity={0.8}
+        >
+          <RefreshCw size={15} color={colors.textSecondary} style={{ marginRight: 6 }} />
+          <Text style={styles.refreshPermBtnText}>Re-check Permission Status</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.manualEntryAltBtn} onPress={() => setManualOnlyMode(true)}>
-          <Text style={styles.manualEntryAltBtnText}>Enter QR Code Hash Manually</Text>
+
+        <TouchableOpacity
+          style={styles.manualEntryAltBtn}
+          onPress={() => setManualOnlyMode(true)}
+          activeOpacity={0.85}
+        >
+          <QrCode size={16} color={colors.textPrimary} style={{ marginRight: 8 }} />
+          <Text style={styles.manualEntryAltBtnText}>Enter Resident QR Hash Manually</Text>
         </TouchableOpacity>
       </View>
     );
@@ -254,7 +383,7 @@ export default function StaffScannerScreen() {
         </View>
       </View>
 
-      {/* Main View Area */}
+      {/* Main Scroll Content */}
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
@@ -262,7 +391,6 @@ export default function StaffScannerScreen() {
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        
         {/* Camera Scanner or Status Details */}
         <View style={styles.displayCard}>
           {!scanned ? (
@@ -271,37 +399,87 @@ export default function StaffScannerScreen() {
                 <QrCode size={48} color={colors.primary} />
                 <Text style={styles.manualModeTitle}>Manual Input Mode Active</Text>
                 <Text style={styles.manualModeSubtitle}>
-                  Camera scanner is inactive. Type or paste resident QR code hash below to lookup status.
+                  Camera scanner is offline or inactive. Type or paste resident QR code hash below to lookup status.
                 </Text>
-                <TouchableOpacity
-                  style={styles.enableCamSmallBtn}
-                  onPress={() => {
-                    setManualOnlyMode(false);
-                    requestPermission();
-                  }}
-                >
-                  <Text style={styles.enableCamSmallBtnText}>Enable Camera Scanner</Text>
-                </TouchableOpacity>
+                {permission?.granted && (
+                  <TouchableOpacity
+                    style={styles.enableCamSmallBtn}
+                    onPress={() => {
+                      setManualOnlyMode(false);
+                      setCameraError(null);
+                    }}
+                  >
+                    <CameraIcon size={14} color={colors.white} style={{ marginRight: 6 }} />
+                    <Text style={styles.enableCamSmallBtnText}>Switch to Live Camera</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : (
               <View style={styles.cameraOuter}>
-                <View style={styles.cameraWrapper}>
-                  <CameraView
-                    style={StyleSheet.absoluteFillObject}
-                    onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-                    barcodeScannerSettings={{
-                      barcodeTypes: ['qr'],
-                    }}
-                  />
-                  {/* Aiming Reticle Overlay */}
-                  <View style={styles.overlayFrame}>
-                    <View style={styles.reticleCornerTopLeft} />
-                    <View style={styles.reticleCornerTopRight} />
-                    <View style={styles.reticleCornerBottomLeft} />
-                    <View style={styles.reticleCornerBottomRight} />
+                {cameraError ? (
+                  <View style={styles.cameraErrorBox}>
+                    <AlertTriangle size={36} color={colors.danger} />
+                    <Text style={styles.cameraErrorTitle}>Camera Feed Failed</Text>
+                    <Text style={styles.cameraErrorSubtitle}>{cameraError}</Text>
+                    <TouchableOpacity
+                      style={styles.retryCameraBtn}
+                      onPress={() => {
+                        setCameraError(null);
+                        setCameraReady(false);
+                      }}
+                    >
+                      <RotateCcw size={15} color={colors.white} style={{ marginRight: 6 }} />
+                      <Text style={styles.retryCameraBtnText}>Retry Camera</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.manualEntryAltBtn}
+                      onPress={() => setManualOnlyMode(true)}
+                    >
+                      <Text style={styles.manualEntryAltBtnText}>Switch to Manual Code Entry</Text>
+                    </TouchableOpacity>
                   </View>
-                </View>
+                ) : (
+                  <View style={styles.cameraWrapper}>
+                    {isFocused && (
+                      <CameraView
+                        style={StyleSheet.absoluteFillObject}
+                        facing="back"
+                        barcodeScannerSettings={BARCODE_SETTINGS}
+                        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+                        onCameraReady={() => setCameraReady(true)}
+                        onMountError={(e) => {
+                          console.error('Camera onMountError:', e);
+                          setCameraError(e?.message || 'Camera hardware unavailable.');
+                        }}
+                      />
+                    )}
+
+                    {!cameraReady && isFocused && (
+                      <View style={styles.cameraInitializingOverlay}>
+                        <ActivityIndicator size="small" color={colors.white} />
+                        <Text style={styles.cameraInitializingText}>Starting camera preview...</Text>
+                      </View>
+                    )}
+
+                    {/* Aiming Reticle Overlay */}
+                    <View style={styles.overlayFrame} pointerEvents="none">
+                      <View style={styles.reticleCornerTopLeft} />
+                      <View style={styles.reticleCornerTopRight} />
+                      <View style={styles.reticleCornerBottomLeft} />
+                      <View style={styles.reticleCornerBottomRight} />
+                    </View>
+                  </View>
+                )}
+
                 <Text style={styles.scannerHelperText}>Align resident&apos;s QR code within the frame</Text>
+
+                <TouchableOpacity
+                  style={styles.switchModeLink}
+                  onPress={() => setManualOnlyMode(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.switchModeLinkText}>Camera having trouble? Switch to Manual Entry</Text>
+                </TouchableOpacity>
               </View>
             )
           ) : (
@@ -399,8 +577,8 @@ export default function StaffScannerScreen() {
                     )}
 
                     {!scanResult.checkedIn && (
-                      <TouchableOpacity 
-                        style={styles.checkInBtn} 
+                      <TouchableOpacity
+                        style={styles.checkInBtn}
                         onPress={executeCheckIn}
                         disabled={checkInLoading}
                       >
@@ -420,8 +598,8 @@ export default function StaffScannerScreen() {
                     )}
 
                     {scanResult.checkedIn && !scanResult.rationClaimed && !claimSuccess ? (
-                      <TouchableOpacity 
-                        style={styles.claimBtn} 
+                      <TouchableOpacity
+                        style={styles.claimBtn}
                         onPress={executeClaim}
                         disabled={claimLoading}
                       >
@@ -440,8 +618,8 @@ export default function StaffScannerScreen() {
                       <View style={styles.statusWarningBox}>
                         <AlertTriangle size={18} color={colors.warning} />
                         <Text style={styles.warningBoxText}>
-                          {!scanResult.checkedIn 
-                            ? 'Resident must check in to a shelter first to be eligible for relief rations.' 
+                          {!scanResult.checkedIn
+                            ? 'Resident must check in to a shelter first to be eligible for relief rations.'
                             : 'This resident has already received their designated supply packages.'}
                         </Text>
                       </View>
@@ -462,7 +640,7 @@ export default function StaffScannerScreen() {
         {!scanned && (
           <View style={styles.manualCard}>
             <Text style={styles.manualTitle}>Manual Override Fallback</Text>
-            <Text style={styles.manualSubtitle}>If code is damaged, enter the QR hash manually:</Text>
+            <Text style={styles.manualSubtitle}>If code is damaged or camera unavailable, enter hash:</Text>
             <View style={styles.manualRow}>
               <TextInput
                 style={styles.manualInput}
@@ -480,492 +658,581 @@ export default function StaffScannerScreen() {
           </View>
         )}
       </ScrollView>
-
     </View>
   );
 }
 
-const getStyles = (colors, isDarkMode) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  centerContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.base,
-  },
-  loadingText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  permissionContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  permissionIcon: {
-    marginBottom: spacing.xl,
-  },
-  permissionTitle: {
-    ...typography.heading,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-  permissionSubtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing['2xl'],
-    lineHeight: 22,
-  },
-  permissionButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radii.md,
-    width: '100%',
-    alignItems: 'center',
-  },
-  permissionButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.base,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  headerTitle: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  headerSubtitle: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  shelterHeaderBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: isDarkMode ? '#1e3a8a30' : '#eff6ff',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radii.sm,
-    alignSelf: 'flex-start',
-    marginTop: 5,
-    borderWidth: 1,
-    borderColor: isDarkMode ? '#3b82f640' : '#bfdbfe',
-  },
-  shelterBadgeText: {
-    color: isDarkMode ? '#60a5fa' : '#2563eb',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  scrollContent: {
-    padding: spacing.lg,
-    paddingBottom: 110,
-    gap: spacing.lg,
-  },
-  displayCard: {
-    backgroundColor: colors.card,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    overflow: 'hidden',
-    ...shadows.md,
-  },
-  cameraOuter: {
-    padding: spacing.lg,
-    alignItems: 'center',
-  },
-  cameraWrapper: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: radii.lg,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  overlayFrame: {
-    position: 'absolute',
-    top: '15%',
-    left: '15%',
-    width: '70%',
-    height: '70%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  reticleCornerTopLeft: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 25,
-    height: 25,
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
-    borderColor: colors.primary,
-  },
-  reticleCornerTopRight: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 25,
-    height: 25,
-    borderTopWidth: 4,
-    borderRightWidth: 4,
-    borderColor: colors.primary,
-  },
-  reticleCornerBottomLeft: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: 25,
-    height: 25,
-    borderBottomWidth: 4,
-    borderLeftWidth: 4,
-    borderColor: colors.primary,
-  },
-  reticleCornerBottomRight: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 25,
-    height: 25,
-    borderBottomWidth: 4,
-    borderRightWidth: 4,
-    borderColor: colors.primary,
-  },
-  scannerHelperText: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: spacing.md,
-    textAlign: 'center',
-  },
-  resultContainer: {
-    minHeight: 320,
-    padding: spacing.xl,
-    justifyContent: 'center',
-  },
-  resultLoading: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-  },
-  resultLoadingText: {
-    color: colors.textSecondary,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  statusBox: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.md,
-  },
-  statusIcon: {
-    marginBottom: spacing.base,
-  },
-  statusTitle: {
-    ...typography.subheading,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  statusMsg: {
-    ...typography.body,
-    color: colors.dangerLight,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-    lineHeight: 20,
-  },
-  resetBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.danger,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radii.md,
-    width: '100%',
-  },
-  resetBtnText: {
-    color: colors.white,
-    fontWeight: 'bold',
-  },
-  residentDetails: {
-    width: '100%',
-  },
-  successBadge: {
-    backgroundColor: colors.successBg,
-    borderRadius: radii.lg,
-    padding: spacing.base,
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.success,
-  },
-  successBadgeTitle: {
-    color: colors.successText,
-    fontWeight: '900',
-    fontSize: 18,
-    marginTop: spacing.xs,
-    letterSpacing: 1,
-  },
-  successBadgeText: {
-    color: isDarkMode ? colors.white : colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  detailsHeader: {
-    marginBottom: spacing.base,
-  },
-  familyName: {
-    ...typography.title,
-    color: colors.textPrimary,
-  },
-  paxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: 4,
-  },
-  paxCount: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  badgeSection: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-  },
-  badgeSuccess: {
-    backgroundColor: colors.successBg,
-    borderColor: colors.success,
-  },
-  badgeDanger: {
-    backgroundColor: colors.dangerBg,
-    borderColor: colors.danger,
-  },
-  badgeWarning: {
-    backgroundColor: colors.warningBg,
-    borderColor: colors.warning,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-  },
-  textSuccess: {
-    color: colors.successText,
-  },
-  textDanger: {
-    color: colors.dangerText,
-  },
-  textWarning: {
-    color: colors.warningText,
-  },
-  infoBlock: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.lg,
-    padding: spacing.base,
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  infoLabel: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  infoValue: {
-    color: colors.textPrimary,
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  actionBlock: {
-    gap: spacing.base,
-  },
-  claimBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.success,
-    paddingVertical: spacing.lg,
-    borderRadius: radii.md,
-    ...shadows.glow(colors.success),
-  },
-  claimBtnText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: '950',
-    letterSpacing: 0.5,
-  },
-  checkInBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.lg,
-    borderRadius: radii.md,
-    ...shadows.glow(colors.primary),
-  },
-  statusWarningBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.warningBg,
-    padding: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.warning,
-  },
-  warningBoxText: {
-    color: colors.warningText,
-    fontSize: 12,
-    fontWeight: '700',
-    flex: 1,
-    lineHeight: 18,
-  },
-  secondaryScanBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.md,
-    borderRadius: radii.md,
-    marginTop: spacing.xs,
-  },
-  secondaryScanBtnText: {
-    color: colors.textSecondary,
-    fontWeight: 'bold',
-  },
-  manualCard: {
-    backgroundColor: colors.card,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: spacing.lg,
-    ...shadows.sm,
-  },
-  manualTitle: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  manualSubtitle: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    marginTop: 2,
-    marginBottom: spacing.md,
-  },
-  manualRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  manualInput: {
-    flex: 1,
-    backgroundColor: colors.inputBg,
-    color: colors.textPrimary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    fontFamily: 'monospace',
-    fontSize: 14,
-  },
-  manualSendBtn: {
-    backgroundColor: colors.primary,
-    width: 44,
-    height: 44,
-    borderRadius: radii.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  manualEntryAltBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radii.md,
-    width: '100%',
-    marginTop: spacing.md,
-  },
-  manualEntryAltBtnText: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  manualModeNotice: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.md,
-  },
-  manualModeTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  manualModeSubtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: spacing.md,
-  },
-  enableCamSmallBtn: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.sm,
-    backgroundColor: colors.primary,
-  },
-  enableCamSmallBtnText: {
-    color: colors.white,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-});
+const getStyles = (colors, isDarkMode) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centerContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.base,
+    },
+    loadingText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
+    permissionContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.xl,
+    },
+    permissionIconWrap: {
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.xl,
+    },
+    permissionTitle: {
+      ...typography.heading,
+      color: colors.textPrimary,
+      textAlign: 'center',
+      marginBottom: spacing.md,
+      fontSize: 20,
+    },
+    permissionSubtitle: {
+      ...typography.body,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: spacing['2xl'],
+      lineHeight: 22,
+      maxWidth: 320,
+    },
+    permissionButton: {
+      flexDirection: 'row',
+      backgroundColor: colors.primary,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xl,
+      borderRadius: radii.md,
+      width: '100%',
+      maxWidth: 340,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...shadows.glow(colors.primary),
+    },
+    permissionButtonText: {
+      color: colors.white,
+      fontSize: 16,
+      fontWeight: 'bold',
+    },
+    refreshPermBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.base,
+      marginTop: spacing.sm,
+    },
+    refreshPermBtnText: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.base,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    headerTitle: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontWeight: '900',
+      letterSpacing: 1,
+    },
+    headerSubtitle: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontWeight: '600',
+      marginTop: 2,
+    },
+    shelterHeaderBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: isDarkMode ? '#1e3a8a30' : '#eff6ff',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: radii.sm,
+      alignSelf: 'flex-start',
+      marginTop: 5,
+      borderWidth: 1,
+      borderColor: isDarkMode ? '#3b82f640' : '#bfdbfe',
+    },
+    shelterBadgeText: {
+      color: isDarkMode ? '#60a5fa' : '#2563eb',
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    scrollContent: {
+      padding: spacing.lg,
+      gap: spacing.lg,
+    },
+    displayCard: {
+      backgroundColor: colors.card,
+      borderRadius: radii.xl,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      overflow: 'hidden',
+      ...shadows.md,
+    },
+    cameraOuter: {
+      padding: spacing.lg,
+      alignItems: 'center',
+    },
+    cameraWrapper: {
+      width: '100%',
+      height: 320,
+      minHeight: 280,
+      borderRadius: radii.lg,
+      overflow: 'hidden',
+      position: 'relative',
+      backgroundColor: '#000000',
+    },
+    cameraInitializingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      zIndex: 5,
+    },
+    cameraInitializingText: {
+      color: colors.white,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    cameraErrorBox: {
+      width: '100%',
+      padding: spacing.xl,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.dangerBg,
+      borderRadius: radii.lg,
+      borderWidth: 1,
+      borderColor: colors.danger,
+    },
+    cameraErrorTitle: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: colors.dangerText,
+      marginTop: spacing.md,
+      marginBottom: spacing.xs,
+    },
+    cameraErrorSubtitle: {
+      fontSize: 13,
+      color: colors.dangerText,
+      textAlign: 'center',
+      marginBottom: spacing.lg,
+    },
+    retryCameraBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.danger,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xl,
+      borderRadius: radii.md,
+      marginBottom: spacing.sm,
+      width: '100%',
+    },
+    retryCameraBtnText: {
+      color: colors.white,
+      fontWeight: 'bold',
+      fontSize: 14,
+    },
+    overlayFrame: {
+      position: 'absolute',
+      top: '15%',
+      left: '15%',
+      width: '70%',
+      height: '70%',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    reticleCornerTopLeft: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: 25,
+      height: 25,
+      borderTopWidth: 4,
+      borderLeftWidth: 4,
+      borderColor: colors.primary,
+    },
+    reticleCornerTopRight: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      width: 25,
+      height: 25,
+      borderTopWidth: 4,
+      borderRightWidth: 4,
+      borderColor: colors.primary,
+    },
+    reticleCornerBottomLeft: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      width: 25,
+      height: 25,
+      borderBottomWidth: 4,
+      borderLeftWidth: 4,
+      borderColor: colors.primary,
+    },
+    reticleCornerBottomRight: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      width: 25,
+      height: 25,
+      borderBottomWidth: 4,
+      borderRightWidth: 4,
+      borderColor: colors.primary,
+    },
+    scannerHelperText: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      marginTop: spacing.md,
+      textAlign: 'center',
+    },
+    switchModeLink: {
+      marginTop: spacing.sm,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+    },
+    switchModeLinkText: {
+      color: colors.primary,
+      fontSize: 12,
+      fontWeight: '700',
+      textDecorationLine: 'underline',
+    },
+    resultContainer: {
+      padding: spacing.lg,
+    },
+    resultLoading: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.xl,
+      gap: spacing.md,
+    },
+    resultLoadingText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
+    statusBox: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.lg,
+    },
+    statusIcon: {
+      marginBottom: spacing.md,
+    },
+    statusTitle: {
+      ...typography.heading,
+      color: colors.textPrimary,
+      marginBottom: spacing.xs,
+    },
+    statusMsg: {
+      ...typography.body,
+      color: colors.danger,
+      textAlign: 'center',
+      marginBottom: spacing.xl,
+    },
+    resetBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.danger,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xl,
+      borderRadius: radii.md,
+      width: '100%',
+    },
+    resetBtnText: {
+      color: colors.white,
+      fontWeight: 'bold',
+    },
+    residentDetails: {
+      width: '100%',
+    },
+    successBadge: {
+      backgroundColor: colors.successBg,
+      borderRadius: radii.lg,
+      padding: spacing.base,
+      alignItems: 'center',
+      marginBottom: spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.success,
+    },
+    successBadgeTitle: {
+      color: colors.successText,
+      fontWeight: '900',
+      fontSize: 18,
+      marginTop: spacing.xs,
+      letterSpacing: 1,
+    },
+    successBadgeText: {
+      color: isDarkMode ? colors.white : colors.textPrimary,
+      fontSize: 13,
+      fontWeight: '600',
+      textAlign: 'center',
+      marginTop: 4,
+    },
+    detailsHeader: {
+      marginBottom: spacing.base,
+    },
+    familyName: {
+      ...typography.title,
+      color: colors.textPrimary,
+    },
+    paxRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginTop: 4,
+    },
+    paxCount: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    badgeSection: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginBottom: spacing.lg,
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+      borderRadius: radii.sm,
+      borderWidth: 1,
+    },
+    badgeSuccess: {
+      backgroundColor: colors.successBg,
+      borderColor: colors.success,
+    },
+    badgeDanger: {
+      backgroundColor: colors.dangerBg,
+      borderColor: colors.danger,
+    },
+    badgeWarning: {
+      backgroundColor: colors.warningBg,
+      borderColor: colors.warning,
+    },
+    badgeText: {
+      fontSize: 11,
+      fontWeight: 'bold',
+      textTransform: 'uppercase',
+    },
+    textSuccess: {
+      color: colors.successText,
+    },
+    textDanger: {
+      color: colors.dangerText,
+    },
+    textWarning: {
+      color: colors.warningText,
+    },
+    infoBlock: {
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: radii.lg,
+      padding: spacing.base,
+      gap: spacing.sm,
+      marginBottom: spacing.xl,
+    },
+    infoRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    infoLabel: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    infoValue: {
+      color: colors.textPrimary,
+      fontSize: 13,
+      fontWeight: 'bold',
+    },
+    actionBlock: {
+      gap: spacing.base,
+    },
+    claimBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.success,
+      paddingVertical: spacing.lg,
+      borderRadius: radii.md,
+      ...shadows.glow(colors.success),
+    },
+    claimBtnText: {
+      color: colors.white,
+      fontSize: 16,
+      fontWeight: '950',
+      letterSpacing: 0.5,
+    },
+    checkInBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.primary,
+      paddingVertical: spacing.lg,
+      borderRadius: radii.md,
+      ...shadows.glow(colors.primary),
+    },
+    statusWarningBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.warningBg,
+      padding: spacing.md,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: colors.warning,
+    },
+    warningBoxText: {
+      color: colors.warningText,
+      fontSize: 12,
+      fontWeight: '700',
+      flex: 1,
+      lineHeight: 18,
+    },
+    secondaryScanBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: spacing.md,
+      borderRadius: radii.md,
+      marginTop: spacing.xs,
+    },
+    secondaryScanBtnText: {
+      color: colors.textSecondary,
+      fontWeight: 'bold',
+    },
+    manualCard: {
+      backgroundColor: colors.card,
+      borderRadius: radii.xl,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      padding: spacing.lg,
+      ...shadows.sm,
+    },
+    manualTitle: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
+    manualSubtitle: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      marginTop: 2,
+      marginBottom: spacing.md,
+    },
+    manualRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    manualInput: {
+      flex: 1,
+      backgroundColor: colors.inputBg,
+      color: colors.textPrimary,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      fontFamily: 'monospace',
+      fontSize: 14,
+    },
+    manualSendBtn: {
+      backgroundColor: colors.primary,
+      width: 44,
+      height: 44,
+      borderRadius: radii.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    manualEntryAltBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xl,
+      borderRadius: radii.md,
+      width: '100%',
+      maxWidth: 340,
+      marginTop: spacing.md,
+    },
+    manualEntryAltBtnText: {
+      color: colors.textPrimary,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    manualModeNotice: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.xl,
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: radii.md,
+    },
+    manualModeTitle: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+      marginTop: spacing.md,
+      marginBottom: spacing.xs,
+    },
+    manualModeSubtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 18,
+      marginBottom: spacing.md,
+    },
+    enableCamSmallBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: radii.sm,
+      backgroundColor: colors.primary,
+    },
+    enableCamSmallBtnText: {
+      color: colors.white,
+      fontSize: 12,
+      fontWeight: 'bold',
+    },
+  });
