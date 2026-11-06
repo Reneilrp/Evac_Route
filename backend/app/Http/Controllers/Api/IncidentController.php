@@ -25,9 +25,9 @@ class IncidentController extends Controller
             'hazard_type' => 'required|string|max:50',
             'severity_level' => 'required|in:low,medium,high',
             'description' => 'nullable|string|max:1000',
-            'photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120', // 5MB max (legacy)
+            'photo' => 'nullable|file|mimes:jpg,jpeg,png,webp,heic|max:15360', // 15MB max for modern smartphone cameras
             'photos' => 'nullable|array|max:4',                         // Up to 4 photos for credibility
-            'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:5120',
+            'photos.*' => 'file|mimes:jpg,jpeg,png,webp,heic|max:15360',
         ]);
 
         $photoPaths = [];

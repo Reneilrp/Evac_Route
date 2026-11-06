@@ -11,6 +11,7 @@ import {
   Image,
   Modal,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -378,10 +379,11 @@ export default function ReportIncidentScreen({ navigation, route }) {
       if (finalDescription) formData.append('description', finalDescription);
 
       photos.forEach((photoObj, index) => {
+        const fileUri = Platform.OS === 'android' ? photoObj.uri : photoObj.uri.replace('file://', '');
         const fileData = {
-          uri: photoObj.uri,
-          type: photoObj.type,
-          name: photoObj.fileName,
+          uri: fileUri,
+          type: photoObj.type || 'image/jpeg',
+          name: photoObj.fileName || `incident_${Date.now()}_${index + 1}.jpg`,
         };
         formData.append('photos[]', fileData);
         if (index === 0) {
@@ -391,6 +393,7 @@ export default function ReportIncidentScreen({ navigation, route }) {
 
       await api.post('/incidents', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        transformRequest: (data) => data,
       });
 
       queryClient.invalidateQueries({ queryKey: ['my-incidents'] });

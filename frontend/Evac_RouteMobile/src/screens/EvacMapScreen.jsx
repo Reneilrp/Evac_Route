@@ -515,6 +515,9 @@ export default function EvacMapScreen({ navigation, route }) {
   const filteredShelters = useMemo(() => {
     return safeShelters.filter(shelter => {
       if (!shelter) return false;
+      // Exclude closed or completely full shelters from pathfinding suggestions
+      if (shelter.status === 'closed' || shelter.status === 'full') return false;
+
       // 1. Facility Category Filter
       if (selectedCategoryFilter === 'shelter' && !(shelter.facility_type === 'evacuation_center' || !shelter.facility_type)) return false;
       if (selectedCategoryFilter === 'safe_zone' && shelter.facility_type !== 'safe_zone') return false;
@@ -814,6 +817,20 @@ export default function EvacMapScreen({ navigation, route }) {
   })();
 
   const proceedWithNavigation = (dest) => {
+    if (!dest) return;
+
+    if (dest.status === 'full' || dest.status === 'closed') {
+      Alert.alert(
+        dest.status === 'full' ? '⛔ Shelter at Full Capacity' : '⛔ Shelter Closed',
+        dest.status === 'full'
+          ? `${dest.name || 'This shelter'} is currently at 100% capacity and cannot accept more evacuees. Please select another active open evacuation center.`
+          : `${dest.name || 'This shelter'} is currently closed. Please select an active open shelter.`,
+        [{ text: 'Understood' }]
+      );
+      triggerCasualHaptic(40);
+      return;
+    }
+
     setSelectedShelter(dest);
     setIsNavigating(true);
 
@@ -1174,6 +1191,10 @@ export default function EvacMapScreen({ navigation, route }) {
 
             if (shelter.status === 'closed') {
               pinBg = '#64748b'; // Gray out closed shelters (like secondary courts)
+              pinIcon = '🔒';
+            } else if (shelter.status === 'full') {
+              pinBg = '#e11d48'; // Rose-600 danger for full shelter
+              pinIcon = '⛔';
             }
 
             return (

@@ -112,4 +112,30 @@ class SecurityTest extends TestCase
 
         $response->assertStatus(429);
     }
+
+    public function test_family_registration_rejects_duplicate_contact_number()
+    {
+        $payload = [
+            'name' => 'First Resident Family',
+            'headcount' => 4,
+            'contact_number' => '0917-123-4567',
+            'barangay' => 'Tetuan',
+            'transportation_mode' => 'pedestrian',
+        ];
+
+        // First registration succeeds
+        $res1 = $this->postJson('/api/register/family', $payload);
+        $res1->assertStatus(201);
+
+        // Second registration with identical contact number fails with 422
+        $res2 = $this->postJson('/api/register/family', [
+            'name' => 'Second Resident Family',
+            'headcount' => 2,
+            'contact_number' => '0917-123-4567',
+            'barangay' => 'Baliwasan',
+            'transportation_mode' => '2_wheel',
+        ]);
+        $res2->assertStatus(422);
+        $res2->assertJsonValidationErrors(['contact_number']);
+    }
 }

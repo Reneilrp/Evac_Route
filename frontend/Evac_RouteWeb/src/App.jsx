@@ -862,6 +862,7 @@ function App() {
                 <Route path="/admin/alerts" element={<DashboardLayout><EmergencyAlerts /></DashboardLayout>} />
                 <Route path="/admin/rescue-dispatch" element={<DashboardLayout><RescueDispatch /></DashboardLayout>} />
                 <Route path="/admin/relief-desk" element={<Navigate to="/admin/inventory" replace />} />
+                <Route path="/admin/relief-distribution" element={<Navigate to="/admin/inventory" replace />} />
               </Route>
 
               {/* CSWDO Camp & Relief Inventory Modules (Segregated from DRRM rescue/field operators) */}
@@ -879,6 +880,7 @@ function App() {
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                 <Route path="/admin/audit-logs" element={<DashboardLayout><AuditLogs /></DashboardLayout>} />
                 <Route path="/admin/sitrep" element={<DashboardLayout><SituationReport /></DashboardLayout>} />
+                <Route path="/admin/situation-report" element={<Navigate to="/admin/sitrep" replace />} />
                 <Route path="/admin/system-health" element={<DashboardLayout><SystemHealth /></DashboardLayout>} />
               </Route>
 

@@ -38,12 +38,9 @@ export default function EmergencyContactsScreen({ navigation }) {
     const cleanNumber = number.replace(/[^0-9+]/g, '');
     const phoneUrl = `tel:${cleanNumber}`;
 
-    Linking.canOpenURL(phoneUrl).then(supported => {
-      if (supported) {
-        Linking.openURL(phoneUrl);
-      } else {
-        Alert.alert('Cannot Call', `Direct calling is not supported. Please dial ${number} manually.`);
-      }
+    // Direct invocation bypasses Android 11+ canOpenURL scheme restrictions
+    Linking.openURL(phoneUrl).catch(() => {
+      Alert.alert('Cannot Open Dialer', `Could not open phone dialer for ${name}. Please dial ${number} manually.`);
     });
   };
 

@@ -44,9 +44,11 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'headcount' => 'required|integer|min:1',
-            'contact_number' => ['required', 'string', 'regex:/^\+?[0-9\s\-]+$/'],
+            'contact_number' => ['required', 'string', 'unique:family_profiles,contact_number', 'regex:/^\+?[0-9\s\-]+$/'],
             'barangay' => 'required|string',
             'transportation_mode' => 'required|in:pedestrian,2_wheel,4_wheel',
+        ], [
+            'contact_number.unique' => 'This mobile / contact number is already registered to an existing household.',
         ]);
 
         DB::beginTransaction();

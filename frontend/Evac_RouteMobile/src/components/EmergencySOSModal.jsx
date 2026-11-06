@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clampToZamboanga, ZAMBOANGA_WMSU, getNearestBarangay } from '../utils/zamboangaGeo';
 
 const HAZARD_OPTIONS = [
@@ -218,6 +219,40 @@ export default function EmergencySOSModal({ visible, onClose, initialCoords, onS
         }}]
       );
     } catch (err) {
+      // Check if network error or offline
+      if (!err?.response || err?.message?.includes('Network') || err?.code === 'ERR_NETWORK') {
+        try {
+          const queueItem = {
+            id: `sos_${Date.now()}`,
+            payload: {
+              latitude: lat,
+              longitude: lng,
+              headcount: headcount,
+              hazard_type: hazardType,
+              modifiers: selectedModifiers,
+              situation: `🚨 URGENT ${activeHazard?.title?.toUpperCase() || 'SOS'}: ${headcount} person(s) stranded at ${addressLabel}. Special Needs: ${selectedModLabels.join(', ') || 'None stated'}.`,
+            },
+            queuedAt: new Date().toISOString(),
+          };
+          const existingQueueStr = await AsyncStorage.getItem('OFFLINE_SOS_QUEUE');
+          const queue = existingQueueStr ? JSON.parse(existingQueueStr) : [];
+          queue.push(queueItem);
+          await AsyncStorage.setItem('OFFLINE_SOS_QUEUE', JSON.stringify(queue));
+
+          Alert.alert(
+            '📡 SOS Queued Offline',
+            `No cellular/internet connection detected. Your emergency SOS signal for ${headcount} person(s) has been cached safely on your device.\n\nThe app will automatically flush and transmit it to CDRRMO Dispatch as soon as connectivity recovers. If in immediate life danger, call emergency hotline 911 directly.`,
+            [{ text: 'OK', onPress: () => {
+              onClose();
+              if (onSuccess) onSuccess();
+            }}]
+          );
+          return;
+        } catch (storageErr) {
+          console.error('[SOS Offline Caching Error]:', storageErr);
+        }
+      }
+
       Alert.alert(
         'SOS Transmission Failed',
         err?.response?.data?.message || 'Could not contact CDRRMO emergency dispatch. Please call emergency hotline 911 directly.'

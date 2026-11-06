@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, ClipboardList, Plus, AlertCircle, X, Trash2, Truck, CheckCircle, Clock, MapPin, Printer, ShieldAlert } from 'lucide-react';
+import { Package, ClipboardList, Plus, AlertCircle, X, Trash2, Truck, CheckCircle, Clock, MapPin, Printer, ShieldAlert, Sparkles } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -794,6 +794,7 @@ export default function InventoryManager() {
             <CreateDispatchModal
               inventoryItems={items}
               shelters={shelterOptions}
+              activeTemplate={activeTemplate}
               onCancel={() => setShowDispatchModal(false)}
               onCreated={() => {
                 setShowDispatchModal(false);
@@ -928,12 +929,52 @@ export default function InventoryManager() {
 }
 
 // --- Create Dispatch Modal ---
-function CreateDispatchModal({ inventoryItems, shelters, onCancel, onCreated }) {
+function CreateDispatchModal({ inventoryItems, shelters, activeTemplate, onCancel, onCreated }) {
   const [shelterId, setShelterId] = useState('');
   const [notes, setNotes] = useState('');
   const [manifest, setManifest] = useState([{ inventory_item_id: '', quantity: 1 }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [contingencyInfo, setContingencyInfo] = useState('');
+
+  const selectedShelterObj = shelters.find(s => String(s.id) === String(shelterId));
+
+  const applyContingencyCalculation = () => {
+    if (!selectedShelterObj) {
+      setError('Please select a destination shelter first.');
+      return;
+    }
+    const baseOccupancy = Math.max(1, selectedShelterObj.current_occupancy || 10);
+    const bufferCount = Math.ceil(baseOccupancy * 1.20);
+    const addedMargin = bufferCount - baseOccupancy;
+
+    if (activeTemplate && Array.isArray(activeTemplate.items) && activeTemplate.items.length > 0) {
+      const generatedRows = activeTemplate.items.map(tItem => {
+        const matchingInv = inventoryItems.find(it => String(it.id) === String(tItem.inventory_item_id || tItem.inventoryItem?.id));
+        const perHead = Number(tItem.quantity_per_head) || 1;
+        const totalNeeded = Math.ceil(perHead * bufferCount);
+        const avail = matchingInv?.available_stock ?? matchingInv?.total_stock ?? totalNeeded;
+        return {
+          inventory_item_id: matchingInv ? String(matchingInv.id) : (inventoryItems[0]?.id ? String(inventoryItems[0].id) : ''),
+          quantity: Math.min(totalNeeded, Math.max(1, avail))
+        };
+      });
+      setManifest(generatedRows.filter(r => r.inventory_item_id));
+      setNotes(`Automated Demand Calculation: ${baseOccupancy} Evacuees + 20% Emergency Contingency Buffer (+${addedMargin}) = ${bufferCount} target ration packs. Template: ${activeTemplate.name}.`);
+      setContingencyInfo(`✓ Applied Template (${activeTemplate.name}): ${baseOccupancy} evacuees + 20% buffer (+${addedMargin}) = ${bufferCount} portions.`);
+      setError('');
+    } else {
+      // Fallback if no template: distribute available items with 20% buffer
+      const essentialItems = inventoryItems.slice(0, 3).map(it => ({
+        inventory_item_id: String(it.id),
+        quantity: Math.min(bufferCount, Math.max(1, it.available_stock ?? it.total_stock ?? bufferCount))
+      }));
+      setManifest(essentialItems);
+      setNotes(`Automated Demand Calculation: ${baseOccupancy} Evacuees + 20% Emergency Contingency Buffer (+${addedMargin}) = ${bufferCount} target portions.`);
+      setContingencyInfo(`✓ Standard buffer applied: ${baseOccupancy} evacuees + 20% contingency (+${addedMargin}) = ${bufferCount} portions.`);
+      setError('');
+    }
+  };
 
   const addRow = () => setManifest([...manifest, { inventory_item_id: '', quantity: 1 }]);
   const removeRow = (i) => setManifest(manifest.filter((_, idx) => idx !== i));
@@ -995,11 +1036,30 @@ function CreateDispatchModal({ inventoryItems, shelters, onCancel, onCreated }) 
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Destination Shelter</label>
             <select
               className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-              value={shelterId} onChange={e => setShelterId(e.target.value)} required
+              value={shelterId} onChange={e => { setShelterId(e.target.value); setContingencyInfo(''); }} required
             >
               <option value="">Select a shelter…</option>
-              {shelters.map(s => <option key={s.id} value={s.id}>{s.name} ({s.status})</option>)}
+              {shelters.map(s => <option key={s.id} value={s.id}>{s.name} ({s.status}) — Occupancy: {s.current_occupancy || 0}</option>)}
             </select>
+            {shelterId && (
+              <div className="mt-2.5 flex items-center justify-between bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 rounded-lg p-2.5">
+                <span className="text-xs text-blue-800 dark:text-blue-300 font-medium">
+                  Current Occupancy: <strong>{selectedShelterObj?.current_occupancy || 0} evacuees</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={applyContingencyCalculation}
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-md shadow-sm transition flex items-center gap-1.5"
+                >
+                  <Sparkles size={13} /> Auto-Calculate Demand (+20% Buffer)
+                </button>
+              </div>
+            )}
+            {contingencyInfo && (
+              <div className="mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 rounded-lg px-3 py-1.5">
+                {contingencyInfo}
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Manifest</label>
