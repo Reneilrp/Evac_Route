@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../services/api';
 
@@ -16,7 +15,7 @@ export const AuthProvider = ({ children }) => {
       setUser(response.data);
     } catch (error) {
       console.error("Failed to fetch user", error);
-      localStorage.removeItem('auth_token');
+      sessionStorage.removeItem('auth_token');
       setUser(null);
     } finally {
       setLoading(false);
@@ -25,9 +24,12 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check if user is already logged in on mount
-    const token = localStorage.getItem('auth_token');
+    const legacyToken = localStorage.getItem('auth_token');
+    if (legacyToken) {
+      localStorage.removeItem('auth_token');
+    }
+    const token = sessionStorage.getItem('auth_token');
     if (token) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchUser();
     } else {
       setLoading(false);
@@ -36,10 +38,14 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      // Initialize CSRF protection for Sanctum stateful session cookies
+      const baseUrl = api.defaults.baseURL.replace(/\/api\/?$/, '');
+      await api.get(`${baseUrl}/sanctum/csrf-cookie`).catch(() => {});
+
       const response = await api.post('/login', { email, password });
       const { access_token, user: loggedInUser } = response.data;
       
-      localStorage.setItem('auth_token', access_token);
+      sessionStorage.setItem('auth_token', access_token);
       setUser(loggedInUser);
       return true;
     } catch (error) {
@@ -56,7 +62,7 @@ export const AuthProvider = ({ children }) => {
       // Proceed with local logout even if the API call fails
       console.warn('Backend logout failed:', error);
     } finally {
-      localStorage.removeItem('auth_token');
+      sessionStorage.removeItem('auth_token');
       setUser(null);
     }
   };

@@ -15,7 +15,10 @@ import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import Constants from 'expo-constants';
 
 // Derive web dashboard URL from the same base the API uses
-const API_BASE = Constants.expoConfig?.extra?.apiBaseUrl || 'http://localhost:8000/api';
+const API_BASE =
+  process.env.EXPO_PUBLIC_API_URL ||
+  Constants.expoConfig?.extra?.apiBaseUrl ||
+  'https://evacroute.app/api';
 const WEB_DASHBOARD_URL = API_BASE.replace('/api', '');
 
 export default function StaffOverviewScreen() {

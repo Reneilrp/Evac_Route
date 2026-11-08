@@ -7,6 +7,7 @@ use App\Models\RescueMission;
 use App\Models\RescueUnit;
 use App\Models\Shelter;
 use App\Models\User;
+use App\Services\PushNotificationService;
 use App\Services\WeatherService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Http;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    Cache::flush();
     Http::fake([
         'exp.host/*' => Http::response(['status' => 'ok']),
     ]);
@@ -67,6 +69,14 @@ test('CDRRMO staff can declare a proactive hazard zone for a barangay with autom
     $resident = User::factory()->create([
         'role' => 'resident',
         'push_token' => 'ExponentPushToken[residentAlertToken]',
+    ]);
+    FamilyProfile::create([
+        'user_id' => $resident->id,
+        'barangay' => 'Tumaga',
+        'headcount' => 4,
+        'contact_number' => '09170000000',
+        'qr_code_hash' => 'TEST_TUMAGA_ALERT',
+        'transportation_mode' => 'pedestrian',
     ]);
 
     $response = $this->actingAs($staff)->postJson('/api/hazards/declare-zone', [
@@ -312,4 +322,49 @@ test('dynamic rain duration threshold automatically triggers chronic flood spots
         ->and($res2->json('data.fixed_flood_spots_triggered'))->toBeTrue()
         ->and($res2->json('data.active_fixed_flood_spots_count'))->toBe(1)
         ->and($res2->json('data.system_recommendation'))->toContain('reached configured 30m threshold');
+});
+
+test('PushNotificationService correctly targets residents inside large hazards regardless of smaller alert radius preference', function () {
+    // Center of hazard in Tumaga: 6.9325, 122.0805
+    $hazardLat = 6.9325;
+    $hazardLon = 122.0805;
+    $hazardRadius = 2000.0; // 2km radius
+
+    // 1. Resident A: located ~800m away, alert_radius_meters = 500m (smaller than hazard).
+    // Must be alerted because they are physically inside the 2000m hazard footprint!
+    // Offset ~0.007 degrees latitude is ~778m
+    $residentA = User::factory()->create([
+        'role' => 'resident',
+        'push_token' => 'ExponentPushToken[residentA_InsideHazard]',
+        'last_latitude' => $hazardLat + 0.007,
+        'last_longitude' => $hazardLon,
+        'alert_radius_meters' => 500,
+    ]);
+
+    // 2. Resident B: located ~1500m away, hazard radius is 1000m, but user alert_radius_meters = 2500m.
+    // Must be alerted because their configured preference covers the hazard distance.
+    $residentB = User::factory()->create([
+        'role' => 'resident',
+        'push_token' => 'ExponentPushToken[residentB_BufferReach]',
+        'last_latitude' => $hazardLat + 0.0135,
+        'last_longitude' => $hazardLon,
+        'alert_radius_meters' => 2500,
+    ]);
+
+    // 3. Resident C: located ~5000m away, alert_radius_meters = 500m.
+    // Must NOT be alerted (outside hazard and outside alert preference).
+    $residentC = User::factory()->create([
+        'role' => 'resident',
+        'push_token' => 'ExponentPushToken[residentC_FarAway]',
+        'last_latitude' => $hazardLat + 0.05,
+        'last_longitude' => $hazardLon,
+        'alert_radius_meters' => 500,
+    ]);
+
+    // Test with hazard radius 2000m (should target A and B, but NOT C)
+    $tokens = PushNotificationService::getTargetedTokens($hazardLat, $hazardLon, $hazardRadius, []);
+
+    expect($tokens)->toContain('ExponentPushToken[residentA_InsideHazard]')
+        ->and($tokens)->toContain('ExponentPushToken[residentB_BufferReach]')
+        ->and($tokens)->not->toContain('ExponentPushToken[residentC_FarAway]');
 });

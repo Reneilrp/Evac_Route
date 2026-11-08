@@ -2,8 +2,8 @@ import { useState, Fragment } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { 
-  ShieldAlert, Search, Filter, Calendar, Clock, 
-  User, RefreshCw, FileSpreadsheet, ChevronDown, ChevronRight, Activity, Terminal
+  ShieldAlert, Search, Clock,
+  RefreshCw, FileSpreadsheet, ChevronDown, ChevronRight, Terminal
 } from 'lucide-react';
 
 export default function AuditLogs() {

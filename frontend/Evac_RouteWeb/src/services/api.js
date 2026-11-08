@@ -5,13 +5,14 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
   },
   withCredentials: true, // Crucial for Sanctum cookies
 });
 
-// Interceptor to attach the Sanctum token if it exists in localStorage
+// Keep the browser token scoped to the current tab. Mobile uses SecureStore.
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
+  const token = sessionStorage.getItem('auth_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -23,11 +24,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Do NOT redirect if the failing request is the login or logout call itself —
-      // that allows the login page to handle credential errors cleanly without redirecting to landing
-      const isAuthRequest = error.config?.url?.includes('/logout') || error.config?.url?.includes('/login');
+      // Do NOT redirect if the failing request is login, logout, or the initial /user probe —
+      // that allows components to handle unauthenticated state cleanly without an infinite redirect loop
+      const isAuthRequest =
+        error.config?.url?.includes('/logout') ||
+        error.config?.url?.includes('/login') ||
+        error.config?.url?.includes('/user');
       if (!isAuthRequest) {
-        localStorage.removeItem('auth_token');
+        sessionStorage.removeItem('auth_token');
         window.location.replace('/');
       }
     }

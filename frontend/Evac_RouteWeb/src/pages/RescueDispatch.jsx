@@ -170,12 +170,12 @@ export default function RescueDispatch() {
 
   const units = unitsData ?? [];
   const missions = missionsData ?? [];
-  const rawPending = incidentsData?.data ?? incidentsData ?? [];
   const pendingIncidents = useMemo(() => {
+    const rawPending = incidentsData?.data ?? incidentsData ?? [];
     return Array.isArray(rawPending)
       ? rawPending.filter(inc => inc?.name?.startsWith('EMERGENCY SOS:') || inc?.modifiers !== null || inc?.headcount > 1 || !inc?.photos?.length)
       : [];
-  }, [rawPending]);
+  }, [incidentsData]);
   const shelters = sheltersData ?? [];
   const staff = staffData ?? [];
 

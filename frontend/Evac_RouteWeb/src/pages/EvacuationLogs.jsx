@@ -1,6 +1,6 @@
 import React from "react";
 import { useState } from 'react';
-import { Download, Search, Filter, Calendar, X, RotateCcw } from 'lucide-react';
+import { Download, Search, Filter, Calendar, RotateCcw } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import ConfirmationModal from '../components/common/ConfirmationModal';

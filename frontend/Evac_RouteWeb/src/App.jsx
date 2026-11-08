@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect, useCallback, useRef } from "react";
+import { lazy, Suspense, useState, useEffect, useCallback } from "react";
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import toast, { Toaster } from 'react-hot-toast';
@@ -166,7 +166,7 @@ function DashboardLayout({ children }) {
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [location.pathname]);
+  }, [location.pathname, queryClient]);
 
   // Hook in WebSockets
   useEffect(() => {
@@ -416,7 +416,7 @@ function DashboardLayout({ children }) {
     return () => {
       echo.leaveChannel('map-updates');
     };
-  }, [location.pathname]);
+  }, [location.pathname, queryClient]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-slate-950">
@@ -1051,7 +1051,7 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
       link.click();
       link.remove();
       toast.success("Database backup download started.");
-    } catch (err) {
+    } catch {
       toast.error("Failed to generate database backup");
     } finally {
       setBackupLoading(false);

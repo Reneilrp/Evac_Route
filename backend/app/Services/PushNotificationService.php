@@ -99,7 +99,11 @@ class PushNotificationService
                     $latitude,
                     $longitude
                 );
-                $effectiveRadius = max($radiusMeters + 300, (float) ($user->alert_radius_meters ?? 500));
+                // Ensure resident is alerted if physically inside the hazard footprint,
+                // or if their configured alert preference extends further than the hazard radius.
+                // A resident's preference must never shrink or suppress alerts inside the hazard zone.
+                $userPrefRadius = (float) ($user->alert_radius_meters ?? 0);
+                $effectiveRadius = max((float) $radiusMeters, $userPrefRadius);
                 if ($dist <= $effectiveRadius) {
                     return true;
                 }

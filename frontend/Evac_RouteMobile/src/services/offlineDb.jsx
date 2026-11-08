@@ -76,6 +76,13 @@ export function initDb() {
       );
     `);
 
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS cache_metadata (
+        key TEXT PRIMARY KEY NOT NULL,
+        synced_at TEXT NOT NULL
+      );
+    `);
+
     // Clean up deprecated road_maintenances table if present
     database.execSync(`DROP TABLE IF EXISTS road_maintenances;`);
 
@@ -91,6 +98,29 @@ export function initDb() {
     seedDb();
   } catch (e) {
     console.error('Error initializing database:', e);
+  }
+
+}
+
+function markCacheSynced(key) {
+  const database = getDb();
+  if (!database) return;
+  database.runSync(
+    'INSERT OR REPLACE INTO cache_metadata (key, synced_at) VALUES (?, ?)',
+    key,
+    new Date().toISOString()
+  );
+}
+
+export function getCacheSyncStatus() {
+  const database = getDb();
+  if (!database) return {};
+  try {
+    const rows = database.getAllSync('SELECT key, synced_at FROM cache_metadata');
+    return Object.fromEntries(rows.map(row => [row.key, row.synced_at]));
+  } catch (e) {
+    console.error('Error reading offline cache metadata:', e);
+    return {};
   }
 }
 
@@ -232,6 +262,7 @@ export function saveShelters(sheltersList) {
       });
     }
     stmt.finalizeSync();
+    markCacheSynced('shelters');
   } catch (e) {
     console.error('Error saving shelters to SQLite:', e);
   }
@@ -276,6 +307,7 @@ export function saveHazards(hazardsList) {
       });
     }
     stmt.finalizeSync();
+    markCacheSynced('hazards');
   } catch (e) {
     console.error('Error saving hazards to SQLite:', e);
   }
@@ -388,6 +420,7 @@ export function syncRoadNetworkFromApi(networkData) {
       });
     }
     insertEdge.finalizeSync();
+    markCacheSynced('road_network');
 
     console.log(`Road network synced: ${nodes.length} nodes, ${edges.length} edges from server.`);
   } catch (e) {
@@ -486,5 +519,3 @@ export function getDistanceMeters(lat1, lon1, lat2, lon2) {
 
   return R * c; // in meters
 }
-
-

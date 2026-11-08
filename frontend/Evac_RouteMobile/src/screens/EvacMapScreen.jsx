@@ -25,6 +25,7 @@ import {
   getOfflineHazardsExtended,
   getOfflineNodes,
   getOfflineEdges,
+  getCacheSyncStatus,
   getDistanceMeters,
 } from '../services/offlineDb';
 import { calculateOfflineRoute, fetchMapboxDirectionsRoute, determineTargetFacility } from '../utils/astarRouter';
@@ -108,6 +109,7 @@ export default function EvacMapScreen({ navigation, route }) {
   const [offlineShelters, setOfflineShelters] = useState([]);
   const [offlineHazards, setOfflineHazards] = useState([]);
   const [isOffline, setIsOffline] = useState(false);
+  const [cacheSyncStatus, setCacheSyncStatus] = useState({});
 
   // Optimized in-memory Graph Caching and Route Throttle states
   const [preloadedGraph, setPreloadedGraph] = useState(null);
@@ -292,6 +294,7 @@ export default function EvacMapScreen({ navigation, route }) {
       const cachedS = getOfflineShelters();
       const cachedH = getOfflineHazardsExtended(); // P4: use extended schema so offline hazards have type+severity
       setTimeout(() => {
+        setCacheSyncStatus(getCacheSyncStatus());
         setOfflineShelters(cachedS);
         setOfflineHazards(cachedH);
       }, 0);
@@ -383,6 +386,7 @@ export default function EvacMapScreen({ navigation, route }) {
           });
         }
         setTimeout(() => {
+          setCacheSyncStatus(getCacheSyncStatus());
           setPreloadedGraph({ nodesMap, edgesBySource });
         }, 0);
       } catch (e) {
@@ -399,6 +403,7 @@ export default function EvacMapScreen({ navigation, route }) {
     if (sheltersData) {
       saveShelters(sheltersData);
       setTimeout(() => {
+        setCacheSyncStatus(getCacheSyncStatus());
         setOfflineShelters(sheltersData);
         setIsOffline(false);
       }, 0);
@@ -410,6 +415,7 @@ export default function EvacMapScreen({ navigation, route }) {
       saveHazardsExtended(hazardsData);
       saveHazards(hazardsData);
       setTimeout(() => {
+        setCacheSyncStatus(getCacheSyncStatus());
         setOfflineHazards(hazardsData);
         setIsOffline(false);
       }, 0);
@@ -1911,7 +1917,9 @@ export default function EvacMapScreen({ navigation, route }) {
           )}
           {isOffline && (
             <View style={{ backgroundColor: '#eab308', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4 }}>
-              <Text style={{ color: '#0f172a', fontSize: 7.5, fontWeight: '900' }}>OFFLINE</Text>
+              <Text style={{ color: '#0f172a', fontSize: 7.5, fontWeight: '900' }}>
+                {cacheSyncStatus.shelters ? 'OFFLINE · CACHED' : 'OFFLINE · NO CACHE'}
+              </Text>
             </View>
           )}
           <Info size={12} color={colors.textMuted} />

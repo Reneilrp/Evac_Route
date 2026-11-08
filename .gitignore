@@ -72,6 +72,51 @@ extract_shelters.py
 generate_shelter_excel.py
 geocode_shelters.py
 UI_UX_DESIGN_GUIDELINES.md
+PRODUCTION_HARDENING_ROADMAP.md
+scripts/*.py
+
+# Local Developer & Personal Setup Artifacts
+PRESENTATION_DEVICE_SETUP.md
+GEMINI.md
+deploy.sh
+set-env.ps1
+set-env.sh
+
+# Office & Binary Documents
+*.docx
+*.xlsx
+*.xls
+*.pptx
+*.pdf
+
+# Database Backups & Dumps (Citizen PII Protection)
+*.sql
+*.sql.gz
+*.sqlite-journal
+*.dump
+
+# Mobile Secrets & Service Configs
+*.keystore
+google-services.json
+GoogleService-Info.plist
+
+# Test Coverage & Tooling Caches
+coverage/
+.nyc_output/
+test-results/
+.eslintcache
+
+# Python Bytecode & Cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Temporary & Editor Artifacts
+*.tmp
+*.temp
+*.bak
+*.orig
 
 # App Binaries
 *.apk

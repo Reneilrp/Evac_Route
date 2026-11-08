@@ -1,11 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Compass, Home, LayoutDashboard, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 
 export default function NotFound() {
   const { user } = useAuth();
-  const { darkMode } = useTheme();
   const navigate = useNavigate();
 
   return (

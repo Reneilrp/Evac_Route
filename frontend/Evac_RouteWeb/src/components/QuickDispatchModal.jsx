@@ -2,15 +2,18 @@ import { useState, useEffect } from 'react';
 import { Truck, X, Plus, Minus, Package, Layers, AlertTriangle, Sparkles, RefreshCw, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import api from '../services/api';
 
-export default function QuickDispatchModal({
+export default function QuickDispatchModal(props) {
+  if (!props.shelter || !props.activeTemplate) return null;
+  return <QuickDispatchModalContent {...props} />;
+}
+
+function QuickDispatchModalContent({
   shelter,
   activeTemplate,
   inventoryItems = [],
   onCancel,
   onCreated,
 }) {
-  if (!shelter || !activeTemplate) return null;
-
   // Dispatch Mode: 'bundle' (Full Relief Pack) vs 'single' (Single Supply Top-Up)
   const [dispatchMode, setDispatchMode] = useState('bundle');
 
@@ -180,7 +183,7 @@ export default function QuickDispatchModal({
     e.preventDefault();
     setError('');
 
-    let itemsPayload = [];
+    let itemsPayload;
 
     if (dispatchMode === 'bundle') {
       if (bundleCount < 1) {

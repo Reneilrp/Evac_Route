@@ -62,7 +62,16 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         return $request->user()->load(['familyProfile', 'assignedRescueUnit', 'rescueUnits', 'assignedShelter']);
     });
     Route::post('/logout', function (Request $request) {
-        $request->user()->currentAccessToken()->delete();
+        $token = $request->user()->currentAccessToken();
+        if ($token instanceof \Laravel\Sanctum\PersonalAccessToken) {
+            $token->delete();
+        }
+
+        if ($request->hasSession()) {
+            \Illuminate\Support\Facades\Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json(['message' => 'Logged out successfully.']);
     });

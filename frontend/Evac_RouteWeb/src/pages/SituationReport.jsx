@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { 
-  FileText, Printer, RefreshCw, ShieldAlert, AlertTriangle, 
-  Users, Home, LifeBuoy, Package, CheckCircle2, MapPin, Building2
+  FileText, Printer, RefreshCw,
+  Users, Home, LifeBuoy, Package, Building2
 } from 'lucide-react';
-import { showSuccess, showError } from '../utils/toast';
+import { showSuccess } from '../utils/toast';
 
 export default function SituationReport() {
   const { data: sitrepData, isLoading, isRefetching, refetch } = useQuery({
@@ -21,7 +21,6 @@ export default function SituationReport() {
   };
 
   const meta = sitrepData?.meta || {};
-  const hazards = sitrepData?.hazards_summary || {};
   const population = sitrepData?.population_summary || {};
   const cccm = sitrepData?.cccm_summary || {};
   const srr = sitrepData?.srr_summary || {};

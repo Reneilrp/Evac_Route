@@ -1419,11 +1419,6 @@ const MapViewer = React.memo(({
   viewAsResident = false,
   activeDisasterSim = 'none',
   filteredSheltersForView = [],
-  simulatedResidentCoords = null,
-  nearestShelterToResident = null,
-  residentDistanceKm = '0.00',
-  isResidentNearShelter = false,
-  setPinMode = null,
   isCSWDO = false,
   showRescueUnits = true,
   activeRescueMissions = [],
@@ -2550,29 +2545,7 @@ export default function MapDashboard() {
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showWeather, setShowWeather] = useState(false);
   const [showResidentSignals, setShowResidentSignals] = useState(false); // On-demand resident GPS layer
-  const [viewportBounds, setViewportBounds] = useState(null); // [west, south, east, north] Spatial BBOX
-  const bboxAbortControllerRef = useRef(null);
 
-  const updateViewportBounds = useCallback(() => {
-    // AbortController: Cancel in-flight HTTP BBOX requests on rapid pan/zoom to prevent out-of-order stale data overwrites
-    if (bboxAbortControllerRef.current) {
-      bboxAbortControllerRef.current.abort();
-    }
-    bboxAbortControllerRef.current = new AbortController();
-
-    if (mapRef.current) {
-      const map = mapRef.current.getMap ? mapRef.current.getMap() : mapRef.current;
-      if (map && map.getBounds) {
-        const bounds = map.getBounds();
-        setViewportBounds([
-          bounds.getWest(),
-          bounds.getSouth(),
-          bounds.getEast(),
-          bounds.getNorth()
-        ]);
-      }
-    }
-  }, []);
   const [mapStyle, setMapStyle] = useState('dark');
   const [is3D, setIs3D] = useState(true);
   const mapRef = useRef(null);
@@ -2617,7 +2590,6 @@ export default function MapDashboard() {
 
   // Disaster Scenario Simulation States
   const [activeDisasterSim, setActiveDisasterSim] = useState('none'); // 'none' | 'flood' | 'siege' | 'fire' | 'chemical'
-  const [siegeTestMode, setSiegeTestMode] = useState('none'); // 'none' | 'siege_near' | 'siege_far'
 
   // Live Road-Snapped Mission Corridors Cache (Mapbox Directions API)
   const [cachedMissionRoutes, setCachedMissionRoutes] = useState({});
@@ -2765,11 +2737,11 @@ export default function MapDashboard() {
 
       orbitAnimationRef.current = requestAnimationFrame(animateOrbit);
     });
-  }, [stopInspection]);
+  }, [stopInspection, isCSWDO]);
 
 
 
-  const [simulationMode, setSimulationMode] = useState(null);
+  const [simulationMode] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isProactiveModalOpen, setIsProactiveModalOpen] = useState(false);
   const [showShelters, setShowShelters] = useState(true);
@@ -2916,9 +2888,9 @@ export default function MapDashboard() {
     staleTime: Infinity,
   });
 
-  const shelters = dashboardData?.shelters || [];
-  const hazards = dashboardData?.hazards || [];
-  const demographics = dashboardData?.demographics || [];
+  const shelters = useMemo(() => dashboardData?.shelters ?? [], [dashboardData?.shelters]);
+  const hazards = useMemo(() => dashboardData?.hazards ?? [], [dashboardData?.hazards]);
+  const demographics = useMemo(() => dashboardData?.demographics ?? [], [dashboardData?.demographics]);
 
   const nearestShelterToResident = useMemo(() => {
     if (!shelters || shelters.length === 0 || !simulatedResidentCoords) return null;
@@ -3173,19 +3145,6 @@ export default function MapDashboard() {
     } finally {
       setApprovingIncident(false);
     }
-  };
-
-  const toggleSimulation = (mode) => {
-    setSimulationMode(prev => {
-      const nextMode = prev === mode ? null : mode;
-      if (nextMode === 'rain') {
-        showSuccess('Heavy Rain Simulation active. Rendering low-elevation basins & flood susceptibility zones. Use Inspect tool (Eye icon) to analyze local coordinates.');
-      } else if (nextMode === 'tremors') {
-        showSuccess('Tremors Simulation active. Rendering fault buffer boundaries & structural debris hazards. Click any marker to orbit inspect.');
-      }
-      return nextMode;
-    });
-    if (!drawerOpen) setDrawerOpen(true);
   };
 
   return (

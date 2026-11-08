@@ -8,7 +8,9 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "jest"
+    "test": "jest",
+    "verify:release": "node ../../scripts/verify-release.mjs",
+    "verify:backend": "node ../../scripts/verify-deployed-backend.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.14",

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Truck, X, Plus, Trash2, ShieldAlert } from 'lucide-react';
+import { Truck, X, Plus, Trash2 } from 'lucide-react';
 import api from '../services/api';
 
 export default function PrePopulatedDispatchModal({

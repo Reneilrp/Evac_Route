@@ -1,5 +1,4 @@
 /* global jest, describe, it, expect, beforeEach */
-import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';

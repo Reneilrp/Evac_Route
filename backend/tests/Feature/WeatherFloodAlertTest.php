@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Http;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    Cache::flush();
     Http::fake([
         'exp.host/*' => Http::response(['status' => 'ok']),
         'api.openweathermap.org/*' => Http::response([
@@ -97,7 +98,7 @@ test('prolonged rain triggers fixed flood spot activation and geofenced alerts',
         'name' => 'Tugbungan Flood Point',
         'latitude' => 6.9126,
         'longitude' => 122.0729,
-        'radius_meters' => 500,
+        'radius_meters' => 100,
         'hazard_type' => 'flood',
         'severity_level' => 'high',
         'is_fixed_flood_spot' => true,

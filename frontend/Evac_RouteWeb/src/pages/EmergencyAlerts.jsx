@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Megaphone, AlertTriangle, ShieldAlert, Info, Trash2, X, PlusCircle, Users, MapPin, Calendar, Clock } from 'lucide-react';
+import { Megaphone, AlertTriangle, ShieldAlert, Info, Trash2, X, PlusCircle, Users, MapPin, Clock } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import ConfirmationModal from '../components/common/ConfirmationModal';
@@ -141,7 +141,7 @@ export default function EmergencyAlerts() {
       await api.delete(`/alerts/${deletingAlertId}`);
       toast.success('Emergency warning revoked successfully.');
       setAlerts(prev => prev.filter(alert => alert.id !== deletingAlertId));
-    } catch (err) {
+    } catch {
       toast.error('Failed to revoke warning.');
     } finally {
       setDeletingAlertId(null);
