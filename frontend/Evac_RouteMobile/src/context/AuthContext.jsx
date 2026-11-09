@@ -4,6 +4,8 @@ import api from '../services/api';
 import { useResidentStore } from './useResidentStore';
 
 const AuthContext = createContext();
+const AUTH_TOKEN_KEY = 'auth_token';
+const CACHED_USER_KEY = 'cached_auth_user';
 
 export const useAuth = () => useContext(AuthContext);
 
@@ -11,82 +13,80 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  /**
-   * On app start, check if a real Sanctum token exists and fetch the user.
-   */
-  const checkToken = useCallback(async () => {
-    try {
-      const token = await SecureStore.getItemAsync('auth_token');
-      if (token) {
-        // Fetch real user from backend using the stored token
-        const response = await api.get('/user');
-        const user = response.data;
-        setUser(user);
-
-        // Sync profile data to Zustand if they are a resident
-        if (user && user.role === 'resident') {
-          const familyProfile = user.family_profile || user.familyProfile || user.family || {};
-          useResidentStore.getState().setProfileData(
-            {
-              id: user.id,
-              name: user.name,
-              barangay: familyProfile.barangay || 'Tetuan',
-              headcount: familyProfile.headcount || 1,
-              contact_number: familyProfile.contact_number || '',
-              transportation_mode: familyProfile.transportation_mode || 'pedestrian'
-            },
-            familyProfile.qr_code_hash || `hash_${user.id}`
-          );
-        }
-      }
-    } catch (e) {
-      // Token invalid or network error — clear it to force re-registration
-      console.warn('Token check failed, clearing:', e.message);
-      await SecureStore.deleteItemAsync('auth_token');
-      setUser(null);
-    } finally {
-      setLoading(false);
+  const cacheUser = useCallback(async (nextUser) => {
+    if (nextUser) {
+      await SecureStore.setItemAsync(CACHED_USER_KEY, JSON.stringify(nextUser));
     }
   }, []);
 
+  const syncResidentProfile = useCallback((nextUser) => {
+    if (nextUser?.role !== 'resident') return;
+    const familyProfile = nextUser.family_profile || nextUser.familyProfile || nextUser.family || {};
+    useResidentStore.getState().setProfileData(
+      {
+        id: nextUser.id,
+        name: nextUser.name,
+        barangay: familyProfile.barangay || 'Tetuan',
+        headcount: familyProfile.headcount || 1,
+        contact_number: familyProfile.contact_number || '',
+        transportation_mode: familyProfile.transportation_mode || 'pedestrian',
+      },
+      familyProfile.qr_code_hash || `hash_${nextUser.id}`
+    );
+  }, []);
+
+  const checkToken = useCallback(async () => {
+    const token = await SecureStore.getItemAsync(AUTH_TOKEN_KEY);
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await api.get('/user');
+      setUser(response.data);
+      syncResidentProfile(response.data);
+      await cacheUser(response.data);
+    } catch (error) {
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
+        await SecureStore.deleteItemAsync(CACHED_USER_KEY);
+        setUser(null);
+      } else {
+        const cachedUser = await SecureStore.getItemAsync(CACHED_USER_KEY);
+        if (cachedUser) {
+          const cached = JSON.parse(cachedUser);
+          setUser(cached);
+          syncResidentProfile(cached);
+          console.warn('Using cached user profile while offline.');
+        } else {
+          console.warn('User check unavailable and no cached profile exists:', error.message);
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [cacheUser, syncResidentProfile]);
+
   useEffect(() => {
+    // Auth bootstrap restores external session state once on mount.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     checkToken();
   }, [checkToken]);
 
-  /**
-   * Called after a successful /register/family or /login API call.
-   * Expects the real Sanctum token to already be stored in SecureStore
-   * by the calling screen (ProfileSetupScreen / LoginScreen).
-   * This method fetches the user from the API and sets them in state.
-   */
   const login = async (userData = null) => {
     try {
-      let user = userData;
-      if (!user) {
+      let nextUser = userData;
+      if (!nextUser) {
         const response = await api.get('/user');
-        user = response.data;
+        nextUser = response.data;
       }
-      setUser(user);
-
-      // Sync profile data to Zustand if they are a resident
-      if (user && user.role === 'resident') {
-        const familyProfile = user?.family_profile || user?.familyProfile || user?.family || {};
-        useResidentStore.getState().setProfileData(
-          {
-            id: user.id,
-            name: user.name,
-            barangay: familyProfile.barangay || 'Tetuan',
-            headcount: familyProfile.headcount || 1,
-            contact_number: familyProfile.contact_number || '',
-            transportation_mode: familyProfile.transportation_mode || 'pedestrian'
-          },
-          familyProfile.qr_code_hash || `hash_${user.id}`
-        );
-      }
+      setUser(nextUser);
+      syncResidentProfile(nextUser);
+      await cacheUser(nextUser);
       return true;
-    } catch (e) {
-      console.error('Login state sync failed:', e.message);
+    } catch (error) {
+      console.error('Login state sync failed:', error.message);
       return false;
     }
   };
@@ -94,50 +94,46 @@ export const AuthProvider = ({ children }) => {
   const loginWithCredentials = async (email, password) => {
     try {
       const response = await api.post('/login', { email, password });
-      const { access_token, user } = response.data;
-      await SecureStore.setItemAsync('auth_token', access_token);
-      setUser(user);
-
-      // Sync profile data to Zustand if they are a resident
-      if (user && user.role === 'resident') {
-        const familyProfile = user.family_profile || user.familyProfile || user.family || {};
-        useResidentStore.getState().setProfileData(
-          {
-            id: user.id,
-            name: user.name,
-            barangay: familyProfile.barangay || 'Tetuan',
-            headcount: familyProfile.headcount || 1,
-            contact_number: familyProfile.contact_number || '',
-            transportation_mode: familyProfile.transportation_mode || 'pedestrian'
-          },
-          familyProfile.qr_code_hash || `hash_${user.id}`
-        );
-      }
-      return { success: true, user };
-    } catch (e) {
-      console.error('Credential login failed:', e.message);
+      const { access_token, user: nextUser } = response.data;
+      await SecureStore.setItemAsync(AUTH_TOKEN_KEY, access_token);
+      setUser(nextUser);
+      syncResidentProfile(nextUser);
+      await cacheUser(nextUser);
+      return { success: true, user: nextUser };
+    } catch (error) {
+      console.error('Credential login failed:', error.message);
       return {
         success: false,
-        message: e.response?.data?.message || 'Login failed. Please check credentials.'
+        message: error.response?.data?.message || 'Login failed. Please check credentials.',
       };
     }
   };
 
+  const enterOfflineGuestMode = () => {
+    setUser({
+      id: 'offline-guest',
+      name: 'Offline Emergency Guest',
+      role: 'resident',
+      offlineGuest: true,
+    });
+  };
+
   const logout = async () => {
     try {
-      // Revoke the Sanctum token on the backend
       await api.post('/logout');
-    } catch (e) {
-      // Proceed with local logout even if API call fails
-      console.warn('Backend logout failed:', e.message);
+    } catch (error) {
+      console.warn('Backend logout failed:', error.message);
     } finally {
-      await SecureStore.deleteItemAsync('auth_token');
+      await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
+      await SecureStore.deleteItemAsync(CACHED_USER_KEY);
       setUser(null);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithCredentials, logout, loading }}>
+    <AuthContext.Provider
+      value={{ user, login, loginWithCredentials, enterOfflineGuestMode, logout, loading }}
+    >
       {children}
     </AuthContext.Provider>
   );

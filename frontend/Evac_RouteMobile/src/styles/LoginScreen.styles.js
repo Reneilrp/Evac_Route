@@ -224,6 +224,23 @@ export const getStyles = (colors, isDarkMode) => StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1,
   },
+  offlineAccessButton: {
+    minHeight: 56,
+    marginTop: spacing.sm,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  offlineAccessText: {
+    color: colors.danger,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
   registerPrompt: {
     flexDirection: 'row',
     justifyContent: 'center',

@@ -88,10 +88,10 @@ export default function ProfileQRScreen({ navigation }) {
     
     const generateTotp = async () => {
       const timestamp = Math.floor(Date.now() / 1000);
-      const dataToSign = `${effectiveId}:${timestamp}:${effectiveQrHash}`;
+      const dataToSign = `${effectiveId}:${timestamp}${effectiveQrHash}`;
       const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, dataToSign);
       if (isMounted) {
-        setTotpPayload(`${effectiveId}:${timestamp}:${hash.substring(0, 16)}`);
+        setTotpPayload(`${effectiveId}:${timestamp}:${hash}`);
       }
     };
 

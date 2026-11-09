@@ -13,6 +13,7 @@ import { useResidentStore } from './src/context/useResidentStore';
 import api from './src/services/api';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import NetworkStatusBar from './src/components/NetworkStatusBar';
+import { flushOfflineSosQueue } from './src/services/offlineSosQueue';
 
 // ─── Global notification handler — show alerts even when app is in foreground ───
 try {
@@ -83,6 +84,21 @@ function App() {
     // ── Network status listener ──
     const unsubscribeNetInfo = NetInfo.addEventListener(state => {
       setIsOffline(state.isConnected === false);
+      if (state.isConnected === true) {
+        flushOfflineSosQueue()
+          .then(result => {
+            if (result.sent > 0) {
+              console.log(`[SOS] Transmitted ${result.sent} queued emergency request(s).`);
+            }
+          })
+          .catch(error => console.warn('[SOS] Queue sync failed:', error.message));
+      }
+    });
+    NetInfo.fetch().then(state => {
+      if (state.isConnected === true) {
+        flushOfflineSosQueue()
+          .catch(error => console.warn('[SOS] Initial queue sync failed:', error.message));
+      }
     });
 
     // ── P2: Request permission & register Expo Push Token with backend ──

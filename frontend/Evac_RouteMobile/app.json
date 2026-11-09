@@ -2,13 +2,14 @@
   "expo": {
     "name": "Evac_RouteMobile",
     "slug": "Evac_RouteMobile",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.pheinz.evacroutemobile",
+      "buildNumber": "10",
       "infoPlist": {
         "NSCameraUsageDescription": "Allow Evac_Route to access camera for scanning QR codes at relief and shelter desks.",
         "NSLocationWhenInUseUsageDescription": "Allow Evac_Route to access your real-time location for emergency evacuation routing.",
@@ -16,7 +17,7 @@
       }
     },
     "android": {
-      "versionCode": 9,
+      "versionCode": 10,
       "package": "com.pheinz.evacroutemobile",
       "usesCleartextTraffic": true,
       "permissions": [

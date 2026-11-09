@@ -61,6 +61,7 @@ export default function StaffScannerScreen() {
   const isClaimingRef = useRef(false);
   const isCheckingInRef = useRef(false);
   const hasAutoPromptedRef = useRef(false);
+  const cameraTimeoutRef = useRef(null);
 
   // Auto-request camera permission on initial screen entry if undetermined
   useEffect(() => {
@@ -87,7 +88,35 @@ export default function StaffScannerScreen() {
     if (isFocused && typeof getPermission === 'function') {
       getPermission().catch(() => {});
     }
+    if (cameraTimeoutRef.current) {
+      clearTimeout(cameraTimeoutRef.current);
+      cameraTimeoutRef.current = null;
+    }
   }, [isFocused, getPermission]);
+
+  useEffect(() => () => {
+    if (cameraTimeoutRef.current) {
+      clearTimeout(cameraTimeoutRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isFocused || !permission?.granted || manualOnlyMode || scanned || cameraReady || cameraError) {
+      return undefined;
+    }
+
+    cameraTimeoutRef.current = setTimeout(() => {
+      cameraTimeoutRef.current = null;
+      setCameraError('Camera preview did not start. Check that no other app is using the camera, then retry.');
+    }, 8000);
+
+    return () => {
+      if (cameraTimeoutRef.current) {
+        clearTimeout(cameraTimeoutRef.current);
+        cameraTimeoutRef.current = null;
+      }
+    };
+  }, [cameraError, cameraReady, isFocused, manualOnlyMode, permission?.granted, scanned]);
 
   const handleRequestPermission = async () => {
     try {
@@ -426,6 +455,9 @@ export default function StaffScannerScreen() {
                       onPress={() => {
                         setCameraError(null);
                         setCameraReady(false);
+                        if (cameraTimeoutRef.current) {
+                          clearTimeout(cameraTimeoutRef.current);
+                        }
                       }}
                     >
                       <RotateCcw size={15} color={colors.white} style={{ marginRight: 6 }} />
@@ -444,11 +476,22 @@ export default function StaffScannerScreen() {
                       <CameraView
                         style={StyleSheet.absoluteFillObject}
                         facing="back"
+                        active={isFocused && permission.granted && !scanned}
                         barcodeScannerSettings={BARCODE_SETTINGS}
                         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-                        onCameraReady={() => setCameraReady(true)}
+                        onCameraReady={() => {
+                          if (cameraTimeoutRef.current) {
+                            clearTimeout(cameraTimeoutRef.current);
+                            cameraTimeoutRef.current = null;
+                          }
+                          setCameraReady(true);
+                        }}
                         onMountError={(e) => {
                           console.error('Camera onMountError:', e);
+                          if (cameraTimeoutRef.current) {
+                            clearTimeout(cameraTimeoutRef.current);
+                            cameraTimeoutRef.current = null;
+                          }
                           setCameraError(e?.message || 'Camera hardware unavailable.');
                         }}
                       />

@@ -23,8 +23,8 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clampToZamboanga, ZAMBOANGA_WMSU, getNearestBarangay } from '../utils/zamboangaGeo';
+import { enqueueOfflineSos } from '../services/offlineSosQueue';
 
 const HAZARD_OPTIONS = [
   {
@@ -222,22 +222,14 @@ export default function EmergencySOSModal({ visible, onClose, initialCoords, onS
       // Check if network error or offline
       if (!err?.response || err?.message?.includes('Network') || err?.code === 'ERR_NETWORK') {
         try {
-          const queueItem = {
-            id: `sos_${Date.now()}`,
-            payload: {
-              latitude: lat,
-              longitude: lng,
-              headcount: headcount,
-              hazard_type: hazardType,
-              modifiers: selectedModifiers,
-              situation: `🚨 URGENT ${activeHazard?.title?.toUpperCase() || 'SOS'}: ${headcount} person(s) stranded at ${addressLabel}. Special Needs: ${selectedModLabels.join(', ') || 'None stated'}.`,
-            },
-            queuedAt: new Date().toISOString(),
-          };
-          const existingQueueStr = await AsyncStorage.getItem('OFFLINE_SOS_QUEUE');
-          const queue = existingQueueStr ? JSON.parse(existingQueueStr) : [];
-          queue.push(queueItem);
-          await AsyncStorage.setItem('OFFLINE_SOS_QUEUE', JSON.stringify(queue));
+          await enqueueOfflineSos({
+            latitude: lat,
+            longitude: lng,
+            headcount,
+            hazard_type: hazardType,
+            modifiers: selectedModifiers,
+            situation: `🚨 URGENT ${activeHazard?.title?.toUpperCase() || 'SOS'}: ${headcount} person(s) stranded at ${addressLabel}. Special Needs: ${selectedModLabels.join(', ') || 'None stated'}.`,
+          });
 
           Alert.alert(
             '📡 SOS Queued Offline',

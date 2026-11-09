@@ -19,7 +19,7 @@ import { getStyles } from '../styles/LoginScreen.styles';
 import { APP_FULL_VERSION } from '../config/version';
 
 export default function LoginScreen({ navigation }) {
-  const { loginWithCredentials } = useAuth();
+  const { loginWithCredentials, enterOfflineGuestMode } = useAuth();
   const { isDarkMode, toggleTheme, colors } = useTheme();
   const styles = useThemedStyles(getStyles);
   const insets = useSafeAreaInsets();
@@ -318,6 +318,16 @@ export default function LoginScreen({ navigation }) {
                   ) : (
                     <Text style={styles.submitButtonText}>SIGN IN</Text>
                   )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={enterOfflineGuestMode}
+                  activeOpacity={0.8}
+                  style={styles.offlineAccessButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open offline emergency map"
+                >
+                  <Text style={styles.offlineAccessText}>OPEN OFFLINE EMERGENCY MAP</Text>
                 </TouchableOpacity>
 
                 {/* Need to evacuate? Register as Evacuee */}
