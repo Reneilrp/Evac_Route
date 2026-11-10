@@ -1,6 +1,6 @@
 {
   "name": "evac_routemobile",
-  "version": "1.2.2",
+  "version": "1.2.4",
   "main": "index.js",
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -47,7 +47,9 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "node src/utils/tacticalRescueRouter.test.mjs && node src/utils/zamboangaGeo.test.mjs"
+    "test": "node src/utils/tacticalRescueRouter.test.mjs && node src/utils/zamboangaGeo.test.mjs",
+    "postinstall": "node scripts/patch-expo-camera.mjs",
+    "eas-build-post-install": "node scripts/patch-expo-camera.mjs"
   },
   "private": true,
   "devDependencies": {

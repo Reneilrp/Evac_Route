@@ -53,7 +53,7 @@ import {
   ZAMBOANGA_VICTIM_DEFAULT,
   ZAMBOANGA_SHELTER_DEFAULT,
   create20mGeofenceSquare,
-  createHazardRoadCorridorLine,
+  buildHazardGeoJSONFeature,
 } from '../utils/zamboangaGeo';
 import {
   fetchTacticalRescueRoute,
@@ -416,7 +416,6 @@ export default function RescueMapScreen({ navigation, route }) {
       const lng = parseFloat(h.longitude);
       if (isNaN(lat) || isNaN(lng)) return;
       const type = (h.hazard_type || 'hazard').toLowerCase();
-      const radius = parseFloat(h.radius_meters) || 50;
 
       let lineColor = '#ef4444';
       if (type.includes('fire')) {
@@ -429,14 +428,14 @@ export default function RescueMapScreen({ navigation, route }) {
         lineColor = '#9333ea';
       }
 
-      const lineFeature = createHazardRoadCorridorLine([lng, lat], radius, {
+      const hazardFeature = buildHazardGeoJSONFeature(h, {
         id: h.id,
         hazardType: type,
-        name: h.name || 'Disaster Hazard Corridor',
+        name: h.name || 'Disaster Hazard Zone',
         lineColor,
       });
-      if (lineFeature) {
-        features.push(lineFeature);
+      if (hazardFeature) {
+        features.push(hazardFeature);
       }
     });
 
@@ -1396,15 +1395,35 @@ export default function RescueMapScreen({ navigation, route }) {
           </Mapbox.ShapeSource>
         )}
 
-        {/* Active Disaster Hazard Road Corridors (High-Visibility Line instead of Circle) */}
+        {/* Active Disaster Hazards: 2-Mode Rendering (Circle Radius Zone & Road-Snapped Corridor) */}
         {hazardLinesFeatureCollection && (
           <Mapbox.ShapeSource
             id="hazard-lines-source"
             shape={hazardLinesFeatureCollection}
           >
-            {/* Outer Casing / High-Contrast Black Halo */}
+            {/* Mode 1: Circle Radius Fill */}
+            <Mapbox.FillLayer
+              id="hazard-circle-fill"
+              filter={['==', ['geometry-type'], 'Polygon']}
+              style={{
+                fillColor: ['get', 'lineColor'],
+                fillOpacity: 0.22,
+              }}
+            />
+            {/* Mode 1: Circle Radius Perimeter Outline */}
+            <Mapbox.LineLayer
+              id="hazard-circle-outline"
+              filter={['==', ['geometry-type'], 'Polygon']}
+              style={{
+                lineColor: ['get', 'lineColor'],
+                lineWidth: 2.5,
+                lineDasharray: [2, 2],
+              }}
+            />
+            {/* Mode 2: Road Corridor Outer Casing / High-Contrast Black Halo */}
             <Mapbox.LineLayer
               id="hazard-lines-casing"
+              filter={['==', ['geometry-type'], 'LineString']}
               style={{
                 lineColor: '#000000',
                 lineWidth: 9,
@@ -1412,9 +1431,10 @@ export default function RescueMapScreen({ navigation, route }) {
                 lineJoin: 'round',
               }}
             />
-            {/* Core Road Hazard Line Corridor */}
+            {/* Mode 2: Road Corridor Core Hazard Line */}
             <Mapbox.LineLayer
               id="hazard-lines-core"
+              filter={['==', ['geometry-type'], 'LineString']}
               style={{
                 lineColor: ['get', 'lineColor'],
                 lineWidth: 5.5,

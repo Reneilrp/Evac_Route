@@ -14,7 +14,16 @@ import { useAuth } from '../context/AuthContext';
 import ConfirmationModal from '../components/common/ConfirmationModal';
 import ProactiveDisasterModal from '../components/disaster/ProactiveDisasterModal';
 import { showSuccess, showError } from '../utils/toast';
-import { createCirclePolygon, createHazardRoadCorridorLine, getHaversineDistance } from '../utils/mapHelper';
+import {
+  createCirclePolygon,
+  createHazardRoadCorridorLine,
+  getHaversineDistance,
+  getPolylineLengthMeters,
+  snapPointToRoadLines,
+  sliceLineStringByDistance,
+  traceRoadSegmentBetweenPoints,
+  fetchMapboxRoadCorridor,
+} from '../utils/mapHelper';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
@@ -659,9 +668,18 @@ function ShelterFormModal({ location, onConfirm, onCancel, isLoading }) {
 }
 
 // --- Hazard Form Modal ---
-function HazardFormModal({ location, initialRadius = 50, onConfirm, onCancel, isLoading }) {
+function HazardFormModal({
+  location,
+  initialRadius = 50,
+  initialGeometryType = 'circle',
+  initialCorridorCoords = null,
+  onConfirm,
+  onCancel,
+  isLoading,
+}) {
   const [name, setName] = useState('');
   const [radius, setRadius] = useState(initialRadius.toString());
+  const [geometryType, setGeometryType] = useState(initialGeometryType || 'circle');
   const [hazardType, setHazardType] = useState('flood');
   const [severityLevel, setSeverityLevel] = useState('medium');
   const [durationValue, setDurationValue] = useState('');
@@ -686,6 +704,8 @@ function HazardFormModal({ location, initialRadius = 50, onConfirm, onCancel, is
     onConfirm({ 
       name, 
       radius_meters: parseFloat(radius) || 50,
+      geometry_type: geometryType,
+      corridor_coordinates: geometryType === 'road_corridor' ? initialCorridorCoords : null,
       hazard_type: hazardType,
       severity_level: severityLevel,
       estimated_duration_hours: hours,
@@ -792,7 +812,45 @@ function HazardFormModal({ location, initialRadius = 50, onConfirm, onCancel, is
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Danger Radius (meters)</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1.5">
+              Hazard Pinning Mode
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setGeometryType('circle')}
+                className={`px-3 py-2.5 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  geometryType === 'circle'
+                    ? 'bg-red-600/15 border-red-500 text-red-600 dark:text-red-400 shadow-xs'
+                    : 'bg-gray-50 dark:bg-slate-800/70 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <span>⭕</span>
+                <span>Circle Radius (Area)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setGeometryType('road_corridor')}
+                className={`px-3 py-2.5 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  geometryType === 'road_corridor'
+                    ? 'bg-amber-500/15 border-amber-500 text-amber-600 dark:text-amber-400 shadow-xs'
+                    : 'bg-gray-50 dark:bg-slate-800/70 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <span>🛣️</span>
+                <span>Road Path (Highway)</span>
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
+              {geometryType === 'road_corridor'
+                ? `Snapped strictly along the navigation path / road network${initialCorridorCoords?.length ? ` (${initialCorridorCoords.length} road waypoints locked)` : ''}.`
+                : 'Covers a circular radial area around the center pin.'}
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">
+              {geometryType === 'road_corridor' ? 'Road Corridor Reach (meters)' : 'Danger Radius (meters)'}
+            </label>
             <input
               type="number"
               min="10"
@@ -1139,7 +1197,7 @@ const BARANGAY_COORDS = {
   'Talon-Talon': [122.1000, 6.8972]
 };
 
-export function FloatingMapSearch({ shelters = [], onSelectLocation }) {
+export function FloatingMapSearch({ shelters = [], onSelectLocation, className = '' }) {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
@@ -1194,7 +1252,7 @@ export function FloatingMapSearch({ shelters = [], onSelectLocation }) {
   };
 
   return (
-    <div ref={containerRef} className="absolute top-3 left-4 z-40 w-72 sm:w-80 font-sans">
+    <div ref={containerRef} className={`relative font-sans ${className || 'w-48 sm:w-60 md:w-72 lg:w-80'}`}>
       <div className="relative flex items-center bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl transition focus-within:border-blue-500/60 focus-within:ring-2 focus-within:ring-blue-500/20">
         <Search size={15} className="ml-3.5 text-white/50 shrink-0" />
         <input
@@ -1409,6 +1467,8 @@ const MapViewer = React.memo(({
   simulationGeoJSON = null,
   isDrawingRadius = false,
   drawingRadiusMeters = 50,
+  hazardPinGeometryMode = 'circle',
+  drawingCorridorCoords = null,
   handleMapMouseMove = null,
   drawingEnd = null,
   showRoadNetwork = true,
@@ -1652,6 +1712,16 @@ const MapViewer = React.memo(({
       return true;
     });
 
+    const roadLineStrings = (roadNetwork?.edges || [])
+      .map(e => {
+        let g = e.geometry;
+        if (typeof g === 'string') {
+          try { g = JSON.parse(g); } catch { g = null; }
+        }
+        return Array.isArray(g) && g.length >= 2 ? g : null;
+      })
+      .filter(Boolean);
+
     const active = displayHazards.filter(h => h.is_active && !h.is_fixed_flood_spot);
     const susceptible = displayHazards.filter(h => h.is_fixed_flood_spot && !h.is_active);
 
@@ -1659,15 +1729,28 @@ const MapViewer = React.memo(({
       const lng = parseFloat(h.longitude);
       const lat = parseFloat(h.latitude);
       const rad = parseFloat(h.radius_meters || 50);
-      const lineFeat = createHazardRoadCorridorLine([lng, lat], rad);
+
+      let parsedCorridor = h.corridor_coordinates;
+      if (typeof parsedCorridor === 'string') {
+        try { parsedCorridor = JSON.parse(parsedCorridor); } catch { parsedCorridor = null; }
+      }
+      const isRoadCorridor =
+        h.geometry_type === 'road_corridor' ||
+        (Array.isArray(parsedCorridor) && parsedCorridor.length >= 2);
+
+      const geomFeat = isRoadCorridor
+        ? createHazardRoadCorridorLine([lng, lat], rad, roadLineStrings, parsedCorridor)
+        : createCirclePolygon([lng, lat], rad);
+
       return {
-        ...lineFeat,
+        ...geomFeat,
         properties: {
           id: h.id,
           name: h.name,
           hazard_type: h.hazard_type,
           severity_level: h.severity_level,
           radius: h.radius_meters,
+          geometry_type: isRoadCorridor ? 'road_corridor' : 'circle',
         }
       };
     };
@@ -1676,7 +1759,7 @@ const MapViewer = React.memo(({
       activeHazardsGeoJSON: { type: 'FeatureCollection', features: active.map(buildFeature) },
       susceptibleGeoJSON: { type: 'FeatureCollection', features: susceptible.map(buildFeature) }
     };
-  }, [hazards, activeDisasterSim]);
+  }, [hazards, activeDisasterSim, roadNetwork]);
 
   const demographicsGeoJSON = useMemo(() => ({
     type: 'FeatureCollection',
@@ -1736,7 +1819,16 @@ const MapViewer = React.memo(({
         cursor={pinMode ? 'crosshair' : 'grab'}
         terrain={is3D ? { source: 'mapbox-dem', exaggeration: 1.5 } : undefined}
       >
-        <NavigationControl position="top-right" showCompass showZoom />
+        <NavigationControl
+          position="top-right"
+          showCompass
+          showZoom
+          style={{
+            marginRight: drawerOpen ? 312 : 12,
+            marginTop: 12,
+            transition: 'margin-right 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        />
 
         {/* Mapbox 3D Terrain DEM */}
         <Source
@@ -1793,13 +1885,52 @@ const MapViewer = React.memo(({
           </Source>
         )}
 
-        {/* Hazard Zone Road Corridors (Active Emergency Hazards: Line instead of Circle) */}
+        {/* Active Emergency Hazards: 2-Mode Rendering (Circle Radius Zone & Road-Snapped Corridor) */}
         {showHazards && (
           <Source id="hazards-source" type="geojson" data={activeHazardsGeoJSON}>
-            {/* Outer Casing / High-Contrast Black Halo */}
+            {/* Mode 1: Circle Radius Fill */}
+            <Layer
+              id="hazards-circle-fill"
+              type="fill"
+              filter={['==', ['geometry-type'], 'Polygon']}
+              paint={{
+                'fill-color': [
+                  'match',
+                  ['get', 'hazard_type'],
+                  'flood', ['match', ['get', 'severity_level'], 'low', '#60a5fa', 'medium', '#3b82f6', 'high', '#ef4444', '#3b82f6'],
+                  'landslide', ['match', ['get', 'severity_level'], 'low', '#d97706', 'medium', '#b45309', 'high', '#78350f', '#b45309'],
+                  'building_fire', ['match', ['get', 'severity_level'], 'low', '#f97316', 'medium', '#ea580c', 'high', '#dc2626', '#ea580c'],
+                  'earthquake', '#ef4444',
+                  '#ef4444'
+                ],
+                'fill-opacity': 0.22,
+              }}
+            />
+            {/* Mode 1: Circle Radius Perimeter Ring */}
+            <Layer
+              id="hazards-circle-outline"
+              type="line"
+              filter={['==', ['geometry-type'], 'Polygon']}
+              paint={{
+                'line-color': [
+                  'match',
+                  ['get', 'hazard_type'],
+                  'flood', ['match', ['get', 'severity_level'], 'low', '#60a5fa', 'medium', '#3b82f6', 'high', '#ef4444', '#3b82f6'],
+                  'landslide', ['match', ['get', 'severity_level'], 'low', '#d97706', 'medium', '#b45309', 'high', '#78350f', '#b45309'],
+                  'building_fire', ['match', ['get', 'severity_level'], 'low', '#f97316', 'medium', '#ea580c', 'high', '#dc2626', '#ea580c'],
+                  'earthquake', '#ef4444',
+                  '#ef4444'
+                ],
+                'line-width': 2.5,
+                'line-opacity': 0.95,
+                'line-dasharray': [2, 2],
+              }}
+            />
+            {/* Mode 2: Road Corridor Outer Casing / High-Contrast Black Halo */}
             <Layer
               id="hazards-line-casing"
               type="line"
+              filter={['==', ['geometry-type'], 'LineString']}
               paint={{
                 'line-color': '#000000',
                 'line-width': 9,
@@ -1808,10 +1939,11 @@ const MapViewer = React.memo(({
                 'line-join': 'round',
               }}
             />
-            {/* Core Road Hazard Line Corridor */}
+            {/* Mode 2: Core Road Hazard Line Corridor */}
             <Layer
               id="hazards-line-core"
               type="line"
+              filter={['==', ['geometry-type'], 'LineString']}
               paint={{
                 'line-color': [
                   'match',
@@ -1835,8 +1967,18 @@ const MapViewer = React.memo(({
         {showHazards && (
           <Source id="susceptible-source" type="geojson" data={susceptibleGeoJSON}>
             <Layer
+              id="susceptible-circle-fill"
+              type="fill"
+              filter={['==', ['geometry-type'], 'Polygon']}
+              paint={{
+                'fill-color': '#38bdf8',
+                'fill-opacity': 0.14,
+              }}
+            />
+            <Layer
               id="susceptible-line-casing"
               type="line"
+              filter={['==', ['geometry-type'], 'LineString']}
               paint={{
                 'line-color': '#000000',
                 'line-width': 6,
@@ -1849,7 +1991,7 @@ const MapViewer = React.memo(({
               type="line"
               paint={{
                 'line-color': '#38bdf8',
-                'line-width': 3.5,
+                'line-width': 2.5,
                 'line-dasharray': ['literal', [4, 4]],
                 'line-cap': 'round',
               }}
@@ -1989,67 +2131,111 @@ const MapViewer = React.memo(({
             )}
           </Marker>
         )}
-        {/* Drawing Road Hazard Line Corridor Preview (Dynamic Hazard Reach: Line instead of Circle) */}
+        {/* Dynamic 2-Mode Hazard Pinning Preview (Mode 1: Circle Radius | Mode 2: Road-Snapped Corridor) */}
         {pendingLocation && isDrawingRadius && drawingRadiusMeters > 0 && (
           <Source
             id="drawing-hazard-source"
             type="geojson"
-            data={createHazardRoadCorridorLine([pendingLocation.longitude, pendingLocation.latitude], drawingRadiusMeters)}
+            data={
+              hazardPinGeometryMode === 'road_corridor'
+                ? createHazardRoadCorridorLine(
+                    [pendingLocation.longitude, pendingLocation.latitude],
+                    drawingRadiusMeters,
+                    [],
+                    drawingCorridorCoords
+                  )
+                : createCirclePolygon(
+                    [pendingLocation.longitude, pendingLocation.latitude],
+                    drawingRadiusMeters
+                  )
+            }
           >
-            <Layer
-              id="drawing-hazard-casing"
-              type="line"
-              paint={{
-                'line-color': '#000000',
-                'line-width': 9,
-                'line-opacity': 0.9,
-                'line-cap': 'round',
-              }}
-            />
-            <Layer
-              id="drawing-hazard-core"
-              type="line"
-              paint={{
-                'line-color': '#ef4444',
-                'line-width': 5,
-                'line-dasharray': ['literal', [3, 2]],
-                'line-cap': 'round',
-              }}
-            />
+            {hazardPinGeometryMode === 'circle' ? (
+              <>
+                <Layer
+                  id="drawing-hazard-circle-fill"
+                  type="fill"
+                  paint={{
+                    'fill-color': '#ef4444',
+                    'fill-opacity': 0.22,
+                  }}
+                />
+                <Layer
+                  id="drawing-hazard-circle-outline"
+                  type="line"
+                  paint={{
+                    'line-color': '#ef4444',
+                    'line-width': 2.5,
+                    'line-dasharray': ['literal', [3, 2]],
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                <Layer
+                  id="drawing-hazard-casing"
+                  type="line"
+                  paint={{
+                    'line-color': '#000000',
+                    'line-width': 9,
+                    'line-opacity': 0.9,
+                    'line-cap': 'round',
+                    'line-join': 'round',
+                  }}
+                />
+                <Layer
+                  id="drawing-hazard-core"
+                  type="line"
+                  paint={{
+                    'line-color': '#ef4444',
+                    'line-width': 5,
+                    'line-dasharray': ['literal', [3, 2]],
+                    'line-cap': 'round',
+                    'line-join': 'round',
+                  }}
+                />
+              </>
+            )}
           </Source>
         )}
 
-        {/* Dynamic Hazard Radius Guide Line from Center to Cursor */}
+        {/* Dynamic Hazard Radius Guide Line / Road End Marker */}
         {pinMode === 'hazard' && pendingLocation && isDrawingRadius && drawingEnd && (
           <>
-            <Source
-              id="drawing-hazard-radius-line"
-              type="geojson"
-              data={{
-                type: 'Feature',
-                geometry: {
-                  type: 'LineString',
-                  coordinates: [
-                    [pendingLocation.longitude, pendingLocation.latitude],
-                    [drawingEnd.longitude, drawingEnd.latitude],
-                  ],
-                },
-              }}
-            >
-              <Layer
-                id="drawing-hazard-radius-line-layer"
-                type="line"
-                paint={{
-                  'line-color': '#f59e0b',
-                  'line-width': 2,
-                  'line-dasharray': [2, 2],
+            {hazardPinGeometryMode === 'circle' && (
+              <Source
+                id="drawing-hazard-radius-line"
+                type="geojson"
+                data={{
+                  type: 'Feature',
+                  geometry: {
+                    type: 'LineString',
+                    coordinates: [
+                      [pendingLocation.longitude, pendingLocation.latitude],
+                      [drawingEnd.longitude, drawingEnd.latitude],
+                    ],
+                  },
                 }}
-              />
-            </Source>
+              >
+                <Layer
+                  id="drawing-hazard-radius-line-layer"
+                  type="line"
+                  paint={{
+                    'line-color': '#f59e0b',
+                    'line-width': 2,
+                    'line-dasharray': [2, 2],
+                  }}
+                />
+              </Source>
+            )}
             <Marker longitude={drawingEnd.longitude} latitude={drawingEnd.latitude} anchor="left">
               <div className="ml-2 px-2 py-0.5 bg-gray-950/90 text-amber-300 font-mono text-[11px] font-black rounded-md border border-amber-500/60 shadow-xl whitespace-nowrap pointer-events-none flex items-center gap-1.5 backdrop-blur-sm">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
-                <span>⭕ {drawingRadiusMeters}m radius circle ({drawingRadiusMeters * 2}m diameter)</span>
+                {hazardPinGeometryMode === 'road_corridor' ? (
+                  <span>🛣️ {drawingRadiusMeters}m road corridor (Snapped to Highway/Road)</span>
+                ) : (
+                  <span>⭕ {drawingRadiusMeters}m radius circle ({drawingRadiusMeters * 2}m diameter)</span>
+                )}
               </div>
             </Marker>
           </>
@@ -2579,6 +2765,9 @@ export default function MapDashboard() {
 
   const [isDrawingRadius, setIsDrawingRadius] = useState(false);
   const [drawingRadiusMeters, setDrawingRadiusMeters] = useState(50);
+  const [hazardPinGeometryMode, setHazardPinGeometryMode] = useState('circle'); // 'circle' | 'road_corridor'
+  const [drawingCorridorCoords, setDrawingCorridorCoords] = useState(null);
+  const corridorDebounceRef = useRef(null);
 
   const [drawingEnd, setDrawingEnd] = useState(null);
   const [showLocalSimulation, setShowLocalSimulation] = useState(false);
@@ -2653,18 +2842,103 @@ export default function MapDashboard() {
     setSimulationGeoJSON(null);
   }, [is3D]);
 
+  const { data: roadNetwork } = useQuery({
+    queryKey: ['road-network'],
+    queryFn: () => api.get('/road-network').then(r => r.data),
+    staleTime: Infinity,
+  });
+
+  const getNearbyRoadLineStrings = useCallback((lng, lat) => {
+    const lines = [];
+    if (roadNetwork?.edges) {
+      for (const edge of roadNetwork.edges) {
+        let coords = edge.geometry;
+        if (typeof coords === 'string') {
+          try { coords = JSON.parse(coords); } catch { coords = null; }
+        }
+        if (Array.isArray(coords) && coords.length >= 2) {
+          lines.push(coords);
+        }
+      }
+    }
+    const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+    if (map && typeof map.project === 'function' && typeof map.queryRenderedFeatures === 'function') {
+      try {
+        const pt = map.project([lng, lat]);
+        const bbox = [
+          [pt.x - 160, pt.y - 160],
+          [pt.x + 160, pt.y + 160],
+        ];
+        const rendered = map.queryRenderedFeatures(bbox);
+        for (const feat of rendered) {
+          const layerId = (feat.layer?.id || '').toLowerCase();
+          const sourceLayer = (feat.sourceLayer || '').toLowerCase();
+          const isRoad =
+            sourceLayer.includes('road') ||
+            layerId.includes('road') ||
+            layerId.includes('street') ||
+            layerId.includes('highway') ||
+            layerId.includes('bridge') ||
+            layerId.includes('tunnel');
+          if (!isRoad) continue;
+          if (feat.geometry?.type === 'LineString' && feat.geometry.coordinates?.length >= 2) {
+            lines.push(feat.geometry.coordinates);
+          } else if (feat.geometry?.type === 'MultiLineString' && Array.isArray(feat.geometry.coordinates)) {
+            for (const subLine of feat.geometry.coordinates) {
+              if (Array.isArray(subLine) && subLine.length >= 2) {
+                lines.push(subLine);
+              }
+            }
+          }
+        }
+      } catch {
+        // Ignore if map style not yet ready
+      }
+    }
+    return lines;
+  }, [roadNetwork, mapRef]);
+
   const handleMapMouseMove = useCallback((e) => {
     if (pinMode === 'hazard' && pendingLocation && isDrawingRadius) {
-      const distance = getHaversineDistance(
-        { lat: pendingLocation.latitude, lng: pendingLocation.longitude },
-        e.lngLat
-      );
-      setDrawingRadiusMeters(Math.max(10, Math.min(5000, Math.round(distance))));
-      setDrawingEnd({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
+      if (hazardPinGeometryMode === 'road_corridor') {
+        const startPt = [pendingLocation.longitude, pendingLocation.latitude];
+        const cursorPt = [e.lngLat.lng, e.lngLat.lat];
+        const nearbyRoads = getNearbyRoadLineStrings(e.lngLat.lng, e.lngLat.lat);
+        const snappedEnd = snapPointToRoadLines(cursorPt, nearbyRoads, 350);
+        const effectiveEndPt = snappedEnd ? snappedEnd.snappedPoint : cursorPt;
+
+        setDrawingEnd({ longitude: effectiveEndPt[0], latitude: effectiveEndPt[1] });
+
+        const localTrace = traceRoadSegmentBetweenPoints(startPt, effectiveEndPt, nearbyRoads);
+        if (localTrace && localTrace.length >= 2) {
+          setDrawingCorridorCoords(localTrace);
+          const len = Math.round(getPolylineLengthMeters(localTrace));
+          setDrawingRadiusMeters(Math.max(10, Math.min(5000, len)));
+        }
+
+        if (corridorDebounceRef.current) clearTimeout(corridorDebounceRef.current);
+        corridorDebounceRef.current = setTimeout(() => {
+          fetchMapboxRoadCorridor(startPt, effectiveEndPt, MAPBOX_TOKEN, nearbyRoads).then((res) => {
+            if (res && res.coordinates?.length >= 2) {
+              setDrawingCorridorCoords(res.coordinates);
+              setDrawingRadiusMeters(Math.max(10, Math.min(5000, res.distanceMeters)));
+              const lastCoord = res.coordinates[res.coordinates.length - 1];
+              setDrawingEnd({ longitude: lastCoord[0], latitude: lastCoord[1] });
+            }
+          });
+        }, 120);
+      } else {
+        const distance = getHaversineDistance(
+          { lat: pendingLocation.latitude, lng: pendingLocation.longitude },
+          e.lngLat
+        );
+        setDrawingRadiusMeters(Math.max(10, Math.min(5000, Math.round(distance))));
+        setDrawingEnd({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
+      }
     } else if (pinMode === 'sim-placement') {
       setPlacementCoords({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
     }
-  }, [pinMode, pendingLocation, isDrawingRadius]);
+  }, [pinMode, pendingLocation, isDrawingRadius, hazardPinGeometryMode, getNearbyRoadLineStrings]);
 
   const inspectLocation = useCallback((lng, lat) => {
     const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
@@ -2882,12 +3156,6 @@ export default function MapDashboard() {
     };
   }, [showRescueUnits, activeRescueMissions, cachedMissionRoutes]);
 
-  const { data: roadNetwork } = useQuery({
-    queryKey: ['road-network'],
-    queryFn: () => api.get('/road-network').then(r => r.data),
-    staleTime: Infinity,
-  });
-
   const shelters = useMemo(() => dashboardData?.shelters ?? [], [dashboardData?.shelters]);
   const hazards = useMemo(() => dashboardData?.hazards ?? [], [dashboardData?.hazards]);
   const demographics = useMemo(() => dashboardData?.demographics ?? [], [dashboardData?.demographics]);
@@ -3052,13 +3320,49 @@ export default function MapDashboard() {
         setShowShelterForm(true);
       } else if (pinMode === 'hazard') {
         if (!isDrawingRadius) {
-          // First click: Set disaster center point and start stretching radius line
-          setPendingLocation({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
-          setDrawingRadiusMeters(50);
-          setDrawingEnd({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
-          setIsDrawingRadius(true);
+          if (hazardPinGeometryMode === 'road_corridor') {
+            const nearbyRoads = getNearbyRoadLineStrings(e.lngLat.lng, e.lngLat.lat);
+            const snapped = snapPointToRoadLines([e.lngLat.lng, e.lngLat.lat], nearbyRoads, 350);
+            const startLng = snapped ? snapped.snappedPoint[0] : e.lngLat.lng;
+            const startLat = snapped ? snapped.snappedPoint[1] : e.lngLat.lat;
+
+            setPendingLocation({ longitude: startLng, latitude: startLat });
+            setDrawingRadiusMeters(50);
+            setDrawingEnd({ longitude: startLng, latitude: startLat });
+
+            if (snapped) {
+              const initialSlice = sliceLineStringByDistance(
+                snapped.lineCoords,
+                Math.max(0, snapped.distanceAlongLine - 25),
+                Math.min(snapped.totalLineLength, snapped.distanceAlongLine + 25)
+              );
+              setDrawingCorridorCoords(initialSlice?.length >= 2 ? initialSlice : null);
+            } else {
+              setDrawingCorridorCoords(null);
+            }
+            setIsDrawingRadius(true);
+          } else {
+            // Circle mode: First click sets disaster center point and starts stretching circle radius
+            setPendingLocation({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
+            setDrawingRadiusMeters(50);
+            setDrawingCorridorCoords(null);
+            setDrawingEnd({ longitude: e.lngLat.lng, latitude: e.lngLat.lat });
+            setIsDrawingRadius(true);
+          }
         } else {
-          // Second click: Lock in the boundary length and open the hazard details modal
+          // Second click: Lock in the boundary/corridor and open the hazard details modal
+          if (corridorDebounceRef.current) clearTimeout(corridorDebounceRef.current);
+          if (hazardPinGeometryMode === 'road_corridor' && pendingLocation) {
+            const startPt = [pendingLocation.longitude, pendingLocation.latitude];
+            const endPt = [e.lngLat.lng, e.lngLat.lat];
+            const nearbyRoads = getNearbyRoadLineStrings(e.lngLat.lng, e.lngLat.lat);
+            fetchMapboxRoadCorridor(startPt, endPt, MAPBOX_TOKEN, nearbyRoads).then((res) => {
+              if (res && res.coordinates?.length >= 2) {
+                setDrawingCorridorCoords(res.coordinates);
+                setDrawingRadiusMeters(Math.max(10, Math.min(5000, res.distanceMeters)));
+              }
+            });
+          }
           setIsDrawingRadius(false);
           setShowHazardForm(true);
         }
@@ -3072,10 +3376,12 @@ export default function MapDashboard() {
     }
   };
   const handleCancelPin = () => { 
+    if (corridorDebounceRef.current) clearTimeout(corridorDebounceRef.current);
     setPinMode(null); 
     setPendingLocation(null); 
     setIsDrawingRadius(false);
     setDrawingRadiusMeters(50);
+    setDrawingCorridorCoords(null);
     setDrawingEnd(null);
     setShowShelterForm(false); 
     setShowHazardForm(false); 
@@ -3088,7 +3394,7 @@ export default function MapDashboard() {
     }
   };
   const handleConfirmShelter = ({ name, max_capacity }) => addShelterMutation.mutate({ name, latitude: pendingLocation.latitude, longitude: pendingLocation.longitude, max_capacity });
-  const handleConfirmHazard = ({ name, radius_meters, hazard_type, severity_level, estimated_duration_hours, is_fixed_flood_spot }) => addHazardMutation.mutate({ name, latitude: pendingLocation.latitude, longitude: pendingLocation.longitude, radius_meters, hazard_type, severity_level, estimated_duration_hours, is_fixed_flood_spot });
+  const handleConfirmHazard = ({ name, radius_meters, geometry_type, corridor_coordinates, hazard_type, severity_level, estimated_duration_hours, is_fixed_flood_spot }) => addHazardMutation.mutate({ name, latitude: pendingLocation.latitude, longitude: pendingLocation.longitude, radius_meters, geometry_type, corridor_coordinates, hazard_type, severity_level, estimated_duration_hours, is_fixed_flood_spot });
   const handleUpdateShelter = (data) => updateShelterMutation.mutate({ id: selectedShelter.id, data });
   const handleDeleteShelter = () => setIsDeleteConfirmOpen(true);
   const handleConfirmDeleteShelter = () => {
@@ -3154,6 +3460,8 @@ export default function MapDashboard() {
         <HazardFormModal 
           location={pendingLocation} 
           initialRadius={drawingRadiusMeters}
+          initialGeometryType={hazardPinGeometryMode}
+          initialCorridorCoords={drawingCorridorCoords}
           onConfirm={handleConfirmHazard} 
           onCancel={handleCancelPin} 
           isLoading={addHazardMutation.isPending} 
@@ -3189,119 +3497,126 @@ export default function MapDashboard() {
         />
       )}
 
-      {/* GIS Floating Layers Selector */}
-      <div className="absolute top-3 left-3 z-30">
-        <button
-          onClick={() => setLayersOpen(o => !o)}
-          className="bg-gray-900/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/10 hover:border-white/20 p-2.5 rounded-xl shadow-lg text-white hover:text-blue-400 transition"
-          title="Map Layers"
-        >
-          <Layers size={18} />
-        </button>
+      {/* Top Left Integrated Map Controls: GIS Overlays + Search Bar */}
+      <div className="absolute top-3 left-4 z-40 flex items-center gap-2">
+        {/* GIS Floating Layers Selector */}
+        <div className="relative">
+          <button
+            onClick={() => setLayersOpen(o => !o)}
+            className={`p-2.5 rounded-2xl bg-gray-900/95 dark:bg-slate-900/95 backdrop-blur-xl border shadow-xl transition flex items-center justify-center cursor-pointer ${
+              layersOpen
+                ? 'border-blue-500/60 text-blue-400 bg-blue-500/15 ring-2 ring-blue-500/20'
+                : 'border-white/10 hover:border-white/20 text-white/70 hover:text-white'
+            }`}
+            title="Map Overlays & Layers"
+          >
+            <Layers size={18} />
+          </button>
 
-        {layersOpen && (
-          <div className="absolute top-12 left-0 w-56 bg-gray-900/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl p-4 shadow-xl text-white space-y-3 animate-in fade-in slide-in-from-top-4 duration-200">
-            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Map Overlays</h4>
-            
-            <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-              <input
-                type="checkbox"
-                checked={showShelters}
-                onChange={e => setShowShelters(e.target.checked)}
-                className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-              />
-              Active Shelters
-            </label>
+          {layersOpen && (
+            <div className="absolute top-12 left-0 w-60 bg-gray-900/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl text-white space-y-3 animate-in fade-in slide-in-from-top-2 duration-150 z-50">
+              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Map Overlays</h4>
+              
+              <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
+                <input
+                  type="checkbox"
+                  checked={showShelters}
+                  onChange={e => setShowShelters(e.target.checked)}
+                  className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
+                />
+                Active Shelters
+              </label>
 
-            <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-              <input
-                type="checkbox"
-                checked={showHazards}
-                onChange={e => setShowHazards(e.target.checked)}
-                className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-              />
-              Active Hazard Zones
-            </label>
+              <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
+                <input
+                  type="checkbox"
+                  checked={showHazards}
+                  onChange={e => setShowHazards(e.target.checked)}
+                  className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
+                />
+                Active Hazard Zones
+              </label>
 
-            <label className="flex items-center gap-3 cursor-pointer hover:text-cyan-400 transition text-xs font-semibold select-none">
-              <input
-                type="checkbox"
-                checked={showRescueUnits}
-                onChange={e => setShowRescueUnits(e.target.checked)}
-                className="rounded border-white/20 text-cyan-500 bg-white/10 focus:ring-0"
-              />
-              Active Rescue Units (Live GPS)
-            </label>
+              <label className="flex items-center gap-3 cursor-pointer hover:text-cyan-400 transition text-xs font-semibold select-none">
+                <input
+                  type="checkbox"
+                  checked={showRescueUnits}
+                  onChange={e => setShowRescueUnits(e.target.checked)}
+                  className="rounded border-white/20 text-cyan-500 bg-white/10 focus:ring-0"
+                />
+                Active Rescue Units (Live GPS)
+              </label>
 
-            {!isCSWDO && (
-              <>
-                <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-                  <input
-                    type="checkbox"
-                    checked={showRoadNetwork}
-                    onChange={e => setShowRoadNetwork(e.target.checked)}
-                    className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-                  />
-                  Road Network Grid (GIS)
-                </label>
+              {!isCSWDO && (
+                <>
+                  <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
+                    <input
+                      type="checkbox"
+                      checked={showRoadNetwork}
+                      onChange={e => setShowRoadNetwork(e.target.checked)}
+                      className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
+                    />
+                    Road Network Grid (GIS)
+                  </label>
 
-                <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-                  <input
-                    type="checkbox"
-                    checked={showLocalSimulation}
-                    onChange={e => handleSetLocalSimulation(e.target.checked)}
-                    className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-                  />
-                  Flood Flow Simulation
-                </label>
+                  <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
+                    <input
+                      type="checkbox"
+                      checked={showLocalSimulation}
+                      onChange={e => handleSetLocalSimulation(e.target.checked)}
+                      className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
+                    />
+                    Flood Flow Simulation
+                  </label>
 
-                <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-                  <input
-                    type="checkbox"
-                    checked={showHeatmap}
-                    onChange={e => setShowHeatmap(e.target.checked)}
-                    className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-                  />
-                  Demographics Heatmap
-                </label>
+                  <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
+                    <input
+                      type="checkbox"
+                      checked={showHeatmap}
+                      onChange={e => setShowHeatmap(e.target.checked)}
+                      className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
+                    />
+                    Demographics Heatmap
+                  </label>
 
-                <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-                  <input
-                    type="checkbox"
-                    checked={showWeather}
-                    onChange={e => setShowWeather(e.target.checked)}
-                    className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-                  />
-                  Live Weather Radar
-                </label>
-              </>
-            )}
-          </div>
-        )}
+                  <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
+                    <input
+                      type="checkbox"
+                      checked={showWeather}
+                      onChange={e => setShowWeather(e.target.checked)}
+                      className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
+                    />
+                    Live Weather Radar
+                  </label>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Floating Place & Shelter Search Bar */}
+        <FloatingMapSearch
+          shelters={shelters}
+          onSelectLocation={(item) => {
+            const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+            if (map && item.coords) {
+              map.flyTo({
+                center: item.coords,
+                zoom: item.type === 'shelter' ? 16.5 : 15,
+                pitch: is3D ? 45 : 0,
+                duration: 1800,
+                essential: true
+              });
+              if (item.shelter) {
+                setSelectedShelter(item.shelter);
+              }
+            }
+          }}
+        />
       </div>
 
-      {/* Floating Place & Shelter Search Bar */}
-      <FloatingMapSearch
-        shelters={shelters}
-        onSelectLocation={(item) => {
-          const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
-          if (map && item.coords) {
-            map.flyTo({
-              center: item.coords,
-              zoom: item.type === 'shelter' ? 16.5 : 15,
-              pitch: is3D ? 45 : 0,
-              duration: 1800,
-              essential: true
-            });
-            if (item.shelter) {
-              setSelectedShelter(item.shelter);
-            }
-          }
-        }}
-      />
-
       {isCSWDO ? (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-4 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] whitespace-nowrap">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 xl:gap-4 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl px-4 xl:px-5 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.6)] max-w-[calc(100vw-360px)] overflow-x-auto whitespace-nowrap scrollbar-none">
           {/* Title & Subtitle Section */}
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 shrink-0">
@@ -3366,7 +3681,7 @@ export default function MapDashboard() {
           </div>
         </div>
       ) : (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-2.5 xl:gap-3.5 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2 xl:p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[96vw] overflow-x-auto whitespace-nowrap">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-2 xl:gap-3 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 xl:p-2 shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[calc(100vw-360px)] overflow-x-auto whitespace-nowrap scrollbar-none">
           {/* Overlays Group */}
           <div className="flex flex-col items-center">
             <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Overlays</span>
@@ -3503,153 +3818,211 @@ export default function MapDashboard() {
       )}
 
       <div className="flex-1 relative overflow-hidden">
-        {/* Resident Perspective Simulation Banner Overlay */}
-        {activeDisasterSim !== 'none' && !isCSWDO && (
-          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md border-2 border-emerald-500 text-white rounded-2xl px-5 py-2.5 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
-            <span className="flex h-3 w-3 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </span>
-            <div className="text-xs font-bold">
-              {activeDisasterSim === 'flood' ? (
-                <span>🌊 <strong className="text-blue-400">FLOOD SIMULATION MODE ACTIVE:</strong> Showing Flood Evacuation Centers &amp; High-Ground Safe Zones (🛡️ 45m Elevation).</span>
-              ) : activeDisasterSim === 'siege' ? (
-                <span>👮 <strong className="text-indigo-400 font-black">HOSTILE SIEGE SIMULATION MODE ACTIVE:</strong> Re-routing to Police Stations 👮 &amp; Military Security Points 🪖.</span>
-              ) : activeDisasterSim === 'fire' ? (
-                <span>🚒 <strong className="text-orange-400 font-black">FIRE DISASTER SIMULATION MODE ACTIVE:</strong> Showing Fire Stations 🚒 &amp; Safe Assembly Points 🚩.</span>
-              ) : activeDisasterSim === 'earthquake' ? (
-                <span>🌋 <strong className="text-amber-400 font-black">EARTHQUAKE TREMORS SIMULATION ACTIVE:</strong> Broadcast Alert Dispatched (Epicenter Lat: 6.9380° N, Lng: 122.0740° E).</span>
-              ) : (
-                <span>🧪 <strong className="text-rose-400 font-black">CHEMICAL SPILL SIMULATION MODE ACTIVE:</strong> Showing Medical Hospitals 🏥 &amp; Decontamination Zones.</span>
-              )}
-            </div>
-            <button
-              onClick={() => {
-                setActiveDisasterSim('none');
-                api.post('/simulation/toggle', { simulation_type: 'none' })
-                  .then(() => queryClient.invalidateQueries(['mapDashboard']))
-                  .catch(err => console.warn('Sim reset warning:', err));
-              }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-2.5 py-1 rounded-lg font-black uppercase transition ml-2 cursor-pointer"
-            >
-              Reset View
-            </button>
-          </div>
-        )}
-
-        {/* Prolonged Rain (Dynamic Threshold) Visual Early Warning Alert */}
-        {weatherTelemetry?.is_raining && weatherTelemetry.continuous_rain_duration_minutes >= (weatherTelemetry?.flood_trigger_threshold_minutes || 45) && (
-          <div className={`absolute ${activeDisasterSim !== 'none' || pinMode ? 'top-32' : 'top-16'} left-1/2 -translate-x-1/2 z-40 bg-rose-950/95 backdrop-blur-md border-2 border-rose-500 text-white rounded-2xl px-5 py-2.5 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300`}>
-            <span className="flex h-3 w-3 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
-            </span>
-            <div className="text-xs">
-              <span className="font-black text-rose-300 uppercase tracking-wide">🚨 PROLONGED RAINFALL &amp; DRAINAGE FLOOD ALERT:</span>{' '}
-              <span>
-                Zamboanga City recorded <strong>{weatherTelemetry.continuous_rain_duration_minutes} continuous minutes</strong> of rain (surpassed configured <strong>{weatherTelemetry?.flood_trigger_threshold_minutes || 45}m</strong> threshold).
-                {weatherTelemetry?.fixed_flood_spots_triggered && weatherTelemetry?.active_fixed_flood_spots_count > 0 ? (
-                  <span className="ml-1 text-amber-300 font-bold">
-                    ⚡ {weatherTelemetry.active_fixed_flood_spots_count} chronic bad-drainage flood spots automatically activated on map.
-                  </span>
-                ) : (
-                  <span> High flood risk for river basins &amp; low-lying barangays.</span>
-                )}
+        {/* Top-Center Floating Banners Stack (Collision-Free Vertical Flow) */}
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2.5 max-w-[96vw] pointer-events-none [&>*]:pointer-events-auto">
+          {/* 1. Pin Mode Action Banner */}
+          {pinMode && !isCSWDO && (
+            <div className="bg-blue-600/95 backdrop-blur-md border border-blue-500/50 text-white rounded-2xl px-5 py-3 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <span className="flex h-2.5 w-2.5 relative shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
               </span>
-            </div>
-            <button
-              onClick={() => setIsProactiveModalOpen(true)}
-              className="ml-2 px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-md whitespace-nowrap"
-            >
-              Open EOC
-            </button>
-          </div>
-        )}
+              <div className="text-xs">
+                {pinMode === 'incident' ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-amber-300 uppercase tracking-wide">📍 Incident Report:</span>{' '}
+                      <span className="font-bold text-white max-w-[200px] truncate">{incidentName || 'Reported Incident'}</span>
+                      {focusLat && focusLng && (
+                        <span className="font-mono text-[11px] text-blue-100 bg-blue-900/60 px-2 py-0.5 rounded border border-blue-400/30">
+                          [{parseFloat(focusLat).toFixed(4)}, {parseFloat(focusLng).toFixed(4)}]
+                        </span>
+                      )}
+                      {isRecurringDrainage && (
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 animate-pulse">
+                          🌧️ Chronic Drainage
+                        </span>
+                      )}
+                    </div>
 
-        {pinMode && !isCSWDO && (
-          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-blue-600/95 backdrop-blur-md border border-blue-500/50 text-white rounded-2xl px-5 py-3.5 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
-            <span className="flex h-2.5 w-2.5 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
-            </span>
-            <div className="text-xs">
-              {pinMode === 'incident' ? (
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-amber-300 uppercase tracking-wide">📍 Incident Report:</span>{' '}
-                    <span className="font-bold text-white max-w-[200px] truncate">{incidentName || 'Reported Incident'}</span>
-                    {focusLat && focusLng && (
-                      <span className="font-mono text-[11px] text-blue-100 bg-blue-900/60 px-2 py-0.5 rounded border border-blue-400/30">
-                        [{parseFloat(focusLat).toFixed(4)}, {parseFloat(focusLng).toFixed(4)}]
-                      </span>
+                    {incidentId && (
+                      <div className="flex items-center gap-1.5 ml-auto">
+                        <button
+                          type="button"
+                          disabled={approvingIncident}
+                          onClick={() => handleApproveIncidentOnMap(true)}
+                          className="px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+                          title="Promote directly as Weather-Triggered Fixed Flood Spot"
+                        >
+                          ⚡ Pin Chronic Flood Spot
+                        </button>
+                        <button
+                          type="button"
+                          disabled={approvingIncident}
+                          onClick={() => handleApproveIncidentOnMap(false)}
+                          className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+                          title="Promote directly as Active Hazard Zone"
+                        >
+                          🚨 Pin Active Hazard
+                        </button>
+                        <button
+                          type="button"
+                          disabled={approvingIncident}
+                          onClick={handleRejectIncidentOnMap}
+                          className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-red-200 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          ✕ Reject
+                        </button>
+                      </div>
                     )}
-                    {isRecurringDrainage && (
-                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 animate-pulse">
-                        🌧️ Chronic Drainage
+
+                    <button
+                      type="button"
+                      onClick={() => navigate('/admin/incidents')}
+                      className="px-2.5 py-1 rounded bg-white/20 hover:bg-white/30 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer"
+                    >
+                      ← Back to Review Queue
+                    </button>
+                  </div>
+                ) : pinMode === 'shelter' ? (
+                  <span>📍 <strong className="font-black tracking-wide uppercase">Pinning Shelter:</strong> Click anywhere on the map to place a new evacuation shelter.</span>
+                ) : pinMode === 'hazard' ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* 2-Mode Hazard Pinning Switcher */}
+                    <div className="flex items-center bg-black/30 p-0.5 rounded-xl border border-white/20 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHazardPinGeometryMode('circle');
+                          setIsDrawingRadius(false);
+                          setPendingLocation(null);
+                          setDrawingCorridorCoords(null);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider transition flex items-center gap-1 cursor-pointer ${
+                          hazardPinGeometryMode === 'circle'
+                            ? 'bg-rose-600 text-white shadow-md'
+                            : 'text-white/75 hover:text-white'
+                        }`}
+                      >
+                        <span>⭕</span>
+                        <span>Circle Radius</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHazardPinGeometryMode('road_corridor');
+                          setIsDrawingRadius(false);
+                          setPendingLocation(null);
+                          setDrawingCorridorCoords(null);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider transition flex items-center gap-1 cursor-pointer ${
+                          hazardPinGeometryMode === 'road_corridor'
+                            ? 'bg-amber-500 text-slate-950 shadow-md'
+                            : 'text-white/75 hover:text-white'
+                        }`}
+                      >
+                        <span>🛣️</span>
+                        <span>Road Path</span>
+                      </button>
+                    </div>
+
+                    {isDrawingRadius ? (
+                      hazardPinGeometryMode === 'road_corridor' ? (
+                        <span>
+                          🛣️ <strong className="font-black tracking-wide uppercase">Trace Highway / Road Corridor:</strong> Move cursor along the road (Current: <strong className="text-yellow-300 font-bold">{drawingRadiusMeters}m on road</strong>), then click again to lock road segment.
+                        </span>
+                      ) : (
+                        <span>
+                          ⭕ <strong className="font-black tracking-wide uppercase">Define Circle Radius:</strong> Move mouse outward to stretch the circle (Current: <strong className="text-yellow-300 font-bold">{drawingRadiusMeters}m radius</strong>), then click again to lock boundary.
+                        </span>
+                      )
+                    ) : hazardPinGeometryMode === 'road_corridor' ? (
+                      <span>
+                        🛣️ <strong className="font-black tracking-wide uppercase">Road Corridor Mode:</strong> Click on any road or highway to snap the start of the blocked road path.
+                      </span>
+                    ) : (
+                      <span>
+                        ⭕ <strong className="font-black tracking-wide uppercase">Circle Radius Mode:</strong> Click on the map to mark the center of the circular hazard zone.
                       </span>
                     )}
                   </div>
-
-                  {incidentId && (
-                    <div className="flex items-center gap-1.5 ml-auto">
-                      <button
-                        type="button"
-                        disabled={approvingIncident}
-                        onClick={() => handleApproveIncidentOnMap(true)}
-                        className="px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
-                        title="Promote directly as Weather-Triggered Fixed Flood Spot"
-                      >
-                        ⚡ Pin Chronic Flood Spot
-                      </button>
-                      <button
-                        type="button"
-                        disabled={approvingIncident}
-                        onClick={() => handleApproveIncidentOnMap(false)}
-                        className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
-                        title="Promote directly as Active Hazard Zone"
-                      >
-                        🚨 Pin Active Hazard
-                      </button>
-                      <button
-                        type="button"
-                        disabled={approvingIncident}
-                        onClick={handleRejectIncidentOnMap}
-                        className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-red-200 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                      >
-                        ✕ Reject
-                      </button>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => navigate('/admin/incidents')}
-                    className="px-2.5 py-1 rounded bg-white/20 hover:bg-white/30 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer"
-                  >
-                    ← Back to Review Queue
-                  </button>
-                </div>
-              ) : pinMode === 'shelter' ? (
-                <span>📍 <strong className="font-black tracking-wide uppercase">Pinning Shelter:</strong> Click anywhere on the map to place a new evacuation shelter.</span>
-              ) : pinMode === 'hazard' ? (
-                isDrawingRadius ? (
-                  <span>⚠️ <strong className="font-black tracking-wide uppercase">Define Disaster Reach:</strong> Move mouse outward to stretch the line &amp; circle (Current: <strong className="text-yellow-300 font-bold">{drawingRadiusMeters}m radius</strong>), then click again to lock boundary.</span>
                 ) : (
-                  <span>⚠️ <strong className="font-black tracking-wide uppercase">Flagging Hazard:</strong> Click on the map to mark the center of the hazard zone.</span>
-                )
-              ) : (
-                <span>🔍 <strong className="font-black tracking-wide uppercase">Tactical 3D Inspection Active:</strong> Click any location on the map to run a 360° situational orbit.</span>
-              )}
+                  <span>🔍 <strong className="font-black tracking-wide uppercase">Tactical 3D Inspection Active:</strong> Click any location on the map to run a 360° situational orbit.</span>
+                )}
+              </div>
+              <button
+                onClick={handleCancelPin}
+                title="Cancel Pin Mode (Esc)"
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-white/80 hover:text-white transition flex items-center justify-center cursor-pointer shrink-0"
+              >
+                <X size={15} />
+              </button>
             </div>
-            <button
-              onClick={handleCancelPin}
-              title="Cancel Pin Mode (Esc)"
-              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-white/80 hover:text-white transition flex items-center justify-center cursor-pointer"
-            >
-              <X size={15} />
-            </button>
-          </div>
-        )}
+          )}
+
+          {/* 2. Resident Perspective Simulation Banner Overlay */}
+          {activeDisasterSim !== 'none' && !isCSWDO && (
+            <div className="bg-slate-900/95 backdrop-blur-md border-2 border-emerald-500 text-white rounded-2xl px-5 py-2.5 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <span className="flex h-3 w-3 relative shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+              <div className="text-xs font-bold">
+                {activeDisasterSim === 'flood' ? (
+                  <span>🌊 <strong className="text-blue-400">FLOOD SIMULATION MODE ACTIVE:</strong> Showing Flood Evacuation Centers &amp; High-Ground Safe Zones (🛡️ 45m Elevation).</span>
+                ) : activeDisasterSim === 'siege' ? (
+                  <span>👮 <strong className="text-indigo-400 font-black">HOSTILE SIEGE SIMULATION MODE ACTIVE:</strong> Re-routing to Police Stations 👮 &amp; Military Security Points 🪖.</span>
+                ) : activeDisasterSim === 'fire' ? (
+                  <span>🚒 <strong className="text-orange-400 font-black">FIRE DISASTER SIMULATION MODE ACTIVE:</strong> Showing Fire Stations 🚒 &amp; Safe Assembly Points 🚩.</span>
+                ) : activeDisasterSim === 'earthquake' ? (
+                  <span>🌋 <strong className="text-amber-400 font-black">EARTHQUAKE TREMORS SIMULATION ACTIVE:</strong> Broadcast Alert Dispatched (Epicenter Lat: 6.9380° N, Lng: 122.0740° E).</span>
+                ) : (
+                  <span>🧪 <strong className="text-rose-400 font-black">CHEMICAL SPILL SIMULATION MODE ACTIVE:</strong> Showing Medical Hospitals 🏥 &amp; Decontamination Zones.</span>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setActiveDisasterSim('none');
+                  api.post('/simulation/toggle', { simulation_type: 'none' })
+                    .then(() => queryClient.invalidateQueries(['mapDashboard']))
+                    .catch(err => console.warn('Sim reset warning:', err));
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-2.5 py-1 rounded-lg font-black uppercase transition ml-2 cursor-pointer shrink-0"
+              >
+                Reset View
+              </button>
+            </div>
+          )}
+
+          {/* 3. Prolonged Rain (Dynamic Threshold) Visual Early Warning Alert */}
+          {weatherTelemetry?.is_raining && weatherTelemetry.continuous_rain_duration_minutes >= (weatherTelemetry?.flood_trigger_threshold_minutes || 45) && (
+            <div className="bg-rose-950/95 backdrop-blur-md border-2 border-rose-500 text-white rounded-2xl px-5 py-2.5 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <span className="flex h-3 w-3 relative shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+              </span>
+              <div className="text-xs">
+                <span className="font-black text-rose-300 uppercase tracking-wide">🚨 PROLONGED RAINFALL &amp; DRAINAGE FLOOD ALERT:</span>{' '}
+                <span>
+                  Zamboanga City recorded <strong>{weatherTelemetry.continuous_rain_duration_minutes} continuous minutes</strong> of rain (surpassed configured <strong>{weatherTelemetry?.flood_trigger_threshold_minutes || 45}m</strong> threshold).
+                  {weatherTelemetry?.fixed_flood_spots_triggered && weatherTelemetry?.active_fixed_flood_spots_count > 0 ? (
+                    <span className="ml-1 text-amber-300 font-bold">
+                      ⚡ {weatherTelemetry.active_fixed_flood_spots_count} chronic bad-drainage flood spots automatically activated on map.
+                    </span>
+                  ) : (
+                    <span> High flood risk for river basins &amp; low-lying barangays.</span>
+                  )}
+                </span>
+              </div>
+              <button
+                onClick={() => setIsProactiveModalOpen(true)}
+                className="ml-2 px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-md whitespace-nowrap shrink-0"
+              >
+                Open EOC
+              </button>
+            </div>
+          )}
+        </div>
         {showLocalSimulation && !isCSWDO && (
           <div className="absolute top-20 left-6 z-40 w-80 bg-gray-950/95 backdrop-blur-xl border border-white/10 rounded-3xl p-5 shadow-[0_12px_40px_rgba(0,0,0,0.7)] flex flex-col gap-4 animate-in slide-in-from-left duration-250">
             <div className="flex items-center justify-between">
@@ -3832,6 +4205,8 @@ export default function MapDashboard() {
           simulationGeoJSON={simulationGeoJSON}
           isDrawingRadius={isDrawingRadius}
           drawingRadiusMeters={drawingRadiusMeters}
+          hazardPinGeometryMode={hazardPinGeometryMode}
+          drawingCorridorCoords={drawingCorridorCoords}
           handleMapMouseMove={handleMapMouseMove}
           drawingEnd={drawingEnd}
           showRoadNetwork={showRoadNetwork}

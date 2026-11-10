@@ -24,7 +24,9 @@ export const AuthProvider = ({ children }) => {
     const familyProfile = nextUser.family_profile || nextUser.familyProfile || nextUser.family || {};
     useResidentStore.getState().setProfileData(
       {
-        id: nextUser.id,
+        id: familyProfile.id || nextUser.id,
+        user_id: nextUser.id,
+        family_profile_id: familyProfile.id || null,
         name: nextUser.name,
         barangay: familyProfile.barangay || 'Tetuan',
         headcount: familyProfile.headcount || 1,
@@ -94,8 +96,19 @@ export const AuthProvider = ({ children }) => {
   const loginWithCredentials = async (email, password) => {
     try {
       const response = await api.post('/login', { email, password });
-      const { access_token, user: nextUser } = response.data;
+      const { access_token } = response.data;
+      let nextUser = response.data.user;
       await SecureStore.setItemAsync(AUTH_TOKEN_KEY, access_token);
+      if (nextUser?.role === 'resident' && !nextUser?.family_profile && !nextUser?.familyProfile) {
+        try {
+          const userRes = await api.get('/user');
+          if (userRes?.data) {
+            nextUser = userRes.data;
+          }
+        } catch (_err) {
+          // Fallback to login user payload if /user fetch fails
+        }
+      }
       setUser(nextUser);
       syncResidentProfile(nextUser);
       await cacheUser(nextUser);

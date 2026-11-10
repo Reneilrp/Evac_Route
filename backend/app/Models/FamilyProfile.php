@@ -32,9 +32,10 @@ class FamilyProfile extends Model
 
     public static function verifyTotpPayload($payload, $lock = false)
     {
+        $payload = trim((string) $payload);
         $parts = explode(':', $payload);
         if (count($parts) !== 3) {
-            // Fallback for old static QR codes during migration
+            // Fallback for static QR codes or manual hash entry
             $query = self::where('qr_code_hash', $payload);
             if ($lock) {
                 $query->lockForUpdate();
@@ -45,22 +46,58 @@ class FamilyProfile extends Model
 
         [$familyId, $timestamp, $hmac] = $parts;
 
-        $query = self::where('id', $familyId);
+        $candidates = [];
+
+        // 1. Primary lookup by family_profiles.id
+        $byIdQuery = self::where('id', $familyId);
         if ($lock) {
-            $query->lockForUpdate();
+            $byIdQuery->lockForUpdate();
         }
-        $family = $query->firstOrFail();
+        $byId = $byIdQuery->first();
+        if ($byId) {
+            $candidates[] = $byId;
+        }
 
-        $expectedHmac = hash('sha256', $familyId.':'.$timestamp.$family->qr_code_hash);
+        // 2. Fallback lookup by user_id (handles mobile clients that signed using user.id)
+        $byUserQuery = self::where('user_id', $familyId);
+        if ($lock) {
+            $byUserQuery->lockForUpdate();
+        }
+        $byUser = $byUserQuery->first();
+        if ($byUser && (! $byId || $byUser->id !== $byId->id)) {
+            $candidates[] = $byUser;
+        }
 
-        if (! hash_equals($expectedHmac, $hmac)) {
+        if (empty($candidates)) {
+            throw (new self)->newModelNotFoundException();
+        }
+
+        $matchedFamily = null;
+        foreach ($candidates as $candidate) {
+            $validSecrets = array_filter([
+                $candidate->qr_code_hash,
+                // Allow legacy fallback hash only when candidate's user_id matches the signed ID
+                (string) $candidate->user_id === (string) $familyId ? 'hash_'.$familyId : null,
+                (string) $candidate->user_id === (string) $familyId ? 'family_hash_'.$familyId : null,
+            ]);
+
+            foreach ($validSecrets as $secret) {
+                $expectedHmac = hash('sha256', $familyId.':'.$timestamp.$secret);
+                if (hash_equals($expectedHmac, $hmac)) {
+                    $matchedFamily = $candidate;
+                    break 2;
+                }
+            }
+        }
+
+        if (! $matchedFamily) {
             throw new \Exception('Invalid QR Signature');
         }
 
-        if (abs(now()->timestamp - (int) $timestamp) > 120) {
+        if (abs(now()->timestamp - (int) $timestamp) > 300) {
             throw new \Exception('QR Code Expired. Please refresh your app.');
         }
 
-        return $family;
+        return $matchedFamily;
     }
 }

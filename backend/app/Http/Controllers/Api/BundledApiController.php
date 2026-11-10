@@ -120,7 +120,7 @@ class BundledApiController extends Controller
 
         // 2. Fetch active hazards (excluding reporter PII)
         $hazards = Hazard::where('is_active', true)
-            ->select('id', 'name', 'latitude', 'longitude', 'radius_meters', 'hazard_type', 'severity_level', 'is_fixed_flood_spot', 'is_active', 'created_at')
+            ->select('id', 'name', 'latitude', 'longitude', 'radius_meters', 'geometry_type', 'corridor_coordinates', 'hazard_type', 'severity_level', 'is_fixed_flood_spot', 'is_active', 'created_at')
             ->get();
 
         return response()->json([

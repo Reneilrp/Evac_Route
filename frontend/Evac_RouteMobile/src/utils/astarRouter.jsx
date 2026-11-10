@@ -73,17 +73,32 @@ export async function fetchMapboxDirectionsRoute(userLocation, shelterLocation, 
       const cLng = parseFloat(h.longitude);
       const cLat = parseFloat(h.latitude);
       const radMeters = parseFloat(h.radius_meters || 150);
-      
-      const deltaLat = radMeters / 111320;
-      const cosLat = Math.cos((cLat * Math.PI) / 180);
-      const deltaLng = radMeters / (111320 * (cosLat > 0 ? cosLat : 1));
 
-      // Center point + North, South, East, West perimeter points to block entire circular danger radius
-      excludePoints.push(`point(${cLng} ${cLat})`);
-      excludePoints.push(`point(${cLng} ${(cLat + deltaLat).toFixed(6)})`);
-      excludePoints.push(`point(${cLng} ${(cLat - deltaLat).toFixed(6)})`);
-      excludePoints.push(`point(${(cLng + deltaLng).toFixed(6)} ${cLat})`);
-      excludePoints.push(`point(${(cLng - deltaLng).toFixed(6)} ${cLat})`);
+      let parsedCorridor = h.corridor_coordinates;
+      if (typeof parsedCorridor === 'string') {
+        try { parsedCorridor = JSON.parse(parsedCorridor); } catch { parsedCorridor = null; }
+      }
+
+      if (h.geometry_type === 'road_corridor' && Array.isArray(parsedCorridor) && parsedCorridor.length >= 2) {
+        // Exclude start, midpoint, and end of the blocked road corridor
+        const firstPt = parsedCorridor[0];
+        const midPt = parsedCorridor[Math.floor(parsedCorridor.length / 2)];
+        const lastPt = parsedCorridor[parsedCorridor.length - 1];
+        excludePoints.push(`point(${firstPt[0]} ${firstPt[1]})`);
+        excludePoints.push(`point(${midPt[0]} ${midPt[1]})`);
+        excludePoints.push(`point(${lastPt[0]} ${lastPt[1]})`);
+      } else {
+        const deltaLat = radMeters / 111320;
+        const cosLat = Math.cos((cLat * Math.PI) / 180);
+        const deltaLng = radMeters / (111320 * (cosLat > 0 ? cosLat : 1));
+
+        // Center point + North, South, East, West perimeter points to block entire circular danger radius
+        excludePoints.push(`point(${cLng} ${cLat})`);
+        excludePoints.push(`point(${cLng} ${(cLat + deltaLat).toFixed(6)})`);
+        excludePoints.push(`point(${cLng} ${(cLat - deltaLat).toFixed(6)})`);
+        excludePoints.push(`point(${(cLng + deltaLng).toFixed(6)} ${cLat})`);
+        excludePoints.push(`point(${(cLng - deltaLng).toFixed(6)} ${cLat})`);
+      }
     }
 
     if (excludePoints.length > 0) {

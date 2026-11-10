@@ -38,6 +38,8 @@ class AuthController extends Controller
             $request->session()->regenerate();
         }
 
+        $user->load(['familyProfile', 'assignedRescueUnit', 'rescueUnits', 'assignedShelter']);
+
         return response()->json([
             'access_token' => $token,
             'user' => $user,
@@ -77,6 +79,7 @@ class AuthController extends Controller
                 'qr_code_hash' => $qrHash,
             ]);
 
+            $user->setRelation('familyProfile', $family);
             $token = $user->createToken('auth_token')->plainTextToken;
 
             DB::commit();

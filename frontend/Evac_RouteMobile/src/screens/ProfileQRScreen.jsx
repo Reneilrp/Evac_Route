@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, Modal, TextInput, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, Modal, TextInput, Switch, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon, Edit3, Footprints, Bike, Car, Check, Vibrate, VibrateOff } from 'lucide-react-native';
@@ -70,12 +70,14 @@ export default function ProfileQRScreen({ navigation }) {
   const [customLat, setCustomLat] = useState(homeLocation ? homeLocation[1].toString() : '6.9185');
   const [customLng, setCustomLng] = useState(homeLocation ? homeLocation[0].toString() : '122.0882');
 
-  const effectiveId = profile?.id || user?.id || 1;
+  const familyObj = user?.family_profile || user?.familyProfile || user?.family || {};
+  const effectiveId = profile?.user_id || user?.id || profile?.id || 1;
+  const effectiveFamilyId = familyObj.id || profile?.family_profile_id || profile?.id || user?.id || 1;
   const effectiveName = profile?.name || user?.name || 'Resident';
-  const effectiveBarangay = profile?.barangay || user?.family_profile?.barangay || user?.familyProfile?.barangay || 'Tetuan';
-  const effectiveHeadcount = profile?.headcount || user?.family_profile?.headcount || user?.familyProfile?.headcount || 1;
-  const effectiveTransportMode = transportationMode || profile?.transportation_mode || user?.family_profile?.transportation_mode || user?.familyProfile?.transportation_mode || 'pedestrian';
-  const effectiveQrHash = qrHash || user?.family_profile?.qr_code_hash || user?.familyProfile?.qr_code_hash || `family_hash_${effectiveId}`;
+  const effectiveBarangay = profile?.barangay || familyObj.barangay || 'Tetuan';
+  const effectiveHeadcount = profile?.headcount || familyObj.headcount || 1;
+  const effectiveTransportMode = transportationMode || profile?.transportation_mode || familyObj.transportation_mode || 'pedestrian';
+  const effectiveQrHash = familyObj.qr_code_hash || qrHash || `hash_${effectiveId}`;
 
   const handleLogout = () => {
     setShowLogoutModal(true);
@@ -88,10 +90,10 @@ export default function ProfileQRScreen({ navigation }) {
     
     const generateTotp = async () => {
       const timestamp = Math.floor(Date.now() / 1000);
-      const dataToSign = `${effectiveId}:${timestamp}${effectiveQrHash}`;
+      const dataToSign = `${effectiveFamilyId}:${timestamp}${effectiveQrHash}`;
       const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, dataToSign);
       if (isMounted) {
-        setTotpPayload(`${effectiveId}:${timestamp}:${hash}`);
+        setTotpPayload(`${effectiveFamilyId}:${timestamp}:${hash}`);
       }
     };
 
@@ -102,7 +104,7 @@ export default function ProfileQRScreen({ navigation }) {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [effectiveId, effectiveQrHash]);
+  }, [effectiveFamilyId, effectiveQrHash]);
 
   // Poll check-in status every 5 seconds
   const { data: statusUpdate } = useQuery({
@@ -169,14 +171,19 @@ export default function ProfileQRScreen({ navigation }) {
             )}
           </View>
 
-          <Text style={{
-            color: colors.textSecondary,
-            fontSize: 11,
-            fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-            marginTop: 12,
-            fontWeight: '600'
-          }} numberOfLines={1} ellipsizeMode="middle">
-            {totpPayload || 'N/A'}
+          <Text
+            selectable
+            style={{
+              color: colors.textSecondary,
+              fontSize: 11,
+              fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+              marginTop: 12,
+              fontWeight: '700',
+            }}
+            numberOfLines={1}
+            ellipsizeMode="middle"
+          >
+            Manual Hash: {effectiveQrHash}
           </Text>
 
           <Text style={{
@@ -493,27 +500,37 @@ export default function ProfileQRScreen({ navigation }) {
         animationType="slide"
         onRequestClose={() => setIsHomeModalOpen(false)}
       >
-        <View style={{
-          flex: 1,
-          backgroundColor: colors.modalBackdrop,
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: 20,
-        }}>
-          <View style={{
-            width: '100%',
-            maxWidth: 380,
-            backgroundColor: colors.card,
-            borderRadius: 24,
-            borderWidth: 1.5,
-            borderColor: colors.primary,
-            padding: 22,
-            elevation: 15,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.3,
-            shadowRadius: 12,
-          }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{
+            flex: 1,
+            backgroundColor: colors.modalBackdrop,
+          }}
+        >
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: 20,
+            }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={{
+              width: '100%',
+              maxWidth: 380,
+              backgroundColor: colors.card,
+              borderRadius: 24,
+              borderWidth: 1.5,
+              borderColor: colors.primary,
+              padding: 22,
+              elevation: 15,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.3,
+              shadowRadius: 12,
+            }}>
             {/* Header */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -664,8 +681,9 @@ export default function ProfileQRScreen({ navigation }) {
               )}
             </View>
           </View>
-        </View>
-      </Modal>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
 
       {/* ─── TRANSPORTATION MODE & DISASTER PROTOCOL MODAL ─── */}
       <Modal

@@ -148,3 +148,70 @@ test('check-in processes ration template and decrements inventory stock accurate
         'ration_claimed' => true,
     ]);
 });
+
+/**
+ * 4. Mobile TOTP QR Verification Test: /api/login, /api/relief/status, and /api/shelters/{id}/check-in
+ */
+test('mobile scanner verifies dynamic TOTP QR payloads signed with family_id or user_id', function () {
+    // Create staff accounts first so resident user.id !== family_profile.id
+    $staff = User::factory()->create(['role' => 'lgu_staff', 'operator_type' => 'scanner', 'status' => 'active']);
+    User::factory()->count(3)->create(['role' => 'lgu_staff', 'status' => 'active']);
+
+    $resident = User::factory()->create([
+        'name' => 'Pheinz Resident',
+        'email' => 'pheinz@evacroute.local',
+        'password' => bcrypt('password'),
+        'role' => 'resident',
+        'status' => 'active',
+    ]);
+
+    $family = FamilyProfile::create([
+        'user_id' => $resident->id,
+        'headcount' => 4,
+        'contact_number' => '09171234567',
+        'barangay' => 'Sto. Niño',
+        'transportation_mode' => 'pedestrian',
+        'qr_code_hash' => 'hash_test_code_pheinz',
+    ]);
+
+    expect($resident->id)->not->toBe($family->id);
+
+    // 1. Login returns family_profile relationship
+    $loginRes = $this->postJson('/api/login', [
+        'email' => 'pheinz@evacroute.local',
+        'password' => 'password',
+    ]);
+    $loginRes->assertStatus(200)
+        ->assertJsonPath('user.family_profile.id', $family->id)
+        ->assertJsonPath('user.family_profile.qr_code_hash', 'hash_test_code_pheinz');
+
+    $ts = time();
+
+    // 2. Verify standard TOTP payload signed with family_profile.id
+    $hmacFamilyId = hash('sha256', "{$family->id}:{$ts}{$family->qr_code_hash}");
+    $totpFamily = "{$family->id}:{$ts}:{$hmacFamilyId}";
+
+    $this->actingAs($staff, 'sanctum')
+        ->getJson('/api/relief/status?qr_code_hash=' . urlencode($totpFamily))
+        ->assertStatus(200)
+        ->assertJsonPath('family_name', 'Pheinz Resident')
+        ->assertJsonPath('qr_code_hash', 'hash_test_code_pheinz');
+
+    // 3. Verify TOTP payload signed with user.id + real qr_code_hash
+    $hmacUserId = hash('sha256', "{$resident->id}:{$ts}{$family->qr_code_hash}");
+    $totpUser = "{$resident->id}:{$ts}:{$hmacUserId}";
+
+    $this->actingAs($staff, 'sanctum')
+        ->getJson('/api/relief/status?qr_code_hash=' . urlencode($totpUser))
+        ->assertStatus(200)
+        ->assertJsonPath('family_name', 'Pheinz Resident');
+
+    // 4. Verify legacy TOTP payload signed with user.id + fallback hash_{user.id}
+    $hmacLegacy = hash('sha256', "{$resident->id}:{$ts}hash_{$resident->id}");
+    $totpLegacy = "{$resident->id}:{$ts}:{$hmacLegacy}";
+
+    $this->actingAs($staff, 'sanctum')
+        ->getJson('/api/relief/status?qr_code_hash=' . urlencode($totpLegacy))
+        ->assertStatus(200)
+        ->assertJsonPath('family_name', 'Pheinz Resident');
+});

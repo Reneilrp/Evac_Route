@@ -12,6 +12,7 @@ import {
   Modal,
   RefreshControl,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -994,8 +995,19 @@ export default function ReportIncidentScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            <Text style={styles.subtitle}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+          >
+            <ScrollView
+              style={styles.container}
+              contentContainerStyle={[styles.content, { paddingBottom: 150 }]}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.subtitle}>
               Help your community by reporting road hazards, floods, or blocked paths to LGU with GPS and up to 4 credibility photos.
             </Text>
 
@@ -1240,8 +1252,9 @@ export default function ReportIncidentScreen({ navigation, route }) {
               Your report will be evaluated and reviewed by LGU staff before appearing on the live map.
             </Text>
           </ScrollView>
-        </SafeAreaView>
-      </Modal>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </Modal>
 
       {/* Reusable Styled Confirmation Modal */}
       <ConfirmationModal

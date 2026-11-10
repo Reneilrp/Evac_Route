@@ -77,7 +77,19 @@ export default function ProfileSetupScreen({ navigation }) {
       await SecureStore.setItemAsync('auth_token', access_token);
 
       // 3. Use ZUSTAND to save the profile and QR hash (Persists to AsyncStorage automatically)
-      setProfileData({ name: fullName, barangay: barangay.trim(), headcount, contact_number: contact, transportation_mode: transportationMode }, qr_code_hash);
+      setProfileData(
+        {
+          id: family?.id || user?.id,
+          user_id: user?.id,
+          family_profile_id: family?.id || null,
+          name: fullName,
+          barangay: barangay.trim(),
+          headcount,
+          contact_number: contact,
+          transportation_mode: transportationMode,
+        },
+        qr_code_hash
+      );
 
       // 4. Sync user state into AuthContext directly
       await login(registeredUser);
@@ -94,14 +106,20 @@ export default function ProfileSetupScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
     >
       <CustomHeader
         title="Family Registration"
         subtitle="Evacuee intake credentials"
         onBack={() => navigation?.goBack?.()}
       />
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 }]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+      >
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>First Name</Text>

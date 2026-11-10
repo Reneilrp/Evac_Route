@@ -15,7 +15,7 @@
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VM_HOST="thesis"
+VM_HOST="evac-server"
 REMOTE_PATH="/var/www/evac_route"
 
 echo "=========================================================="

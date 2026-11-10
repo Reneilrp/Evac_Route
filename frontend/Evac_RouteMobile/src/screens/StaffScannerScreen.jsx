@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,6 +10,8 @@ import {
   ScrollView,
   Linking,
   AppState,
+  Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
@@ -47,6 +49,8 @@ export default function StaffScannerScreen() {
   const [manualOnlyMode, setManualOnlyMode] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState(null);
+  const [cameraKey, setCameraKey] = useState(0);
+  const [layoutNudge, setLayoutNudge] = useState(false);
 
   const [scanned, setScanned] = useState(false);
   const [manualHash, setManualHash] = useState('');
@@ -62,6 +66,34 @@ export default function StaffScannerScreen() {
   const isCheckingInRef = useRef(false);
   const hasAutoPromptedRef = useRef(false);
   const cameraTimeoutRef = useRef(null);
+
+  const processQRHash = useCallback(async (hash) => {
+    setLoading(true);
+    setError(null);
+    setScanResult(null);
+    setClaimSuccess(null);
+
+    try {
+      const response = await api.get('/relief/status', {
+        params: { qr_code_hash: hash },
+      });
+
+      setScanResult({
+        hash: response.data.qr_code_hash || hash,
+        familyName: response.data.family_name,
+        headcount: response.data.headcount || 0,
+        checkedIn: response.data.checked_in,
+        shelter: response.data.shelter,
+        rationClaimed: response.data.ration_claimed,
+        claimedAt: response.data.claimed_at,
+      });
+    } catch (err) {
+      Vibration.vibrate([0, 100, 100, 100]); // Error vibration pattern
+      setError(err.response?.data?.message || 'Failed to verify QR Code. Code might be invalid or expired.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // Auto-request camera permission on initial screen entry if undetermined
   useEffect(() => {
@@ -83,7 +115,7 @@ export default function StaffScannerScreen() {
     return () => subscription.remove();
   }, [getPermission]);
 
-  // Re-check permission when the tab gains focus
+  // Re-check permission when the tab gains focus & reset cameraReady when unfocused
   useEffect(() => {
     if (isFocused && typeof getPermission === 'function') {
       getPermission().catch(() => {});
@@ -92,6 +124,9 @@ export default function StaffScannerScreen() {
       clearTimeout(cameraTimeoutRef.current);
       cameraTimeoutRef.current = null;
     }
+    return () => {
+      setCameraReady(false);
+    };
   }, [isFocused, getPermission]);
 
   useEffect(() => () => {
@@ -100,6 +135,34 @@ export default function StaffScannerScreen() {
     }
   }, []);
 
+  // Force native Android PreviewView layout pass after CameraX surface attaches
+  useEffect(() => {
+    if (!isFocused || !permission?.granted || manualOnlyMode || scanned || cameraError) {
+      return undefined;
+    }
+    const t1 = setTimeout(() => setLayoutNudge((prev) => !prev), 250);
+    const t2 = setTimeout(() => setLayoutNudge((prev) => !prev), 900);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [cameraError, cameraKey, isFocused, manualOnlyMode, permission?.granted, scanned]);
+
+  // Listen for results from native full-screen Google Code Scanner modal
+  useEffect(() => {
+    if (typeof CameraView.onModernBarcodeScanned !== 'function') {
+      return undefined;
+    }
+    const sub = CameraView.onModernBarcodeScanned((event) => {
+      if (event?.data) {
+        setScanned(true);
+        Vibration.vibrate(100);
+        processQRHash(event.data);
+      }
+    });
+    return () => sub?.remove?.();
+  }, [processQRHash]);
+
   useEffect(() => {
     if (!isFocused || !permission?.granted || manualOnlyMode || scanned || cameraReady || cameraError) {
       return undefined;
@@ -107,7 +170,7 @@ export default function StaffScannerScreen() {
 
     cameraTimeoutRef.current = setTimeout(() => {
       cameraTimeoutRef.current = null;
-      setCameraError('Camera preview did not start. Check that no other app is using the camera, then retry.');
+      setCameraError('Camera preview did not start. Tap "Open System QR Scanner" or "Retry Camera" below.');
     }, 8000);
 
     return () => {
@@ -116,7 +179,20 @@ export default function StaffScannerScreen() {
         cameraTimeoutRef.current = null;
       }
     };
-  }, [cameraError, cameraReady, isFocused, manualOnlyMode, permission?.granted, scanned]);
+  }, [cameraError, cameraKey, cameraReady, isFocused, manualOnlyMode, permission?.granted, scanned]);
+
+  const handleLaunchSystemScanner = async () => {
+    try {
+      setError(null);
+      if (typeof CameraView.launchScanner === 'function') {
+        await CameraView.launchScanner(BARCODE_SETTINGS);
+      }
+    } catch (err) {
+      if (err?.message && !err.message.toLowerCase().includes('cancel')) {
+        setError(err.message);
+      }
+    }
+  };
 
   const handleRequestPermission = async () => {
     try {
@@ -149,6 +225,8 @@ export default function StaffScannerScreen() {
     setClaimSuccess(null);
     setCheckInSuccess(null);
     setCameraError(null);
+    setCameraReady(false);
+    setCameraKey((prev) => prev + 1);
   };
 
   const handleBarCodeScanned = ({ data }) => {
@@ -156,34 +234,6 @@ export default function StaffScannerScreen() {
     setScanned(true);
     Vibration.vibrate(100); // Quick scan feedback
     processQRHash(data);
-  };
-
-  const processQRHash = async (hash) => {
-    setLoading(true);
-    setError(null);
-    setScanResult(null);
-    setClaimSuccess(null);
-
-    try {
-      const response = await api.get('/relief/status', {
-        params: { qr_code_hash: hash },
-      });
-
-      setScanResult({
-        hash,
-        familyName: response.data.family_name,
-        headcount: response.data.headcount || 0,
-        checkedIn: response.data.checked_in,
-        shelter: response.data.shelter,
-        rationClaimed: response.data.ration_claimed,
-        claimedAt: response.data.claimed_at,
-      });
-    } catch (err) {
-      Vibration.vibrate([0, 100, 100, 100]); // Error vibration pattern
-      setError(err.response?.data?.message || 'Failed to verify QR Code. Code might be invalid or expired.');
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleManualSubmit = () => {
@@ -413,13 +463,19 @@ export default function StaffScannerScreen() {
       </View>
 
       {/* Main Scroll Content */}
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: Math.max(120, insets.bottom + 85) },
-        ]}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
       >
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: Math.max(140, insets.bottom + 95) },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
         {/* Camera Scanner or Status Details */}
         <View style={styles.displayCard}>
           {!scanned ? (
@@ -450,15 +506,29 @@ export default function StaffScannerScreen() {
                     <AlertTriangle size={36} color={colors.danger} />
                     <Text style={styles.cameraErrorTitle}>Camera Feed Failed</Text>
                     <Text style={styles.cameraErrorSubtitle}>{cameraError}</Text>
+                    {CameraView.isModernBarcodeScannerAvailable && (
+                      <TouchableOpacity
+                        style={[styles.retryCameraBtn, { backgroundColor: colors.primary }]}
+                        onPress={handleLaunchSystemScanner}
+                        accessibilityRole="button"
+                        accessibilityLabel="Open System QR Scanner"
+                      >
+                        <QrCode size={16} color={colors.white} style={{ marginRight: 6 }} />
+                        <Text style={styles.retryCameraBtnText}>Open System QR Scanner</Text>
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity
                       style={styles.retryCameraBtn}
                       onPress={() => {
                         setCameraError(null);
                         setCameraReady(false);
+                        setCameraKey((prev) => prev + 1);
                         if (cameraTimeoutRef.current) {
                           clearTimeout(cameraTimeoutRef.current);
                         }
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Retry Camera"
                     >
                       <RotateCcw size={15} color={colors.white} style={{ marginRight: 6 }} />
                       <Text style={styles.retryCameraBtnText}>Retry Camera</Text>
@@ -466,15 +536,18 @@ export default function StaffScannerScreen() {
                     <TouchableOpacity
                       style={styles.manualEntryAltBtn}
                       onPress={() => setManualOnlyMode(true)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Switch to Manual Code Entry"
                     >
                       <Text style={styles.manualEntryAltBtnText}>Switch to Manual Code Entry</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <View style={styles.cameraWrapper}>
+                  <View style={[styles.cameraWrapper, { height: layoutNudge ? 321 : 320 }]}>
                     {isFocused && (
                       <CameraView
-                        style={StyleSheet.absoluteFillObject}
+                        key={`camera-scanner-${cameraKey}`}
+                        style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%', bottom: layoutNudge ? 1 : 0 }]}
                         facing="back"
                         active={isFocused && permission.granted && !scanned}
                         barcodeScannerSettings={BARCODE_SETTINGS}
@@ -485,6 +558,7 @@ export default function StaffScannerScreen() {
                             cameraTimeoutRef.current = null;
                           }
                           setCameraReady(true);
+                          setLayoutNudge((prev) => !prev);
                         }}
                         onMountError={(e) => {
                           console.error('Camera onMountError:', e);
@@ -516,10 +590,28 @@ export default function StaffScannerScreen() {
 
                 <Text style={styles.scannerHelperText}>Align resident&apos;s QR code within the frame</Text>
 
+                {CameraView.isModernBarcodeScannerAvailable && (
+                  <TouchableOpacity
+                    style={[
+                      styles.permissionButton,
+                      { marginTop: spacing.md, minHeight: 56 },
+                    ]}
+                    onPress={handleLaunchSystemScanner}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel="Open Full-Screen System QR Scanner"
+                  >
+                    <QrCode size={18} color={colors.white} style={{ marginRight: 8 }} />
+                    <Text style={styles.permissionButtonText}>Open System QR Scanner</Text>
+                  </TouchableOpacity>
+                )}
+
                 <TouchableOpacity
                   style={styles.switchModeLink}
                   onPress={() => setManualOnlyMode(true)}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Switch to Manual Entry"
                 >
                   <Text style={styles.switchModeLinkText}>Camera having trouble? Switch to Manual Entry</Text>
                 </TouchableOpacity>
@@ -701,8 +793,9 @@ export default function StaffScannerScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
-  );
+    </KeyboardAvoidingView>
+  </View>
+);
 }
 
 const getStyles = (colors, isDarkMode) =>
@@ -845,9 +938,9 @@ const getStyles = (colors, isDarkMode) =>
       height: 320,
       minHeight: 280,
       borderRadius: radii.lg,
-      overflow: 'hidden',
+      overflow: Platform.OS === 'android' ? 'visible' : 'hidden',
       position: 'relative',
-      backgroundColor: '#000000',
+      backgroundColor: 'transparent',
     },
     cameraInitializingOverlay: {
       ...StyleSheet.absoluteFillObject,

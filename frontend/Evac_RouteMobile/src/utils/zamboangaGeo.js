@@ -169,19 +169,43 @@ export function createCirclePolygon(center, radiusInMeters, points = 32, propert
 }
 
 /**
- * Creates a GeoJSON Feature representing a road hazard corridor line segment (Line instead of Circle)
+ * Creates a GeoJSON Feature representing a road hazard corridor line segment
  * @param {[number, number]} center - [lng, lat]
  * @param {number} radiusInMeters - radius in meters
  * @param {object} properties - optional GeoJSON properties
+ * @param {Array<[number, number]>|string|null} corridorCoordinates - optional road-snapped coordinates
  * @returns {object|null} GeoJSON Feature (LineString)
  */
-export function createHazardRoadCorridorLine(center, radiusInMeters = 50, properties = {}) {
+export function createHazardRoadCorridorLine(center, radiusInMeters = 50, properties = {}, corridorCoordinates = null) {
+  let parsedCoords = corridorCoordinates;
+  if (typeof parsedCoords === 'string') {
+    try {
+      parsedCoords = JSON.parse(parsedCoords);
+    } catch {
+      parsedCoords = null;
+    }
+  }
+  const radius = Math.max(30, radiusInMeters || 50);
+
+  if (Array.isArray(parsedCoords) && parsedCoords.length >= 2) {
+    return {
+      type: 'Feature',
+      properties: {
+        radiusMeters: radius,
+        ...properties,
+      },
+      geometry: {
+        type: 'LineString',
+        coordinates: parsedCoords,
+      },
+    };
+  }
+
   if (!center || center.length < 2) return null;
   const lng = Number(center[0]);
   const lat = Number(center[1]);
   if (isNaN(lng) || isNaN(lat)) return null;
 
-  const radius = Math.max(30, radiusInMeters || 50);
   const distanceX = radius / (111320 * Math.cos((lat * Math.PI) / 180));
   const distanceY = radius / 110540;
 
@@ -199,6 +223,46 @@ export function createHazardRoadCorridorLine(center, radiusInMeters = 50, proper
       ],
     },
   };
+}
+
+/**
+ * Builds the appropriate 2-Mode GeoJSON Feature for a hazard:
+ * - Mode 1 ('circle', default): Polygon circle radius
+ * - Mode 2 ('road_corridor'): LineString snapped along the road/navigation path
+ */
+export function buildHazardGeoJSONFeature(hazard, extraProperties = {}) {
+  if (!hazard) return null;
+  const lng = parseFloat(hazard.longitude);
+  const lat = parseFloat(hazard.latitude);
+  const radius = parseFloat(hazard.radius_meters || 50);
+
+  let parsedCorridor = hazard.corridor_coordinates;
+  if (typeof parsedCorridor === 'string') {
+    try {
+      parsedCorridor = JSON.parse(parsedCorridor);
+    } catch {
+      parsedCorridor = null;
+    }
+  }
+
+  const isRoadCorridor =
+    hazard.geometry_type === 'road_corridor' ||
+    (Array.isArray(parsedCorridor) && parsedCorridor.length >= 2);
+
+  const props = {
+    id: hazard.id,
+    name: hazard.name,
+    radius,
+    hazard_type: hazard.hazard_type ?? 'hazard',
+    severity: hazard.severity_level ?? 'medium',
+    geometry_type: isRoadCorridor ? 'road_corridor' : 'circle',
+    ...extraProperties,
+  };
+
+  if (isRoadCorridor) {
+    return createHazardRoadCorridorLine([lng, lat], radius, props, parsedCorridor);
+  }
+  return createCirclePolygon([lng, lat], radius, 64, props);
 }
 
 // Zamboanga City Centroid Coordinates by Barangay

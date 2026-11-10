@@ -138,7 +138,7 @@ export default function LoginScreen({ navigation }) {
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 },
+            { paddingTop: insets.top + 20, paddingBottom: Math.max(insets.bottom + 60, 80) },
           ]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"

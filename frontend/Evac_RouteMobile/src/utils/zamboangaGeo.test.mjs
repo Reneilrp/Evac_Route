@@ -1,6 +1,5 @@
 import assert from 'node:assert';
 import {
-  ZAMBOANGA_BOUNDS,
   ZAMBOANGA_RESCUER_BASE,
   ZAMBOANGA_VICTIM_DEFAULT,
   ZAMBOANGA_SHELTER_DEFAULT,

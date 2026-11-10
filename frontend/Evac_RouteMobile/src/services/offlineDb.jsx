@@ -443,10 +443,16 @@ export function saveHazardsExtended(hazardsList) {
     } catch (_) {
       // Columns already exist — ignore error
     }
+    try {
+      db.execSync('ALTER TABLE hazards ADD COLUMN geometry_type TEXT DEFAULT "circle"');
+      db.execSync('ALTER TABLE hazards ADD COLUMN corridor_coordinates TEXT DEFAULT NULL');
+    } catch (_) {
+      // Columns already exist — ignore error
+    }
 
     db.execSync('DELETE FROM hazards');
     const stmt = db.prepareSync(
-      'INSERT INTO hazards (id, lat, lng, radius, hazard_type, severity_level) VALUES ($id, $lat, $lng, $radius, $type, $severity)'
+      'INSERT INTO hazards (id, lat, lng, radius, geometry_type, corridor_coordinates, hazard_type, severity_level) VALUES ($id, $lat, $lng, $radius, $geomType, $corridorCoords, $type, $severity)'
     );
     for (const h of hazardsList) {
       stmt.executeSync({
@@ -454,6 +460,8 @@ export function saveHazardsExtended(hazardsList) {
         $lat: parseFloat(h.latitude),
         $lng: parseFloat(h.longitude),
         $radius: parseFloat(h.radius_meters),
+        $geomType: h.geometry_type ?? 'circle',
+        $corridorCoords: h.corridor_coordinates ? JSON.stringify(h.corridor_coordinates) : null,
         $type: h.hazard_type ?? 'flood',
         $severity: h.severity_level ?? 'medium',
       });
@@ -471,7 +479,7 @@ export function getOfflineHazardsExtended() {
   if (!db) return [];
   try {
     return db.getAllSync(
-      'SELECT id, lat AS latitude, lng AS longitude, radius AS radius_meters, hazard_type, severity_level, 1 AS is_active FROM hazards'
+      'SELECT id, lat AS latitude, lng AS longitude, radius AS radius_meters, geometry_type, corridor_coordinates, hazard_type, severity_level, 1 AS is_active FROM hazards'
     );
   } catch {
     // Fallback to basic schema
