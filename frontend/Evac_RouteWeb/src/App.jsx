@@ -2,7 +2,7 @@ import { lazy, Suspense, useState, useEffect, useCallback } from "react";
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import toast, { Toaster } from 'react-hot-toast';
-import { Bell, ShieldAlert, CheckCircle, TrendingUp, AlertCircle, AlertTriangle, RefreshCw, LayoutDashboard, Map, Building2, Package, FileText, Flag, Users, LogOut, Sun, Moon, Contact, Settings, X, User, MapPin, Volume2, Database, Megaphone, LifeBuoy, Activity } from 'lucide-react';
+import { Bell, ShieldAlert, CheckCircle, TrendingUp, AlertCircle, AlertTriangle, RefreshCw, LayoutDashboard, Map, Building2, Package, FileText, Flag, Users, LogOut, Sun, Moon, Contact, Settings, X, User, MapPin, Volume2, Database, Megaphone, LifeBuoy, Activity, Truck, FileSpreadsheet, Download } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -709,11 +709,35 @@ function DashboardLayout({ children }) {
               )}
            </div>
 
-           <div className="flex items-center gap-4">
+           <div className="flex items-center gap-3">
+             {/* Contextual Export Button for Dashboard Overview */}
+             {location.pathname === '/admin/dashboard' && (
+               <button
+                 onClick={() => window.dispatchEvent(new CustomEvent('export-sitrep'))}
+                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                 title="Export Situation Report (CSV)"
+               >
+                 <FileSpreadsheet size={14} />
+                 <span>Export SitRep (CSV)</span>
+               </button>
+             )}
+
+             {/* Contextual Export Button for Evacuation Logs */}
+             {location.pathname === '/admin/reports' && (
+               <button
+                 onClick={() => window.dispatchEvent(new CustomEvent('export-evac-logs'))}
+                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                 title="Export Evacuation Logs (CSV)"
+               >
+                 <Download size={14} />
+                 <span>Export to CSV</span>
+               </button>
+             )}
+
              {/* Dark Mode Toggle */}
              <button
                onClick={toggleDarkMode}
-               className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition duration-200 focus:outline-none"
+               className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition duration-200 focus:outline-none cursor-pointer"
                title="Toggle Dark Mode"
              >
                {darkMode ? <Sun size={20} /> : <Moon size={20} />}

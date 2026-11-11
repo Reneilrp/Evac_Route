@@ -156,7 +156,7 @@ export default function AuditLogs() {
           <button
             type="button"
             onClick={() => { setArchiveFilter('active'); setPage(1); }}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
               archiveFilter === 'active'
                 ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                 : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -167,7 +167,7 @@ export default function AuditLogs() {
           <button
             type="button"
             onClick={() => { setArchiveFilter('archived'); setPage(1); }}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
               archiveFilter === 'archived'
                 ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
                 : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -182,7 +182,7 @@ export default function AuditLogs() {
           {archiveFilter === 'active' && (
             <button
               onClick={() => setIsArchiveModalOpen(true)}
-              className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+              className="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-sm cursor-pointer"
               title="Archive records older than 90 days to cold storage"
             >
               <Archive size={14} /> Archive Logs &gt; 90 Days
@@ -190,17 +190,17 @@ export default function AuditLogs() {
           )}
           <button
             onClick={() => refetch()}
-            className="p-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition shadow-xs cursor-pointer"
+            className="p-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition shadow-xs cursor-pointer"
             title="Refresh Logs"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={15} />
           </button>
           <button
             onClick={handleExportCSV}
             disabled={!logs.length}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-xs transition flex items-center gap-2 text-xs disabled:opacity-50 cursor-pointer"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3.5 rounded-xl shadow-xs transition flex items-center gap-1.5 text-xs disabled:opacity-50 cursor-pointer"
           >
-            <FileSpreadsheet size={16} /> Export Audit Log (CSV)
+            <FileSpreadsheet size={15} /> Export Audit Log (CSV)
           </button>
         </div>
       </div>

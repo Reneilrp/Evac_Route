@@ -270,7 +270,7 @@ export default function EmergencyAlerts() {
           <button
             type="button"
             onClick={() => setArchiveFilter('active')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
               archiveFilter === 'active'
                 ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                 : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -285,7 +285,7 @@ export default function EmergencyAlerts() {
           <button
             type="button"
             onClick={() => setArchiveFilter('archived')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
               archiveFilter === 'archived'
                 ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
                 : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -301,9 +301,9 @@ export default function EmergencyAlerts() {
 
         <button
           onClick={openModal}
-          className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-red-500/20 transition transform hover:-translate-y-0.5 cursor-pointer"
+          className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-md shadow-red-500/20 transition transform hover:-translate-y-0.5 cursor-pointer"
         >
-          <PlusCircle size={18} /> Broadcast New Warning
+          <PlusCircle size={15} /> Broadcast New Warning
         </button>
       </div>
 

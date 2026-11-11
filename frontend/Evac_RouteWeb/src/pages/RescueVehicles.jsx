@@ -131,15 +131,15 @@ export default function RescueVehicles() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate('/admin/rescue-dispatch')}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 text-gray-800 dark:text-slate-200 rounded-xl text-xs font-extrabold shadow-xs transition cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 text-gray-800 dark:text-slate-200 rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
           >
             <span>Live Dispatch Console →</span>
           </button>
           <button
             onClick={() => setIsRegisterModalOpen(true)}
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition transform hover:-translate-y-0.5 cursor-pointer"
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-md shadow-blue-500/20 transition transform hover:-translate-y-0.5 cursor-pointer"
           >
-            <Plus size={16} /> Register Rescue Vehicle
+            <Plus size={15} /> Register Rescue Vehicle
           </button>
         </div>
       </div>

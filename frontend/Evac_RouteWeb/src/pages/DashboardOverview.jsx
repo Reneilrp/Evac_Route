@@ -208,20 +208,14 @@ export default function DashboardOverview() {
     document.body.removeChild(link);
   };
 
+  useEffect(() => {
+    const handleExportEvent = () => handleExportSitRep();
+    window.addEventListener('export-sitrep', handleExportEvent);
+    return () => window.removeEventListener('export-sitrep', handleExportEvent);
+  }, [dashboardData, activeAgency]);
+
   return (
     <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
-      {/* Top Action Bar */}
-      <div className="flex justify-end items-center mb-4">
-        <button
-          onClick={handleExportSitRep}
-          disabled={!dashboardData}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-xs transition flex items-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
-        >
-          <FileSpreadsheet size={16} /> 
-          Export {activeAgency === 'cdrmo' ? 'Tactical' : 'Camp'} SitRep (CSV)
-        </button>
-      </div>
-      
       {/* Stat Cards Grid */}
       {activeAgency === 'cdrmo' ? (
         /* CDRRMO TACTICAL STAT CARDS */

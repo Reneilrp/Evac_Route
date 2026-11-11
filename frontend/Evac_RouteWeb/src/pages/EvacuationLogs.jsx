@@ -151,6 +151,12 @@ export default function EvacuationLogs() {
     URL.revokeObjectURL(url); // Free blob from memory
   };
 
+  React.useEffect(() => {
+    const handleExportEvent = () => handleExport();
+    window.addEventListener('export-evac-logs', handleExportEvent);
+    return () => window.removeEventListener('export-evac-logs', handleExportEvent);
+  }, [filteredLogs]);
+
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
   return (
@@ -160,7 +166,7 @@ export default function EvacuationLogs() {
           <button
             type="button"
             onClick={() => { setArchiveFilter('active'); setPage(1); }}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
               archiveFilter === 'active'
                 ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                 : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -171,7 +177,7 @@ export default function EvacuationLogs() {
           <button
             type="button"
             onClick={() => { setArchiveFilter('archived'); setPage(1); }}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
               archiveFilter === 'archived'
                 ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
                 : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -182,23 +188,19 @@ export default function EvacuationLogs() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          {archiveFilter === 'active' && (
+        {archiveFilter === 'active' && (
+          <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => setIsBatchArchiveModalOpen(true)}
-              className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-              title="Archive all records of residents who have already checked out"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
+              title="Move historical checked-out records to the Archived Logs tab"
             >
-              <Archive size={14} /> Archive Checked-Out
+              <Archive size={14} />
+              <span>Archive Checked-Out</span>
             </button>
-          )}
-          <button 
-            onClick={handleExport}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition shadow-sm cursor-pointer"
-          >
-            <Download size={18} /> Export to CSV
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">

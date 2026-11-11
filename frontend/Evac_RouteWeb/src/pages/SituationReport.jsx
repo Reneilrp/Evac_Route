@@ -44,7 +44,7 @@ export default function SituationReport() {
 
         <button
           onClick={handlePrint}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-xs shadow-lg shadow-purple-600/30 transition cursor-pointer"
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs shadow-md shadow-purple-600/30 transition cursor-pointer"
         >
           <Printer size={14} />
           Print Official SitRep

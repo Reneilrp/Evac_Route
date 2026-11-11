@@ -109,7 +109,7 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
   it('renders EvacuationLogs with date filters without throwing', () => {
     expect(() => {
       const html = renderWithProviders(<EvacuationLogs />);
-      expect(html).toContain('Export to CSV');
+      expect(html).toContain('Active Evacuation Logs');
     }).not.toThrow();
   });
 
