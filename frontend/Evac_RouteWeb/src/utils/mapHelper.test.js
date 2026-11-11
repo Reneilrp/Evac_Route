@@ -1,5 +1,13 @@
 /* global describe, test, expect */
-import { createCirclePolygon, tilePixelToLngLat, getHaversineDistance } from './mapHelper';
+import {
+  createCirclePolygon,
+  tilePixelToLngLat,
+  getHaversineDistance,
+  getZamboangaIsolationMaskGeoJSON,
+  getZamboangaBoundaryLineGeoJSON,
+  ZAMBOANGA_MAX_BOUNDS,
+  ZAMBOANGA_MIN_ZOOM,
+} from './mapHelper';
 
 describe('createCirclePolygon', () => {
   test('returns a valid GeoJSON Polygon Feature', () => {
@@ -40,5 +48,48 @@ describe('getHaversineDistance', () => {
   test('returns 0 distance for the same coordinate', () => {
     const p = { lat: 6.91, lng: 122.06 };
     expect(getHaversineDistance(p, p)).toBe(0);
+  });
+});
+
+describe('Zamboanga City Map Isolation Constraints & GeoJSON Helpers', () => {
+  test('exports valid geographical bounds enclosing Zamboanga City', () => {
+    const [[minLng, minLat], [maxLng, maxLat]] = ZAMBOANGA_MAX_BOUNDS;
+    expect(minLng).toBeLessThan(121.90);
+    expect(maxLng).toBeGreaterThan(122.40);
+    expect(minLat).toBeLessThan(6.85);
+    expect(maxLat).toBeGreaterThan(7.40);
+    expect(ZAMBOANGA_MIN_ZOOM).toBeGreaterThanOrEqual(10);
+  });
+
+  test('creates inverted polygon mask covering external world with Zamboanga hole', () => {
+    const mask = getZamboangaIsolationMaskGeoJSON();
+    expect(mask.type).toBe('FeatureCollection');
+    expect(mask.features).toHaveLength(1);
+    
+    const geom = mask.features[0].geometry;
+    expect(geom.type).toBe('Polygon');
+    // Outer ring + inner hole ring
+    expect(geom.coordinates).toHaveLength(2);
+    // Outer world ring
+    expect(geom.coordinates[0]).toEqual([
+      [-180, -90],
+      [180, -90],
+      [180, 90],
+      [-180, 90],
+      [-180, -90],
+    ]);
+    // Inner ring is closed perimeter
+    const innerRing = geom.coordinates[1];
+    expect(innerRing.length).toBeGreaterThan(20);
+    expect(innerRing[0]).toEqual(innerRing[innerRing.length - 1]);
+  });
+
+  test('creates boundary LineString for administrative glowing perimeter', () => {
+    const line = getZamboangaBoundaryLineGeoJSON();
+    expect(line.type).toBe('FeatureCollection');
+    expect(line.features[0].geometry.type).toBe('LineString');
+    const coords = line.features[0].geometry.coordinates;
+    expect(coords.length).toBeGreaterThan(20);
+    expect(coords[0]).toEqual(coords[coords.length - 1]);
   });
 });

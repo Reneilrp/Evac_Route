@@ -6,7 +6,8 @@ import {
   MapPin, AlertTriangle, X, Cloud, Flame, Zap,
   ChevronRight, ChevronLeft, Moon, Satellite, Mountain,
   TriangleAlert, Droplets, Waves, Shield, SlidersHorizontal, Layers,
-  Eye, Users, Building2, Search, ShieldAlert, CloudRain, Sun, Filter, Truck
+  Eye, Users, Building2, Search, ShieldAlert, CloudRain, Sun, Filter, Truck,
+  Crosshair
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
@@ -24,6 +25,12 @@ import {
   sliceLineStringByDistance,
   traceRoadSegmentBetweenPoints,
   fetchMapboxRoadCorridor,
+  ZAMBOANGA_CENTER,
+  ZAMBOANGA_MAX_BOUNDS,
+  ZAMBOANGA_MIN_ZOOM,
+  ZAMBOANGA_MAX_ZOOM,
+  getZamboangaIsolationMaskGeoJSON,
+  getZamboangaBoundaryLineGeoJSON,
 } from '../utils/mapHelper';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
@@ -1317,6 +1324,8 @@ export function UnifiedMapFilterSearch({
   showWeather = false,
   onToggleWeather,
   onSelectLocation,
+  isolateZamboanga = true,
+  onToggleIsolateZamboanga,
   isCSWDO = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -1514,6 +1523,19 @@ export function UnifiedMapFilterSearch({
           <div className="border-t border-white/10 pt-3 space-y-2">
             <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Base GIS Overlays</div>
             <div className="space-y-1.5 text-xs">
+              <label className="flex items-center justify-between p-1.5 hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
+                <span className="flex items-center gap-2 text-white/80">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                  Isolate Zamboanga (Spotlight)
+                </span>
+                <input
+                  type="checkbox"
+                  checked={isolateZamboanga}
+                  onChange={e => onToggleIsolateZamboanga?.(e.target.checked)}
+                  className="rounded border-white/20 text-cyan-500 bg-white/10 focus:ring-0 cursor-pointer"
+                />
+              </label>
+
               {!isCSWDO && (
                 <label className="flex items-center justify-between p-1.5 hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
                   <span className="flex items-center gap-2 text-white/80">
@@ -1737,6 +1759,7 @@ const MapViewer = React.memo(({
   activeDisasterSim = 'none',
   filteredSheltersForView = [],
   isCSWDO = false,
+  isolateZamboanga = true,
   showRescueUnits = true,
   activeRescueMissions = [],
   rescueUnits = [],
@@ -1746,6 +1769,9 @@ const MapViewer = React.memo(({
   incidentName = null,
 }) => {
   const containerRef = useRef(null);
+
+  const zamboangaMaskData = useMemo(() => getZamboangaIsolationMaskGeoJSON(), []);
+  const zamboangaBoundaryLine = useMemo(() => getZamboangaBoundaryLineGeoJSON(), []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -1791,10 +1817,10 @@ const MapViewer = React.memo(({
       };
     }
     return {
-      longitude: 122.0729,
-      latitude: 6.9126,
-      zoom: 13,
-      pitch: 52,
+      longitude: ZAMBOANGA_CENTER.longitude,
+      latitude: ZAMBOANGA_CENTER.latitude,
+      zoom: ZAMBOANGA_CENTER.zoom,
+      pitch: is3D ? 52 : 0,
       bearing: -15
     };
   });
@@ -2093,6 +2119,9 @@ const MapViewer = React.memo(({
         {...viewState}
         onMove={evt => setViewState(evt.viewState)}
         onClick={handleMapClick}
+        maxBounds={isolateZamboanga ? ZAMBOANGA_MAX_BOUNDS : undefined}
+        minZoom={isolateZamboanga ? ZAMBOANGA_MIN_ZOOM : 2}
+        maxZoom={ZAMBOANGA_MAX_ZOOM}
         onMouseMove={(e) => {
           if (handleMapMouseMove) {
             handleMapMouseMove(e);
@@ -2141,6 +2170,44 @@ const MapViewer = React.memo(({
           url="mapbox://mapbox.mapbox-terrain-dem-v1"
           tileSize={512}
         />
+
+        {/* Zamboanga City Cartographic Isolation Mask (Dims the external world) */}
+        {isolateZamboanga && (
+          <>
+            <Source id="zamboanga-isolation-mask" type="geojson" data={zamboangaMaskData}>
+              <Layer
+                id="zamboanga-mask-fill"
+                type="fill"
+                paint={{
+                  'fill-color': '#080c14',
+                  'fill-opacity': 0.76,
+                }}
+              />
+            </Source>
+            <Source id="zamboanga-boundary-line" type="geojson" data={zamboangaBoundaryLine}>
+              <Layer
+                id="zamboanga-boundary-glow"
+                type="line"
+                paint={{
+                  'line-color': '#38bdf8',
+                  'line-width': 4.5,
+                  'line-opacity': 0.45,
+                  'line-blur': 3,
+                }}
+              />
+              <Layer
+                id="zamboanga-boundary-stroke"
+                type="line"
+                paint={{
+                  'line-color': '#0ea5e9',
+                  'line-width': 1.8,
+                  'line-opacity': 0.9,
+                  'line-dasharray': [3, 2],
+                }}
+              />
+            </Source>
+          </>
+        )}
 
         {is3D && (
           <Layer
@@ -3333,6 +3400,7 @@ export default function MapDashboard() {
   const [showRescueUnits, setShowRescueUnits] = useState(true);
   const [layersOpen, setLayersOpen] = useState(false);
   const [activeMapFilter, setActiveMapFilter] = useState('all');
+  const [isolateZamboanga, setIsolateZamboanga] = useState(true);
 
   const { data: dashboardData } = useQuery({
     queryKey: ['map-dashboard'],
@@ -3807,8 +3875,8 @@ export default function MapDashboard() {
         />
       )}
 
-      {/* Top Left Integrated Map Controls: Unified Filter & Search Hub */}
-      <div className="absolute top-3 left-4 z-40">
+      {/* Top Left Integrated Map Controls: Unified Filter, Search Hub & City Recenter */}
+      <div className="absolute top-3 left-4 z-40 flex items-center gap-2">
         <UnifiedMapFilterSearch
           shelters={shelters}
           hazards={hazards}
@@ -3822,6 +3890,8 @@ export default function MapDashboard() {
           onToggleHeatmap={setShowHeatmap}
           showWeather={showWeather}
           onToggleWeather={setShowWeather}
+          isolateZamboanga={isolateZamboanga}
+          onToggleIsolateZamboanga={setIsolateZamboanga}
           onSelectLocation={(item) => {
             const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
             if (map && item.coords) {
@@ -3839,6 +3909,29 @@ export default function MapDashboard() {
           }}
           isCSWDO={isCSWDO}
         />
+
+        {/* Recenter Zamboanga City Overview Button */}
+        <button
+          type="button"
+          onClick={() => {
+            const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+            if (map && map.flyTo) {
+              map.flyTo({
+                center: [ZAMBOANGA_CENTER.longitude, ZAMBOANGA_CENTER.latitude],
+                zoom: ZAMBOANGA_CENTER.zoom,
+                pitch: is3D ? 45 : 0,
+                bearing: -15,
+                duration: 1400,
+                essential: true,
+              });
+            }
+          }}
+          title="Recenter Camera to Zamboanga City Center"
+          className="flex items-center gap-1.5 px-3 py-2 bg-gray-900/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/10 hover:border-white/25 rounded-2xl shadow-2xl text-xs font-bold text-white hover:text-cyan-300 transition cursor-pointer"
+        >
+          <Crosshair size={14} className="text-cyan-400" />
+          <span className="hidden sm:inline text-[11px]">Recenter ZC</span>
+        </button>
       </div>
 
       {isCSWDO ? (
@@ -4426,6 +4519,7 @@ export default function MapDashboard() {
           showShelters={showShelters}
           showHazards={showHazards}
           activeMapFilter={activeMapFilter}
+          isolateZamboanga={isolateZamboanga}
           is3D={is3D}
           setIs3D={setIs3D}
           mapRef={mapRef}

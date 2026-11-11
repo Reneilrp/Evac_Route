@@ -323,6 +323,7 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
       expect(html).toContain('Shelters Only');
       expect(html).toContain('SOS Distress Signals');
       expect(html).toContain('Active Beacons');
+      expect(html).toContain('Isolate Zamboanga (Spotlight)');
     }).not.toThrow();
   });
 });

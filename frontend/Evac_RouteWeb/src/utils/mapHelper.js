@@ -366,3 +366,101 @@ export function getNearestBarangay(lng, lat) {
   }
   return closest;
 }
+
+// --- Zamboanga City Administrative Boundaries & Map Clamping ---
+export const ZAMBOANGA_CENTER = {
+  longitude: 122.0729,
+  latitude: 6.9126,
+  zoom: 12.5,
+  pitch: 45,
+  bearing: -15,
+};
+
+// Tight bounding box enclosing all 98 barangays, coastal buffer, and Santa Cruz islands
+// [[minLng, minLat], [maxLng, maxLat]]
+export const ZAMBOANGA_MAX_BOUNDS = [
+  [121.80, 6.75], // Southwest limit (West Coast / Santa Cruz Islands / Basilan Strait buffer)
+  [122.45, 7.50], // Northeast limit (Vitali / Licomo border with Zamboanga Sibugay)
+];
+
+export const ZAMBOANGA_MIN_ZOOM = 10.2;
+export const ZAMBOANGA_MAX_ZOOM = 19.5;
+
+// Perimeter coordinates tracing the administrative territory of Zamboanga City
+export const ZAMBOANGA_PERIMETER_COORDS = [
+  [122.0300, 6.8400], // South of Great Santa Cruz Island in Basilan Strait
+  [121.9900, 6.9100], // Southwest coastal approach
+  [121.9600, 6.9450], // Recodo / Sinunuc offshore
+  [121.9300, 6.9600], // Ayala / Cawit offshore
+  [121.9100, 7.0200], // Talisayan offshore
+  [121.8800, 7.0800], // Labuan offshore
+  [121.8600, 7.1400], // Patalon offshore
+  [121.8500, 7.2000], // Limpapa offshore
+  [121.8700, 7.2500], // Limpapa river basin border with Sibuco
+  [121.9200, 7.3000], // Mount Dapiak / northern mountain border
+  [122.0000, 7.3400], // Sibuco watershed ridge
+  [122.1000, 7.3700], // Central Zamboanga Peninsula cordillera
+  [122.2000, 7.4000], // Tungawan / Sirawai border crest
+  [122.2800, 7.4300], // Upper Vitali ridge
+  [122.3600, 7.4500], // Licomo mountain ridge
+  [122.4100, 7.4200], // Licomo coastal border with Tungawan, Zamboanga Sibugay
+  [122.4000, 7.3500], // Vitali Island / Taguiti Bay
+  [122.3400, 7.2500], // Curuan / Mangusu offshore
+  [122.3000, 7.1800], // Buenavista / Quiniput offshore
+  [122.2700, 7.1000], // Sangali / Bolong offshore
+  [122.2450, 7.0400], // Manicahan / Victoria offshore
+  [122.2100, 6.9850], // Taluksangay / Cabaluay offshore
+  [122.1850, 6.9450], // Mercedes / Talabaan offshore
+  [122.1550, 6.8950], // Mampang / Talon-Talon coast
+  [122.1200, 6.8600], // South of Talon-Talon / Arena Blanco
+  [122.0800, 6.8400], // South of Rio Hondo / Fort Pilar
+  [122.0300, 6.8400], // Closed ring
+];
+
+/**
+ * Returns an inverted polygon GeoJSON FeatureCollection.
+ * The outer ring covers the world; the inner ring is Zamboanga City's perimeter.
+ * When rendered with a fill layer, everything OUTSIDE Zamboanga City is dimmed.
+ */
+export function getZamboangaIsolationMaskGeoJSON() {
+  const worldOuterRing = [
+    [-180, -90],
+    [180, -90],
+    [180, 90],
+    [-180, 90],
+    [-180, -90],
+  ];
+
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: { name: 'Zamboanga Isolation Mask' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [worldOuterRing, ZAMBOANGA_PERIMETER_COORDS],
+        },
+      },
+    ],
+  };
+}
+
+/**
+ * Returns a GeoJSON FeatureCollection with a LineString tracing Zamboanga City's perimeter.
+ */
+export function getZamboangaBoundaryLineGeoJSON() {
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: { name: 'Zamboanga City Administrative Boundary' },
+        geometry: {
+          type: 'LineString',
+          coordinates: ZAMBOANGA_PERIMETER_COORDS,
+        },
+      },
+    ],
+  };
+}
