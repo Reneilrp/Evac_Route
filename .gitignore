@@ -79,6 +79,10 @@ scripts/*.py
 # Local Developer & Personal Setup Artifacts
 PRESENTATION_DEVICE_SETUP.md
 GEMINI.md
+RUN_SERVERS.md
+SYSTEM_TESTING_GUIDE.md
+generate_uat_docx.py
+update_alpha_doc.py
 deploy.sh
 set-env.ps1
 set-env.sh
