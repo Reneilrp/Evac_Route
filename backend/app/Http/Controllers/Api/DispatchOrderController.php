@@ -20,12 +20,22 @@ class DispatchOrderController extends Controller
      */
     public function index(Request $request)
     {
-        $orders = DispatchOrder::with([
+        $query = DispatchOrder::with([
             'shelter:id,name',
             'creator:id,name',
             'assignee:id,name',
             'items.inventoryItem:id,item_name,unit_type,total_stock,reserved_quantity',
-        ])
+        ]);
+
+        if ($request->has('archived')) {
+            if ($request->boolean('archived')) {
+                $query->whereNotNull('archived_at');
+            } else {
+                $query->whereNull('archived_at');
+            }
+        }
+
+        $orders = $query
             ->orderByRaw("CASE status WHEN 'pending' THEN 1 WHEN 'in_transit' THEN 2 WHEN 'delivered' THEN 3 WHEN 'cancelled' THEN 4 ELSE 5 END")
             ->orderBy('created_at', 'desc')
             ->get();
@@ -265,6 +275,38 @@ class DispatchOrderController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Dispatch order cancelled and reserved stock released.',
+        ]);
+    }
+
+    /**
+     * Archive a completed or cancelled dispatch order.
+     * Route: POST /api/dispatch-orders/{id}/archive
+     */
+    public function archive($id)
+    {
+        $order = DispatchOrder::findOrFail($id);
+        $order->update(['archived_at' => now()]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Dispatch order manifest archived successfully.',
+            'data' => $order,
+        ]);
+    }
+
+    /**
+     * Unarchive a dispatch order.
+     * Route: POST /api/dispatch-orders/{id}/unarchive
+     */
+    public function unarchive($id)
+    {
+        $order = DispatchOrder::findOrFail($id);
+        $order->update(['archived_at' => null]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Dispatch order restored to active manifests.',
+            'data' => $order,
         ]);
     }
 }

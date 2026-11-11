@@ -1,9 +1,12 @@
 import { useState, Fragment } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
+import ConfirmationModal from '../components/common/ConfirmationModal';
+import { showSuccess, showError } from '../utils/toast';
 import { 
   ShieldAlert, Search, Clock,
-  RefreshCw, FileSpreadsheet, ChevronDown, ChevronRight, Terminal
+  RefreshCw, FileSpreadsheet, ChevronDown, ChevronRight, Terminal,
+  Archive, ArchiveRestore
 } from 'lucide-react';
 
 export default function AuditLogs() {
@@ -12,18 +15,46 @@ export default function AuditLogs() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [page, setPage] = useState(1);
+  const [archiveFilter, setArchiveFilter] = useState('active');
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [expandedLogId, setExpandedLogId] = useState(null);
+  const queryClient = useQueryClient();
 
   const { data: auditData, isLoading, refetch } = useQuery({
-    queryKey: ['audit-logs', page, search, actionCategory, fromDate, toDate],
+    queryKey: ['audit-logs', page, search, actionCategory, fromDate, toDate, archiveFilter],
     queryFn: () => {
       const params = { page, per_page: 25 };
       if (search) params.search = search;
       if (actionCategory !== 'all') params.action = actionCategory;
       if (fromDate) params.from_date = fromDate;
       if (toDate) params.to_date = toDate;
+      if (archiveFilter === 'archived') params.archived = 'true';
       return api.get('/audit-logs', { params }).then(res => res.data.data);
     },
+  });
+
+  const archiveOldMutation = useMutation({
+    mutationFn: () => api.post('/audit-logs/archive-old', { days: 90 }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+      showSuccess(res.data?.message || 'Audit logs older than 90 days archived successfully.');
+      setIsArchiveModalOpen(false);
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to archive old audit logs.');
+      setIsArchiveModalOpen(false);
+    }
+  });
+
+  const unarchiveMutation = useMutation({
+    mutationFn: (id) => api.post(`/audit-logs/${id}/unarchive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+      showSuccess('Audit log restored to active trail.');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to restore audit log.');
+    }
   });
 
   const logs = auditData?.data || [];
@@ -119,23 +150,44 @@ export default function AuditLogs() {
 
   return (
     <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
-              <ShieldAlert className="text-purple-600 dark:text-purple-400" />
-              Security &amp; Operational Audit Trail
-            </h2>
-            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/30">
-              Admin Exclusive
-            </span>
-          </div>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-            Immutable tracking of operator credentials, fleet missions, relief stock alterations, and disaster configuration updates.
-          </p>
-        </div>
+      {/* Top Action Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-4">
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => { setArchiveFilter('active'); setPage(1); }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+              archiveFilter === 'active'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            <span>Active Audit Trail</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setArchiveFilter('archived'); setPage(1); }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+              archiveFilter === 'archived'
+                ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Archive size={14} />
+            <span>Archived Logs</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {archiveFilter === 'active' && (
+            <button
+              onClick={() => setIsArchiveModalOpen(true)}
+              className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+              title="Archive records older than 90 days to cold storage"
+            >
+              <Archive size={14} /> Archive Logs &gt; 90 Days
+            </button>
+          )}
           <button
             onClick={() => refetch()}
             className="p-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition shadow-xs cursor-pointer"
@@ -277,17 +329,30 @@ export default function AuditLogs() {
                           {log.ip_address || '127.0.0.1'}
                         </td>
                         <td className="py-3.5 px-6 text-right">
-                          {hasDetails ? (
-                            <button
-                              onClick={() => toggleExpand(log.id)}
-                              className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
-                            >
-                              <span>{isExpanded ? 'Hide Payload' : 'View Payload'}</span>
-                              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                            </button>
-                          ) : (
-                            <span className="text-gray-400 text-[10px] italic">No Payload</span>
-                          )}
+                          <div className="flex items-center justify-end gap-2">
+                            {(archiveFilter === 'archived' || log.archived_at) && (
+                              <button
+                                onClick={() => unarchiveMutation.mutate(log.id)}
+                                disabled={unarchiveMutation.isPending}
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                                title="Restore Log to Active Trail"
+                              >
+                                <ArchiveRestore size={13} />
+                                <span>Restore</span>
+                              </button>
+                            )}
+                            {hasDetails ? (
+                              <button
+                                onClick={() => toggleExpand(log.id)}
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
+                              >
+                                <span>{isExpanded ? 'Hide Payload' : 'View Payload'}</span>
+                                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                              </button>
+                            ) : (
+                              <span className="text-gray-400 text-[10px] italic">No Payload</span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                       {isExpanded && (
@@ -354,6 +419,16 @@ export default function AuditLogs() {
           </div>
         </div>
       </div>
+      <ConfirmationModal
+        isOpen={isArchiveModalOpen}
+        onClose={() => setIsArchiveModalOpen(false)}
+        onConfirm={() => archiveOldMutation.mutate()}
+        title="Archive Historical Audit Logs"
+        message="Are you sure you want to archive all audit log records older than 90 days? They will be preserved in cold storage and accessible via the Archived Logs tab."
+        confirmText="Archive Logs > 90 Days"
+        cancelText="Cancel"
+        confirmButtonClass="bg-amber-600 hover:bg-amber-700"
+      />
     </div>
   );
 }

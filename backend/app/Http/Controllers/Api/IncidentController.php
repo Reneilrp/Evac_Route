@@ -198,6 +198,38 @@ class IncidentController extends Controller
     }
 
     /**
+     * Admin/LGU Staff archives an incident report.
+     * Route: POST /api/incidents/{id}/archive (role:admin,lgu_staff)
+     */
+    public function adminArchive($id)
+    {
+        $incident = PendingIncident::findOrFail($id);
+        $incident->update(['archived_at' => now()]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Incident report archived successfully.',
+            'data' => $incident,
+        ]);
+    }
+
+    /**
+     * Admin/LGU Staff unarchives an incident report.
+     * Route: POST /api/incidents/{id}/unarchive (role:admin,lgu_staff)
+     */
+    public function adminUnarchive($id)
+    {
+        $incident = PendingIncident::findOrFail($id);
+        $incident->update(['archived_at' => null]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Incident report restored to active review queue.',
+            'data' => $incident,
+        ]);
+    }
+
+    /**
      * LGU fetches all pending incidents for review with frequency evaluation.
      * Route: GET /api/incidents  (role:admin,lgu_staff)
      */
@@ -213,8 +245,14 @@ class IncidentController extends Controller
                 ->update(['read_at' => now()]);
         }
 
-        $query = PendingIncident::with(['reporter:id,name,email', 'reporter.familyProfile:id,user_id,barangay,contact_number'])
-            ->where('status', $status);
+        if ($status === 'archived' || ($request->has('archived') && $request->boolean('archived'))) {
+            $query = PendingIncident::with(['reporter:id,name,email', 'reporter.familyProfile:id,user_id,barangay,contact_number'])
+                ->whereNotNull('archived_at');
+        } else {
+            $query = PendingIncident::with(['reporter:id,name,email', 'reporter.familyProfile:id,user_id,barangay,contact_number'])
+                ->where('status', $status)
+                ->whereNull('archived_at');
+        }
 
         if ($type === 'sos') {
             $query->where(function ($q) {

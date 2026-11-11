@@ -210,27 +210,8 @@ export default function DashboardOverview() {
 
   return (
     <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
-      {/* Dashboard Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-black text-gray-800 dark:text-slate-100 tracking-tight">
-              {activeAgency === 'cdrmo' ? 'CDRRMO Tactical Operations Dashboard' : 'CSWDO Relief & Camp Operations Dashboard'}
-            </h2>
-            <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border ${
-              activeAgency === 'cdrmo' 
-                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30' 
-                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
-            }`}>
-              {activeAgency === 'cdrmo' ? 'Disaster Command' : 'Social Welfare & Camp'}
-            </span>
-          </div>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-            {activeAgency === 'cdrmo' 
-              ? 'Real-time disaster hazard tracking, distress call queue, and Search & Rescue fleet readiness.' 
-              : 'Evacuation center occupancy, relief pack inventory, and camp intake monitoring.'}
-          </p>
-        </div>
+      {/* Top Action Bar */}
+      <div className="flex justify-end items-center mb-4">
         <button
           onClick={handleExportSitRep}
           disabled={!dashboardData}

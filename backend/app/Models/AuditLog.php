@@ -13,11 +13,13 @@ class AuditLog extends Model
         'ip_address',
         'old_values',
         'new_values',
+        'archived_at',
     ];
 
     protected $casts = [
         'old_values' => 'array',
         'new_values' => 'array',
+        'archived_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

@@ -17,25 +17,33 @@ class BroadcastAlertController extends Controller
     {
         $user = $request->user();
 
+        $query = BroadcastAlert::with('creator');
+
         if ($user && ($user->role === 'admin' || $user->role === 'lgu_staff')) {
-            // Admin and staff see all historical broadcasts
-            $alerts = BroadcastAlert::with('creator')->orderBy('created_at', 'desc')->get();
+            if ($request->has('archived')) {
+                if ($request->boolean('archived')) {
+                    $query->whereNotNull('archived_at');
+                } else {
+                    $query->whereNull('archived_at');
+                }
+            }
         } else {
-            // Residents see alerts targeted to them (All residents or matching their specific barangay)
+            // Residents only see active non-archived alerts
+            $query->whereNull('archived_at');
             $familyProfile = $user?->familyProfile;
             $barangay = $familyProfile?->barangay;
 
-            $query = BroadcastAlert::where('scope', 'all');
-
-            if ($barangay) {
-                $query->orWhere(function ($q) use ($barangay) {
-                    $q->where('scope', 'barangay')
-                        ->where('barangay', $barangay);
-                });
-            }
-
-            $alerts = $query->with('creator')->orderBy('created_at', 'desc')->get();
+            $query->where(function ($q) use ($barangay) {
+                $q->where('scope', 'all');
+                if ($barangay) {
+                    $q->orWhere(function ($sub) use ($barangay) {
+                        $sub->where('scope', 'barangay')->where('barangay', $barangay);
+                    });
+                }
+            });
         }
+
+        $alerts = $query->orderBy('created_at', 'desc')->get();
 
         return response()->json([
             'status' => 'success',
@@ -117,6 +125,38 @@ class BroadcastAlertController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Emergency warning revoked/deleted successfully.',
+        ], 200);
+    }
+
+    /**
+     * Archive an emergency broadcast warning.
+     * Route: POST /api/alerts/{id}/archive
+     */
+    public function archive($id)
+    {
+        $alert = BroadcastAlert::findOrFail($id);
+        $alert->update(['archived_at' => now()]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Emergency warning archived successfully.',
+            'data' => $alert->load('creator'),
+        ], 200);
+    }
+
+    /**
+     * Unarchive / Restore an emergency broadcast warning.
+     * Route: POST /api/alerts/{id}/unarchive
+     */
+    public function unarchive($id)
+    {
+        $alert = BroadcastAlert::findOrFail($id);
+        $alert->update(['archived_at' => null]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Emergency warning restored to active broadcasts.',
+            'data' => $alert->load('creator'),
         ], 200);
     }
 }

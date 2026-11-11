@@ -1,6 +1,6 @@
 import React from "react";
 import { useState } from 'react';
-import { Download, Search, Filter, Calendar, RotateCcw } from 'lucide-react';
+import { Download, Search, Filter, Calendar, RotateCcw, Archive, ArchiveRestore } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import ConfirmationModal from '../components/common/ConfirmationModal';
@@ -10,12 +10,14 @@ export default function EvacuationLogs() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [archiveFilter, setArchiveFilter] = useState('active');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [rationFilter, setRationFilter] = useState('all');
   const [shelterFilter, setShelterFilter] = useState('all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [isBatchArchiveModalOpen, setIsBatchArchiveModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // Debounce search string to limit API requests
@@ -50,7 +52,7 @@ export default function EvacuationLogs() {
   };
 
   const { data: logsData, isLoading } = useQuery({
-    queryKey: ['evacuation-logs', page, debouncedSearch, statusFilter, rationFilter, shelterFilter, fromDate, toDate],
+    queryKey: ['evacuation-logs', page, debouncedSearch, statusFilter, rationFilter, shelterFilter, fromDate, toDate, archiveFilter],
     queryFn: () => api.get('/evacuation-logs', {
       params: {
         page,
@@ -60,6 +62,7 @@ export default function EvacuationLogs() {
         shelter_id: shelterFilter !== 'all' ? shelterFilter : undefined,
         from_date: fromDate || undefined,
         to_date: toDate || undefined,
+        archived: archiveFilter === 'archived' ? 'true' : undefined,
       }
     }).then(res => res.data),
     refetchInterval: 10000, // Refresh every 10 seconds
@@ -73,6 +76,41 @@ export default function EvacuationLogs() {
     },
     onError: (err) => {
       showError(err.response?.data?.message || 'Failed to check out resident.');
+    }
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: (logId) => api.post(`/evacuation-logs/${logId}/archive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evacuation-logs'] });
+      showSuccess('Evacuation log archived.');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to archive log.');
+    }
+  });
+
+  const unarchiveMutation = useMutation({
+    mutationFn: (logId) => api.post(`/evacuation-logs/${logId}/unarchive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evacuation-logs'] });
+      showSuccess('Evacuation log restored.');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to restore log.');
+    }
+  });
+
+  const batchArchiveMutation = useMutation({
+    mutationFn: () => api.post('/evacuation-logs/archive-checked-out'),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['evacuation-logs'] });
+      showSuccess(res.data?.message || 'Checked-out logs archived successfully.');
+      setIsBatchArchiveModalOpen(false);
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to archive checked-out logs.');
+      setIsBatchArchiveModalOpen(false);
     }
   });
 
@@ -117,17 +155,50 @@ export default function EvacuationLogs() {
 
   return (
     <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Evacuation Logs &amp; Reports</h2>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Audit trail for shelter check-ins and relief allocation.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => { setArchiveFilter('active'); setPage(1); }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+              archiveFilter === 'active'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            <span>Active Evacuation Logs</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setArchiveFilter('archived'); setPage(1); }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+              archiveFilter === 'archived'
+                ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Archive size={14} />
+            <span>Archived Logs</span>
+          </button>
         </div>
-        <button 
-          onClick={handleExport}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition shadow-sm"
-        >
-          <Download size={18} /> Export to CSV
-        </button>
+
+        <div className="flex items-center gap-2">
+          {archiveFilter === 'active' && (
+            <button
+              onClick={() => setIsBatchArchiveModalOpen(true)}
+              className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+              title="Archive all records of residents who have already checked out"
+            >
+              <Archive size={14} /> Archive Checked-Out
+            </button>
+          )}
+          <button 
+            onClick={handleExport}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition shadow-sm cursor-pointer"
+          >
+            <Download size={18} /> Export to CSV
+          </button>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
@@ -307,19 +378,43 @@ export default function EvacuationLogs() {
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        {log.checked_out_at ? (
-                          <span className="text-gray-400 dark:text-slate-500 text-xs">
-                            Checked Out at {new Date(log.checked_out_at).toLocaleTimeString()}
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleCheckOut(log.id)}
-                            disabled={checkoutMutation.isPending}
-                            className="bg-red-50 hover:bg-red-500 hover:text-white dark:bg-red-950/40 dark:hover:bg-red-600 text-red-600 dark:text-red-400 text-xs font-bold px-3 py-1.5 rounded transition disabled:opacity-50"
-                          >
-                            Check Out
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {log.checked_out_at ? (
+                            <span className="text-gray-400 dark:text-slate-500 text-xs">
+                              Checked Out at {new Date(log.checked_out_at).toLocaleTimeString()}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleCheckOut(log.id)}
+                              disabled={checkoutMutation.isPending}
+                              className="bg-red-50 hover:bg-red-500 hover:text-white dark:bg-red-950/40 dark:hover:bg-red-600 text-red-600 dark:text-red-400 text-xs font-bold px-3 py-1.5 rounded transition disabled:opacity-50 cursor-pointer"
+                            >
+                              Check Out
+                            </button>
+                          )}
+
+                          {log.archived_at ? (
+                            <button
+                              onClick={() => unarchiveMutation.mutate(log.id)}
+                              disabled={unarchiveMutation.isPending}
+                              className="text-gray-400 hover:text-blue-500 p-1 hover:bg-blue-50 dark:hover:bg-slate-800 rounded transition cursor-pointer"
+                              title="Restore Log to Active Records"
+                            >
+                              <ArchiveRestore size={15} />
+                            </button>
+                          ) : (
+                            log.checked_out_at && (
+                              <button
+                                onClick={() => archiveMutation.mutate(log.id)}
+                                disabled={archiveMutation.isPending}
+                                className="text-gray-400 hover:text-amber-500 p-1 hover:bg-amber-50 dark:hover:bg-slate-800 rounded transition cursor-pointer"
+                                title="Archive Checked-Out Record"
+                              >
+                                <Archive size={15} />
+                              </button>
+                            )
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -363,6 +458,16 @@ export default function EvacuationLogs() {
         confirmText="Check-Out"
         cancelText="Cancel"
         confirmButtonClass="bg-red-600 hover:bg-red-700"
+      />
+      <ConfirmationModal
+        isOpen={isBatchArchiveModalOpen}
+        onClose={() => setIsBatchArchiveModalOpen(false)}
+        onConfirm={() => batchArchiveMutation.mutate()}
+        title="Archive Checked-Out Logs"
+        message="Are you sure you want to archive all evacuation records for residents who have already checked out? They will be moved to the Archived Logs tab to keep the active roster clean."
+        confirmText="Archive Checked-Out"
+        cancelText="Cancel"
+        confirmButtonClass="bg-amber-600 hover:bg-amber-700"
       />
     </div>
   );

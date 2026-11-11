@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, ClipboardList, Plus, AlertCircle, X, Trash2, Truck, CheckCircle, Clock, MapPin, Printer, ShieldAlert, Sparkles } from 'lucide-react';
+import { Package, ClipboardList, Plus, AlertCircle, X, Trash2, Truck, CheckCircle, Clock, MapPin, Printer, ShieldAlert, Sparkles, Archive, ArchiveRestore } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -355,6 +355,7 @@ export default function InventoryManager() {
   const [adjustingItem, setAdjustingItem] = useState(null);
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [printingOrder, setPrintingOrder] = useState(null);
+  const [dispatchArchiveFilter, setDispatchArchiveFilter] = useState('active');
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -435,8 +436,12 @@ export default function InventoryManager() {
 
   // Dispatch Orders
   const { data: dispatchData, isLoading: isLoadingDispatch } = useQuery({
-    queryKey: ['dispatch-orders'],
-    queryFn: () => api.get('/dispatch-orders').then(r => r.data),
+    queryKey: ['dispatch-orders', dispatchArchiveFilter],
+    queryFn: () => api.get('/dispatch-orders', {
+      params: {
+        archived: dispatchArchiveFilter === 'archived' ? 'true' : undefined
+      }
+    }).then(r => r.data),
     refetchInterval: 30000,
   });
   const dispatchOrders = dispatchData?.data ?? [];
@@ -457,6 +462,24 @@ export default function InventoryManager() {
       showSuccess('Dispatch order cancelled and reserved stock released.');
     },
     onError: (err) => showError(err?.response?.data?.message || 'Could not cancel this order.'),
+  });
+
+  const archiveDispatchMutation = useMutation({
+    mutationFn: (id) => api.post(`/dispatch-orders/${id}/archive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
+      showSuccess('Dispatch order archived.');
+    },
+    onError: (err) => showError(err?.response?.data?.message || 'Could not archive dispatch order.'),
+  });
+
+  const unarchiveDispatchMutation = useMutation({
+    mutationFn: (id) => api.post(`/dispatch-orders/${id}/unarchive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
+      showSuccess('Dispatch order restored to active list.');
+    },
+    onError: (err) => showError(err?.response?.data?.message || 'Could not restore dispatch order.'),
   });
 
   const handleAddStock = (newItem) => {
@@ -490,19 +513,6 @@ export default function InventoryManager() {
           onCreate={(data) => createTemplateMutation.mutateAsync(data)}
         />
       )}
-
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">
-            {isCSWDO ? 'Relief Logistics & Inventory' : 'Central Relief Inventory Monitoring'}
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {isCSWDO
-              ? 'Manage CSWDO relief supply stocks, ration formulas, and dispatch manifests.'
-              : 'Situational awareness of CSWDO relief supplies, active ration formulas, and delivery dispatches.'}
-          </p>
-        </div>
-      </div>
 
       {!isCSWDO && (
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3.5 text-blue-900 shadow-sm">
@@ -807,15 +817,43 @@ export default function InventoryManager() {
           )}
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50/50">
               <div>
-                <h3 className="font-semibold text-gray-700">Delivery Dispatch Orders</h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="font-semibold text-gray-700">Delivery Dispatch Orders</h3>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setDispatchArchiveFilter('active')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer border ${
+                        dispatchArchiveFilter === 'active'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Truck size={12} />
+                      <span>Active</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDispatchArchiveFilter('archived')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer border ${
+                        dispatchArchiveFilter === 'archived'
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Archive size={12} />
+                      <span>Archived</span>
+                    </button>
+                  </div>
+                </div>
                 <p className="text-xs text-gray-400 mt-0.5">Stock is reserved upon creation to prevent over-allocation, and deducted from physical inventory upon delivery confirmation.</p>
               </div>
               {isCSWDO ? (
                 <button
                   onClick={() => setShowDispatchModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm cursor-pointer"
                 >
                   <Plus size={16} /> New Dispatch Order
                 </button>
@@ -890,7 +928,7 @@ export default function InventoryManager() {
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => setPrintingOrder(order)}
-                                className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded font-bold flex items-center gap-1 transition shadow-xs"
+                                className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded font-bold flex items-center gap-1 transition shadow-xs cursor-pointer"
                                 title="Print Official Requisition Manifest"
                               >
                                 <Printer size={13} /> Manifest
@@ -898,11 +936,32 @@ export default function InventoryManager() {
                               {isCSWDO && ['pending', 'in_transit'].includes(order.status) && (
                                 <button
                                   onClick={() => { if (window.confirm(`Cancel order #${order.id} and release reserved stock?`)) cancelDispatchMutation.mutate(order.id); }}
-                                  className="text-xs text-red-500 hover:text-red-700 font-semibold flex items-center gap-1 transition p-1"
+                                  className="text-xs text-red-500 hover:text-red-700 font-semibold flex items-center gap-1 transition p-1 cursor-pointer"
                                   title="Cancel Order & Release Stock"
                                 >
                                   <X size={13} /> Cancel
                                 </button>
+                              )}
+                              {['delivered', 'cancelled'].includes(order.status) && (
+                                order.archived_at || dispatchArchiveFilter === 'archived' ? (
+                                  <button
+                                    onClick={() => unarchiveDispatchMutation.mutate(order.id)}
+                                    disabled={unarchiveDispatchMutation.isPending}
+                                    className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 transition p-1 cursor-pointer"
+                                    title="Restore Manifest to Active List"
+                                  >
+                                    <ArchiveRestore size={13} /> Restore
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => archiveDispatchMutation.mutate(order.id)}
+                                    disabled={archiveDispatchMutation.isPending}
+                                    className="text-xs text-amber-600 hover:text-amber-800 font-semibold flex items-center gap-1 transition p-1 cursor-pointer"
+                                    title="Archive Manifest"
+                                  >
+                                    <Archive size={13} /> Archive
+                                  </button>
+                                )
                               )}
                             </div>
                           </td>

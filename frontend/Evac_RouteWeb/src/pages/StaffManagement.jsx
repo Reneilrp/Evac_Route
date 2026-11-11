@@ -333,35 +333,8 @@ export default function StaffManagement() {
 
   return (
     <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
-      {/* Main Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">
-              {agencyScope === 'cdrmo' 
-                ? 'CDRRMO Staff & Rescue Operator Roster' 
-                : agencyScope === 'cswdo'
-                ? 'CSWDO Camp & Logistics Operator Roster'
-                : 'Staff & Operator Management'}
-            </h2>
-            <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border ${
-              agencyScope === 'cdrmo'
-                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30'
-                : agencyScope === 'cswdo'
-                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
-                : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30'
-            }`}>
-              {agencyScope === 'cdrmo' ? 'CDRRMO Tactical' : agencyScope === 'cswdo' ? 'CSWDO Social Welfare' : 'All Divisions'}
-            </span>
-          </div>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-            {agencyScope === 'cdrmo' 
-              ? 'Register and manage DRRM command dispatchers and field Search & Rescue fleet operators.' 
-              : agencyScope === 'cswdo'
-              ? 'Register and manage CSWDO warehouse relief officers and shelter gate scanner marshals.'
-              : 'Register and manage dedicated operators across CDRRMO Rescue, Shelter Scanners, and Logistics.'}
-          </p>
-        </div>
+      {/* Top Action Bar */}
+      <div className="flex justify-end items-center mb-4">
         <button 
           onClick={openAddModal}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition shadow-xs cursor-pointer"

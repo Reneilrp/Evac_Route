@@ -31,6 +31,7 @@ class RescueMission extends Model
         'dispatched_at',
         'arrived_at',
         'completed_at',
+        'archived_at',
         'notes',
     ];
 
@@ -41,6 +42,7 @@ class RescueMission extends Model
         'dispatched_at' => 'datetime',
         'arrived_at' => 'datetime',
         'completed_at' => 'datetime',
+        'archived_at' => 'datetime',
     ];
 
     public function incident()

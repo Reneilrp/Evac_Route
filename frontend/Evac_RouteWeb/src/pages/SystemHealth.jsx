@@ -62,37 +62,22 @@ export default function SystemHealth() {
 
   return (
     <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-500/20">
-            <Activity size={26} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-wide">
-              System Health &amp; Infrastructure Telemetry
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-slate-400">
-              Real-time monitoring of database query latency, WebSockets, and server runtime
-            </p>
-          </div>
-        </div>
+      {/* Top Action Bar */}
+      <div className="flex justify-end items-center gap-3 flex-wrap bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm">
+        <button
+          onClick={() => {
+            refetch();
+            showSuccess("Diagnostics refreshed.");
+          }}
+          disabled={isRefetching || isLoading}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-lg border border-gray-200 dark:border-slate-700 font-semibold text-sm transition"
+        >
+          <RefreshCw size={16} className={isRefetching ? 'animate-spin' : ''} />
+          Run Ping
+        </button>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={() => {
-              refetch();
-              showSuccess("Diagnostics refreshed.");
-            }}
-            disabled={isRefetching || isLoading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-lg border border-gray-200 dark:border-slate-700 font-semibold text-sm transition"
-          >
-            <RefreshCw size={16} className={isRefetching ? 'animate-spin' : ''} />
-            Run Ping
-          </button>
-
-          <button
-            onClick={handleClearCache}
+        <button
+          onClick={handleClearCache}
             disabled={isFlushingCache}
             className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-lg font-bold text-sm transition"
           >
@@ -109,7 +94,6 @@ export default function SystemHealth() {
             Export SQL Backup
           </button>
         </div>
-      </div>
 
       {/* Grid: 3 Core Health Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

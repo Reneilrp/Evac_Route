@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { Archive, ArchiveRestore } from 'lucide-react';
 import api from '../services/api';
 import { getNearestBarangay } from '../utils/mapHelper';
 
@@ -25,7 +26,7 @@ function getBarangayDisplay(incident) {
     : 'Zamboanga City';
 }
 
-const STATUS_TABS = ['pending', 'approved', 'rejected'];
+const STATUS_TABS = ['pending', 'approved', 'rejected', 'archived'];
 
 const HAZARD_COLORS = {
   flood: 'bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50',
@@ -78,6 +79,20 @@ export default function IncidentReviewQueue() {
     },
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: (id) => api.post(`/incidents/${id}/archive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+    },
+  });
+
+  const unarchiveMutation = useMutation({
+    mutationFn: (id) => api.post(`/incidents/${id}/unarchive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+    },
+  });
+
   const rawIncidents = data?.data ?? data ?? [];
   const incidents = Array.isArray(rawIncidents)
     ? rawIncidents.filter(inc => !inc?.name?.startsWith('EMERGENCY SOS:'))
@@ -85,11 +100,6 @@ export default function IncidentReviewQueue() {
 
   return (
     <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Incident Review Queue</h1>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Review, evaluate recurrence, and validate resident-submitted field reports</p>
-      </div>
-
       {/* Tabs */}
       <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-slate-800">
         {STATUS_TABS.map(tab => (
@@ -310,6 +320,34 @@ export default function IncidentReviewQueue() {
 
                 {activeTab !== 'pending' && incident.review_note && (
                   <p className="text-xs text-gray-400 dark:text-slate-500 italic border-t border-gray-100 dark:border-slate-800 pt-2">Note: {incident.review_note}</p>
+                )}
+
+                {(activeTab === 'approved' || activeTab === 'rejected') && (
+                  <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex justify-end">
+                    <button
+                      onClick={() => archiveMutation.mutate(incident.id)}
+                      disabled={archiveMutation.isPending}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition border border-amber-200 dark:border-amber-800/50 cursor-pointer disabled:opacity-50"
+                      title="Archive this reviewed report"
+                    >
+                      <Archive size={13} />
+                      <span>Archive</span>
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'archived' && (
+                  <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex justify-end">
+                    <button
+                      onClick={() => unarchiveMutation.mutate(incident.id)}
+                      disabled={unarchiveMutation.isPending}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition border border-blue-200 dark:border-blue-800/50 cursor-pointer disabled:opacity-50"
+                      title="Restore report to active queue"
+                    >
+                      <ArchiveRestore size={13} />
+                      <span>Restore</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

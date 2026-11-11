@@ -14,6 +14,11 @@ class BroadcastAlert extends Model
         'scope',
         'barangay',
         'created_by',
+        'archived_at',
+    ];
+
+    protected $casts = [
+        'archived_at' => 'datetime',
     ];
 
     /**

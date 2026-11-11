@@ -9,13 +9,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'created_by', 'assigned_to', 'shelter_id',
-    'status', 'notes', 'departed_at', 'delivered_at',
+    'status', 'notes', 'departed_at', 'delivered_at', 'archived_at',
 ])]
 class DispatchOrder extends Model
 {
     protected $casts = [
         'departed_at' => 'datetime',
         'delivered_at' => 'datetime',
+        'archived_at' => 'datetime',
     ];
 
     public function creator(): BelongsTo

@@ -67,6 +67,7 @@ import AuditLogs from '../AuditLogs';
 import ResidentRegistry from '../ResidentRegistry';
 import MapDashboard, { FloatingMapSearch, UnifiedMapFilterSearch } from '../MapDashboard';
 import RescueDispatch, { DispatchUnitModal } from '../RescueDispatch';
+import RescueVehicles, { VehicleModal } from '../RescueVehicles';
 import EmergencyAlerts from '../EmergencyAlerts';
 import InventoryManager, { AddStockModal } from '../InventoryManager';
 import IncidentReviewQueue from '../IncidentReviewQueue';
@@ -101,14 +102,13 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
   it('renders StaffManagement without throwing typeError or renderError', () => {
     expect(() => {
       const html = renderWithProviders(<StaffManagement />);
-      expect(html).toContain('CDRRMO Staff &amp; Rescue Operator Roster');
+      expect(html).toContain('Register Rescue / DRRM Operator');
     }).not.toThrow();
   });
 
   it('renders EvacuationLogs with date filters without throwing', () => {
     expect(() => {
       const html = renderWithProviders(<EvacuationLogs />);
-      expect(html).toContain('Evacuation Logs &amp; Reports');
       expect(html).toContain('Export to CSV');
     }).not.toThrow();
   });
@@ -116,7 +116,7 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
   it('renders SystemHealth with responsive styling and light/dark theme classes', () => {
     expect(() => {
       const html = renderWithProviders(<SystemHealth />);
-      expect(html).toContain('System Health &amp; Infrastructure Telemetry');
+      expect(html).toContain('Run Ping');
       expect(html).toContain('Database Engine');
       expect(html).toContain('WebSocket Broadcast');
     }).not.toThrow();
@@ -125,7 +125,6 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
   it('renders AuditLogs with inline table structure without throwing', () => {
     expect(() => {
       const html = renderWithProviders(<AuditLogs />);
-      expect(html).toContain('Security &amp; Operational Audit Trail');
       expect(html).toContain('Export Audit Log (CSV)');
     }).not.toThrow();
   });
@@ -133,7 +132,6 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
   it('renders ResidentRegistry with Export to CSV button without throwing', () => {
     expect(() => {
       const html = renderWithProviders(<ResidentRegistry />);
-      expect(html).toContain('Resident History &amp; Registry');
       expect(html).toContain('Export to CSV');
     }).not.toThrow();
   });
@@ -160,14 +158,19 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
   it('renders RescueDispatch without throwing', () => {
     expect(() => {
       const html = renderWithProviders(<RescueDispatch />);
-      expect(html).toContain('CDRRMO Rescue Dispatch Center');
+      expect(html).toContain('Rescue Fleet');
     }).not.toThrow();
   });
 
-  it('renders EmergencyAlerts with alphabetical barangays without throwing', () => {
+  it('renders EmergencyAlerts with alphabetical barangays and severity filters without throwing', () => {
     expect(() => {
       const html = renderWithProviders(<EmergencyAlerts />);
-      expect(html).toContain('Emergency Warnings Dispatcher');
+      expect(html).toContain('Broadcast New Warning');
+      expect(html).toContain('Critical');
+      expect(html).toContain('Warning');
+      expect(html).toContain('Info');
+      expect(html).toContain('Severity');
+      expect(html).toContain('Search warnings');
     }).not.toThrow();
   });
 
@@ -191,14 +194,58 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
   it('renders InventoryManager with Edit buttons and delivery presets without throwing', () => {
     expect(() => {
       const html = renderWithProviders(<InventoryManager />);
-      expect(html).toContain('Central Relief Inventory');
+      expect(html).toContain('CDRRMO Situational View');
     }).not.toThrow();
   });
 
   it('renders IncidentReviewQueue without throwing', () => {
     expect(() => {
       const html = renderWithProviders(<IncidentReviewQueue />);
-      expect(html).toContain('Incident Review Queue');
+      expect(html).toContain('pending');
+      expect(html).toContain('approved');
+    }).not.toThrow();
+  });
+
+  it('renders RescueVehicles fleet management without throwing', () => {
+    expect(() => {
+      const html = renderWithProviders(<RescueVehicles />);
+      expect(html).toContain('Fleet Assets');
+      expect(html).toContain('Register Rescue Vehicle');
+      expect(html).toContain('All Types');
+    }).not.toThrow();
+  });
+
+  it('renders VehicleModal with officer dropdown and correctly assigns staff', () => {
+    const mockStaff = [
+      { id: 101, name: 'Officer Juan Dela Cruz', role: 'lgu_staff', operator_type: 'rescue_leader', email: 'juan@zamboanga.gov.ph' },
+      { id: 102, name: 'Captain Maria Santos', role: 'lgu_staff', operator_type: 'rescue_leader', email: 'maria@zamboanga.gov.ph' },
+    ];
+
+    const initialData = {
+      id: 5,
+      name: 'Rescue Boat Charlie',
+      call_sign: 'BOAT-CHARLIE',
+      unit_type: 'water_rescue',
+      capacity_persons: 8,
+      contact_number: '0917-BOAT-03',
+      assigned_personnel_id: 101,
+    };
+
+    expect(() => {
+      const html = renderWithProviders(
+        <VehicleModal
+          title="Edit Rescue Vehicle Specifications"
+          initialData={initialData}
+          staff={mockStaff}
+          onClose={jest.fn()}
+          onSuccess={jest.fn()}
+        />
+      );
+      expect(html).toContain('Edit Rescue Vehicle Specifications');
+      expect(html).toContain('BOAT-CHARLIE');
+      expect(html).toContain('Officer Juan Dela Cruz');
+      expect(html).toContain('Captain Maria Santos');
+      expect(html).toContain('Update Vehicle');
     }).not.toThrow();
   });
 
@@ -354,7 +401,6 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
   it('renders CSWDO ShelterManagement with capacity and ration tabs without throwing', () => {
     expect(() => {
       const html = renderWithProviders(<ShelterManagement />);
-      expect(html).toContain('Shelter Management');
       expect(html).toContain('Shelters &amp; Capacities');
       expect(html).toContain('Ration Planning &amp; Buffers');
     }).not.toThrow();
@@ -363,7 +409,7 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
   it('renders SituationReport with DROMIC summaries and print button without throwing', () => {
     expect(() => {
       const html = renderWithProviders(<SituationReport />);
-      expect(html).toContain('NDRRMC / DROMIC Situation Report (SitRep)');
+      expect(html).toContain('Print Official SitRep');
       expect(html).toContain('Print');
     }).not.toThrow();
   });

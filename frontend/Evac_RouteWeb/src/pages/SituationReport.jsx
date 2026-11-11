@@ -29,44 +29,26 @@ export default function SituationReport() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 print:p-0 print:m-0 print:max-w-none print:text-black">
       {/* Action Header - Hidden during print */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl print:hidden">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-purple-500/20 text-purple-400 rounded-lg border border-purple-500/30">
-              <FileText size={26} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-white tracking-wide">
-                NDRRMC / DROMIC Situation Report (SitRep)
-              </h1>
-              <p className="text-sm text-gray-400">
-                Official Consolidated Inter-Agency Disaster Monitoring &amp; Operations Report
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="flex justify-end items-center gap-3 bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-xl print:hidden">
+        <button
+          onClick={() => {
+            refetch();
+            showSuccess("Report refreshed with latest emergency data.");
+          }}
+          disabled={isRefetching || isLoading}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg border border-gray-600 font-semibold text-xs transition cursor-pointer"
+        >
+          <RefreshCw size={14} className={isRefetching ? 'animate-spin' : ''} />
+          Refresh
+        </button>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              refetch();
-              showSuccess("Report refreshed with latest emergency data.");
-            }}
-            disabled={isRefetching || isLoading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg border border-gray-600 font-semibold text-sm transition"
-          >
-            <RefreshCw size={16} className={isRefetching ? 'animate-spin' : ''} />
-            Refresh
-          </button>
-
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-sm shadow-lg shadow-purple-600/30 transition"
-          >
-            <Printer size={16} />
-            Print Official SitRep
-          </button>
-        </div>
+        <button
+          onClick={handlePrint}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-xs shadow-lg shadow-purple-600/30 transition cursor-pointer"
+        >
+          <Printer size={14} />
+          Print Official SitRep
+        </button>
       </div>
 
       {/* Official Government Print Header */}

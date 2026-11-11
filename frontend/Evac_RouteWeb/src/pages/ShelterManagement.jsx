@@ -171,13 +171,6 @@ export default function ShelterManagement() {
         />
       )}
       
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Shelter Management</h2>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Manage physical locations, capacities, and monitor logistical requirements.</p>
-        </div>
-      </div>
-
       {/* Tabs Switcher */}
       <div className="flex space-x-1 bg-gray-200 dark:bg-slate-900 p-1 rounded-lg w-fit mb-6">
         <button

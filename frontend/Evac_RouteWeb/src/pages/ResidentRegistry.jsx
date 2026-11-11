@@ -94,27 +94,17 @@ export default function ResidentRegistry() {
         />
       )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">
-            Resident History &amp; Registry
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-            Directory of evacuees, total checked-in counts, and relief ration history.
-          </p>
+      <div className="flex justify-end items-center gap-3 mb-4">
+        <div className="text-sm text-gray-500 dark:text-slate-400 hidden sm:flex items-center gap-2">
+          <Calendar size={16} /> {today}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="text-sm text-gray-500 dark:text-slate-400 hidden sm:flex items-center gap-2">
-            <Calendar size={16} /> {today}
-          </div>
-          <button
-            onClick={handleExportCSV}
-            disabled={!residents.length}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition shadow-sm text-sm disabled:opacity-50 cursor-pointer"
-          >
-            <Download size={16} /> Export to CSV
-          </button>
-        </div>
+        <button
+          onClick={handleExportCSV}
+          disabled={!residents.length}
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition shadow-sm text-sm disabled:opacity-50 cursor-pointer"
+        >
+          <Download size={16} /> Export to CSV
+        </button>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">

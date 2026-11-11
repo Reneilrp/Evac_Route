@@ -5,12 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['family_profile_id', 'shelter_id', 'checked_in_at', 'checked_out_at', 'recorded_headcount', 'ration_claimed', 'checkin_method', 'checkin_latitude', 'checkin_longitude'])]
+#[Fillable(['family_profile_id', 'shelter_id', 'checked_in_at', 'checked_out_at', 'archived_at', 'recorded_headcount', 'ration_claimed', 'checkin_method', 'checkin_latitude', 'checkin_longitude'])]
 class EvacuationLog extends Model
 {
     protected $casts = [
         'checked_in_at' => 'datetime',
         'checked_out_at' => 'datetime',
+        'archived_at' => 'datetime',
         'ration_claimed' => 'boolean',
         'claimed_ration_items' => 'array',
     ];

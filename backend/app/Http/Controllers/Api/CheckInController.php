@@ -508,6 +508,14 @@ class CheckInController extends Controller
             $query->whereDate('checked_in_at', '<=', $request->query('to_date'));
         }
 
+        if ($request->has('archived')) {
+            if ($request->boolean('archived')) {
+                $query->whereNotNull('archived_at');
+            } else {
+                $query->whereNull('archived_at');
+            }
+        }
+
         $logs = $query->orderBy('checked_in_at', 'desc')->paginate(50);
 
         return response()->json([
@@ -633,6 +641,55 @@ class CheckInController extends Controller
                 'message' => $e->getMessage(),
             ], 400);
         }
+    }
+
+    /**
+     * Archive an evacuation log record.
+     * Route: POST /api/evacuation-logs/{id}/archive
+     */
+    public function archiveLog($id)
+    {
+        $log = EvacuationLog::findOrFail($id);
+        $log->update(['archived_at' => now()]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Evacuation log record archived successfully.',
+            'data' => $log,
+        ], 200);
+    }
+
+    /**
+     * Unarchive an evacuation log record.
+     * Route: POST /api/evacuation-logs/{id}/unarchive
+     */
+    public function unarchiveLog($id)
+    {
+        $log = EvacuationLog::findOrFail($id);
+        $log->update(['archived_at' => null]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Evacuation log record restored to active records.',
+            'data' => $log,
+        ], 200);
+    }
+
+    /**
+     * Batch archive all checked-out evacuation logs.
+     * Route: POST /api/evacuation-logs/archive-checked-out
+     */
+    public function archiveCheckedOutLogs()
+    {
+        $count = EvacuationLog::whereNotNull('checked_out_at')
+            ->whereNull('archived_at')
+            ->update(['archived_at' => now()]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Archived {$count} checked-out evacuation records.",
+            'data' => ['archived_count' => $count],
+        ], 200);
     }
 
     /**

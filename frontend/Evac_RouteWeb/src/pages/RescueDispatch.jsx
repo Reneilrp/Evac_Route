@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LifeBuoy, Truck, Phone, Users, Clock, AlertTriangle,
-  CheckCircle2, MapPin, Send, X, RefreshCw, Radio, Plus, Sparkles
+  CheckCircle2, MapPin, Send, X, RefreshCw, Radio, Plus, Sparkles,
+  Archive, ArchiveRestore
 } from 'lucide-react';
 import api from '../services/api';
 import echo from '../services/echo';
@@ -179,8 +180,39 @@ export default function RescueDispatch() {
   const shelters = sheltersData ?? [];
   const staff = staffData ?? [];
 
-  const activeMissions = missions.filter(m => ['dispatched', 'en_route', 'on_scene', 'transporting'].includes(m.status));
-  const completedMissions = missions.filter(m => ['completed', 'staged_at_assembly', 'aborted'].includes(m.status));
+  const [historyArchiveView, setHistoryArchiveView] = useState('active'); // 'active' | 'archived'
+
+  const activeMissions = missions.filter(m => !m.archived_at && ['dispatched', 'en_route', 'on_scene', 'transporting'].includes(m.status));
+  const completedMissions = missions.filter(m => !m.archived_at && ['completed', 'staged_at_assembly', 'aborted'].includes(m.status));
+  const archivedMissions = missions.filter(m => !!m.archived_at);
+
+  // Archive Mutations
+  const archiveMissionMutation = useMutation({
+    mutationFn: (id) => api.post(`/rescue/missions/${id}/archive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rescue-missions'] });
+      showSuccess('Mission archived successfully.');
+    },
+    onError: () => showError('Failed to archive mission.'),
+  });
+
+  const unarchiveMissionMutation = useMutation({
+    mutationFn: (id) => api.post(`/rescue/missions/${id}/unarchive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rescue-missions'] });
+      showSuccess('Mission restored from archive.');
+    },
+    onError: () => showError('Failed to restore mission.'),
+  });
+
+  const batchArchiveCompletedMutation = useMutation({
+    mutationFn: () => api.post('/rescue/missions/archive-completed'),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['rescue-missions'] });
+      showSuccess(res.data.message || 'Completed missions archived.');
+    },
+    onError: () => showError('Failed to batch archive missions.'),
+  });
 
   // Real-time WebSocket Listeners
   useEffect(() => {
@@ -228,50 +260,37 @@ export default function RescueDispatch() {
 
   return (
     <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="bg-red-600 text-white p-2 rounded-xl shadow-sm">
-              <LifeBuoy size={24} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-gray-900 dark:text-slate-100 tracking-tight">CDRRMO Rescue Dispatch Center</h1>
-              <p className="text-xs text-gray-500 dark:text-slate-400">Search, Rescue &amp; Retrieval (SRR) Fleet Coordination</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              refetchUnits();
-              refetchMissions();
-              refetchIncidents();
-            }}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg text-xs font-bold border border-gray-200 dark:border-slate-700 shadow-sm transition"
-          >
-            <RefreshCw size={14} /> Refresh
-          </button>
-          <button
-            onClick={() => setIsAddUnitOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow transition"
-          >
-            <Plus size={14} /> Register Rescue Vehicle
-          </button>
-          <button
-            onClick={() => setIsHotlineModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer"
-          >
-            <Phone size={14} /> Log 911 / Call-In
-          </button>
-          <button
-            onClick={() => setDispatchModalData({})}
-            className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow transition"
-          >
-            <Send size={14} /> Direct Dispatch Mission
-          </button>
-        </div>
+      {/* Action Toolbar */}
+      <div className="flex flex-wrap justify-end items-center gap-2 mb-4">
+        <button
+          onClick={() => {
+            refetchUnits();
+            refetchMissions();
+            refetchIncidents();
+          }}
+          className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg text-xs font-bold border border-gray-200 dark:border-slate-700 shadow-sm transition"
+        >
+          <RefreshCw size={14} /> Refresh
+        </button>
+        <button
+          onClick={() => navigate('/admin/rescue-vehicles')}
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer"
+          title="Open Rescue Fleet and Vehicle Management Console"
+        >
+          <Truck size={14} /> Rescue Fleet
+        </button>
+        <button
+          onClick={() => setIsHotlineModalOpen(true)}
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer"
+        >
+          <Phone size={14} /> Log 911 / Call-In
+        </button>
+        <button
+          onClick={() => setDispatchModalData({})}
+          className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow transition"
+        >
+          <Send size={14} /> Direct Dispatch Mission
+        </button>
       </div>
 
       {/* Fleet Availability Cards */}
@@ -618,12 +637,20 @@ export default function RescueDispatch() {
                 Active roster of rescue boats, ambulances, and 4x4 trucks with assigned operators.
               </p>
             </div>
-            <button
-              onClick={() => setIsAddUnitOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
-            >
-              <Plus size={14} /> Add Vehicle to Fleet
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/admin/rescue-vehicles')}
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                <Truck size={14} /> Manage Fleet Registry →
+              </button>
+              <button
+                onClick={() => setIsAddUnitOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+              >
+                <Plus size={14} /> Register Vehicle
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -723,8 +750,39 @@ export default function RescueDispatch() {
       {/* TAB 4: Completed Mission Logs */}
       {activeTab === 'history' && (
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/50">
-            <h3 className="font-bold text-sm text-gray-800 dark:text-slate-100">Historical Search &amp; Rescue Records</h3>
+          <div className="p-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setHistoryArchiveView('active')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  historyArchiveView === 'active'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200'
+                }`}
+              >
+                Active Completed ({completedMissions.length})
+              </button>
+              <button
+                onClick={() => setHistoryArchiveView('archived')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  historyArchiveView === 'archived'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200'
+                }`}
+              >
+                <Archive size={12} /> Archived Missions ({archivedMissions.length})
+              </button>
+            </div>
+
+            {historyArchiveView === 'active' && completedMissions.length > 0 && (
+              <button
+                onClick={() => batchArchiveCompletedMutation.mutate()}
+                disabled={batchArchiveCompletedMutation.isPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 rounded-lg text-xs font-bold transition cursor-pointer"
+              >
+                <Archive size={13} /> Archive All Completed
+              </button>
+            )}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
@@ -736,39 +794,69 @@ export default function RescueDispatch() {
                   <th className="p-3">Destination / Handover</th>
                   <th className="p-3">Completed At</th>
                   <th className="p-3">Status</th>
+                  <th className="p-3 text-right">Archive Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-                {completedMissions.map(m => (
-                  <tr key={m.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition">
-                    <td className="p-3 font-mono font-bold text-blue-900 dark:text-blue-300">{m.control_no}</td>
-                    <td className="p-3 font-semibold text-gray-800 dark:text-slate-200">{m.rescue_unit?.name}</td>
-                    <td className="p-3 text-gray-700 dark:text-slate-300">{m.victim_name} ({m.headcount} persons)</td>
-                    <td className="p-3 text-gray-700 dark:text-slate-300">
-                      {m.status === 'staged_at_assembly' ? (
-                        <span className="text-teal-700 dark:text-teal-400 font-semibold flex items-center gap-1">
-                          🌊 {m.staging_point?.name || 'Shoreline Staging Point'}
-                        </span>
-                      ) : (
-                        <span>{m.target_shelter?.name || 'Turned Over'}</span>
-                      )}
-                    </td>
-                    <td className="p-3 text-gray-500 dark:text-slate-400">
-                      {m.completed_at ? new Date(m.completed_at).toLocaleString('en-PH') : '—'}
-                    </td>
-                    <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        m.status === 'completed'
-                          ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
-                          : m.status === 'staged_at_assembly'
-                          ? 'bg-teal-100 dark:bg-teal-950/70 text-teal-800 dark:text-teal-300'
-                          : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400'
-                      }`}>
-                        {m.status === 'staged_at_assembly' ? 'STAGED (HANDOVER)' : m.status.toUpperCase()}
-                      </span>
+                {(historyArchiveView === 'active' ? completedMissions : archivedMissions).length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-gray-400 dark:text-slate-500 font-medium">
+                      {historyArchiveView === 'active'
+                        ? 'No active completed mission logs found.'
+                        : 'No archived rescue missions.'}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  (historyArchiveView === 'active' ? completedMissions : archivedMissions).map(m => (
+                    <tr key={m.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition">
+                      <td className="p-3 font-mono font-bold text-blue-900 dark:text-blue-300">{m.control_no}</td>
+                      <td className="p-3 font-semibold text-gray-800 dark:text-slate-200">{m.rescue_unit?.name}</td>
+                      <td className="p-3 text-gray-700 dark:text-slate-300">{m.victim_name} ({m.headcount} persons)</td>
+                      <td className="p-3 text-gray-700 dark:text-slate-300">
+                        {m.status === 'staged_at_assembly' ? (
+                          <span className="text-teal-700 dark:text-teal-400 font-semibold flex items-center gap-1">
+                            🌊 {m.staging_point?.name || 'Shoreline Staging Point'}
+                          </span>
+                        ) : (
+                          <span>{m.target_shelter?.name || 'Turned Over'}</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-gray-500 dark:text-slate-400">
+                        {m.completed_at ? new Date(m.completed_at).toLocaleString('en-PH') : '—'}
+                      </td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          m.status === 'completed'
+                            ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
+                            : m.status === 'staged_at_assembly'
+                            ? 'bg-teal-100 dark:bg-teal-950/70 text-teal-800 dark:text-teal-300'
+                            : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400'
+                        }`}>
+                          {m.status === 'staged_at_assembly' ? 'STAGED (HANDOVER)' : m.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right">
+                        {historyArchiveView === 'active' ? (
+                          <button
+                            onClick={() => archiveMissionMutation.mutate(m.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded font-semibold text-[11px] transition cursor-pointer"
+                            title="Archive this mission"
+                          >
+                            <Archive size={12} /> Archive
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => unarchiveMissionMutation.mutate(m.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded font-semibold text-[11px] transition cursor-pointer"
+                            title="Restore mission to active logs"
+                          >
+                            <ArchiveRestore size={12} /> Restore
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

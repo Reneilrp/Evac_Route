@@ -66,6 +66,14 @@ class RescueMissionController extends Controller
             $query->whereIn('status', ['dispatched', 'en_route', 'on_scene', 'transporting', 'staged_at_assembly']);
         }
 
+        if ($request->has('archived')) {
+            if ($request->boolean('archived')) {
+                $query->whereNotNull('archived_at');
+            } else {
+                $query->whereNull('archived_at');
+            }
+        }
+
         $missions = $query->orderBy('created_at', 'desc')->get();
 
         return response()->json([
@@ -575,10 +583,154 @@ class RescueMissionController extends Controller
             'current_longitude' => $validated['current_longitude'] ?? 122.0790,
         ]);
 
+        if (!empty($validated['assigned_personnel_id'])) {
+            $defaultRole = match($validated['unit_type']) {
+                'medical_ambulance' => 'lead_medic',
+                'high_clearance_truck' => 'heavy_driver',
+                default => 'boat_pilot',
+            };
+            User::where('id', $validated['assigned_personnel_id'])->update([
+                'assigned_rescue_unit_id' => $unit->id,
+                'rescue_role' => $defaultRole,
+            ]);
+        }
+
         return response()->json([
             'status' => 'success',
             'message' => 'Rescue unit registered successfully.',
             'data' => $unit->load('assignedPersonnel'),
         ], 201);
+    }
+
+    /**
+     * Update an existing rescue vehicle / unit in the fleet.
+     */
+    public function updateUnit(Request $request, $id)
+    {
+        $unit = RescueUnit::findOrFail($id);
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'call_sign' => 'sometimes|required|string|max:50|unique:rescue_units,call_sign,' . $unit->id,
+            'unit_type' => 'sometimes|required|in:water_rescue,medical_ambulance,high_clearance_truck',
+            'status' => 'sometimes|required|in:standby,off_duty',
+            'capacity_persons' => 'sometimes|required|integer|min:1|max:100',
+            'contact_number' => 'nullable|string|max:50',
+            'assigned_personnel_id' => 'nullable|exists:users,id',
+            'current_latitude' => 'nullable|numeric',
+            'current_longitude' => 'nullable|numeric',
+        ]);
+
+        if (isset($validated['call_sign'])) {
+            $validated['call_sign'] = strtoupper($validated['call_sign']);
+        }
+
+        if (array_key_exists('assigned_personnel_id', $validated)) {
+            $oldPersonnelId = $unit->assigned_personnel_id;
+            $newPersonnelId = $validated['assigned_personnel_id'];
+
+            if ($oldPersonnelId && $oldPersonnelId != $newPersonnelId) {
+                User::where('id', $oldPersonnelId)->where('assigned_rescue_unit_id', $unit->id)->update([
+                    'assigned_rescue_unit_id' => null,
+                ]);
+            }
+
+            if ($newPersonnelId) {
+                $targetType = $validated['unit_type'] ?? $unit->unit_type;
+                $defaultRole = match($targetType) {
+                    'medical_ambulance' => 'lead_medic',
+                    'high_clearance_truck' => 'heavy_driver',
+                    default => 'boat_pilot',
+                };
+                User::where('id', $newPersonnelId)->update([
+                    'assigned_rescue_unit_id' => $unit->id,
+                    'rescue_role' => $defaultRole,
+                ]);
+            }
+        }
+
+        $unit->update($validated);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Rescue vehicle details updated successfully.',
+            'data' => $unit->load(['assignedPersonnel', 'crewMembers', 'activeMission']),
+        ]);
+    }
+
+    /**
+     * Remove a rescue vehicle from the fleet.
+     */
+    public function destroyUnit($id)
+    {
+        $unit = RescueUnit::findOrFail($id);
+
+        if ($unit->activeMission()->exists()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot delete vehicle currently deployed on an active rescue mission.',
+            ], 422);
+        }
+
+        if ($unit->assigned_personnel_id) {
+            User::where('id', $unit->assigned_personnel_id)->where('assigned_rescue_unit_id', $unit->id)->update([
+                'assigned_rescue_unit_id' => null,
+            ]);
+        }
+
+        $unit->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Rescue vehicle removed from fleet.',
+        ]);
+    }
+
+    /**
+     * Archive a completed or aborted rescue mission.
+     * Route: POST /api/rescue/missions/{id}/archive
+     */
+    public function archiveMission($id)
+    {
+        $mission = RescueMission::findOrFail($id);
+        $mission->update(['archived_at' => now()]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Rescue mission archived successfully.',
+            'data' => $mission,
+        ]);
+    }
+
+    /**
+     * Unarchive / Restore a rescue mission.
+     * Route: POST /api/rescue/missions/{id}/unarchive
+     */
+    public function unarchiveMission($id)
+    {
+        $mission = RescueMission::findOrFail($id);
+        $mission->update(['archived_at' => null]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Rescue mission restored to active logs.',
+            'data' => $mission,
+        ]);
+    }
+
+    /**
+     * Batch archive all completed, staged, or aborted rescue missions.
+     * Route: POST /api/rescue/missions/archive-completed
+     */
+    public function archiveCompletedMissions()
+    {
+        $count = RescueMission::whereIn('status', ['completed', 'staged_at_assembly', 'aborted'])
+            ->whereNull('archived_at')
+            ->update(['archived_at' => now()]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Archived {$count} completed rescue missions.",
+            'data' => ['archived_count' => $count],
+        ]);
     }
 }

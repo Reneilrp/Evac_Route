@@ -129,6 +129,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/incidents', [IncidentController::class, 'index']);
         Route::post('/incidents/{id}/approve', [IncidentController::class, 'approve']);
         Route::post('/incidents/{id}/reject', [IncidentController::class, 'reject']);
+        Route::post('/incidents/{id}/archive', [IncidentController::class, 'adminArchive']);
+        Route::post('/incidents/{id}/unarchive', [IncidentController::class, 'adminUnarchive']);
 
         // 5. Road Network Management (LGU can block/unblock segments)
         Route::put('/road-network/edges/{id}/status', [RoadNetworkController::class, 'updateEdgeStatus']);
@@ -147,11 +149,16 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
         // 8. Evacuation Logs
         Route::get('/evacuation-logs', [CheckInController::class, 'getLogs']);
+        Route::post('/evacuation-logs/{id}/archive', [CheckInController::class, 'archiveLog']);
+        Route::post('/evacuation-logs/{id}/unarchive', [CheckInController::class, 'unarchiveLog']);
+        Route::post('/evacuation-logs/archive-checked-out', [CheckInController::class, 'archiveCheckedOutLogs']);
         Route::get('/residents', [ResidentRegistryController::class, 'index']);
 
         // 10. Broadcast Warning Alerts
         Route::post('/alerts', [BroadcastAlertController::class, 'store']);
         Route::delete('/alerts/{id}', [BroadcastAlertController::class, 'destroy']);
+        Route::post('/alerts/{id}/archive', [BroadcastAlertController::class, 'archive']);
+        Route::post('/alerts/{id}/unarchive', [BroadcastAlertController::class, 'unarchive']);
 
         // 11. Dispatch Orders (Relief logistics tracking)
         Route::get('/dispatch-orders', [DispatchOrderController::class, 'index']);
@@ -159,14 +166,21 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/dispatch-orders/{id}/depart', [DispatchOrderController::class, 'depart']);
         Route::post('/dispatch-orders/{id}/deliver', [DispatchOrderController::class, 'deliver']);
         Route::post('/dispatch-orders/{id}/cancel', [DispatchOrderController::class, 'cancel']);
+        Route::post('/dispatch-orders/{id}/archive', [DispatchOrderController::class, 'archive']);
+        Route::post('/dispatch-orders/{id}/unarchive', [DispatchOrderController::class, 'unarchive']);
 
         // 12. DRRM Rescue Unit & Responder Dispatch
         Route::get('/rescue/units', [RescueMissionController::class, 'units']);
         Route::post('/rescue/units', [RescueMissionController::class, 'storeUnit']);
+        Route::put('/rescue/units/{id}', [RescueMissionController::class, 'updateUnit']);
+        Route::delete('/rescue/units/{id}', [RescueMissionController::class, 'destroyUnit']);
         Route::get('/rescue/missions', [RescueMissionController::class, 'missions']);
         Route::post('/rescue/missions', [RescueMissionController::class, 'store']);
         Route::post('/rescue/hotline-intake', [RescueMissionController::class, 'hotlineIntake']);
         Route::put('/rescue/missions/{id}/status', [RescueMissionController::class, 'updateStatus']);
+        Route::post('/rescue/missions/{id}/archive', [RescueMissionController::class, 'archiveMission']);
+        Route::post('/rescue/missions/{id}/unarchive', [RescueMissionController::class, 'unarchiveMission']);
+        Route::post('/rescue/missions/archive-completed', [RescueMissionController::class, 'archiveCompletedMissions']);
 
         // 13. System Settings (Readable by all LGU staff and Admin)
         Route::get('/settings', [SettingController::class, 'index']);
@@ -190,6 +204,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // Security, Audit, Telemetry & Official SitRep (Admin Only)
     Route::middleware(['role:admin'])->group(function () {
         Route::get('/audit-logs', [AuditLogController::class, 'index']);
+        Route::post('/audit-logs/archive-old', [AuditLogController::class, 'archiveOldLogs']);
+        Route::post('/audit-logs/{id}/unarchive', [AuditLogController::class, 'unarchiveLog']);
         Route::get('/reports/sitrep', [SitRepController::class, 'index']);
         Route::get('/system-health', [SystemHealthController::class, 'index']);
         Route::post('/system-health/clear-cache', [SystemHealthController::class, 'clearCache']);

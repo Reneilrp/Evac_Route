@@ -48,12 +48,65 @@ class AuditLogController extends Controller
             });
         }
 
+        // Archive filter
+        if ($request->has('archived')) {
+            if ($request->boolean('archived')) {
+                $query->whereNotNull('archived_at');
+            } else {
+                $query->whereNull('archived_at');
+            }
+        }
+
         $perPage = min((int) $request->query('per_page', 25), 100);
         $logs = $query->paginate($perPage);
 
         return response()->json([
             'status' => 'success',
             'data' => $logs,
+        ]);
+    }
+
+    /**
+     * Archive logs older than given or configured retention days.
+     * Route: POST /api/audit-logs/archive-old
+     */
+    public function archiveOldLogs(Request $request)
+    {
+        $days = (int) $request->input('days', 90);
+        $cutoff = now()->subDays($days);
+
+        $count = AuditLog::where('created_at', '<', $cutoff)
+            ->whereNull('archived_at')
+            ->update(['archived_at' => now()]);
+
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'audit_logs_archived',
+            'ip_address' => $request->ip(),
+            'old_values' => ['retention_days' => $days, 'cutoff' => $cutoff->toDateTimeString()],
+            'new_values' => ['archived_count' => $count],
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Archived {$count} audit log entries older than {$days} days.",
+            'data' => ['archived_count' => $count],
+        ]);
+    }
+
+    /**
+     * Unarchive an audit log record.
+     * Route: POST /api/audit-logs/{id}/unarchive
+     */
+    public function unarchiveLog($id)
+    {
+        $log = AuditLog::findOrFail($id);
+        $log->update(['archived_at' => null]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Audit log record restored.',
+            'data' => $log,
         ]);
     }
 }

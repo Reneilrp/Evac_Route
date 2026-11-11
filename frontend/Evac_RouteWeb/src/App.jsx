@@ -26,6 +26,7 @@ const IncidentReviewQueue = lazy(() => import('./pages/IncidentReviewQueue'));
 const ResidentRegistry = lazy(() => import('./pages/ResidentRegistry'));
 const EmergencyAlerts = lazy(() => import('./pages/EmergencyAlerts'));
 const RescueDispatch = lazy(() => import('./pages/RescueDispatch'));
+const RescueVehicles = lazy(() => import('./pages/RescueVehicles'));
 const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 const SituationReport = lazy(() => import('./pages/SituationReport'));
 const SystemHealth = lazy(() => import('./pages/SystemHealth'));
@@ -561,6 +562,18 @@ function DashboardLayout({ children }) {
                    <div className="flex justify-between items-center w-full">
                       <span>Rescue Dispatch</span>
                       <span className="bg-red-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">
+                        SOS
+                      </span>
+                   </div>
+                </NavLink>
+              )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/rescue-vehicles" icon={<Truck size={20} />} label="Rescue Fleet" />
+              ) : (
+                <NavLink to="/admin/rescue-vehicles">
+                   <div className="flex justify-between items-center w-full">
+                      <span>Rescue Fleet</span>
+                      <span className="bg-blue-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">
                         Fleet
                       </span>
                    </div>
@@ -861,6 +874,8 @@ function App() {
                 <Route path="/admin/incidents" element={<DashboardLayout><IncidentReviewQueue /></DashboardLayout>} />
                 <Route path="/admin/alerts" element={<DashboardLayout><EmergencyAlerts /></DashboardLayout>} />
                 <Route path="/admin/rescue-dispatch" element={<DashboardLayout><RescueDispatch /></DashboardLayout>} />
+                <Route path="/admin/rescue-vehicles" element={<DashboardLayout><RescueVehicles /></DashboardLayout>} />
+                <Route path="/admin/rescue-fleet" element={<Navigate to="/admin/rescue-vehicles" replace />} />
                 <Route path="/admin/relief-desk" element={<Navigate to="/admin/inventory" replace />} />
                 <Route path="/admin/relief-distribution" element={<Navigate to="/admin/inventory" replace />} />
               </Route>
