@@ -1324,6 +1324,7 @@ export function UnifiedMapFilterSearch({
   showWeather = false,
   onToggleWeather,
   onSelectLocation,
+  onRecenter,
   isolateZamboanga = true,
   onToggleIsolateZamboanga,
   isCSWDO = false,
@@ -1412,6 +1413,19 @@ export function UnifiedMapFilterSearch({
             </span>
           </div>
         </button>
+
+        {/* Recenter Zamboanga City (Integrated, Compact) */}
+        {onRecenter && (
+          <button
+            type="button"
+            onClick={onRecenter}
+            title="Recenter Map to Zamboanga City Center"
+            className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-200 border border-cyan-500/20 transition cursor-pointer text-xs font-bold"
+          >
+            <Crosshair size={13} className="shrink-0" />
+            <span className="hidden sm:inline text-[11px]">Recenter</span>
+          </button>
+        )}
 
         {/* SOS Emergency Badge (Always Visible & Prominent) */}
         {counts.sos > 0 && (
@@ -3875,8 +3889,8 @@ export default function MapDashboard() {
         />
       )}
 
-      {/* Top Left Integrated Map Controls: Unified Filter, Search Hub & City Recenter */}
-      <div className="absolute top-3 left-4 z-40 flex items-center gap-2">
+      {/* Top Left Integrated Map Controls: Unified Filter & Search Hub with Embedded Recenter */}
+      <div className="absolute top-3 left-4 z-40">
         <UnifiedMapFilterSearch
           shelters={shelters}
           hazards={hazards}
@@ -3892,6 +3906,19 @@ export default function MapDashboard() {
           onToggleWeather={setShowWeather}
           isolateZamboanga={isolateZamboanga}
           onToggleIsolateZamboanga={setIsolateZamboanga}
+          onRecenter={() => {
+            const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+            if (map && map.flyTo) {
+              map.flyTo({
+                center: [ZAMBOANGA_CENTER.longitude, ZAMBOANGA_CENTER.latitude],
+                zoom: ZAMBOANGA_CENTER.zoom,
+                pitch: is3D ? 45 : 0,
+                bearing: -15,
+                duration: 1400,
+                essential: true,
+              });
+            }
+          }}
           onSelectLocation={(item) => {
             const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
             if (map && item.coords) {
@@ -3909,29 +3936,6 @@ export default function MapDashboard() {
           }}
           isCSWDO={isCSWDO}
         />
-
-        {/* Recenter Zamboanga City Overview Button */}
-        <button
-          type="button"
-          onClick={() => {
-            const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
-            if (map && map.flyTo) {
-              map.flyTo({
-                center: [ZAMBOANGA_CENTER.longitude, ZAMBOANGA_CENTER.latitude],
-                zoom: ZAMBOANGA_CENTER.zoom,
-                pitch: is3D ? 45 : 0,
-                bearing: -15,
-                duration: 1400,
-                essential: true,
-              });
-            }
-          }}
-          title="Recenter Camera to Zamboanga City Center"
-          className="flex items-center gap-1.5 px-3 py-2 bg-gray-900/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/10 hover:border-white/25 rounded-2xl shadow-2xl text-xs font-bold text-white hover:text-cyan-300 transition cursor-pointer"
-        >
-          <Crosshair size={14} className="text-cyan-400" />
-          <span className="hidden sm:inline text-[11px]">Recenter ZC</span>
-        </button>
       </div>
 
       {isCSWDO ? (
@@ -4000,19 +4004,7 @@ export default function MapDashboard() {
           </div>
         </div>
       ) : (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-1.5 xl:gap-2.5 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1 xl:p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[calc(100vw-360px)] overflow-x-auto whitespace-nowrap scrollbar-none">
-          {/* Overlays Group */}
-          <div className="flex flex-col items-center justify-center">
-            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-0.5 select-none">Overlays</span>
-            <div className="flex items-center gap-1">
-              <ToolbarBtn active={showHeatmap} onClick={() => setShowHeatmap(o => !o)} icon={<Flame size={13} />} label="Heatmap" color="amber" />
-              <ToolbarBtn active={showWeather} onClick={() => setShowWeather(o => !o)} icon={<Cloud size={13} />} label="Radar" color="blue" />
-              <ToolbarBtn active={showResidentSignals} onClick={() => setShowResidentSignals(o => !o)} icon={<Users size={13} />} label="Residents" color="purple" />
-            </div>
-          </div>
-
-          <div className="w-px bg-white/10 self-stretch my-0.5" />
-
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-1.5 xl:gap-2.5 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1 xl:p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[calc(100vw-460px)] overflow-x-auto whitespace-nowrap scrollbar-none">
           {/* Disaster Scenario Simulation Group */}
           <div className="flex flex-col items-center justify-center">
             <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-0.5 select-none">Disaster Sim</span>
@@ -4067,7 +4059,7 @@ export default function MapDashboard() {
                   </span>
                   <span className="font-extrabold text-white text-[11px]">
                     {weatherTelemetry.continuous_rain_duration_minutes >= (weatherTelemetry?.flood_trigger_threshold_minutes || 45)
-                      ? `🚨 ${weatherTelemetry.continuous_rain_duration_minutes}m Rain (EOC Active)`
+                      ? `🚨 ${weatherTelemetry.continuous_rain_duration_minutes}m Rain (EOC)`
                       : `🌧️ ${weatherTelemetry.continuous_rain_duration_minutes > 0 ? `${weatherTelemetry.continuous_rain_duration_minutes}m Rain` : 'Rain Starting'}`}
                   </span>
                   {weatherTelemetry.rain_mm > 0 && (
