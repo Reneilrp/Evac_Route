@@ -388,3 +388,33 @@ test('PushNotificationService correctly targets residents inside large hazards r
         ->and($tokens)->toContain('ExponentPushToken[residentB_BufferReach]')
         ->and($tokens)->not->toContain('ExponentPushToken[residentC_FarAway]');
 });
+
+test('EOC operator can manually reset rainfall alert state and clear false triggers', function () {
+    Cache::forever('rain_started_at', now()->subHours(2)->toIso8601String());
+    Cache::forever('fixed_flood_spots_triggered', true);
+
+    $user = User::factory()->create();
+    $hazard = Hazard::create([
+        'name' => 'Test Flood Spot',
+        'latitude' => 6.9126,
+        'longitude' => 122.0729,
+        'radius_meters' => 150,
+        'hazard_type' => 'flood',
+        'severity_level' => 'high',
+        'is_fixed_flood_spot' => true,
+        'is_active' => true,
+        'reported_by' => $user->id,
+    ]);
+
+    $response = $this->postJson('/api/weather/reset-rain');
+    $response->assertStatus(200)
+        ->assertJson([
+            'status' => 'success',
+        ]);
+
+    expect(Cache::has('rain_started_at'))->toBeFalse()
+        ->and(Cache::has('fixed_flood_spots_triggered'))->toBeFalse();
+
+    $hazard->refresh();
+    expect((bool) $hazard->is_active)->toBeFalse();
+});

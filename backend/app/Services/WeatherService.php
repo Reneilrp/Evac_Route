@@ -47,23 +47,32 @@ class WeatherService
                     $mainCondition = $weather['main'] ?? 'Clear';
                     $conditionId = $weather['id'] ?? 800;
 
-                    $isRaining = in_array(strtolower($mainCondition), ['rain', 'drizzle', 'thunderstorm'])
+                    $isGeneralRain = in_array(strtolower($mainCondition), ['rain', 'drizzle', 'thunderstorm'])
                         || ($conditionId >= 200 && $conditionId < 600);
 
                     $condition = $mainCondition;
                     $description = $weather['description'] ?? $mainCondition;
                     $tempC = (float) ($data['main']['temp'] ?? 29.0);
                     $humidity = (int) ($data['main']['humidity'] ?? 75);
-                    $rainMm = (float) ($data['rain']['1h'] ?? ($isRaining ? 2.5 : 0.0));
+                    $rainMm = isset($data['rain']['1h']) ? (float) $data['rain']['1h'] : ($isGeneralRain ? 2.5 : 0.0);
                     $source = 'openweathermap';
 
+                    // DRRM threshold: rain under 1.0 mm/h is trace drizzle that does not accumulate on streets/canals.
+                    // Meaningful flood-producing rainfall requires >= 1.0 mm/h or active thunderstorm/heavy downpour.
+                    $isSignificantRain = ($rainMm >= 1.0)
+                        || in_array(strtolower($mainCondition), ['thunderstorm'])
+                        || in_array($conditionId, [200, 201, 202, 211, 212, 221, 230, 231, 232, 502, 503, 504, 522]);
+
+                    $isTraceRain = ! $isSignificantRain && ($rainMm > 0 || $isGeneralRain);
+
                     return [
-                        'is_raining' => $isRaining,
-                        'condition' => $condition,
+                        'is_raining' => $isSignificantRain,
+                        'is_trace_rain' => $isTraceRain,
+                        'condition' => $isTraceRain && ! $isSignificantRain ? 'Trace Drizzle' : $condition,
                         'description' => $description,
                         'temp_c' => round($tempC, 1),
                         'humidity' => $humidity,
-                        'rain_mm' => round($rainMm, 1),
+                        'rain_mm' => round($rainMm, 2),
                         'source' => $source,
                     ];
                 }
@@ -87,20 +96,28 @@ class WeatherService
                 $weatherCode = (int) ($current['weather_code'] ?? 0);
                 $rainCodes = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99];
 
-                $isRaining = $rain > 0 || $showers > 0 || in_array($weatherCode, $rainCodes);
-                $condition = $isRaining ? 'Rain' : 'Clear';
-                $description = $isRaining ? ($weatherCode >= 95 ? 'Thunderstorm' : 'Rain Showers') : 'Clear / Partly Cloudy';
+                $rainMm = max($rain, $showers);
+                $isGeneralRain = $rainMm > 0 || in_array($weatherCode, $rainCodes);
+
+                // Significant rain threshold: >= 1.0 mm/h or moderate/heavy rain or thunderstorm (WMO >= 63 or 95+)
+                $isSignificantRain = ($rainMm >= 1.0) || in_array($weatherCode, [63, 65, 67, 81, 82, 95, 96, 99]);
+                $isTraceRain = ! $isSignificantRain && $isGeneralRain;
+
+                $condition = $isSignificantRain ? 'Rain' : ($isTraceRain ? 'Trace Drizzle' : 'Clear');
+                $description = $isSignificantRain
+                    ? ($weatherCode >= 95 ? 'Thunderstorm' : 'Rain Showers')
+                    : ($isTraceRain ? 'Light Drizzle / Trace Mist' : 'Clear / Partly Cloudy');
                 $tempC = (float) ($current['temperature_2m'] ?? 29.0);
                 $humidity = (int) ($current['relative_humidity_2m'] ?? 75);
-                $rainMm = max($rain, $showers);
 
                 return [
-                    'is_raining' => $isRaining,
+                    'is_raining' => $isSignificantRain,
+                    'is_trace_rain' => $isTraceRain,
                     'condition' => $condition,
                     'description' => $description,
                     'temp_c' => round($tempC, 1),
                     'humidity' => $humidity,
-                    'rain_mm' => round($rainMm, 1),
+                    'rain_mm' => round($rainMm, 2),
                     'source' => 'open-meteo',
                 ];
             }
@@ -139,13 +156,23 @@ class WeatherService
 
                     if (! empty($weather) && is_array($weather)) {
                         $mainCondition = $weather[0]['main'] ?? '';
-                        $conditionId = $weather[0]['id'] ?? 0;
+                        $conditionId = (int) ($weather[0]['id'] ?? 0);
+                        $rain1h = (float) ($response->json('rain.1h') ?? -1.0);
+
+                        // If explicit 1h rain amount is provided by OpenWeather
+                        if ($rain1h >= 0.0) {
+                            return $rain1h >= 1.0
+                                || in_array(strtolower($mainCondition), ['thunderstorm'])
+                                || in_array($conditionId, [200, 201, 202, 211, 212, 221, 230, 231, 232, 502, 503, 504, 522]);
+                        }
 
                         // OpenWeatherMap condition IDs: 5xx is Rain, 3xx is Drizzle, 2xx is Thunderstorm
-                        $isRain = in_array(strtolower($mainCondition), ['rain', 'drizzle', 'thunderstorm'])
-                            || ($conditionId >= 200 && $conditionId < 600);
+                        // DRRM threshold: trace drizzle (500/3xx) is excluded from flood alarms
+                        $isSignificantRain = in_array(strtolower($mainCondition), ['thunderstorm'])
+                            || ($conditionId >= 200 && $conditionId < 300)
+                            || in_array($conditionId, [501, 502, 503, 504, 520, 521, 522]);
 
-                        return $isRain;
+                        return $isSignificantRain;
                     }
                 } else {
                     Log::warning('OpenWeatherMap API call failed (HTTP '.$response->status().'). Falling back to Open-Meteo.');
@@ -180,17 +207,10 @@ class WeatherService
                     $rain = (float) ($current['rain'] ?? 0);
                     $showers = (float) ($current['showers'] ?? 0);
                     $weatherCode = (int) ($current['weather_code'] ?? 0);
+                    $rainMm = max($rain, $showers);
 
-                    // WMO Weather Interpretation Codes:
-                    // 51, 53, 55: Drizzle
-                    // 56, 57: Freezing Drizzle
-                    // 61, 63, 65: Rain (Slight, Moderate, Heavy)
-                    // 66, 67: Freezing Rain
-                    // 80, 81, 82: Rain Showers
-                    // 95, 96, 99: Thunderstorms
-                    $rainCodes = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99];
-
-                    return $rain > 0 || $showers > 0 || in_array($weatherCode, $rainCodes);
+                    // Significant rain threshold: >= 1.0 mm/h or moderate/heavy rain or thunderstorm
+                    return ($rainMm >= 1.0) || in_array($weatherCode, [63, 65, 67, 81, 82, 95, 96, 99]);
                 }
             } else {
                 Log::error('Open-Meteo API call failed (HTTP '.$response->status().').');
@@ -277,15 +297,16 @@ class WeatherService
         $currentCode = (int) ($currentRaw['weather_code'] ?? 1);
         $currentMapped = $this->mapWmoCode($currentCode);
         $currentRain = max((float) ($currentRaw['rain'] ?? 0), (float) ($currentRaw['precipitation'] ?? 0), (float) ($currentRaw['showers'] ?? 0));
-        $rainCodes = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99];
-        $isRaining = $currentRain > 0 || in_array($currentCode, $rainCodes);
+        // Significant rain threshold: >= 1.0 mm/h or moderate/heavy or thunderstorm
+        $isSignificantRain = ($currentRain >= 1.0) || in_array($currentCode, [63, 65, 67, 81, 82, 95, 96, 99]);
+        $isTraceRain = ! $isSignificantRain && ($currentRain > 0 || in_array($currentCode, [51, 53, 55, 56, 57, 61, 80]));
 
         $windDeg = (float) ($currentRaw['wind_direction_10m'] ?? 45);
         $currentDetails = [
             'temp_c' => round((float) ($currentRaw['temperature_2m'] ?? 29.0), 1),
             'feels_like_c' => round((float) ($currentRaw['apparent_temperature'] ?? 32.0), 1),
             'humidity' => (int) ($currentRaw['relative_humidity_2m'] ?? 75),
-            'rain_mm' => round($currentRain, 1),
+            'rain_mm' => round($currentRain, 2),
             'wind_kph' => round((float) ($currentRaw['wind_speed_10m'] ?? 12.0), 1),
             'wind_deg' => (int) round($windDeg),
             'wind_dir' => $this->degreesToCardinal($windDeg),
@@ -293,9 +314,10 @@ class WeatherService
             'cloud_cover' => (int) ($currentRaw['cloud_cover'] ?? 40),
             'uv_index' => round((float) ($currentRaw['uv_index'] ?? 5.0), 1),
             'weather_code' => $currentCode,
-            'condition' => $isRaining && $currentMapped['condition'] === 'Clear' ? 'Rain' : $currentMapped['condition'],
-            'description' => $currentMapped['description'],
-            'is_raining' => $isRaining,
+            'condition' => $isSignificantRain ? $currentMapped['condition'] : ($isTraceRain ? 'Trace Drizzle' : $currentMapped['condition']),
+            'description' => $isTraceRain ? 'Light Drizzle / Trace Mist' : $currentMapped['description'],
+            'is_raining' => $isSignificantRain,
+            'is_trace_rain' => $isTraceRain,
         ];
 
         $hourly = $payload['hourly'] ?? [];

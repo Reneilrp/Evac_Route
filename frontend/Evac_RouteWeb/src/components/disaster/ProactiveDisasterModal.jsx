@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   X, AlertTriangle, CloudRain, Sun, ShieldAlert, Users,
   CheckCircle2, AlertOctagon,
-  Droplets, Waves, Mountain, Sparkles
+  Droplets, Waves, Mountain, Sparkles, RotateCcw
 } from 'lucide-react';
 import api from '../../services/api';
 import { showSuccess, showError } from '../../utils/toast';
@@ -71,6 +71,23 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
       return res.data;
     },
     enabled: isOpen && activeTab === 'risk',
+  });
+
+  // Reset Rain State Mutation
+  const resetRainMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/weather/reset-rain');
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['weather/live-status'] });
+      queryClient.invalidateQueries({ queryKey: ['map-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['weather-forecast'] });
+      showSuccess('Rainfall alert timer and flood spots reset successfully.');
+    },
+    onError: () => {
+      showError('Failed to reset rainfall telemetry alert.');
+    },
   });
 
   // Toggle Preset Mutation
@@ -184,6 +201,18 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
               <span className="bg-rose-200 dark:bg-rose-950 text-rose-800 dark:text-rose-300 font-black px-2 py-0.5 rounded-md text-[11px] animate-pulse">
                 ⚡ {weatherData.active_fixed_flood_spots_count || 5} Chronic Drainage Spots Active
               </span>
+            )}
+            {(weatherData?.continuous_rain_duration_minutes > 0 || weatherData?.fixed_flood_spots_triggered || weatherData?.is_raining) && (
+              <button
+                type="button"
+                disabled={resetRainMutation.isPending}
+                onClick={() => resetRainMutation.mutate()}
+                className="text-[10px] bg-white/10 hover:bg-rose-500/20 text-slate-300 hover:text-rose-200 border border-white/15 hover:border-rose-500/30 px-2 py-0.5 rounded transition cursor-pointer flex items-center gap-1 font-bold"
+                title="Manually clear rainfall duration and auto-activated flood spots if ground conditions are dry"
+              >
+                <RotateCcw size={10} className={resetRainMutation.isPending ? 'animate-spin' : ''} />
+                <span>Reset Alert</span>
+              </button>
             )}
           </div>
           <div className="text-[11px] text-gray-600 dark:text-slate-300 italic flex items-center gap-1.5">

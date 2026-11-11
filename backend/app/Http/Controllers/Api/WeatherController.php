@@ -177,4 +177,24 @@ class WeatherController extends Controller
             ]),
         ]);
     }
+
+    /**
+     * Manually reset/clear rain state, continuous counter, and auto-activated fixed flood spots.
+     * Route: POST /api/weather/reset-rain
+     */
+    public function resetRainState(Request $request): JsonResponse
+    {
+        Cache::forget('rain_started_at');
+        Cache::forget('fixed_flood_spots_triggered');
+
+        Hazard::where('hazard_type', 'flood')
+            ->where('is_fixed_flood_spot', true)
+            ->update(['is_active' => false]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Rainfall telemetry alert and continuous flood counters have been reset successfully.',
+            'reset_at' => now()->toIso8601String(),
+        ]);
+    }
 }
