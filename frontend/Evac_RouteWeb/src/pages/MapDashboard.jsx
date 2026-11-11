@@ -1199,10 +1199,17 @@ const BARANGAY_COORDS = {
   'Talon-Talon': [122.1000, 6.8972]
 };
 
-export function FloatingMapSearch({ shelters = [], onSelectLocation, className = '' }) {
+export function FloatingMapSearch({ shelters = [], hazards = [], onSelectLocation, className = '', autoFocus = false }) {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (autoFocus && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [autoFocus]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -1244,8 +1251,24 @@ export function FloatingMapSearch({ shelters = [], onSelectLocation, className =
       }
     });
 
+    // Search Hazards
+    hazards.forEach(h => {
+      const name = h.name || h.hazard_type || 'Hazard';
+      const desc = h.description || '';
+      const hType = (h.hazard_type || '').toLowerCase();
+      if (name.toLowerCase().includes(q) || desc.toLowerCase().includes(q) || hType.includes(q)) {
+        matches.push({
+          type: 'hazard',
+          name,
+          subtitle: `${(h.hazard_type || 'Hazard').toUpperCase()} · Severity: ${(h.severity_level || 'Active').toUpperCase()}`,
+          coords: [parseFloat(h.longitude), parseFloat(h.latitude)],
+          hazard: h,
+        });
+      }
+    });
+
     return matches.slice(0, 8);
-  }, [query, shelters]);
+  }, [query, shelters, hazards]);
 
   const handleSelect = (item) => {
     onSelectLocation(item);
@@ -1253,15 +1276,24 @@ export function FloatingMapSearch({ shelters = [], onSelectLocation, className =
     setIsOpen(false);
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && results.length > 0) {
+      e.preventDefault();
+      handleSelect(results[0]);
+    }
+  };
+
   return (
     <div ref={containerRef} className={`relative font-sans ${className || 'w-48 sm:w-60 md:w-72 lg:w-80'}`}>
       <div className="relative flex items-center bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl transition focus-within:border-blue-500/60 focus-within:ring-2 focus-within:ring-blue-500/20">
         <Search size={15} className="ml-3.5 text-white/50 shrink-0" />
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
           onFocus={() => setIsOpen(true)}
+          onKeyDown={handleKeyDown}
           placeholder="Search barangay or shelter..."
           className="w-full bg-transparent px-3 py-2 text-xs text-white placeholder-white/40 focus:outline-none"
         />
@@ -1286,6 +1318,8 @@ export function FloatingMapSearch({ shelters = [], onSelectLocation, className =
               <div className="flex items-center gap-2.5 overflow-hidden">
                 {res.type === 'shelter' ? (
                   <Building2 size={15} className="text-emerald-400 shrink-0" />
+                ) : res.type === 'hazard' ? (
+                  <AlertTriangle size={15} className="text-amber-400 shrink-0" />
                 ) : (
                   <MapPin size={15} className="text-blue-400 shrink-0" />
                 )}
@@ -1297,7 +1331,9 @@ export function FloatingMapSearch({ shelters = [], onSelectLocation, className =
               <span className={`text-[9px] uppercase font-black px-1.5 py-0.5 rounded shrink-0 border ${
                 res.type === 'shelter'
                   ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                  : 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                  : res.type === 'hazard'
+                    ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                    : 'bg-blue-500/10 text-blue-300 border-blue-500/30'
               }`}>
                 {res.type}
               </span>
@@ -1309,7 +1345,7 @@ export function FloatingMapSearch({ shelters = [], onSelectLocation, className =
   );
 }
 
-// --- Unified Map Filter & Search Control Panel ---
+// --- Unified Map Filter & Search Control Panel (Floating Dropdown) ---
 export function UnifiedMapFilterSearch({
   shelters = [],
   hazards = [],
@@ -1338,8 +1374,17 @@ export function UnifiedMapFilterSearch({
         setIsOpen(false);
       }
     };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const counts = useMemo(() => {
@@ -1380,89 +1425,92 @@ export function UnifiedMapFilterSearch({
     { id: 'fire', label: 'Fire Hazards', icon: <Flame size={14} className="text-orange-400" />, count: counts.fire },
     { id: 'rescue_units', label: 'Rescue Fleet Only', icon: <Truck size={14} className="text-emerald-400" />, count: counts.rescue_units },
     { id: 'shelters', label: 'Shelters Only', icon: <Building2 size={14} className="text-green-400" />, count: counts.shelters },
-    { id: 'residents', label: 'Residents / Signals', icon: <Users size={14} className="text-purple-400" /> },
+    { id: 'residents', label: 'Residents / Signals', icon: <Users size={14} className="text-purple-400" />, count: counts.sos },
   ];
 
   const activeOption = filterOptions.find(o => o.id === activeFilter) || filterOptions[0];
 
   return (
-    <div ref={containerRef} className="relative z-50">
-      {/* Unified Trigger Button (No Overlapping Bars) */}
-      <div className="flex items-center gap-1.5 bg-gray-900/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/10 hover:border-white/25 rounded-2xl shadow-2xl p-1.5 transition">
-        <button
-          type="button"
-          onClick={() => setIsOpen(o => !o)}
-          aria-expanded={isOpen}
-          aria-label="Map Filter and Search Hub"
-          className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-white/10 transition cursor-pointer text-white"
-        >
-          <div className="p-1 rounded-lg bg-blue-500/20 text-blue-400">
-            <Filter size={15} />
-          </div>
-          <div className="flex flex-col text-left">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-black tracking-wide text-white">
-                {activeFilter === 'all' ? 'Filter & Search' : activeOption.label}
-              </span>
-              {activeFilter !== 'all' && (
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-              )}
-            </div>
-            <span className="text-[9px] text-white/50 font-medium flex items-center gap-1">
-              <Search size={9} /> Search &amp; Filters
+    <div ref={containerRef} className="relative flex items-center">
+      {/* Top Bar Trigger Group (Seamless Toolbar Integration) */}
+      <div className="flex flex-col items-center justify-center">
+        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-0.5 select-none whitespace-nowrap flex items-center gap-1">
+          <Search size={9} />
+          <span>Search &amp; Filter</span>
+        </span>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setIsOpen(o => !o)}
+            aria-expanded={isOpen}
+            aria-label="Map Filter and Search Hub"
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition shadow-sm cursor-pointer whitespace-nowrap ${
+              isOpen || activeFilter !== 'all'
+                ? 'bg-blue-600/90 text-white border-blue-400 shadow-blue-500/20'
+                : 'bg-slate-800/90 hover:bg-slate-700/90 border-slate-700 text-slate-200'
+            }`}
+          >
+            <Filter size={12} className={isOpen || activeFilter !== 'all' ? 'text-white' : 'text-blue-400'} />
+            <span className="text-[11px] font-bold">
+              {activeFilter === 'all' ? 'Filter & Search' : activeOption.label}
             </span>
-          </div>
-        </button>
-
-        {/* Recenter Zamboanga City (Integrated, Compact) */}
-        {onRecenter && (
-          <button
-            type="button"
-            onClick={onRecenter}
-            title="Recenter Map to Zamboanga City Center"
-            className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-200 border border-cyan-500/20 transition cursor-pointer text-xs font-bold"
-          >
-            <Crosshair size={13} className="shrink-0" />
-            <span className="hidden sm:inline text-[11px]">Recenter</span>
+            {activeFilter !== 'all' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse" />
+            )}
           </button>
-        )}
 
-        {/* SOS Emergency Badge (Always Visible & Prominent) */}
-        {counts.sos > 0 && (
-          <div
-            title={`${counts.sos} active SOS distress beacons (Always visible)`}
-            className="flex items-center gap-1 bg-red-600/90 text-white border border-red-500/50 text-[10px] font-black px-2 py-1 rounded-xl shadow-lg shadow-red-600/30 animate-pulse select-none"
-          >
-            <span>🆘</span>
-            <span>{counts.sos} SOS</span>
-          </div>
-        )}
+          {/* Recenter Zamboanga City (Integrated, Compact) */}
+          {onRecenter && (
+            <button
+              type="button"
+              onClick={onRecenter}
+              title="Recenter Map to Zamboanga City Center"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-200 border border-cyan-500/30 transition cursor-pointer text-xs font-bold whitespace-nowrap"
+            >
+              <Crosshair size={12} />
+              <span className="text-[11px]">Recenter</span>
+            </button>
+          )}
 
-        {/* Quick Reset Filter Button when a filter is active */}
-        {activeFilter !== 'all' && (
-          <button
-            type="button"
-            onClick={() => onChangeFilter('all')}
-            title="Reset filter to Show All"
-            className="p-1 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition cursor-pointer"
-          >
-            <X size={13} />
-          </button>
-        )}
+          {/* SOS Emergency Badge (Always Visible & Prominent) */}
+          {counts.sos > 0 && (
+            <div
+              title={`${counts.sos} active SOS distress beacons (Always visible)`}
+              className="flex items-center gap-1 bg-red-600/90 text-white border border-red-500/50 text-[10px] font-black px-1.5 py-0.5 rounded-lg shadow-sm animate-pulse select-none whitespace-nowrap"
+            >
+              <span>🆘</span>
+              <span>{counts.sos} SOS</span>
+            </div>
+          )}
+
+          {/* Quick Reset Filter Button when a filter is active */}
+          {activeFilter !== 'all' && (
+            <button
+              type="button"
+              onClick={() => onChangeFilter('all')}
+              title="Reset filter to Show All"
+              className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Popover Panel with Integrated Search Bar & Granular Filters */}
-      <div className={`absolute top-14 left-0 w-80 sm:w-96 bg-gray-900/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl p-4 text-white space-y-4 transition-all duration-150 ${
+      {/* Floating Dropdown Panel with Integrated Search Bar & Granular Filters */}
+      <div className={`absolute top-full left-0 mt-2.5 w-80 sm:w-96 max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-thin bg-gray-900/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] p-4 text-white space-y-4 transition-all duration-150 ${
         isOpen ? 'block z-50 animate-in fade-in slide-in-from-top-2' : 'hidden'
       }`}>
           {/* 1. Embedded Search Bar at Top */}
           <div>
             <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
               <span>Search Map</span>
-              <span className="text-[9px] text-blue-400">Barangays &amp; Shelters</span>
+              <span className="text-[9px] text-blue-400">Barangays, Shelters &amp; Hazards</span>
             </div>
             <FloatingMapSearch
               shelters={shelters}
+              hazards={hazards}
+              autoFocus={isOpen}
               onSelectLocation={(loc) => {
                 onSelectLocation(loc);
                 setIsOpen(false);
@@ -1598,7 +1646,6 @@ export function UnifiedMapFilterSearch({
       </div>
   );
 }
-
 
 // Derive a mock road-risk GeoJSON from hazards (until backend bbox road endpoint lands)
 function buildSimulationRoadGeoJSON(hazards, scenario) {
@@ -3120,6 +3167,7 @@ export default function MapDashboard() {
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showWeather, setShowWeather] = useState(false);
   const [showResidentSignals, setShowResidentSignals] = useState(false); // On-demand resident GPS layer
+  const [activeMapFilter, setActiveMapFilter] = useState('all');
 
   const [mapStyle, setMapStyle] = useState('dark');
   const [is3D, setIs3D] = useState(true);
@@ -3230,6 +3278,45 @@ export default function MapDashboard() {
     setIsInspecting(false);
     setSimulationGeoJSON(null);
   }, [is3D]);
+
+  const handleRecenterToZamboanga = useCallback(() => {
+    const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+    if (map && map.flyTo) {
+      map.flyTo({
+        center: [ZAMBOANGA_CENTER.longitude, ZAMBOANGA_CENTER.latitude],
+        zoom: ZAMBOANGA_CENTER.zoom,
+        pitch: is3D ? 45 : 0,
+        bearing: -15,
+        duration: 1400,
+        essential: true,
+      });
+    }
+  }, [is3D]);
+
+  const handleSelectMapLocation = useCallback((item) => {
+    const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+    if (map && item.coords) {
+      map.flyTo({
+        center: item.coords,
+        zoom: item.type === 'shelter' || item.type === 'hazard' ? 16.5 : 15,
+        pitch: is3D ? 45 : 0,
+        duration: 1800,
+        essential: true,
+      });
+      if (item.shelter) {
+        if (activeMapFilter === 'rescue_units' || activeMapFilter === 'fixed_flood') {
+          setActiveMapFilter('all');
+        }
+        setSelectedShelter(item.shelter);
+      }
+      if (item.hazard) {
+        if (activeMapFilter === 'shelters' || activeMapFilter === 'rescue_units') {
+          setActiveMapFilter('all');
+        }
+        setSelectedHazard(item.hazard);
+      }
+    }
+  }, [is3D, activeMapFilter]);
 
   const { data: roadNetwork } = useQuery({
     queryKey: ['road-network'],
@@ -3413,7 +3500,6 @@ export default function MapDashboard() {
   const [showRoadNetwork, setShowRoadNetwork] = useState(true);
   const [showRescueUnits, setShowRescueUnits] = useState(true);
   const [layersOpen, setLayersOpen] = useState(false);
-  const [activeMapFilter, setActiveMapFilter] = useState('all');
   const [isolateZamboanga, setIsolateZamboanga] = useState(true);
 
   const { data: dashboardData } = useQuery({
@@ -3889,57 +3975,8 @@ export default function MapDashboard() {
         />
       )}
 
-      {/* Top Left Integrated Map Controls: Unified Filter & Search Hub with Embedded Recenter */}
-      <div className="absolute top-3 left-4 z-40">
-        <UnifiedMapFilterSearch
-          shelters={shelters}
-          hazards={hazards}
-          rescueUnits={rescueUnits}
-          activeRescueMissions={activeRescueMissions}
-          activeFilter={activeMapFilter}
-          onChangeFilter={setActiveMapFilter}
-          showRoadNetwork={showRoadNetwork}
-          onToggleRoadNetwork={setShowRoadNetwork}
-          showHeatmap={showHeatmap}
-          onToggleHeatmap={setShowHeatmap}
-          showWeather={showWeather}
-          onToggleWeather={setShowWeather}
-          isolateZamboanga={isolateZamboanga}
-          onToggleIsolateZamboanga={setIsolateZamboanga}
-          onRecenter={() => {
-            const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
-            if (map && map.flyTo) {
-              map.flyTo({
-                center: [ZAMBOANGA_CENTER.longitude, ZAMBOANGA_CENTER.latitude],
-                zoom: ZAMBOANGA_CENTER.zoom,
-                pitch: is3D ? 45 : 0,
-                bearing: -15,
-                duration: 1400,
-                essential: true,
-              });
-            }
-          }}
-          onSelectLocation={(item) => {
-            const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
-            if (map && item.coords) {
-              map.flyTo({
-                center: item.coords,
-                zoom: item.type === 'shelter' ? 16.5 : 15,
-                pitch: is3D ? 45 : 0,
-                duration: 1800,
-                essential: true
-              });
-              if (item.shelter) {
-                setSelectedShelter(item.shelter);
-              }
-            }
-          }}
-          isCSWDO={isCSWDO}
-        />
-      </div>
-
       {isCSWDO ? (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 xl:gap-4 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl px-4 xl:px-5 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.6)] max-w-[calc(100vw-360px)] overflow-x-auto whitespace-nowrap scrollbar-none">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 xl:gap-3.5 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl px-3 xl:px-4 py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] max-w-[calc(100vw-360px)] overflow-visible whitespace-nowrap">
           {/* Title & Subtitle Section */}
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 shrink-0">
@@ -3950,6 +3987,29 @@ export default function MapDashboard() {
               <span className="text-[10px] text-white/50 font-medium">Shelter Locations, Live Headcount &amp; Hazards</span>
             </div>
           </div>
+
+          <div className="w-px h-8 bg-white/10" />
+
+          {/* Search & Filter for CSWDO (Option 1: Integrated in Top Navigation) */}
+          <UnifiedMapFilterSearch
+            shelters={shelters}
+            hazards={hazards}
+            rescueUnits={rescueUnits}
+            activeRescueMissions={activeRescueMissions}
+            activeFilter={activeMapFilter}
+            onChangeFilter={setActiveMapFilter}
+            showRoadNetwork={showRoadNetwork}
+            onToggleRoadNetwork={setShowRoadNetwork}
+            showHeatmap={showHeatmap}
+            onToggleHeatmap={setShowHeatmap}
+            showWeather={showWeather}
+            onToggleWeather={setShowWeather}
+            isolateZamboanga={isolateZamboanga}
+            onToggleIsolateZamboanga={setIsolateZamboanga}
+            onRecenter={handleRecenterToZamboanga}
+            onSelectLocation={handleSelectMapLocation}
+            isCSWDO={true}
+          />
 
           <div className="w-px h-8 bg-white/10" />
 
@@ -4004,7 +4064,30 @@ export default function MapDashboard() {
           </div>
         </div>
       ) : (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-1.5 xl:gap-2.5 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1 xl:p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[calc(100vw-460px)] overflow-x-auto whitespace-nowrap scrollbar-none">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-1.5 xl:gap-2 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1 xl:p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[calc(100vw-360px)] overflow-visible whitespace-nowrap">
+          {/* Option 1: Search & Filter + Recenter Hub (Far Left of Top Bar) */}
+          <UnifiedMapFilterSearch
+            shelters={shelters}
+            hazards={hazards}
+            rescueUnits={rescueUnits}
+            activeRescueMissions={activeRescueMissions}
+            activeFilter={activeMapFilter}
+            onChangeFilter={setActiveMapFilter}
+            showRoadNetwork={showRoadNetwork}
+            onToggleRoadNetwork={setShowRoadNetwork}
+            showHeatmap={showHeatmap}
+            onToggleHeatmap={setShowHeatmap}
+            showWeather={showWeather}
+            onToggleWeather={setShowWeather}
+            isolateZamboanga={isolateZamboanga}
+            onToggleIsolateZamboanga={setIsolateZamboanga}
+            onRecenter={handleRecenterToZamboanga}
+            onSelectLocation={handleSelectMapLocation}
+            isCSWDO={false}
+          />
+
+          <div className="w-px bg-white/10 self-stretch my-0.5" />
+
           {/* Disaster Scenario Simulation Group */}
           <div className="flex flex-col items-center justify-center">
             <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-0.5 select-none">Disaster Sim</span>

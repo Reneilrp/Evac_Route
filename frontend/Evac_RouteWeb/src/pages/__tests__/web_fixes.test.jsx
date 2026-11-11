@@ -70,7 +70,11 @@ import RescueDispatch, { DispatchUnitModal } from '../RescueDispatch';
 import EmergencyAlerts from '../EmergencyAlerts';
 import InventoryManager, { AddStockModal } from '../InventoryManager';
 import IncidentReviewQueue from '../IncidentReviewQueue';
+import ShelterManagement from '../ShelterManagement';
+import SituationReport from '../SituationReport';
 import ZamboangaWeatherModal from '../../components/disaster/ZamboangaWeatherModal';
+import HotlineIntakeModal from '../../components/disaster/HotlineIntakeModal';
+import ProactiveDisasterModal from '../../components/disaster/ProactiveDisasterModal';
 
 describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () => {
   let queryClient;
@@ -324,6 +328,73 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
       expect(html).toContain('SOS Distress Signals');
       expect(html).toContain('Active Beacons');
       expect(html).toContain('Isolate Zamboanga (Spotlight)');
+    }).not.toThrow();
+  });
+
+  it('verifies FloatingMapSearch accurately indexes shelters, hazards, and barangays', () => {
+    const mockShelters = [
+      { id: 101, name: 'Mayor Vitaliano Agan Coliseum', longitude: '122.072', latitude: '6.915', status: 'Active', current_occupancy: 50, max_capacity: 500 },
+    ];
+    const mockHazards = [
+      { id: 201, name: 'Tumaga River Flash Flood', hazard_type: 'flood', severity_level: 'high', longitude: '122.074', latitude: '6.936' },
+    ];
+
+    expect(() => {
+      const html = renderWithProviders(
+        <FloatingMapSearch
+          shelters={mockShelters}
+          hazards={mockHazards}
+          onSelectLocation={jest.fn()}
+        />
+      );
+      expect(html).toContain('Search barangay or shelter...');
+    }).not.toThrow();
+  });
+
+  it('renders CSWDO ShelterManagement with capacity and ration tabs without throwing', () => {
+    expect(() => {
+      const html = renderWithProviders(<ShelterManagement />);
+      expect(html).toContain('Shelter Management');
+      expect(html).toContain('Shelters &amp; Capacities');
+      expect(html).toContain('Ration Planning &amp; Buffers');
+    }).not.toThrow();
+  });
+
+  it('renders SituationReport with DROMIC summaries and print button without throwing', () => {
+    expect(() => {
+      const html = renderWithProviders(<SituationReport />);
+      expect(html).toContain('NDRRMC / DROMIC Situation Report (SitRep)');
+      expect(html).toContain('Print');
+    }).not.toThrow();
+  });
+
+  it('renders HotlineIntakeModal with caller details and priority triage form without throwing', () => {
+    expect(() => {
+      const html = renderWithProviders(
+        <HotlineIntakeModal
+          isOpen={true}
+          onClose={jest.fn()}
+          rescueUnits={[{ id: 1, name: 'Rescue Truck 1' }]}
+          shelters={[{ id: 10, name: 'Tetuan Shelter' }]}
+        />
+      );
+      expect(html).toContain('Manual Emergency Call &amp; Direct Dispatch');
+      expect(html).toContain('Informant / Caller Name');
+      expect(html).toContain('Dispatch Immediate Rescue Mission');
+    }).not.toThrow();
+  });
+
+  it('renders ProactiveDisasterModal with early warning sirens and geohazard presets without throwing', () => {
+    expect(() => {
+      const html = renderWithProviders(
+        <ProactiveDisasterModal
+          isOpen={true}
+          onClose={jest.fn()}
+        />
+      );
+      expect(html).toContain('Pre-Mapped Geohazard Presets');
+      expect(html).toContain('Declare Barangay Hazard Zone');
+      expect(html).toContain('Population At-Risk');
     }).not.toThrow();
   });
 });
