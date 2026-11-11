@@ -65,11 +65,12 @@ import EvacuationLogs from '../EvacuationLogs';
 import SystemHealth from '../SystemHealth';
 import AuditLogs from '../AuditLogs';
 import ResidentRegistry from '../ResidentRegistry';
-import MapDashboard, { FloatingMapSearch } from '../MapDashboard';
+import MapDashboard, { FloatingMapSearch, UnifiedMapFilterSearch } from '../MapDashboard';
 import RescueDispatch, { DispatchUnitModal } from '../RescueDispatch';
 import EmergencyAlerts from '../EmergencyAlerts';
 import InventoryManager, { AddStockModal } from '../InventoryManager';
 import IncidentReviewQueue from '../IncidentReviewQueue';
+import ZamboangaWeatherModal from '../../components/disaster/ZamboangaWeatherModal';
 
 describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () => {
   let queryClient;
@@ -163,6 +164,23 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
     expect(() => {
       const html = renderWithProviders(<EmergencyAlerts />);
       expect(html).toContain('Emergency Warnings Dispatcher');
+    }).not.toThrow();
+  });
+
+  it('renders ZamboangaWeatherModal with 24h history and hourly forecast without throwing', () => {
+    expect(() => {
+      const html = renderWithProviders(
+        <ZamboangaWeatherModal
+          isOpen={true}
+          onClose={() => {}}
+          liveTelemetry={{ is_raining: true, continuous_rain_duration_minutes: 25, rain_mm: 3.5, temp_c: 28 }}
+          showRadarOverlay={false}
+          onToggleRadarOverlay={() => {}}
+          onOpenProactiveEoc={() => {}}
+        />
+      );
+      expect(html).toContain('Zamboanga City Weather');
+      expect(html).toContain('Rainfall Comparison');
     }).not.toThrow();
   });
 
@@ -269,6 +287,42 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
         <FloatingMapSearch shelters={[{ id: 1, name: 'Tetuan Shelter', longitude: 122.08, latitude: 6.92 }]} onSelectLocation={jest.fn()} />
       );
       expect(html).toContain('Search barangay or shelter...');
+    }).not.toThrow();
+  });
+
+  it('renders UnifiedMapFilterSearch with embedded search, granular filters, and guaranteed SOS badge', () => {
+    const mockHazards = [
+      { id: 1, hazard_type: 'flood', is_fixed_flood_spot: 0 },
+      { id: 2, hazard_type: 'earthquake' },
+      { id: 3, hazard_type: 'flood', is_fixed_flood_spot: 1 },
+      { id: 4, hazard_type: 'fire' },
+    ];
+    const mockShelters = [{ id: 10, name: 'Tetuan Shelter', longitude: 122.08, latitude: 6.92 }];
+    const mockUnits = [{ id: 1, name: 'Alpha Truck' }];
+    const mockRescueMissions = [{ id: 99, resident_name: 'Distressed Resident', status: 'pending' }];
+
+    expect(() => {
+      const html = renderWithProviders(
+        <UnifiedMapFilterSearch
+          hazards={mockHazards}
+          shelters={mockShelters}
+          rescueUnits={mockUnits}
+          activeRescueMissions={mockRescueMissions}
+          activeFilter="all"
+          onChangeFilter={jest.fn()}
+          onSelectLocation={jest.fn()}
+        />
+      );
+      expect(html).toContain('Filter &amp; Search');
+      expect(html).toContain('SOS');
+      expect(html).toContain('Search barangay or shelter...');
+      expect(html).toContain('Floods Only');
+      expect(html).toContain('Earthquakes Only');
+      expect(html).toContain('Chronic Flood Spots');
+      expect(html).toContain('Rescue Fleet Only');
+      expect(html).toContain('Shelters Only');
+      expect(html).toContain('SOS Distress Signals');
+      expect(html).toContain('Active Beacons');
     }).not.toThrow();
   });
 });

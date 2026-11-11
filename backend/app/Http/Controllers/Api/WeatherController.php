@@ -114,4 +114,67 @@ class WeatherController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Get comprehensive Google Weather-style 24h history, 24h hourly forecast, and 7-day outlook.
+     * Route: GET /api/weather/forecast
+     */
+    public function forecast(Request $request): JsonResponse
+    {
+        $forceRefresh = $request->boolean('refresh', false);
+        $cacheKey = 'zamboanga_weather_forecast_v1';
+
+        if ($forceRefresh) {
+            Cache::forget($cacheKey);
+        }
+
+        try {
+            $forecastData = Cache::remember($cacheKey, 600, function () {
+                if (method_exists($this->weatherService, 'getForecastAndHistory')) {
+                    return $this->weatherService->getForecastAndHistory();
+                }
+
+                return [];
+            });
+        } catch (\Throwable $e) {
+            $forecastData = [];
+        }
+
+        $thresholdMinutes = (int) Setting::get('auto_flood_rain_threshold_minutes', 45);
+        $autoActivationEnabled = filter_var(Setting::get('auto_flood_activation_enabled', true), FILTER_VALIDATE_BOOLEAN);
+        $rainStartedAt = Cache::get('rain_started_at');
+        $durationMinutes = $rainStartedAt
+            ? (int) round(abs(now()->diffInMinutes(Carbon::parse($rainStartedAt))))
+            : 0;
+
+        $activePresetsCount = Hazard::whereNotNull('preset_key')
+            ->where('is_active', true)
+            ->count();
+
+        $activeFixedFloodSpotsCount = Hazard::where('hazard_type', 'flood')
+            ->where('is_fixed_flood_spot', true)
+            ->where('is_active', true)
+            ->count();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => array_merge($forecastData, [
+                'city' => 'Zamboanga City',
+                'coordinates' => [
+                    'latitude' => 6.9126,
+                    'longitude' => 122.0729,
+                ],
+                'eoc_telemetry' => [
+                    'rain_started_at' => $rainStartedAt,
+                    'continuous_rain_duration_minutes' => $durationMinutes,
+                    'flood_trigger_threshold_minutes' => $thresholdMinutes,
+                    'auto_activation_enabled' => $autoActivationEnabled,
+                    'fixed_flood_spots_triggered' => (bool) Cache::get('fixed_flood_spots_triggered', false),
+                    'active_presets_count' => $activePresetsCount,
+                    'active_fixed_flood_spots_count' => $activeFixedFloodSpotsCount,
+                ],
+                'checked_at' => now()->toIso8601String(),
+            ]),
+        ]);
+    }
 }

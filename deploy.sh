@@ -39,7 +39,8 @@ echo "$PULL_OUTPUT"
 
 cd backend
 if [[ "$PULL_OUTPUT" == *"Already up to date."* ]]; then
-    echo "⚡ Backend code is already up-to-date. Skipping composer & migrations."
+    echo "⚡ Backend code is already up-to-date. Checking for pending migrations..."
+    php artisan migrate --force
 else
     # Check if composer.lock was modified in the new commits
     if git diff --name-only HEAD@{1} HEAD | grep -q "composer.lock"; then
@@ -62,10 +63,10 @@ echo "📤 [3/4] Rsyncing fresh dist/ bundle to VM..."
 rsync -avz --delete "$PROJECT_ROOT/frontend/Evac_RouteWeb/dist/" "$VM_HOST:$REMOTE_PATH/frontend/Evac_RouteWeb/dist/"
 echo "✅ Frontend dist synced."
 
-# 4. Restart Supervisor Workers
+# 4. Restart Supervisor Workers & PHP-FPM
 echo ""
-echo "⚡ [4/4] Restarting background workers on VM..."
-ssh "$VM_HOST" "sudo supervisorctl restart evac-reverb evac-queue || true"
+echo "⚡ [4/4] Restarting background workers & reloading PHP-FPM on VM..."
+ssh "$VM_HOST" "sudo supervisorctl restart evac-reverb evac-queue || true; sudo systemctl reload php8.3-fpm || true"
 
 echo ""
 echo "=========================================================="

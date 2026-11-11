@@ -44,6 +44,26 @@ test('public endpoint returns live weather status and recommendation', function 
     expect($response->json('data.system_recommendation'))->toContain('High flood risk');
 });
 
+test('public endpoint returns comprehensive weather forecast and 24h history for Zamboanga City', function () {
+    $response = $this->getJson('/api/weather/forecast');
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'status' => 'success',
+            'data' => [
+                'city' => 'Zamboanga City',
+            ],
+        ]);
+
+    $data = $response->json('data');
+    expect($data)->toHaveKey('current')
+        ->and($data)->toHaveKey('hourly_forecast')
+        ->and($data)->toHaveKey('hourly_history')
+        ->and($data)->toHaveKey('daily_forecast')
+        ->and($data)->toHaveKey('summary')
+        ->and($data)->toHaveKey('eoc_telemetry');
+});
+
 test('public endpoint returns pre-mapped geohazard presets', function () {
     $response = $this->getJson('/api/hazards/presets');
 

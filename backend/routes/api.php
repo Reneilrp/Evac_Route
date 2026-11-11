@@ -37,6 +37,7 @@ Route::get('/hazards', [HazardController::class, 'getActiveHazards']);
 Route::get('/hazards/presets', [HazardController::class, 'getPresets']);
 // Live Weather Telemetry (Open-Meteo & Rain Status)
 Route::get('/weather/live-status', [WeatherController::class, 'liveStatus']);
+Route::get('/weather/forecast', [WeatherController::class, 'forecast']);
 // Road Network (public — mobile can sync without auth)
 Route::get('/road-network', [RoadNetworkController::class, 'index']);
 

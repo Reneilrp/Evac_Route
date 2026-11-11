@@ -6,13 +6,14 @@ import {
   MapPin, AlertTriangle, X, Cloud, Flame, Zap,
   ChevronRight, ChevronLeft, Moon, Satellite, Mountain,
   TriangleAlert, Droplets, Waves, Shield, SlidersHorizontal, Layers,
-  Eye, Users, Building2, Search, ShieldAlert, CloudRain, Sun
+  Eye, Users, Building2, Search, ShieldAlert, CloudRain, Sun, Filter, Truck
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ConfirmationModal from '../components/common/ConfirmationModal';
 import ProactiveDisasterModal from '../components/disaster/ProactiveDisasterModal';
+import ZamboangaWeatherModal from '../components/disaster/ZamboangaWeatherModal';
 import { showSuccess, showError } from '../utils/toast';
 import {
   createCirclePolygon,
@@ -678,8 +679,8 @@ function HazardFormModal({
   isLoading,
 }) {
   const [name, setName] = useState('');
-  const [radius, setRadius] = useState(initialRadius.toString());
-  const [geometryType, setGeometryType] = useState(initialGeometryType || 'circle');
+  const radius = (initialRadius || 50).toString();
+  const geometryType = initialGeometryType || 'circle';
   const [hazardType, setHazardType] = useState('flood');
   const [severityLevel, setSeverityLevel] = useState('medium');
   const [durationValue, setDurationValue] = useState('');
@@ -811,54 +812,48 @@ function HazardFormModal({
               )}
             </div>
           </div>
+          <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-200/80 dark:border-slate-700/60 text-xs">
+            <span className="font-medium text-gray-500 dark:text-slate-400">Geometry Mode:</span>
+            <span className="font-bold flex items-center gap-1.5 text-gray-800 dark:text-slate-200">
+              {geometryType === 'road_corridor' ? (
+                <>
+                  <span>🛣️</span>
+                  <span>Road Path (Highway Corridor)</span>
+                </>
+              ) : (
+                <>
+                  <span>⭕</span>
+                  <span>Circle Radius (Radial Zone)</span>
+                </>
+              )}
+            </span>
+          </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1.5">
-              Hazard Pinning Mode
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setGeometryType('circle')}
-                className={`px-3 py-2.5 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                  geometryType === 'circle'
-                    ? 'bg-red-600/15 border-red-500 text-red-600 dark:text-red-400 shadow-xs'
-                    : 'bg-gray-50 dark:bg-slate-800/70 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <span>⭕</span>
-                <span>Circle Radius (Area)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setGeometryType('road_corridor')}
-                className={`px-3 py-2.5 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                  geometryType === 'road_corridor'
-                    ? 'bg-amber-500/15 border-amber-500 text-amber-600 dark:text-amber-400 shadow-xs'
-                    : 'bg-gray-50 dark:bg-slate-800/70 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <span>🛣️</span>
-                <span>Road Path (Highway)</span>
-              </button>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350">
+                {geometryType === 'road_corridor' ? 'Road Corridor Reach' : 'Danger Radius'}
+              </label>
+              <span className="text-[11px] font-mono text-gray-400 dark:text-slate-500">
+                Interactive Map Trace
+              </span>
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                readOnly
+                disabled
+                className="w-full px-4 py-2.5 border border-gray-200 dark:border-slate-700/80 rounded-lg text-sm bg-gray-100 dark:bg-slate-800/80 text-gray-700 dark:text-slate-300 font-semibold cursor-not-allowed select-all"
+                value={`${radius} meters`}
+              />
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs text-gray-400 dark:text-slate-500 font-medium">
+                Locked to map
+              </div>
             </div>
             <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
               {geometryType === 'road_corridor'
-                ? `Snapped strictly along the navigation path / road network${initialCorridorCoords?.length ? ` (${initialCorridorCoords.length} road waypoints locked)` : ''}.`
-                : 'Covers a circular radial area around the center pin.'}
+                ? `Measured and snapped strictly along the road network based on your map trace${initialCorridorCoords?.length ? ` (${initialCorridorCoords.length} waypoints)` : ''}.`
+                : 'Measured dynamically from the center pin to your selected perimeter.'}
             </p>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">
-              {geometryType === 'road_corridor' ? 'Road Corridor Reach (meters)' : 'Danger Radius (meters)'}
-            </label>
-            <input
-              type="number"
-              min="10"
-              max="5000"
-              className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-              value={radius}
-              onChange={e => setRadius(e.target.value)}
-            />
           </div>
           {hazardType === 'flood' && (
             <div className="flex items-start gap-2 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800/80">
@@ -1307,6 +1302,267 @@ export function FloatingMapSearch({ shelters = [], onSelectLocation, className =
   );
 }
 
+// --- Unified Map Filter & Search Control Panel ---
+export function UnifiedMapFilterSearch({
+  shelters = [],
+  hazards = [],
+  rescueUnits = [],
+  activeRescueMissions = [],
+  activeFilter = 'all',
+  onChangeFilter,
+  showRoadNetwork = true,
+  onToggleRoadNetwork,
+  showHeatmap = false,
+  onToggleHeatmap,
+  showWeather = false,
+  onToggleWeather,
+  onSelectLocation,
+  isCSWDO = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const counts = useMemo(() => {
+    const floodCount = hazards.filter(h => {
+      const t = (h.hazard_type || '').toLowerCase();
+      return h.is_fixed_flood_spot || ['flood', 'tsunami', 'water', 'landslide'].some(k => t.includes(k));
+    }).length;
+
+    const earthquakeCount = hazards.filter(h => {
+      const t = (h.hazard_type || '').toLowerCase();
+      return ['earthquake', 'tremor', 'fault', 'structural_collapse'].some(k => t.includes(k));
+    }).length;
+
+    const fixedFloodCount = hazards.filter(h => Boolean(h.is_fixed_flood_spot)).length;
+
+    const fireCount = hazards.filter(h => {
+      const t = (h.hazard_type || '').toLowerCase();
+      return ['fire', 'wildfire', 'smoke', 'explosion'].some(k => t.includes(k));
+    }).length;
+
+    return {
+      all: hazards.length + shelters.length + rescueUnits.length,
+      flood: floodCount,
+      earthquake: earthquakeCount,
+      fixed_flood: fixedFloodCount,
+      fire: fireCount,
+      rescue_units: rescueUnits.length,
+      shelters: shelters.length,
+      sos: activeRescueMissions.length,
+    };
+  }, [hazards, shelters, rescueUnits, activeRescueMissions]);
+
+  const filterOptions = [
+    { id: 'all', label: 'All Visible', icon: <Layers size={14} className="text-blue-400" />, count: counts.all },
+    { id: 'flood', label: 'Floods Only', icon: <Waves size={14} className="text-sky-400" />, count: counts.flood },
+    { id: 'earthquake', label: 'Earthquakes Only', icon: <TriangleAlert size={14} className="text-amber-400" />, count: counts.earthquake },
+    { id: 'fixed_flood', label: 'Chronic Flood Spots', icon: <Droplets size={14} className="text-cyan-400" />, count: counts.fixed_flood },
+    { id: 'fire', label: 'Fire Hazards', icon: <Flame size={14} className="text-orange-400" />, count: counts.fire },
+    { id: 'rescue_units', label: 'Rescue Fleet Only', icon: <Truck size={14} className="text-emerald-400" />, count: counts.rescue_units },
+    { id: 'shelters', label: 'Shelters Only', icon: <Building2 size={14} className="text-green-400" />, count: counts.shelters },
+    { id: 'residents', label: 'Residents / Signals', icon: <Users size={14} className="text-purple-400" /> },
+  ];
+
+  const activeOption = filterOptions.find(o => o.id === activeFilter) || filterOptions[0];
+
+  return (
+    <div ref={containerRef} className="relative z-50">
+      {/* Unified Trigger Button (No Overlapping Bars) */}
+      <div className="flex items-center gap-1.5 bg-gray-900/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/10 hover:border-white/25 rounded-2xl shadow-2xl p-1.5 transition">
+        <button
+          type="button"
+          onClick={() => setIsOpen(o => !o)}
+          aria-expanded={isOpen}
+          aria-label="Map Filter and Search Hub"
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-white/10 transition cursor-pointer text-white"
+        >
+          <div className="p-1 rounded-lg bg-blue-500/20 text-blue-400">
+            <Filter size={15} />
+          </div>
+          <div className="flex flex-col text-left">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black tracking-wide text-white">
+                {activeFilter === 'all' ? 'Filter & Search' : activeOption.label}
+              </span>
+              {activeFilter !== 'all' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+              )}
+            </div>
+            <span className="text-[9px] text-white/50 font-medium flex items-center gap-1">
+              <Search size={9} /> Search &amp; Filters
+            </span>
+          </div>
+        </button>
+
+        {/* SOS Emergency Badge (Always Visible & Prominent) */}
+        {counts.sos > 0 && (
+          <div
+            title={`${counts.sos} active SOS distress beacons (Always visible)`}
+            className="flex items-center gap-1 bg-red-600/90 text-white border border-red-500/50 text-[10px] font-black px-2 py-1 rounded-xl shadow-lg shadow-red-600/30 animate-pulse select-none"
+          >
+            <span>🆘</span>
+            <span>{counts.sos} SOS</span>
+          </div>
+        )}
+
+        {/* Quick Reset Filter Button when a filter is active */}
+        {activeFilter !== 'all' && (
+          <button
+            type="button"
+            onClick={() => onChangeFilter('all')}
+            title="Reset filter to Show All"
+            className="p-1 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition cursor-pointer"
+          >
+            <X size={13} />
+          </button>
+        )}
+      </div>
+
+      {/* Popover Panel with Integrated Search Bar & Granular Filters */}
+      <div className={`absolute top-14 left-0 w-80 sm:w-96 bg-gray-900/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl p-4 text-white space-y-4 transition-all duration-150 ${
+        isOpen ? 'block z-50 animate-in fade-in slide-in-from-top-2' : 'hidden'
+      }`}>
+          {/* 1. Embedded Search Bar at Top */}
+          <div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <span>Search Map</span>
+              <span className="text-[9px] text-blue-400">Barangays &amp; Shelters</span>
+            </div>
+            <FloatingMapSearch
+              shelters={shelters}
+              onSelectLocation={(loc) => {
+                onSelectLocation(loc);
+                setIsOpen(false);
+              }}
+              className="w-full"
+            />
+          </div>
+
+          {/* 2. Distress SOS Guarantee Alert */}
+          <div className="flex items-center justify-between bg-red-950/60 border border-red-500/40 rounded-xl px-3 py-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+              </span>
+              <span className="font-extrabold text-red-200">SOS Distress Signals</span>
+            </div>
+            <span className="text-[10px] font-bold text-red-300 uppercase tracking-wider">
+              {counts.sos > 0 ? `${counts.sos} Active Beacons` : 'Standby (Always Visible)'}
+            </span>
+          </div>
+
+          {/* 3. Granular Filter Options */}
+          <div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+              <span>Filter Map Entities</span>
+              {activeFilter !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => onChangeFilter('all')}
+                  className="text-[10px] text-blue-400 hover:text-blue-300 font-bold cursor-pointer"
+                >
+                  Reset (All)
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {filterOptions.map((opt) => {
+                const isActive = activeFilter === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      onChangeFilter(opt.id);
+                      setIsOpen(false);
+                    }}
+                    className={`flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                      isActive
+                        ? 'bg-blue-600 text-white border-blue-400 shadow-lg shadow-blue-600/30'
+                        : 'bg-white/5 hover:bg-white/10 text-white/80 border-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      {opt.icon}
+                      <span className="truncate">{opt.label}</span>
+                    </div>
+                    {typeof opt.count === 'number' && (
+                      <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                        isActive ? 'bg-blue-800 text-white' : 'bg-black/30 text-white/50'
+                      }`}>
+                        {opt.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4. Base Map Overlays Toggle */}
+          <div className="border-t border-white/10 pt-3 space-y-2">
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Base GIS Overlays</div>
+            <div className="space-y-1.5 text-xs">
+              {!isCSWDO && (
+                <label className="flex items-center justify-between p-1.5 hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
+                  <span className="flex items-center gap-2 text-white/80">
+                    <span className="w-2 h-2 rounded-full bg-blue-400" />
+                    Road Network Graph (GIS)
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={showRoadNetwork}
+                    onChange={e => onToggleRoadNetwork(e.target.checked)}
+                    className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 cursor-pointer"
+                  />
+                </label>
+              )}
+
+              <label className="flex items-center justify-between p-1.5 hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
+                <span className="flex items-center gap-2 text-white/80">
+                  <span className="w-2 h-2 rounded-full bg-sky-400" />
+                  Live Weather Radar (Doppler)
+                </span>
+                <input
+                  type="checkbox"
+                  checked={showWeather}
+                  onChange={e => onToggleWeather(e.target.checked)}
+                  className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 cursor-pointer"
+                />
+              </label>
+
+              {!isCSWDO && (
+                <label className="flex items-center justify-between p-1.5 hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
+                  <span className="flex items-center gap-2 text-white/80">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    Demographics Heatmap
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={showHeatmap}
+                    onChange={e => onToggleHeatmap(e.target.checked)}
+                    className="rounded border-white/20 text-amber-500 bg-white/10 focus:ring-0 cursor-pointer"
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+  );
+}
+
 
 // Derive a mock road-risk GeoJSON from hazards (until backend bbox road endpoint lands)
 function buildSimulationRoadGeoJSON(hazards, scenario) {
@@ -1459,6 +1715,7 @@ const MapViewer = React.memo(({
   simulationMode,
   showShelters = true,
   showHazards = true,
+  activeMapFilter = 'all',
   is3D = true,
   setIs3D,
   mapRef,
@@ -1701,8 +1958,8 @@ const MapViewer = React.memo(({
     }
   }, [showWeather]);
 
-  const { activeHazardsGeoJSON, susceptibleGeoJSON } = useMemo(() => {
-    const displayHazards = activeDisasterSim === 'none' ? hazards : hazards.filter(h => {
+  const displayHazards = useMemo(() => {
+    let list = activeDisasterSim === 'none' ? hazards : hazards.filter(h => {
       const type = (h.hazard_type || '').toLowerCase();
       if (activeDisasterSim === 'flood') return ['flood', 'landslide', 'tsunami', 'water'].some(t => type.includes(t));
       if (activeDisasterSim === 'fire') return ['fire', 'wildfire', 'explosion', 'smoke'].some(t => type.includes(t));
@@ -1712,6 +1969,53 @@ const MapViewer = React.memo(({
       return true;
     });
 
+    if (activeMapFilter === 'all') return list;
+    if (activeMapFilter === 'flood') {
+      return list.filter(h => {
+        const type = (h.hazard_type || '').toLowerCase();
+        return h.is_fixed_flood_spot || ['flood', 'tsunami', 'water', 'landslide'].some(t => type.includes(t));
+      });
+    }
+    if (activeMapFilter === 'earthquake') {
+      return list.filter(h => {
+        const type = (h.hazard_type || '').toLowerCase();
+        return ['earthquake', 'tremor', 'fault', 'structural_collapse'].some(t => type.includes(t));
+      });
+    }
+    if (activeMapFilter === 'fixed_flood') {
+      return list.filter(h => Boolean(h.is_fixed_flood_spot));
+    }
+    if (activeMapFilter === 'fire') {
+      return list.filter(h => {
+        const type = (h.hazard_type || '').toLowerCase();
+        return ['fire', 'wildfire', 'smoke', 'explosion'].some(t => type.includes(t));
+      });
+    }
+    if (['shelters', 'rescue_units', 'residents'].includes(activeMapFilter)) {
+      return [];
+    }
+    return list;
+  }, [hazards, activeDisasterSim, activeMapFilter]);
+
+  const shouldRenderHazards = useMemo(() => {
+    if (!showHazards) return false;
+    if (['all', 'flood', 'earthquake', 'fixed_flood', 'fire'].includes(activeMapFilter)) return true;
+    return false;
+  }, [showHazards, activeMapFilter]);
+
+  const shouldRenderShelters = useMemo(() => {
+    if (!showShelters) return false;
+    if (['all', 'shelters', 'flood', 'earthquake', 'fire'].includes(activeMapFilter)) return true;
+    return false;
+  }, [showShelters, activeMapFilter]);
+
+  const shouldRenderRescueUnits = useMemo(() => {
+    if (!showRescueUnits) return false;
+    if (['all', 'rescue_units'].includes(activeMapFilter)) return true;
+    return false;
+  }, [showRescueUnits, activeMapFilter]);
+
+  const { activeHazardsGeoJSON, susceptibleGeoJSON } = useMemo(() => {
     const roadLineStrings = (roadNetwork?.edges || [])
       .map(e => {
         let g = e.geometry;
@@ -1722,7 +2026,7 @@ const MapViewer = React.memo(({
       })
       .filter(Boolean);
 
-    const active = displayHazards.filter(h => h.is_active && !h.is_fixed_flood_spot);
+    const active = displayHazards.filter(h => h.is_active);
     const susceptible = displayHazards.filter(h => h.is_fixed_flood_spot && !h.is_active);
 
     const buildFeature = (h) => {
@@ -1759,7 +2063,7 @@ const MapViewer = React.memo(({
       activeHazardsGeoJSON: { type: 'FeatureCollection', features: active.map(buildFeature) },
       susceptibleGeoJSON: { type: 'FeatureCollection', features: susceptible.map(buildFeature) }
     };
-  }, [hazards, activeDisasterSim, roadNetwork]);
+  }, [displayHazards, roadNetwork]);
 
   const demographicsGeoJSON = useMemo(() => ({
     type: 'FeatureCollection',
@@ -1886,7 +2190,7 @@ const MapViewer = React.memo(({
         )}
 
         {/* Active Emergency Hazards: 2-Mode Rendering (Circle Radius Zone & Road-Snapped Corridor) */}
-        {showHazards && (
+        {shouldRenderHazards && activeHazardsGeoJSON.features.length > 0 && (
           <Source id="hazards-source" type="geojson" data={activeHazardsGeoJSON}>
             {/* Mode 1: Circle Radius Fill */}
             <Layer
@@ -1964,7 +2268,7 @@ const MapViewer = React.memo(({
         )}
 
         {/* Flood Susceptibility Zones (Prone Areas / Passive) */}
-        {showHazards && (
+        {shouldRenderHazards && susceptibleGeoJSON.features.length > 0 && (
           <Source id="susceptible-source" type="geojson" data={susceptibleGeoJSON}>
             <Layer
               id="susceptible-circle-fill"
@@ -2057,7 +2361,7 @@ const MapViewer = React.memo(({
         )}
 
         {/* Shelter & Emergency Facility Markers */}
-        {showShelters && (viewAsResident || activeDisasterSim !== 'none' ? filteredSheltersForView : shelters).map(shelter => (
+        {shouldRenderShelters && (viewAsResident || activeDisasterSim !== 'none' ? filteredSheltersForView : shelters).map(shelter => (
           <Marker key={`s-${shelter.id}`} longitude={parseFloat(shelter.longitude)} latitude={parseFloat(shelter.latitude)} anchor="bottom">
             <div onClick={e => { e.stopPropagation(); setSelectedShelter(shelter); inspectLocation(parseFloat(shelter.longitude), parseFloat(shelter.latitude)); }} className="flex flex-col items-center group relative cursor-pointer">
               <MapPin size={30} className={shelter.status === 'open' ? 'text-green-400 drop-shadow-[0_0_6px_rgba(74,222,128,0.8)]' : 'text-red-400 drop-shadow-[0_0_6px_rgba(248,113,113,0.8)]'} />
@@ -2079,7 +2383,7 @@ const MapViewer = React.memo(({
         ))}
 
         {/* Hazard click zones & markers */}
-        {showHazards && hazards.map(hazard => {
+        {shouldRenderHazards && displayHazards.map(hazard => {
           const getHazardIcon = (type) => {
             if (type === 'flood') return <Waves size={18} className="text-white animate-pulse" />;
             if (type === 'earthquake') return <TriangleAlert size={18} className="text-white animate-bounce" />;
@@ -2154,6 +2458,7 @@ const MapViewer = React.memo(({
               <>
                 <Layer
                   id="drawing-hazard-circle-fill"
+                  source="drawing-hazard-source"
                   type="fill"
                   paint={{
                     'fill-color': '#ef4444',
@@ -2162,6 +2467,7 @@ const MapViewer = React.memo(({
                 />
                 <Layer
                   id="drawing-hazard-circle-outline"
+                  source="drawing-hazard-source"
                   type="line"
                   paint={{
                     'line-color': '#ef4444',
@@ -2174,6 +2480,7 @@ const MapViewer = React.memo(({
               <>
                 <Layer
                   id="drawing-hazard-casing"
+                  source="drawing-hazard-source"
                   type="line"
                   paint={{
                     'line-color': '#000000',
@@ -2185,6 +2492,7 @@ const MapViewer = React.memo(({
                 />
                 <Layer
                   id="drawing-hazard-core"
+                  source="drawing-hazard-source"
                   type="line"
                   paint={{
                     'line-color': '#ef4444',
@@ -2245,7 +2553,7 @@ const MapViewer = React.memo(({
 
 
         {/* Active Rescue Unit Operational Mission Corridors */}
-        {showRescueUnits && missionRoutesGeoJSON && (
+        {shouldRenderRescueUnits && missionRoutesGeoJSON && (
           <Source id="active-rescue-routes-source" type="geojson" data={missionRoutesGeoJSON}>
             <Layer
               id="active-rescue-routes-glow"
@@ -2268,8 +2576,8 @@ const MapViewer = React.memo(({
           </Source>
         )}
 
-        {/* Active Distress SOS Victims on Map */}
-        {showRescueUnits && activeRescueMissions.map((m) => {
+        {/* Active Distress SOS Victims on Map (Emergency Invariant: ALWAYS RENDERED REGARDLESS OF ACTIVE FILTER) */}
+        {activeRescueMissions.map((m) => {
           const lat = parseFloat(m.victim_latitude);
           const lng = parseFloat(m.victim_longitude);
           if (isNaN(lat) || isNaN(lng) || m.status === 'transporting' || m.status === 'completed') return null;
@@ -2299,7 +2607,7 @@ const MapViewer = React.memo(({
         })}
 
         {/* Active Rescue Units (Live GPS Vehicle Tracking) */}
-        {showRescueUnits && rescueUnits.map((unit) => {
+        {shouldRenderRescueUnits && rescueUnits.map((unit) => {
           const lat = parseFloat(unit.current_latitude);
           const lng = parseFloat(unit.current_longitude);
           if (isNaN(lat) || isNaN(lng)) return null;
@@ -3018,11 +3326,13 @@ export default function MapDashboard() {
   const [simulationMode] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isProactiveModalOpen, setIsProactiveModalOpen] = useState(false);
+  const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
   const [showShelters, setShowShelters] = useState(true);
   const [showHazards, setShowHazards] = useState(true);
   const [showRoadNetwork, setShowRoadNetwork] = useState(true);
   const [showRescueUnits, setShowRescueUnits] = useState(true);
   const [layersOpen, setLayersOpen] = useState(false);
+  const [activeMapFilter, setActiveMapFilter] = useState('all');
 
   const { data: dashboardData } = useQuery({
     queryKey: ['map-dashboard'],
@@ -3497,106 +3807,21 @@ export default function MapDashboard() {
         />
       )}
 
-      {/* Top Left Integrated Map Controls: GIS Overlays + Search Bar */}
-      <div className="absolute top-3 left-4 z-40 flex items-center gap-2">
-        {/* GIS Floating Layers Selector */}
-        <div className="relative">
-          <button
-            onClick={() => setLayersOpen(o => !o)}
-            className={`p-2.5 rounded-2xl bg-gray-900/95 dark:bg-slate-900/95 backdrop-blur-xl border shadow-xl transition flex items-center justify-center cursor-pointer ${
-              layersOpen
-                ? 'border-blue-500/60 text-blue-400 bg-blue-500/15 ring-2 ring-blue-500/20'
-                : 'border-white/10 hover:border-white/20 text-white/70 hover:text-white'
-            }`}
-            title="Map Overlays & Layers"
-          >
-            <Layers size={18} />
-          </button>
-
-          {layersOpen && (
-            <div className="absolute top-12 left-0 w-60 bg-gray-900/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl text-white space-y-3 animate-in fade-in slide-in-from-top-2 duration-150 z-50">
-              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Map Overlays</h4>
-              
-              <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-                <input
-                  type="checkbox"
-                  checked={showShelters}
-                  onChange={e => setShowShelters(e.target.checked)}
-                  className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-                />
-                Active Shelters
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-                <input
-                  type="checkbox"
-                  checked={showHazards}
-                  onChange={e => setShowHazards(e.target.checked)}
-                  className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-                />
-                Active Hazard Zones
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer hover:text-cyan-400 transition text-xs font-semibold select-none">
-                <input
-                  type="checkbox"
-                  checked={showRescueUnits}
-                  onChange={e => setShowRescueUnits(e.target.checked)}
-                  className="rounded border-white/20 text-cyan-500 bg-white/10 focus:ring-0"
-                />
-                Active Rescue Units (Live GPS)
-              </label>
-
-              {!isCSWDO && (
-                <>
-                  <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-                    <input
-                      type="checkbox"
-                      checked={showRoadNetwork}
-                      onChange={e => setShowRoadNetwork(e.target.checked)}
-                      className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-                    />
-                    Road Network Grid (GIS)
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-                    <input
-                      type="checkbox"
-                      checked={showLocalSimulation}
-                      onChange={e => handleSetLocalSimulation(e.target.checked)}
-                      className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-                    />
-                    Flood Flow Simulation
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-                    <input
-                      type="checkbox"
-                      checked={showHeatmap}
-                      onChange={e => setShowHeatmap(e.target.checked)}
-                      className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-                    />
-                    Demographics Heatmap
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer hover:text-blue-400 transition text-xs font-semibold select-none">
-                    <input
-                      type="checkbox"
-                      checked={showWeather}
-                      onChange={e => setShowWeather(e.target.checked)}
-                      className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 animate-pulse"
-                    />
-                    Live Weather Radar
-                  </label>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Floating Place & Shelter Search Bar */}
-        <FloatingMapSearch
+      {/* Top Left Integrated Map Controls: Unified Filter & Search Hub */}
+      <div className="absolute top-3 left-4 z-40">
+        <UnifiedMapFilterSearch
           shelters={shelters}
+          hazards={hazards}
+          rescueUnits={rescueUnits}
+          activeRescueMissions={activeRescueMissions}
+          activeFilter={activeMapFilter}
+          onChangeFilter={setActiveMapFilter}
+          showRoadNetwork={showRoadNetwork}
+          onToggleRoadNetwork={setShowRoadNetwork}
+          showHeatmap={showHeatmap}
+          onToggleHeatmap={setShowHeatmap}
+          showWeather={showWeather}
+          onToggleWeather={setShowWeather}
           onSelectLocation={(item) => {
             const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
             if (map && item.coords) {
@@ -3612,6 +3837,7 @@ export default function MapDashboard() {
               }
             }
           }}
+          isCSWDO={isCSWDO}
         />
       </div>
 
@@ -3681,24 +3907,25 @@ export default function MapDashboard() {
           </div>
         </div>
       ) : (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-2 xl:gap-3 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 xl:p-2 shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[calc(100vw-360px)] overflow-x-auto whitespace-nowrap scrollbar-none">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-1.5 xl:gap-2.5 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1 xl:p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[calc(100vw-360px)] overflow-x-auto whitespace-nowrap scrollbar-none">
           {/* Overlays Group */}
-          <div className="flex flex-col items-center">
-            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Overlays</span>
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-0.5 select-none">Overlays</span>
             <div className="flex items-center gap-1">
-              <ToolbarBtn active={showHeatmap} onClick={() => setShowHeatmap(o => !o)} icon={<Flame size={14} />} label="Heatmap" color="amber" />
-              <ToolbarBtn active={showWeather} onClick={() => setShowWeather(o => !o)} icon={<Cloud size={14} />} label="Weather" color="blue" />
-              <ToolbarBtn active={showResidentSignals} onClick={() => setShowResidentSignals(o => !o)} icon={<Users size={14} />} label="Residents" color="purple" />
+              <ToolbarBtn active={showHeatmap} onClick={() => setShowHeatmap(o => !o)} icon={<Flame size={13} />} label="Heatmap" color="amber" />
+              <ToolbarBtn active={showWeather} onClick={() => setShowWeather(o => !o)} icon={<Cloud size={13} />} label="Radar" color="blue" />
+              <ToolbarBtn active={showResidentSignals} onClick={() => setShowResidentSignals(o => !o)} icon={<Users size={13} />} label="Residents" color="purple" />
             </div>
           </div>
 
-          <div className="w-px bg-white/10 self-stretch my-1" />
+          <div className="w-px bg-white/10 self-stretch my-0.5" />
 
-          {/* Disaster Scenario Simulation Group (Revisions Defense Feature) */}
-          <div className="flex flex-col items-center">
-            <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-1 select-none">Disaster Test Sim</span>
+          {/* Disaster Scenario Simulation Group */}
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-0.5 select-none">Disaster Sim</span>
             <select
               value={activeDisasterSim}
+              aria-label="Disaster scenario simulation"
               onChange={(e) => {
                 const val = e.target.value;
                 setActiveDisasterSim(val);
@@ -3706,66 +3933,65 @@ export default function MapDashboard() {
                   .then(() => queryClient.invalidateQueries(['mapDashboard']))
                   .catch(err => console.warn('Sim toggle warning:', err));
               }}
-              className="bg-slate-800 text-amber-300 border border-amber-500/40 text-xs font-extrabold rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-amber-400 outline-none cursor-pointer shadow-md"
+              className="bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-extrabold rounded-lg px-2 py-1 focus:ring-1 focus:ring-amber-400 outline-none cursor-pointer shadow-sm"
             >
-              <option value="none">⚪ Command Mode (Off)</option>
-              <option value="siege">⚔️ Armed Siege Simulation</option>
-              <option value="flood">🌊 Flood &amp; Safe Zones</option>
-              <option value="earthquake">🌋 Earthquake Tremors</option>
-              <option value="fire">🚒 Fire &amp; Assembly Points</option>
-              <option value="chemical">🧪 Chem &amp; Decontamination</option>
+              <option value="none">⚪ Off</option>
+              <option value="siege">⚔️ Siege</option>
+              <option value="flood">🌊 Flood</option>
+              <option value="earthquake">🌋 Earthquake</option>
+              <option value="fire">🚒 Fire</option>
+              <option value="chemical">🧪 HazMat</option>
             </select>
           </div>
 
-          <div className="w-px bg-white/10 self-stretch my-1" />
+          <div className="w-px bg-white/10 self-stretch my-0.5" />
 
-          {/* Live OpenWeather & Continuous Rain Telemetry HUD */}
-          <div className="flex flex-col items-center">
-            <span className="text-[9px] font-black uppercase tracking-widest mb-1 select-none whitespace-nowrap flex items-center gap-1 text-cyan-400">
-              <CloudRain size={10} />
-              <span>Zamboanga Weather</span>
+          {/* Live OpenWeather Forecast & 24h History Trigger */}
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-[9px] font-black uppercase tracking-widest mb-0.5 select-none whitespace-nowrap flex items-center gap-1 text-cyan-400">
+              <CloudRain size={9} />
+              <span>Weather &amp; Forecast</span>
             </span>
             <button
-              onClick={() => setIsProactiveModalOpen(true)}
-              className={`flex items-center gap-2 px-2.5 xl:px-3 py-1.5 rounded-lg border text-xs font-bold transition shadow-md cursor-pointer whitespace-nowrap ${
+              type="button"
+              onClick={() => setIsWeatherModalOpen(true)}
+              className={`flex items-center gap-1.5 px-2 xl:px-2.5 py-1 rounded-lg border text-xs font-bold transition shadow-sm cursor-pointer whitespace-nowrap ${
                 weatherTelemetry?.is_raining
                   ? (weatherTelemetry.continuous_rain_duration_minutes >= (weatherTelemetry?.flood_trigger_threshold_minutes || 45)
                       ? 'bg-rose-950/90 hover:bg-rose-900/90 border-rose-500 text-rose-200 animate-pulse'
                       : weatherTelemetry.continuous_rain_duration_minutes >= Math.max(15, (weatherTelemetry?.flood_trigger_threshold_minutes || 45) - 15)
                         ? 'bg-amber-950/90 hover:bg-amber-900/90 border-amber-500 text-amber-200'
                         : 'bg-blue-950/90 hover:bg-blue-900/90 border-blue-500 text-blue-200')
-                  : 'bg-slate-800/90 hover:bg-slate-700/90 border-slate-700 text-slate-300'
+                  : 'bg-slate-800/90 hover:bg-slate-700/90 border-slate-700 text-slate-200'
               }`}
-              title="OpenWeather / Open-Meteo Live Telemetry. Click to open Proactive Early Warning EOC & River Basin Controls"
+              title="Click to open Zamboanga Weather Forecast, 24-Hour History & Rainfall Timeline"
             >
               {weatherTelemetry?.is_raining ? (
                 <>
-                  <span className="flex h-2.5 w-2.5 relative">
+                  <span className="flex h-2 w-2 relative">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
                   </span>
-                  <span className="font-extrabold text-white">
+                  <span className="font-extrabold text-white text-[11px]">
                     {weatherTelemetry.continuous_rain_duration_minutes >= (weatherTelemetry?.flood_trigger_threshold_minutes || 45)
-                      ? `🚨 ${weatherTelemetry.continuous_rain_duration_minutes}m Rain (Auto-EOC Active)`
-                      : weatherTelemetry.continuous_rain_duration_minutes >= Math.max(15, (weatherTelemetry?.flood_trigger_threshold_minutes || 45) - 15)
-                        ? `🌧️ ${weatherTelemetry.continuous_rain_duration_minutes}m (Auto-EOC in ${(weatherTelemetry?.flood_trigger_threshold_minutes || 45) - weatherTelemetry.continuous_rain_duration_minutes}m)`
-                        : `🌧️ ${weatherTelemetry.continuous_rain_duration_minutes > 0 ? `${weatherTelemetry.continuous_rain_duration_minutes}m Rain` : 'Rain Starting'}`}
+                      ? `🚨 ${weatherTelemetry.continuous_rain_duration_minutes}m Rain (EOC Active)`
+                      : `🌧️ ${weatherTelemetry.continuous_rain_duration_minutes > 0 ? `${weatherTelemetry.continuous_rain_duration_minutes}m Rain` : 'Rain Starting'}`}
                   </span>
                   {weatherTelemetry.rain_mm > 0 && (
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 text-cyan-300">
-                      {weatherTelemetry.rain_mm} mm/h
+                    <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-black/40 text-cyan-300">
+                      {weatherTelemetry.rain_mm}mm/h
                     </span>
                   )}
                   {weatherTelemetry.temp_c && (
-                    <span className="text-[10px] text-slate-400 font-normal">
+                    <span className="text-[10px] text-slate-300 font-normal">
                       {weatherTelemetry.temp_c}°C
                     </span>
                   )}
                 </>
               ) : (
                 <>
-                  <Sun size={13} className="text-amber-400" />
-                  <span className="text-slate-300 font-semibold">
+                  <Sun size={12} className="text-amber-400" />
+                  <span className="text-slate-200 font-semibold text-[11px]">
                     ☀️ Clear {weatherTelemetry?.temp_c ? `(${weatherTelemetry.temp_c}°C)` : ''}
                   </span>
                 </>
@@ -3773,45 +3999,47 @@ export default function MapDashboard() {
             </button>
           </div>
 
-          <div className="w-px bg-white/10 self-stretch my-1" />
+          <div className="w-px bg-white/10 self-stretch my-0.5" />
 
           {/* Proactive Early Warning & Presets Command */}
-          <div className="flex flex-col items-center">
-            <span className="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1 select-none whitespace-nowrap">Early Warning</span>
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-[9px] font-black text-red-400 uppercase tracking-widest mb-0.5 select-none whitespace-nowrap">Early Warning</span>
             <button
+              type="button"
               onClick={() => setIsProactiveModalOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white border border-red-500/40 text-xs font-bold rounded-lg shadow-md hover:shadow-red-500/30 transition cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1 px-2 xl:px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white border border-red-500/40 text-xs font-bold rounded-lg shadow-sm hover:shadow-red-500/30 transition cursor-pointer whitespace-nowrap"
+              title="Open CDRRMO Proactive Hazard Command & River Basin Controls"
             >
-              <ShieldAlert size={14} className="text-white" />
-              <span>Proactive EOC</span>
+              <ShieldAlert size={13} className="text-white" />
+              <span className="text-[11px]">Proactive EOC</span>
             </button>
           </div>
 
-          <div className="w-px bg-white/10 self-stretch my-1" />
+          <div className="w-px bg-white/10 self-stretch my-0.5" />
 
           {/* Pinpoint & Orbit Tools Group */}
-          <div className="flex flex-col items-center">
-            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Pinpoint &amp; Orbit</span>
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-0.5 select-none">Pinpoint</span>
             <div className="flex items-center gap-1">
               {!pinMode ? (
                 <>
-                  <ToolbarBtn active={false} onClick={() => setPinMode('inspect')} icon={<Eye size={14} className="animate-pulse" />} label="Inspect" color="purple" />
-                  <ToolbarBtn active={false} onClick={() => setPinMode('shelter')} icon={<MapPin size={14} />} label="Shelter" color="blue" />
-                  <ToolbarBtn active={false} onClick={() => setPinMode('hazard')} icon={<AlertTriangle size={14} />} label="Hazard" color="red" />
+                  <ToolbarBtn active={false} onClick={() => setPinMode('inspect')} icon={<Eye size={13} />} label="Inspect" color="purple" />
+                  <ToolbarBtn active={false} onClick={() => setPinMode('shelter')} icon={<MapPin size={13} />} label="Shelter" color="blue" />
+                  <ToolbarBtn active={false} onClick={() => setPinMode('hazard')} icon={<AlertTriangle size={13} />} label="Hazard" color="red" />
                 </>
               ) : (
-                <ToolbarBtn active={false} onClick={handleCancelPin} icon={<X size={14} />} label="Cancel Pin" color="red" />
+                <ToolbarBtn active={false} onClick={handleCancelPin} icon={<X size={13} />} label="Cancel" color="red" />
               )}
             </div>
           </div>
 
-          <div className="w-px bg-white/10 self-stretch my-1" />
+          <div className="w-px bg-white/10 self-stretch my-0.5" />
 
-          {/* Control Group */}
-          <div className="flex flex-col items-center">
-            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1 select-none">Feed</span>
+          {/* Alerts Feed */}
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-0.5 select-none">Feed</span>
             <div className="flex items-center">
-              <ToolbarBtn active={drawerOpen} onClick={() => setDrawerOpen(o => !o)} icon={<SlidersHorizontal size={14} />} label="Alerts" color="purple" />
+              <ToolbarBtn active={drawerOpen} onClick={() => setDrawerOpen(o => !o)} icon={<SlidersHorizontal size={13} />} label="Alerts" color="purple" />
             </div>
           </div>
         </div>
@@ -4197,6 +4425,7 @@ export default function MapDashboard() {
           simulationMode={simulationMode}
           showShelters={showShelters}
           showHazards={showHazards}
+          activeMapFilter={activeMapFilter}
           is3D={is3D}
           setIs3D={setIs3D}
           mapRef={mapRef}
@@ -4236,6 +4465,14 @@ export default function MapDashboard() {
           setDrawerOpen={setDrawerOpen}
         />
       </div>
+      <ZamboangaWeatherModal
+        isOpen={isWeatherModalOpen}
+        onClose={() => setIsWeatherModalOpen(false)}
+        liveTelemetry={weatherTelemetry}
+        showRadarOverlay={showWeather}
+        onToggleRadarOverlay={() => setShowWeather(prev => !prev)}
+        onOpenProactiveEoc={() => setIsProactiveModalOpen(true)}
+      />
       <ProactiveDisasterModal
         isOpen={isProactiveModalOpen}
         onClose={() => setIsProactiveModalOpen(false)}

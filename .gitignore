@@ -42,6 +42,7 @@ public/storage
 web-build/
 ios/
 android/
+graphify-out/
 
 # Laravel specific
 /storage/*.key
