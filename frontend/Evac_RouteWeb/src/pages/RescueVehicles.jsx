@@ -121,7 +121,7 @@ export default function RescueVehicles() {
           </div>
           <button
             onClick={() => refetch()}
-            className="p-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition shadow-xs cursor-pointer"
+            className="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition shadow-xs cursor-pointer"
             title="Refresh Fleet Status"
           >
             <RefreshCw size={15} />
@@ -131,7 +131,7 @@ export default function RescueVehicles() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate('/admin/rescue-dispatch')}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800 text-gray-800 dark:text-slate-200 rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
           >
             <span>Live Dispatch Console →</span>
           </button>
@@ -688,7 +688,7 @@ export function VehicleModal({ title, initialData = null, staff = [], onClose, o
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl font-bold transition cursor-pointer"
+              className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer"
             >
               Cancel
             </button>

@@ -468,7 +468,7 @@ export default function StaffManagement() {
                         <td className="py-4 px-6 text-right">
                           <button 
                             onClick={() => setViewingStaff(user)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 font-bold text-xs transition border border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/70 text-blue-700 dark:text-blue-300 font-bold text-xs transition border border-blue-200 dark:border-blue-800/80 cursor-pointer shadow-2xs"
                           >
                             <Eye size={13} className="text-blue-600 dark:text-blue-400" />
                             <span>View Details</span>

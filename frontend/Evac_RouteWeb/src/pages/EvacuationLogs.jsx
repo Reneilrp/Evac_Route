@@ -389,7 +389,7 @@ export default function EvacuationLogs() {
                             <button
                               onClick={() => handleCheckOut(log.id)}
                               disabled={checkoutMutation.isPending}
-                              className="bg-red-50 hover:bg-red-500 hover:text-white dark:bg-red-950/40 dark:hover:bg-red-600 text-red-600 dark:text-red-400 text-xs font-bold px-3 py-1.5 rounded transition disabled:opacity-50 cursor-pointer"
+                              className="bg-red-50 hover:bg-red-600 hover:text-white dark:bg-red-950/50 dark:hover:bg-red-600 text-red-600 dark:text-red-400 text-xs font-bold px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900/60 transition disabled:opacity-50 cursor-pointer"
                             >
                               Check Out
                             </button>

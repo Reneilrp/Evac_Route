@@ -209,7 +209,7 @@ export default function ResidentRegistry() {
                       <td className="py-4 px-6 text-right">
                         <button
                           onClick={() => setSelectedResident(res)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition shadow-sm"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-950/50 dark:hover:bg-blue-900/70 dark:text-blue-300 dark:border-blue-800/80 rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-2xs cursor-pointer"
                         >
                           <Eye size={14} /> View History
                         </button>
@@ -427,7 +427,7 @@ function ResidentHistoryModal({ resident, onClose }) {
         <div className="flex justify-end pt-3 border-t border-slate-200 dark:border-slate-800">
           <button
             onClick={onClose}
-            className="bg-gray-200 hover:bg-gray-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 px-4 py-2 rounded-lg font-bold text-xs uppercase transition"
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer"
           >
             Close Details
           </button>

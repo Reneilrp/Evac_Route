@@ -519,7 +519,7 @@ export default function EmergencyAlerts() {
                 setSelectedScope('all');
                 setSearchQuery('');
               }}
-              className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold rounded-lg transition cursor-pointer"
+              className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
             >
               <RotateCcw size={13} /> Reset Filter
             </button>
