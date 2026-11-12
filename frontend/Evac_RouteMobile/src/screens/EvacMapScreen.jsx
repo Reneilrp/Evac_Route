@@ -2799,29 +2799,62 @@ export default function EvacMapScreen({ navigation, route }) {
             </Text>
           )}
 
-          <TouchableOpacity
-            onPress={() => {
-              const target = selectedFacilityDetails;
-              setSelectedFacilityDetails(null);
-              if (target) {
-                handleOneClickEvacuate(target);
-              }
-            }}
-            style={{
-              backgroundColor: colors.primary,
-              paddingVertical: 12,
-              borderRadius: 12,
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'row',
-              gap: 8,
-            }}
-          >
-            <Navigation color="#ffffff" size={16} />
-            <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}>
-              Route to this Destination
-            </Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => {
+                const target = selectedFacilityDetails;
+                setSelectedFacilityDetails(null);
+                if (target) {
+                  handleOneClickEvacuate(target);
+                }
+              }}
+              style={{
+                flex: 1,
+                backgroundColor: colors.primary,
+                paddingVertical: 12,
+                borderRadius: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                gap: 8,
+              }}
+            >
+              <Navigation color="#ffffff" size={16} />
+              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}>
+                Route to Shelter
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                const target = selectedFacilityDetails;
+                if (!target) return;
+                triggerCasualHaptic(40);
+                setGeofencePrompt({
+                  shelter: target,
+                  distanceMeters: 45,
+                });
+                Vibration.vibrate([0, 80, 50, 80]);
+                setSelectedFacilityDetails(null);
+              }}
+              style={{
+                backgroundColor: '#16a34a',
+                paddingVertical: 12,
+                paddingHorizontal: 12,
+                borderRadius: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                gap: 6,
+              }}
+              accessibilityLabel="Simulate arrival within 80 meters geofence"
+            >
+              <CheckCircle2 color="#ffffff" size={16} />
+              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 12 }}>
+                ⚡ Simulate Arrival
+              </Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       )}
 

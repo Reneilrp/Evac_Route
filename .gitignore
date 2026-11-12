@@ -122,7 +122,7 @@ __pycache__/
 *.temp
 *.bak
 *.orig
-EVAC_ROUTE_WEB_RECORDING_GUIDE.md
+*RECORDING_GUIDE.md
 
 # App Binaries
 *.apk

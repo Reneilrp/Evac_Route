@@ -615,6 +615,37 @@ export default function StaffScannerScreen() {
                 >
                   <Text style={styles.switchModeLinkText}>Camera having trouble? Switch to Manual Entry</Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    marginTop: 10,
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
+                    backgroundColor: '#0284c7',
+                    borderRadius: 10,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 3,
+                    elevation: 3,
+                  }}
+                  onPress={() => {
+                    setScanned(true);
+                    Vibration.vibrate(100);
+                    processQRHash('hash_test_code_pheinz');
+                  }}
+                  activeOpacity={0.8}
+                  accessibilityLabel="Simulate pheinz resident QR scan"
+                >
+                  <QrCode size={18} color="#ffffff" />
+                  <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}>
+                    ⚡ Demo: Simulate &apos;pheinz&apos; QR Pass
+                  </Text>
+                </TouchableOpacity>
               </View>
             )
           ) : (
@@ -790,6 +821,30 @@ export default function StaffScannerScreen() {
                 <Send size={18} color={colors.white} />
               </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              style={{
+                marginTop: 8,
+                alignSelf: 'flex-start',
+                backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9',
+                borderWidth: 1,
+                borderColor: '#0284c7',
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                borderRadius: 6,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5,
+              }}
+              onPress={() => {
+                setManualHash('hash_test_code_pheinz');
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ color: '#0284c7', fontSize: 11, fontWeight: 'bold' }}>
+                ⚡ Paste Test Token (&apos;pheinz&apos;)
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
