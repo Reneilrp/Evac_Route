@@ -25,7 +25,7 @@ echo "=========================================================="
 # 1. Build Frontend Web
 echo ""
 echo "📦 [1/4] Building Frontend Web (dist)..."
-cd "$PROJECT_ROOT/frontend/Evac_RouteWeb"
+cd "$PROJECT_ROOT/frontend/web"
 npm run build
 echo "✅ Build completed successfully."
 
@@ -60,7 +60,10 @@ EOF
 # 3. Rsync Dist Folder to VM (compressed, fast, and deletes old unused chunks)
 echo ""
 echo "📤 [3/4] Rsyncing fresh dist/ bundle to VM..."
-rsync -avz --delete "$PROJECT_ROOT/frontend/Evac_RouteWeb/dist/" "$VM_HOST:$REMOTE_PATH/frontend/Evac_RouteWeb/dist/"
+ssh "$VM_HOST" "mkdir -p $REMOTE_PATH/frontend/web"
+rsync -avz --delete "$PROJECT_ROOT/frontend/web/dist/" "$VM_HOST:$REMOTE_PATH/frontend/web/dist/"
+# Maintain backwards-compatible symlink so remote Nginx serves properly regardless of web or Evac_RouteWeb root
+ssh "$VM_HOST" "ln -sfn $REMOTE_PATH/frontend/web $REMOTE_PATH/frontend/Evac_RouteWeb 2>/dev/null || true"
 echo "✅ Frontend dist synced."
 
 # 4. Restart Supervisor Workers & PHP-FPM

@@ -1,0 +1,476 @@
+import React from "react";
+import { useState } from 'react';
+import { Download, Search, Filter, Calendar, RotateCcw, Archive, ArchiveRestore } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '../../services/api';
+import ConfirmationModal from '../../components/common/ConfirmationModal';
+import { showSuccess, showError } from '../../utils/toast';
+
+export default function EvacuationLogs() {
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [archiveFilter, setArchiveFilter] = useState('active');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [rationFilter, setRationFilter] = useState('all');
+  const [shelterFilter, setShelterFilter] = useState('all');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [isBatchArchiveModalOpen, setIsBatchArchiveModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Debounce search string to limit API requests
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // Reset page to 1 on search change
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Fetch shelters for filter dropdown
+  const { data: sheltersData } = useQuery({
+    queryKey: ['evac-shelters-dropdown'],
+    queryFn: () => api.get('/shelters').then(res => res.data?.data || res.data || []),
+  });
+  const shelters = Array.isArray(sheltersData) ? sheltersData : (sheltersData?.data || []);
+
+  const activeFilterCount = (statusFilter !== 'all' ? 1 : 0) + 
+    (rationFilter !== 'all' ? 1 : 0) + 
+    (shelterFilter !== 'all' ? 1 : 0) +
+    (fromDate ? 1 : 0) +
+    (toDate ? 1 : 0);
+
+  const resetFilters = () => {
+    setStatusFilter('all');
+    setRationFilter('all');
+    setShelterFilter('all');
+    setFromDate('');
+    setToDate('');
+    setPage(1);
+  };
+
+  const { data: logsData, isLoading } = useQuery({
+    queryKey: ['evacuation-logs', page, debouncedSearch, statusFilter, rationFilter, shelterFilter, fromDate, toDate, archiveFilter],
+    queryFn: () => api.get('/evacuation-logs', {
+      params: {
+        page,
+        search: debouncedSearch,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        ration: rationFilter !== 'all' ? rationFilter : undefined,
+        shelter_id: shelterFilter !== 'all' ? shelterFilter : undefined,
+        from_date: fromDate || undefined,
+        to_date: toDate || undefined,
+        archived: archiveFilter === 'archived' ? 'true' : undefined,
+      }
+    }).then(res => res.data),
+    refetchInterval: 10000, // Refresh every 10 seconds
+  });
+
+  const checkoutMutation = useMutation({
+    mutationFn: (logId) => api.post(`/evacuation-logs/${logId}/check-out`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evacuation-logs'] });
+      showSuccess('Resident checked out successfully.');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to check out resident.');
+    }
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: (logId) => api.post(`/evacuation-logs/${logId}/archive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evacuation-logs'] });
+      showSuccess('Evacuation log archived.');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to archive log.');
+    }
+  });
+
+  const unarchiveMutation = useMutation({
+    mutationFn: (logId) => api.post(`/evacuation-logs/${logId}/unarchive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evacuation-logs'] });
+      showSuccess('Evacuation log restored.');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to restore log.');
+    }
+  });
+
+  const batchArchiveMutation = useMutation({
+    mutationFn: () => api.post('/evacuation-logs/archive-checked-out'),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['evacuation-logs'] });
+      showSuccess(res.data?.message || 'Checked-out logs archived successfully.');
+      setIsBatchArchiveModalOpen(false);
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to archive checked-out logs.');
+      setIsBatchArchiveModalOpen(false);
+    }
+  });
+
+  // logs come from the paginated Laravel response: data.data.data
+  const logs = logsData?.data?.data || [];
+  const filteredLogs = logs; // Keep same variable to avoid rewriting table mapping
+
+  const [checkoutConfirmId, setCheckoutConfirmId] = useState(null);
+
+  const handleCheckOut = (logId) => {
+    setCheckoutConfirmId(logId);
+  };
+
+  const handleConfirmCheckout = () => {
+    if (checkoutConfirmId) {
+      checkoutMutation.mutate(checkoutConfirmId);
+      setCheckoutConfirmId(null);
+    }
+  };
+
+  const handleExport = () => {
+    const headers = ['ID', 'Family Name', 'QR Hash', 'Shelter', 'Headcount', 'Ration Claimed', 'Check-In Time', 'Check-Out Time'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredLogs.map(l =>
+        `"${l.id}","${l.family_profile?.user?.name || 'N/A'}","${l.family_profile?.qr_code_hash || 'N/A'}","${l.shelter?.name || 'N/A'}","${l.recorded_headcount}","${l.ration_claimed ? 'Yes' : 'No'}","${l.checked_in_at}","${l.checked_out_at || 'Active'}"`
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `evacuation_logs_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url); // Free blob from memory
+  };
+
+  React.useEffect(() => {
+    const handleExportEvent = () => handleExport();
+    window.addEventListener('export-evac-logs', handleExportEvent);
+    return () => window.removeEventListener('export-evac-logs', handleExportEvent);
+  }, [filteredLogs]);
+
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  return (
+    <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => { setArchiveFilter('active'); setPage(1); }}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+              archiveFilter === 'active'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            <span>Active Evacuation Logs</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setArchiveFilter('archived'); setPage(1); }}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+              archiveFilter === 'archived'
+                ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Archive size={14} />
+            <span>Archived Logs</span>
+          </button>
+        </div>
+
+        {archiveFilter === 'active' && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsBatchArchiveModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
+              title="Move historical checked-out records to the Archived Logs tab"
+            >
+              <Archive size={14} />
+              <span>Archive Checked-Out</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/70 dark:bg-slate-950/50">
+          <div className="flex gap-3 w-1/2">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search family name, QR hash, or shelter..." 
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+              />
+            </div>
+            <button 
+              type="button"
+              onClick={() => setIsFilterOpen(prev => !prev)}
+              className={`border px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-xs cursor-pointer ${
+                isFilterOpen || activeFilterCount > 0
+                  ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-500 text-blue-600 dark:text-blue-400 font-bold'
+                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750'
+              }`}
+            >
+              <Filter size={16} />
+              <span>Filter</span>
+              {activeFilterCount > 0 && (
+                <span className="bg-blue-600 text-white text-[10px] font-black rounded-full h-4 w-4 flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
+          <div className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <Calendar size={16} /> {today}
+          </div>
+        </div>
+
+        {/* Collapsible Filter Panel */}
+        {isFilterOpen && (
+          <div className="p-4 bg-slate-50/90 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 animate-in fade-in duration-150">
+            <div>
+              <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Stay Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+                className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Records</option>
+                <option value="active">Checked In (Active)</option>
+                <option value="checked_out">Checked Out</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Relief Ration Status
+              </label>
+              <select
+                value={rationFilter}
+                onChange={e => { setRationFilter(e.target.value); setPage(1); }}
+                className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Allocations</option>
+                <option value="claimed">Ration Claimed</option>
+                <option value="unclaimed">Unclaimed</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Shelter Location
+              </label>
+              <select
+                value={shelterFilter}
+                onChange={e => { setShelterFilter(e.target.value); setPage(1); }}
+                className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Shelters</option>
+                {shelters.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.barangay || 'Area'})</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                From Date
+              </label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={e => { setFromDate(e.target.value); setPage(1); }}
+                className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                To Date
+              </label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={e => { setToDate(e.target.value); setPage(1); }}
+                className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={resetFilters}
+                disabled={activeFilterCount === 0}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg text-xs font-bold transition disabled:opacity-40 cursor-pointer"
+              >
+                <RotateCcw size={13} /> Reset Filters
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <span className="flex h-6 w-6 relative mr-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-6 w-6 bg-blue-500"></span>
+              </span>
+              <p className="text-gray-500 dark:text-slate-400 font-medium">Loading logs from backend...</p>
+            </div>
+          ) : (
+            <table className="min-w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wider">
+                  <th className="py-3 px-6 font-semibold">Time</th>
+                  <th className="py-3 px-6 font-semibold">Family Profile</th>
+                  <th className="py-3 px-6 font-semibold">QR Hash</th>
+                  <th className="py-3 px-6 font-semibold">Shelter</th>
+                  <th className="py-3 px-6 font-semibold">Headcount</th>
+                  <th className="py-3 px-6 font-semibold">Ration</th>
+                  <th className="py-3 px-6 font-semibold">Status / Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {filteredLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-gray-400 dark:text-slate-500 font-medium">
+                      {search ? 'No matching logs found.' : 'No check-ins recorded yet.'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredLogs.map(log => (
+                    <tr key={log.id} className="hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition">
+                      <td className="py-4 px-6 text-gray-500 dark:text-slate-400 text-sm whitespace-nowrap">
+                        {log.checked_in_at ? new Date(log.checked_in_at).toLocaleString() : '—'}
+                      </td>
+                      <td className="py-4 px-6 font-medium text-gray-800 dark:text-slate-200">
+                        {log.family_profile?.user?.name || 'Unknown'}
+                      </td>
+                      <td className="py-4 px-6 text-gray-400 dark:text-slate-500 text-xs font-mono">
+                        {log.family_profile?.qr_code_hash || '—'}
+                      </td>
+                      <td className="py-4 px-6 text-gray-600 dark:text-slate-300 text-sm">
+                        {log.shelter?.name || '—'}
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 py-1 px-3 rounded-full text-xs font-bold">
+                          {log.recorded_headcount}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className={`py-1 px-3 rounded-full text-xs font-bold ${log.ration_claimed ? 'bg-green-100 text-green-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400'}`}>
+                          {log.ration_claimed ? 'Claimed' : 'Pending'}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-2">
+                          {log.checked_out_at ? (
+                            <span className="text-gray-400 dark:text-slate-500 text-xs">
+                              Checked Out at {new Date(log.checked_out_at).toLocaleTimeString()}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleCheckOut(log.id)}
+                              disabled={checkoutMutation.isPending}
+                              className="bg-red-50 hover:bg-red-600 hover:text-white dark:bg-red-950/50 dark:hover:bg-red-600 text-red-600 dark:text-red-400 text-xs font-bold px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900/60 transition disabled:opacity-50 cursor-pointer"
+                            >
+                              Check Out
+                            </button>
+                          )}
+
+                          {log.archived_at ? (
+                            <button
+                              onClick={() => unarchiveMutation.mutate(log.id)}
+                              disabled={unarchiveMutation.isPending}
+                              className="text-gray-400 hover:text-blue-500 p-1 hover:bg-blue-50 dark:hover:bg-slate-800 rounded transition cursor-pointer"
+                              title="Restore Log to Active Records"
+                            >
+                              <ArchiveRestore size={15} />
+                            </button>
+                          ) : (
+                            log.checked_out_at && (
+                              <button
+                                onClick={() => archiveMutation.mutate(log.id)}
+                                disabled={archiveMutation.isPending}
+                                className="text-gray-400 hover:text-amber-500 p-1 hover:bg-amber-50 dark:hover:bg-slate-800 rounded transition cursor-pointer"
+                                title="Archive Checked-Out Record"
+                              >
+                                <Archive size={15} />
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Pagination Controls */}
+        {!isLoading && logsData?.data && (
+          <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/70 dark:bg-slate-950/50">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Showing page {page} of {logsData.data.last_page || 1} (Total: {logsData.data.total || 0} logs)
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition disabled:opacity-50 cursor-pointer shadow-2xs"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(logsData.data.last_page || 1, p + 1))}
+                disabled={page === (logsData.data.last_page || 1)}
+                className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition disabled:opacity-50 cursor-pointer shadow-2xs"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+      <ConfirmationModal
+        isOpen={checkoutConfirmId !== null}
+        onClose={() => setCheckoutConfirmId(null)}
+        onConfirm={handleConfirmCheckout}
+        title="Confirm Check-Out"
+        message="Are you sure you want to manually check out this family? This action will mark them as checked out in the database."
+        confirmText="Check-Out"
+        cancelText="Cancel"
+        confirmButtonClass="bg-red-600 hover:bg-red-700"
+      />
+      <ConfirmationModal
+        isOpen={isBatchArchiveModalOpen}
+        onClose={() => setIsBatchArchiveModalOpen(false)}
+        onConfirm={() => batchArchiveMutation.mutate()}
+        title="Archive Checked-Out Logs"
+        message="Are you sure you want to archive all evacuation records for residents who have already checked out? They will be moved to the Archived Logs tab to keep the active roster clean."
+        confirmText="Archive Checked-Out"
+        cancelText="Cancel"
+        confirmButtonClass="bg-amber-600 hover:bg-amber-700"
+      />
+    </div>
+  );
+}

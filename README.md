@@ -64,12 +64,12 @@ php artisan key:generate
    - Copy your Default Public Token from the Mapbox dashboard.
    - Set this token in:
      - `backend/.env` -> `MAPBOX_TOKEN=pk.your_public_token`
-     - `frontend/Evac_RouteMobile/.env` -> `MAPBOX_TOKEN=pk.your_public_token`
-     - `frontend/Evac_RouteWeb/.env` -> `VITE_MAPBOX_TOKEN=pk.your_public_token`
+     - `frontend/mobile/.env` -> `MAPBOX_TOKEN=pk.your_public_token`
+     - `frontend/web/.env` -> `VITE_MAPBOX_TOKEN=pk.your_public_token`
 3. **Secret Downloads Token (`sk.***`) [For Mobile App Build]:**
    - On Mapbox Account -> **Tokens** -> **Create a token**, name it and enable `downloads:read` scope.
    - Set this token in:
-     - `frontend/Evac_RouteMobile/.env` -> `MAPBOX_DOWNLOADS_TOKEN=sk.your_secret_token` and `RNMAPBOX_MAPS_DOWNLOAD_TOKEN=sk.your_secret_token`
+     - `frontend/mobile/.env` -> `MAPBOX_DOWNLOADS_TOKEN=sk.your_secret_token` and `RNMAPBOX_MAPS_DOWNLOAD_TOKEN=sk.your_secret_token`
 
 ---
 
@@ -88,19 +88,19 @@ php artisan serve
 
 #### Mobile App Setup
 ```bash
-cd frontend/Evac_RouteMobile
+cd frontend/mobile
 npm install
 cp .env.example .env
-# Edit frontend/Evac_RouteMobile/.env to set MAPBOX_TOKEN, MAPBOX_DOWNLOADS_TOKEN, and API_BASE_URL
+# Edit frontend/mobile/.env to set MAPBOX_TOKEN, MAPBOX_DOWNLOADS_TOKEN, and API_BASE_URL
 npx expo start
 ```
 
 #### Web Dashboard Setup
 ```bash
-cd frontend/Evac_RouteWeb
+cd frontend/web
 npm install
 cp .env.example .env
-# Edit frontend/Evac_RouteWeb/.env to set VITE_MAPBOX_TOKEN and VITE_API_BASE_URL
+# Edit frontend/web/.env to set VITE_MAPBOX_TOKEN and VITE_API_BASE_URL
 npm run dev
 ```
 

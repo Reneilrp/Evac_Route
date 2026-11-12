@@ -201,8 +201,8 @@ echo "  SECTION 3: MAPBOX DIRECTIONS API & NAVIGATION GEOMETRY\n";
 echo "----------------------------------------------------------------------\n";
 
 $mapboxToken = env('MAPBOX_ACCESS_TOKEN', env('MAPBOX_TOKEN', ''));
-if (empty($mapboxToken) && file_exists(__DIR__ . '/../../frontend/Evac_RouteMobile/.env')) {
-    $envContent = file_get_contents(__DIR__ . '/../../frontend/Evac_RouteMobile/.env');
+if (empty($mapboxToken) && file_exists(__DIR__ . '/../../frontend/mobile/.env')) {
+    $envContent = file_get_contents(__DIR__ . '/../../frontend/mobile/.env');
     if (preg_match('/EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN=(.*)/', $envContent, $m)) {
         $mapboxToken = trim($m[1], " \t\n\r\0\x0B'\"");
     }

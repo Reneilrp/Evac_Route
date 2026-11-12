@@ -1,0 +1,495 @@
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { Archive, ArchiveRestore } from 'lucide-react';
+import api from '../../services/api';
+import { getNearestBarangay } from '../../utils/mapHelper';
+
+function getBarangayDisplay(incident) {
+  if (!incident) return 'Zamboanga City';
+  if (incident.description && incident.description.includes('Barangay:')) {
+    const match = incident.description.match(/Barangay:\s*([^|\]\n]+)/i);
+    if (match && match[1]) {
+      const bgy = match[1].trim();
+      const addrMatch = incident.description.match(/Address:\s*([^|\]\n]+)/i);
+      const addr = addrMatch ? addrMatch[1].trim() : '';
+      return addr ? `${addr}, Brgy. ${bgy}` : `Brgy. ${bgy}`;
+    }
+  }
+  const lng = parseFloat(incident.longitude);
+  const lat = parseFloat(incident.latitude);
+  if (!isNaN(lng) && !isNaN(lat)) {
+    return `Brgy. ${getNearestBarangay(lng, lat)}, Zamboanga City`;
+  }
+  return incident.reporter?.family_profile?.barangay
+    ? `Brgy. ${incident.reporter.family_profile.barangay}, Zamboanga City`
+    : 'Zamboanga City';
+}
+
+const STATUS_TABS = ['pending', 'approved', 'rejected', 'archived'];
+
+const HAZARD_COLORS = {
+  flood: 'bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50',
+  earthquake: 'bg-orange-100 text-orange-800 dark:bg-orange-950/70 dark:text-orange-300 border border-orange-200 dark:border-orange-900/50',
+  maintenance: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/70 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-900/50',
+  debris: 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-slate-300 border border-gray-200 dark:border-slate-700',
+};
+
+const SEVERITY_COLORS = {
+  low: 'bg-green-100 text-green-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-green-200 dark:border-emerald-900/50',
+  medium: 'bg-yellow-100 text-yellow-700 dark:bg-amber-950/70 dark:text-amber-300 border border-yellow-200 dark:border-amber-900/50',
+  high: 'bg-red-100 text-red-700 dark:bg-red-950/70 dark:text-red-300 border border-red-200 dark:border-red-900/50',
+};
+
+export default function IncidentReviewQueue() {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('pending');
+  const [reviewModal, setReviewModal] = useState(null); // { id, action: 'approve'|'reject', evaluation }
+  const [activePhotoModal, setActivePhotoModal] = useState(null); // URL of full photo
+  const [note, setNote] = useState('');
+  const [isFixedFloodSpot, setIsFixedFloodSpot] = useState(false);
+  const [radiusMeters, setRadiusMeters] = useState(75);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (reviewModal) setReviewModal(null);
+        if (activePhotoModal) setActivePhotoModal(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [reviewModal, activePhotoModal]);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['incidents', activeTab, 'report'],
+    queryFn: () => api.get(`/incidents?status=${activeTab}&type=report`).then(r => r.data.data),
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: ({ id, action, note, is_fixed_flood_spot, radius_meters }) =>
+      api.post(`/incidents/${id}/${action}`, { note, is_fixed_flood_spot, radius_meters }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+      setReviewModal(null);
+      setNote('');
+      setIsFixedFloodSpot(false);
+      setRadiusMeters(75);
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: (id) => api.post(`/incidents/${id}/archive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+    },
+  });
+
+  const unarchiveMutation = useMutation({
+    mutationFn: (id) => api.post(`/incidents/${id}/unarchive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+    },
+  });
+
+  const rawIncidents = data?.data ?? data ?? [];
+  const incidents = Array.isArray(rawIncidents)
+    ? rawIncidents.filter(inc => !inc?.name?.startsWith('EMERGENCY SOS:'))
+    : [];
+
+  return (
+    <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-slate-800">
+        {STATUS_TABS.map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-sm font-bold capitalize rounded-t-lg transition ${
+              activeTab === tab
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-900'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      {isLoading && (
+        <div className="flex items-center justify-center h-48">
+          <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+        </div>
+      )}
+
+      {isError && (
+        <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm font-medium">
+          Failed to load incidents. Please try again.
+        </div>
+      )}
+
+      {!isLoading && !isError && incidents.length === 0 && (
+        <div className="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-slate-500">
+          <svg className="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <p className="text-sm">No {activeTab} incidents found.</p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+        {incidents.map(incident => {
+          const photos = incident.photo_urls && incident.photo_urls.length > 0
+            ? incident.photo_urls
+            : incident.photo_url ? [incident.photo_url] : [];
+          const evalData = incident.frequency_evaluation;
+
+          return (
+            <div key={incident.id} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden flex flex-col justify-between hover:shadow-md transition">
+              <div>
+                {/* Photo Gallery (Up to 4 photos for credibility) */}
+                {photos.length > 0 ? (
+                  <div className="relative bg-gray-900">
+                    {photos.length === 1 ? (
+                      <img
+                        src={photos[0]}
+                        alt="Incident photo"
+                        onClick={() => setActivePhotoModal(photos[0])}
+                        className="w-full h-44 object-cover cursor-pointer hover:opacity-90 transition"
+                      />
+                    ) : (
+                      <div className={`grid ${photos.length === 2 ? 'grid-cols-2' : photos.length === 3 ? 'grid-cols-3' : 'grid-cols-2 grid-rows-2'} gap-0.5 h-44`}>
+                        {photos.slice(0, 4).map((url, idx) => (
+                          <div key={idx} className="relative h-full overflow-hidden">
+                            <img
+                              src={url}
+                              alt={`Incident photo ${idx + 1}`}
+                              onClick={() => setActivePhotoModal(url)}
+                              className="w-full h-full object-cover cursor-pointer hover:scale-105 transition duration-200"
+                            />
+                            <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded font-mono font-bold">
+                              Photo {idx + 1}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-full h-40 bg-gray-100 dark:bg-slate-800 flex items-center justify-center">
+                    <svg className="w-12 h-12 text-gray-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                )}
+
+                {/* Details */}
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h3 className="font-semibold text-gray-900 dark:text-slate-100 text-sm leading-snug">{incident.name}</h3>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${SEVERITY_COLORS[incident.severity_level] ?? 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300'}`}>
+                      {incident.severity_level}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${HAZARD_COLORS[incident.hazard_type] ?? 'bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-300'}`}>
+                      {incident.hazard_type}
+                    </span>
+                    {photos.length > 1 && (
+                      <span className="text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                        📸 {photos.length} Photos Attached
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Hotspot / Frequency Evaluation Banner */}
+                  {evalData?.is_frequent_hotspot ? (
+                    <div className="mb-3 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 text-amber-900 dark:text-amber-300 text-xs">
+                      <div className="font-bold flex items-center gap-1 mb-0.5 text-amber-800 dark:text-amber-200">
+                        <span>⚠️ FREQUENT INCIDENT HOTSPOT</span>
+                      </div>
+                      <p className="text-[11px] leading-tight text-amber-700 dark:text-amber-400">
+                        {evalData.evaluation_summary}
+                      </p>
+                    </div>
+                  ) : evalData ? (
+                    <div className="mb-3 p-2 rounded-lg bg-gray-50 dark:bg-slate-950/60 border border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400 text-[11px]">
+                      📍 Area Evaluation: {evalData.nearby_count} total report(s) in 250m radius.
+                    </div>
+                  ) : null}
+
+                  {incident.description?.includes('RECURRING DRAINAGE HOTSPOT') && (
+                    <div className="mb-3 px-2.5 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-950/70 border border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-300 text-xs font-bold flex items-center gap-1.5">
+                      <span>🌧️</span>
+                      <span>Resident Flagged: Chronic Bad Drainage Hotspot</span>
+                    </div>
+                  )}
+
+                  {incident.description && (
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mb-3 line-clamp-2">{incident.description}</p>
+                  )}
+
+                  <div className="text-xs text-gray-500 dark:text-slate-400 mb-1">
+                    📍 {parseFloat(incident.latitude).toFixed(5)}, {parseFloat(incident.longitude).toFixed(5)}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-950/50 p-2.5 rounded-lg border border-slate-200/80 dark:border-slate-800 mb-3">
+                    <span className="font-semibold text-gray-800 dark:text-slate-200">👤 Reported by:</span> {incident.reporter?.name ?? 'Unknown Resident'}
+                    {incident.reporter?.family_profile?.barangay && (
+                      <span className="text-gray-500 dark:text-slate-400"> ({incident.reporter.family_profile.barangay})</span>
+                    )}
+                    {incident.reporter?.family_profile?.contact_number && (
+                      <div className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5 font-mono">
+                        📞 {incident.reporter.family_profile.contact_number}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="p-4 pt-0">
+                <div className="mb-3">
+                  <button
+                    onClick={() => {
+                      const isRecurring = incident.description?.includes('RECURRING DRAINAGE HOTSPOT');
+                      const params = new URLSearchParams({
+                        focusLat: incident.latitude,
+                        focusLng: incident.longitude,
+                        incidentName: incident.name || 'Reported Incident',
+                        hazardType: incident.hazard_type || 'hazard',
+                        severity: incident.severity_level || 'medium',
+                        incidentId: String(incident.id),
+                        isRecurring: isRecurring ? '1' : '0',
+                      });
+                      navigate(`/admin/map?${params.toString()}`);
+                    }}
+                    className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-xs border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  >
+                    📍 Locate on Live Map
+                  </button>
+                </div>
+                {activeTab === 'pending' && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        const isRecurring = incident.description?.includes('RECURRING DRAINAGE HOTSPOT');
+                        const shouldRecommendFixed = evalData?.recommended_fixed_spot || isRecurring || incident.hazard_type === 'flood';
+                        setReviewModal({
+                          id: incident.id,
+                          action: 'approve',
+                          hazard_type: incident.hazard_type,
+                          evaluation: evalData,
+                          name: incident.name,
+                          latitude: incident.latitude,
+                          longitude: incident.longitude,
+                          description: incident.description,
+                          reporter: incident.reporter,
+                        });
+                        setNote('');
+                        setIsFixedFloodSpot(shouldRecommendFixed);
+                        setRadiusMeters(75);
+                      }}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-xs"
+                    >
+                      ✓ Approve
+                    </button>
+                    <button
+                      onClick={() => {
+                        setReviewModal({
+                          id: incident.id,
+                          action: 'reject',
+                          hazard_type: incident.hazard_type,
+                          evaluation: evalData,
+                          name: incident.name,
+                          latitude: incident.latitude,
+                          longitude: incident.longitude,
+                          description: incident.description,
+                          reporter: incident.reporter,
+                        });
+                        setNote('');
+                      }}
+                      className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-xs"
+                    >
+                      ✕ Reject
+                    </button>
+                  </div>
+                )}
+
+                {activeTab !== 'pending' && incident.review_note && (
+                  <p className="text-xs text-gray-400 dark:text-slate-500 italic border-t border-slate-200 dark:border-slate-800 pt-2">Note: {incident.review_note}</p>
+                )}
+
+                {(activeTab === 'approved' || activeTab === 'rejected') && (
+                  <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+                    <button
+                      onClick={() => archiveMutation.mutate(incident.id)}
+                      disabled={archiveMutation.isPending}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition border border-amber-200 dark:border-amber-800/50 cursor-pointer disabled:opacity-50"
+                      title="Archive this reviewed report"
+                    >
+                      <Archive size={13} />
+                      <span>Archive</span>
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'archived' && (
+                  <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+                    <button
+                      onClick={() => unarchiveMutation.mutate(incident.id)}
+                      disabled={unarchiveMutation.isPending}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition border border-blue-200 dark:border-blue-800/50 cursor-pointer disabled:opacity-50"
+                      title="Restore report to active queue"
+                    >
+                      <ArchiveRestore size={13} />
+                      <span>Restore</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Review Modal */}
+      {reviewModal && (
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setReviewModal(null); }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[100] p-4 animate-in fade-in duration-150"
+        >
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-1 capitalize">
+              {reviewModal.action} Incident
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+              {reviewModal.action === 'approve'
+                ? 'This will promote the report to an official hazard on the live map.'
+                : 'Provide a reason for rejection.'}
+            </p>
+
+            {/* Incident Summary Card with Address/Barangay & Coordinates Permanently Visible */}
+            {reviewModal.name && (
+              <div className="mb-4 bg-slate-50 dark:bg-slate-950/70 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                  <span className="truncate max-w-[240px]">{reviewModal.name}</span>
+                  {reviewModal.hazard_type && (
+                    <span className="capitalize px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 text-[10px]">
+                      {reviewModal.hazard_type}
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-700 dark:text-slate-300 font-semibold mb-1 flex items-center gap-1.5">
+                  <span className="text-red-500">📍</span>
+                  <span>{getBarangayDisplay(reviewModal)}</span>
+                </div>
+                {reviewModal.latitude && reviewModal.longitude && (
+                  <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <span>🌐</span>
+                    <span>
+                      GPS: {parseFloat(reviewModal.latitude).toFixed(5)}°N, {parseFloat(reviewModal.longitude).toFixed(5)}°E
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {reviewModal.action === 'approve' && (
+              <div className="mb-4 bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                {reviewModal.evaluation?.is_frequent_hotspot && (
+                  <div className="mb-3 p-2 bg-amber-100 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800/70 text-amber-900 dark:text-amber-300 rounded-lg text-xs font-medium">
+                    💡 Area Evaluation: This location has {reviewModal.evaluation.nearby_count} frequent reports. Promoting to a Fixed Hazard Spot is strongly recommended.
+                  </div>
+                )}
+
+                {reviewModal.hazard_type === 'flood' && (
+                  <div className="mb-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isFixedFloodSpot}
+                        onChange={e => setIsFixedFloodSpot(e.target.checked)}
+                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-slate-600 dark:bg-slate-800"
+                      />
+                      <span className="text-sm font-semibold text-gray-700 dark:text-slate-200">
+                        Promote as Weather-Triggered Fixed Flood Spot
+                      </span>
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 pl-6">
+                      Only active when rainfall duration exceeds 60 minutes. Alerts will target nearby residents based on their chosen radius.
+                    </p>
+                  </div>
+                )}
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
+                    Hazard Alert Radius (meters)
+                  </label>
+                  <input
+                    type="number"
+                    value={radiusMeters}
+                    onChange={e => setRadiusMeters(parseInt(e.target.value, 10) || 75)}
+                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="1"
+                    max="5000"
+                  />
+                </div>
+              </div>
+            )}
+
+            <textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="Add a review note (optional for approval, required for rejection)..."
+              rows={3}
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-4"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setReviewModal(null)}
+                className="flex-1 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => reviewMutation.mutate({ 
+                  id: reviewModal.id, 
+                  action: reviewModal.action, 
+                  note,
+                  is_fixed_flood_spot: isFixedFloodSpot,
+                  radius_meters: radiusMeters
+                })}
+                disabled={reviewMutation.isPending}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold text-white transition ${
+                  reviewModal.action === 'approve'
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-red-500 hover:bg-red-600'
+                } disabled:opacity-50`}
+              >
+                {reviewMutation.isPending ? 'Processing...' : `Confirm ${reviewModal.action}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Photo Modal */}
+      {activePhotoModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4" onClick={() => setActivePhotoModal(null)}>
+          <div className="relative max-w-3xl max-h-[90vh] overflow-hidden rounded-xl bg-black">
+            <img src={activePhotoModal} alt="Full view" className="max-w-full max-h-[85vh] object-contain" />
+            <button
+              onClick={() => setActivePhotoModal(null)}
+              className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-2 hover:bg-black transition"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

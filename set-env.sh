@@ -15,13 +15,13 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ "$TARGET" == "dev" ]; then
     echo "🔄 Switching Evac_Route to [DEVELOPMENT] (localhost / 10.0.2.2)..."
     cp "$DIR/backend/.env.development" "$DIR/backend/.env"
-    cp "$DIR/frontend/Evac_RouteWeb/.env.development" "$DIR/frontend/Evac_RouteWeb/.env"
-    cp "$DIR/frontend/Evac_RouteMobile/.env.development" "$DIR/frontend/Evac_RouteMobile/.env"
+    cp "$DIR/frontend/web/.env.development" "$DIR/frontend/web/.env"
+    cp "$DIR/frontend/mobile/.env.development" "$DIR/frontend/mobile/.env"
     echo "✅ Switched all modules to DEVELOPMENT!"
 else
     echo "🚀 Switching Evac_Route to [PRODUCTION] (https://evacroute.app)..."
     cp "$DIR/backend/.env.production" "$DIR/backend/.env"
-    cp "$DIR/frontend/Evac_RouteWeb/.env.production" "$DIR/frontend/Evac_RouteWeb/.env"
-    cp "$DIR/frontend/Evac_RouteMobile/.env.production" "$DIR/frontend/Evac_RouteMobile/.env"
+    cp "$DIR/frontend/web/.env.production" "$DIR/frontend/web/.env"
+    cp "$DIR/frontend/mobile/.env.production" "$DIR/frontend/mobile/.env"
     echo "✅ Switched all modules to PRODUCTION (https://evacroute.app)!"
 fi

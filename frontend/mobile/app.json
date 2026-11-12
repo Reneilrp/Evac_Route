@@ -1,0 +1,75 @@
+{
+  "expo": {
+    "name": "Evac_RouteMobile",
+    "slug": "Evac_RouteMobile",
+    "version": "1.2.4",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pheinz.evacroutemobile",
+      "buildNumber": "10",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow Evac_Route to access camera for scanning QR codes at relief and shelter desks.",
+        "NSLocationWhenInUseUsageDescription": "Allow Evac_Route to access your real-time location for emergency evacuation routing.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow Evac_Route to access your real-time location for emergency evacuation and search & rescue tracking."
+      }
+    },
+    "android": {
+      "versionCode": 12,
+      "package": "com.pheinz.evacroutemobile",
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.VIBRATE"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#0b1326",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker",
+      "expo-secure-store",
+      "@rnmapbox/maps",
+      "expo-sqlite",
+      "expo-build-properties",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Evac_Route to access camera for scanning resident QR codes at distribution desks."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Evac_Route to access your live location for emergency routing and rescue operations."
+        }
+      ]
+    ],
+    "updates": {
+      "url": "https://u.expo.dev/315fb1d4-26ab-4cd8-b5ce-696b39dfccc9"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "315fb1d4-26ab-4cd8-b5ce-696b39dfccc9"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b1326"
+    }
+  }
+}

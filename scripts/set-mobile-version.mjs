@@ -5,9 +5,9 @@
  *
  * Single-command updater that updates all mobile version definitions across:
  * 1. Root Manifest (version.json)
- * 2. Mobile Native Config (frontend/Evac_RouteMobile/app.json)
- * 3. Mobile Package Manifest (frontend/Evac_RouteMobile/package.json)
- * 4. Web Release Hub (frontend/Evac_RouteWeb/src/config/mobileRelease.js)
+ * 2. Mobile Native Config (frontend/mobile/app.json)
+ * 3. Mobile Package Manifest (frontend/mobile/package.json)
+ * 4. Web Release Hub (frontend/web/src/config/mobileRelease.js)
  *
  * Usage:
  *   node scripts/set-mobile-version.mjs <new-version> [apk-size] [release-month-year]
@@ -40,9 +40,9 @@ if (!newVersion || !/^\d+\.\d+\.\d+$/.test(newVersion)) {
 
 const paths = {
   rootVersion: path.join(rootDir, 'version.json'),
-  mobileAppJson: path.join(rootDir, 'frontend', 'Evac_RouteMobile', 'app.json'),
-  mobilePkgJson: path.join(rootDir, 'frontend', 'Evac_RouteMobile', 'package.json'),
-  webReleaseConfig: path.join(rootDir, 'frontend', 'Evac_RouteWeb', 'src', 'config', 'mobileRelease.js'),
+  mobileAppJson: path.join(rootDir, 'frontend', 'mobile', 'app.json'),
+  mobilePkgJson: path.join(rootDir, 'frontend', 'mobile', 'package.json'),
+  webReleaseConfig: path.join(rootDir, 'frontend', 'web', 'src', 'config', 'mobileRelease.js'),
 };
 
 console.log(`\n🚀 \x1b[36mSynchronizing Mobile Version to v${newVersion}...\x1b[0m\n`);
@@ -59,7 +59,7 @@ if (fs.existsSync(paths.mobileAppJson)) {
   appJson.expo.android.versionCode = currentVersionCode;
 
   fs.writeFileSync(paths.mobileAppJson, JSON.stringify(appJson, null, 2) + '\n', 'utf8');
-  console.log(`  ✅ \x1b[32mfrontend/Evac_RouteMobile/app.json\x1b[0m (version: ${newVersion}, versionCode: ${currentVersionCode})`);
+  console.log(`  ✅ \x1b[32mfrontend/mobile/app.json\x1b[0m (version: ${newVersion}, versionCode: ${currentVersionCode})`);
 }
 
 // 2. Read & Update mobile package.json
@@ -67,7 +67,7 @@ if (fs.existsSync(paths.mobilePkgJson)) {
   const pkgJson = JSON.parse(fs.readFileSync(paths.mobilePkgJson, 'utf8'));
   pkgJson.version = newVersion;
   fs.writeFileSync(paths.mobilePkgJson, JSON.stringify(pkgJson, null, 2) + '\n', 'utf8');
-  console.log(`  ✅ \x1b[32mfrontend/Evac_RouteMobile/package.json\x1b[0m (version: ${newVersion})`);
+  console.log(`  ✅ \x1b[32mfrontend/mobile/package.json\x1b[0m (version: ${newVersion})`);
 }
 
 // 3. Read & Update Root version.json
@@ -122,6 +122,6 @@ export default MOBILE_APP_CONFIG;
 `;
 
 fs.writeFileSync(paths.webReleaseConfig, webConfigContent, 'utf8');
-console.log(`  ✅ \x1b[32mfrontend/Evac_RouteWeb/src/config/mobileRelease.js\x1b[0m (web landing & admin hub updated)`);
+console.log(`  ✅ \x1b[32mfrontend/web/src/config/mobileRelease.js\x1b[0m (web landing & admin hub updated)`);
 
 console.log(`\n🎉 \x1b[1m\x1b[32mSUCCESS: All screens in Web and Mobile are now locked to v${newVersion} (Build #${currentVersionCode})!\x1b[0m\n`);
