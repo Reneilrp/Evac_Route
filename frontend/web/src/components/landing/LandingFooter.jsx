@@ -76,40 +76,59 @@ export default function LandingFooter({
                   <span className="text-slate-300 font-semibold">
                     City Emergency (CDRRMO):
                   </span>{" "}
-                  911 / (062) 992-3181
+                  <a href="tel:911" className="text-red-400 font-bold hover:underline">
+                    911
+                  </a>
+                  {" / "}
+                  <a href="tel:0629559601" className="hover:text-blue-400 transition">
+                    (062) 955-9601
+                  </a>
                 </li>
                 <li>
                   <span className="text-slate-300 font-semibold">
                     Bureau of Fire Protection:
                   </span>{" "}
-                  160 / 0917-FIRE-160
+                  <a href="tel:160" className="hover:text-blue-400 transition">
+                    160
+                  </a>
+                  {" / "}
+                  <a href="tel:0629912267" className="hover:text-blue-400 transition">
+                    (062) 991-2267
+                  </a>
                 </li>
                 <li>
                   <span className="text-slate-300 font-semibold">
                     Police Station 11 (Central):
                   </span>{" "}
-                  0917-POLICE-911
+                  <a href="tel:0623102030" className="hover:text-blue-400 transition">
+                    (062) 310-2030
+                  </a>
+                  {" / "}
+                  <a href="tel:09177016340" className="hover:text-blue-400 transition">
+                    0917-701-6340
+                  </a>
                 </li>
                 <li>
                   <span className="text-slate-300 font-semibold">
                     Zamboanga City Medical Center:
                   </span>{" "}
-                  (062) 991-0573
+                  <a href="tel:0629912934" className="hover:text-blue-400 transition">
+                    (062) 991-2934
+                  </a>
                 </li>
               </ul>
             </div>
 
             <div>
               <p className="font-bold text-white uppercase tracking-wider mb-3">
-                Barangay Coordination
+                Offline Resilience
               </p>
               <p className="text-slate-400 mb-2 leading-relaxed">
-                For questions regarding your designated high-ground cluster,
-                coordinate directly with your local Barangay DRRM Council.
+                Save your evacuation pass and download offline map data before severe weather hits. Critical routes and safe shelter waypoints remain accessible even during power and cellular outages.
               </p>
-              <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+              <div className="flex items-center gap-1.5 text-blue-400 font-semibold">
                 <CheckCircle2 size={14} />
-                <span>Public Civic Safety Asset</span>
+                <span>Device-First Emergency Tool</span>
               </div>
             </div>
           </div>

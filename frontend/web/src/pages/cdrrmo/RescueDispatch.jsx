@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LifeBuoy, Truck, Phone, Users, Clock, AlertTriangle,
@@ -9,11 +10,12 @@ import api from '../../services/api';
 import echo from '../../services/echo';
 import HotlineIntakeModal from '../../components/disaster/HotlineIntakeModal';
 import { showSuccess, showError } from '../../utils/toast';
-import { getHaversineDistance } from '../../utils/mapHelper';
+import { getHaversineDistance, resolveBarangayFromCoords, ZAMBOANGA_BARANGAYS } from '../../utils/mapHelper';
 import DispatchUnitModal from '../../components/dispatch/modals/DispatchUnitModal';
 import StagingHandoverModal from '../../components/dispatch/modals/StagingHandoverModal';
 import RegisterRescueUnitModal from '../../components/dispatch/modals/RegisterRescueUnitModal';
 export { DispatchUnitModal } from '../../components/dispatch/modals/DispatchUnitModal';
+export { resolveBarangayFromCoords, ZAMBOANGA_BARANGAYS };
 
 const STATUS_BADGES = {
   standby: { label: 'Standby / Available', cls: 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800' },
@@ -32,93 +34,8 @@ const TRIAGE_BADGES = {
   standard: 'bg-blue-600 text-white',
 };
 
-export const ZAMBOANGA_BARANGAYS = [
-  "Arena Blanco", "Ayala", "Baliwasan", "Boalan", "Cabaluay", "Calarian",
-  "Canelar", "Cawit", "Culianan", "Curuan", "Divisoria", "Guiwan",
-  "Labuan", "Manicahan", "Mampang", "Mercedes", "Pasonanca", "Putik",
-  "Recodo", "Rio Hondo", "San Jose", "San Roque", "Santa Catalina",
-  "Santa Maria", "Talon-Talon", "Taluksangay", "Tetuan", "Tugbungan",
-  "Tumaga", "Vitali", "Zone I (Poblacion)", "Zone II (Poblacion)",
-  "Zone III (Poblacion)", "Zone IV (Poblacion)"
-];
-
-const ZAMBOANGA_BARANGAY_CENTROIDS = {
-  "Tetuan": { lat: 6.9194, lng: 122.0840 },
-  "Baliwasan": { lat: 6.9159, lng: 122.0599 },
-  "Canelar": { lat: 6.9165, lng: 122.0696 },
-  "San Jose Cawa-Cawa": { lat: 6.9140, lng: 122.0650 },
-  "San Jose Gusu": { lat: 6.9197, lng: 122.0532 },
-  "Pasonanca": { lat: 6.9471, lng: 122.0728 },
-  "Tumaga": { lat: 6.9380, lng: 122.0720 },
-  "Guiwan": { lat: 6.9289, lng: 122.0922 },
-  "Putik": { lat: 6.9350, lng: 122.1050 },
-  "Tugbungan": { lat: 6.9150, lng: 122.0800 },
-  "Santa Maria": { lat: 6.9300, lng: 122.0700 },
-  "Calarian": { lat: 6.9245, lng: 122.0246 },
-  "Mampang": { lat: 6.9157, lng: 122.1339 },
-  "Talon-Talon": { lat: 6.8950, lng: 122.1000 },
-  "Ayala": { lat: 6.9592, lng: 121.9498 },
-  "Recodo": { lat: 6.9700, lng: 121.9700 },
-  "Cawit": { lat: 6.9556, lng: 121.9739 },
-  "Labuan": { lat: 7.0918, lng: 121.9027 },
-  "Vitali": { lat: 7.3777, lng: 122.2893 },
-  "Curuan": { lat: 7.2100, lng: 122.2313 },
-  "Manicahan": { lat: 7.0200, lng: 122.1500 },
-  "Cabaluay": { lat: 6.9800, lng: 122.1700 },
-  "Mercedes": { lat: 6.9500, lng: 122.1400 },
-  "Boalan": { lat: 6.9450, lng: 122.1150 },
-  "Culianan": { lat: 6.9700, lng: 122.1400 },
-  "Zone I (Poblacion)": { lat: 6.9052, lng: 122.0738 },
-  "Zone II (Poblacion)": { lat: 6.9060, lng: 122.0750 },
-  "Zone III (Poblacion)": { lat: 6.9070, lng: 122.0760 },
-  "Zone IV (Poblacion)": { lat: 6.9080, lng: 122.0770 },
-  "Rio Hondo": { lat: 6.9000, lng: 122.0650 },
-  "Campo Islam": { lat: 6.9145, lng: 122.0462 },
-  "Arena Blanco": { lat: 6.8850, lng: 122.0900 },
-  "Santa Catalina": { lat: 6.9100, lng: 122.0850 },
-  "Santa Barbara": { lat: 6.9080, lng: 122.0800 },
-  "Camino Nuevo": { lat: 6.9123, lng: 122.0762 },
-  "San Roque": { lat: 6.9400, lng: 122.0600 },
-  "Cabatangan": { lat: 6.9440, lng: 122.0544 },
-};
-
-export function resolveBarangayFromCoords(lat, lng, shelters = []) {
-  const latNum = parseFloat(lat);
-  const lngNum = parseFloat(lng);
-  if (isNaN(latNum) || isNaN(lngNum)) return null;
-
-  let closestBarangay = null;
-  let minDistance = Infinity;
-
-  // 1. Check official shelters (dense ground-truth in Zamboanga)
-  if (Array.isArray(shelters)) {
-    for (const shelter of shelters) {
-      const sLat = parseFloat(shelter.latitude);
-      const sLng = parseFloat(shelter.longitude);
-      const bgy = shelter.barangay || shelter.location;
-      if (!isNaN(sLat) && !isNaN(sLng) && bgy) {
-        const dist = getHaversineDistance({ lat: latNum, lng: lngNum }, { lat: sLat, lng: sLng });
-        if (dist < minDistance) {
-          minDistance = dist;
-          closestBarangay = bgy;
-        }
-      }
-    }
-  }
-
-  // 2. Also compare against known Barangay centroids
-  for (const [bgy, c] of Object.entries(ZAMBOANGA_BARANGAY_CENTROIDS)) {
-    const dist = getHaversineDistance({ lat: latNum, lng: lngNum }, { lat: c.lat, lng: c.lng });
-    if (dist < minDistance) {
-      minDistance = dist;
-      closestBarangay = bgy;
-    }
-  }
-
-  return closestBarangay || 'Tetuan';
-}
-
 export default function RescueDispatch() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('sos'); // 'sos' | 'active' | 'fleet' | 'history'
   const [dispatchModalData, setDispatchModalData] = useState(null); // Incident / SOS being dispatched

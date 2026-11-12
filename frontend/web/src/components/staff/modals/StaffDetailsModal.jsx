@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Shield, Trash2, LifeBuoy, Edit2, QrCode } from 'lucide-react';
+import { RESCUE_ROLES } from '../../../config/staffRoles';
 
 export default function StaffDetailsModal({
   viewingStaff,
@@ -217,7 +218,7 @@ export default function StaffDetailsModal({
                         onClick={() => {
                           const target = viewingStaff;
                           onClose();
-                          openEditModal(target);
+                          onEdit?.(target);
                         }}
                         className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition shadow-xs cursor-pointer"
                       >
@@ -228,7 +229,7 @@ export default function StaffDetailsModal({
                         onClick={() => {
                           const target = viewingStaff;
                           onClose();
-                          handleRevoke(target);
+                          onRevoke?.(target);
                         }}
                         className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition shadow-xs cursor-pointer"
                       >

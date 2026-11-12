@@ -664,7 +664,7 @@ export default function RescueDuty({ navigation }) {
               <View style={styles.infoRow}>
                 <Phone color={colors.textSecondary} size={16} />
                 <Text style={styles.infoText}>
-                  Hotline: {assignedUnit?.contact_number || '0917-RESCUE-911'}
+                  Hotline: {assignedUnit?.contact_number || '911 / (062) 955-9601'}
                 </Text>
               </View>
             </View>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, X, Flame, Droplets, Activity, ShieldAlert, Clock, Plus, Trash2, MapPin } from 'lucide-react';
 
 export default function HazardFormModal({

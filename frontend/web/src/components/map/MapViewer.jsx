@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import MapLegend from './MapLegend';
+import { MiniTimeline } from './HazardTimeline';
 import { buildSimulationRoadGeoJSON, getSimulationOverlayGeoJSON } from '../../utils/simulationGeoJson';
 import {
   createCirclePolygon,
@@ -15,6 +16,7 @@ import {
   ZAMBOANGA_MAX_ZOOM,
   getZamboangaIsolationMaskGeoJSON,
   getZamboangaBoundaryLineGeoJSON,
+  BARANGAY_COORDS,
 } from '../../utils/mapHelper';
 
 const MAP_STYLES = {

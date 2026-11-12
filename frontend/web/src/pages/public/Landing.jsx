@@ -388,8 +388,8 @@ export default function Landing() {
                       911
                     </a>
                     <span>|</span>
-                    <a href="tel:0629923181" className="font-medium text-slate-700 dark:text-slate-300 hover:underline">
-                      (062) 992-3181
+                    <a href="tel:0629559601" className="font-medium text-slate-700 dark:text-slate-300 hover:underline">
+                      (062) 955-9601
                     </a>
                   </div>
 

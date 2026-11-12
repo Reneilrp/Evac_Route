@@ -4,6 +4,23 @@ import { X, QrCode, MapPin } from 'lucide-react';
 import api from '../../../services/api';
 import { showSuccess, showError } from '../../../utils/toast';
 
+const getDurationOpen = (createdAt) => {
+  if (!createdAt) return '—';
+  const start = new Date(createdAt);
+  const now = new Date();
+  const diffMs = now - start;
+  if (diffMs < 0) return 'Just opened';
+  
+  const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(diffHrs / 24);
+  const hours = diffHrs % 24;
+  
+  const parts = [];
+  if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+  if (hours > 0 || parts.length === 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+  return parts.join(', ');
+};
+
 function ShelterDetailsModal({ shelterId, onClose, onLaunchScanner }) {
   const { data: detailsData, isLoading } = useQuery({
     queryKey: ['shelter-details', shelterId],

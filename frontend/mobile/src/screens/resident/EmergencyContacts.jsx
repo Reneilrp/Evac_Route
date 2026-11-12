@@ -9,15 +9,15 @@ const getEmergencyContacts = (colors) => [
     section: 'EMERGENCY HOTLINES',
     contacts: [
       { name: 'National Emergency', number: '911', icon: Phone, iconBg: colors.dangerBg, iconColor: colors.danger },
-      { name: 'CDRRMO Zamboanga', number: '(062) 991-0959', icon: Shield, iconBg: colors.primaryGlow, iconColor: colors.primary },
-      { name: 'Bureau of Fire Protection', number: '(062) 991-1064', icon: Flame, iconBg: colors.warningBg, iconColor: colors.warning },
+      { name: 'CDRRMO Zamboanga', number: '(062) 955-9601', icon: Shield, iconBg: colors.primaryGlow, iconColor: colors.primary },
+      { name: 'Bureau of Fire Protection', number: '(062) 991-2267', icon: Flame, iconBg: colors.warningBg, iconColor: colors.warning },
       { name: 'Philippine Coast Guard', number: '(062) 992-2694', icon: Anchor, iconBg: colors.successBg, iconColor: colors.successLight },
     ],
   },
   {
     section: 'HOSPITALS & MEDICAL',
     contacts: [
-      { name: 'Zamboanga City Medical Center', number: '(062) 991-0573', icon: Heart, iconBg: colors.dangerBg, iconColor: colors.dangerLight },
+      { name: 'Zamboanga City Medical Center', number: '(062) 991-2934', icon: Heart, iconBg: colors.dangerBg, iconColor: colors.dangerLight },
       { name: 'West Metro Medical Center', number: '(062) 993-1485', icon: Heart, iconBg: colors.dangerBg, iconColor: colors.dangerLight },
     ],
   },

@@ -1,5 +1,6 @@
 import React from 'react';
 import { User, X, Shield, LifeBuoy, QrCode } from 'lucide-react';
+import { RESCUE_ROLES } from '../../../config/staffRoles';
 
 export default function StaffFormModal({
   isOpen,

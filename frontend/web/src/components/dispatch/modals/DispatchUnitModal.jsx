@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { LifeBuoy, Phone, AlertTriangle, CheckCircle2, MapPin, X, Sparkles } from 'lucide-react';
 import api from '../../../services/api';
 import { showError } from '../../../utils/toast';
-import { getHaversineDistance } from '../../../utils/mapHelper';
+import { getHaversineDistance, resolveBarangayFromCoords, ZAMBOANGA_BARANGAYS } from '../../../utils/mapHelper';
 
 const RESCUE_EQUIPMENT_PRESETS = [
   { id: 'rubber_boat', label: 'Rubber Boat / Inflatable Raft', icon: '🚤' },
