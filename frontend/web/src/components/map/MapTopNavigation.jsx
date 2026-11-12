@@ -23,7 +23,7 @@ function ToolbarBtn({ active, onClick, icon, label, color = 'blue', disabled = f
       disabled={disabled}
       title={label}
       aria-label={label}
-      className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 select-none whitespace-nowrap cursor-pointer ${
+      className={`flex items-center gap-1.5 px-2 xl:px-2.5 py-1 rounded-lg text-xs font-bold transition-all duration-200 select-none whitespace-nowrap cursor-pointer ${
         active ? `${c.active} shadow-md` : c.hover
       } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
     >
@@ -70,9 +70,9 @@ export default function MapTopNavigation({
 }) {
   return (
     isCSWDO ? (
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 xl:gap-3.5 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-white/10 rounded-2xl px-3 xl:px-4 py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.6)] max-w-[calc(100vw-360px)] overflow-visible whitespace-nowrap text-slate-800 dark:text-white">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 xl:gap-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-white/10 rounded-2xl px-3 xl:px-4 py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[calc(100%-2rem)] overflow-visible whitespace-nowrap text-slate-800 dark:text-white">
         {/* Title & Subtitle Section */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 shrink-0">
           <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-400 shrink-0">
             <Building2 size={20} />
           </div>
@@ -85,30 +85,32 @@ export default function MapTopNavigation({
         <div className="w-px h-8 bg-slate-200 dark:bg-white/10 shrink-0" />
 
         {/* Search & Filter for CSWDO (Option 1: Integrated in Top Navigation) */}
-        <UnifiedMapFilterSearch
-          shelters={shelters}
-          hazards={hazards}
-          rescueUnits={rescueUnits}
-          activeRescueMissions={activeRescueMissions}
-          activeFilter={activeMapFilter}
-          onChangeFilter={setActiveMapFilter}
-          showRoadNetwork={showRoadNetwork}
-          onToggleRoadNetwork={setShowRoadNetwork}
-          showHeatmap={showHeatmap}
-          onToggleHeatmap={setShowHeatmap}
-          showWeather={showWeather}
-          onToggleWeather={setShowWeather}
-          isolateZamboanga={isolateZamboanga}
-          onToggleIsolateZamboanga={setIsolateZamboanga}
-          onRecenter={handleRecenterToZamboanga}
-          onSelectLocation={handleSelectMapLocation}
-          isCSWDO={true}
-        />
+        <div className="shrink-0">
+          <UnifiedMapFilterSearch
+            shelters={shelters}
+            hazards={hazards}
+            rescueUnits={rescueUnits}
+            activeRescueMissions={activeRescueMissions}
+            activeFilter={activeMapFilter}
+            onChangeFilter={setActiveMapFilter}
+            showRoadNetwork={showRoadNetwork}
+            onToggleRoadNetwork={setShowRoadNetwork}
+            showHeatmap={showHeatmap}
+            onToggleHeatmap={setShowHeatmap}
+            showWeather={showWeather}
+            onToggleWeather={setShowWeather}
+            isolateZamboanga={isolateZamboanga}
+            onToggleIsolateZamboanga={setIsolateZamboanga}
+            onRecenter={handleRecenterToZamboanga}
+            onSelectLocation={handleSelectMapLocation}
+            isCSWDO={true}
+          />
+        </div>
 
         <div className="w-px h-8 bg-slate-200 dark:bg-white/10 shrink-0" />
 
         {/* Dedicated View Only Status Column */}
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center shrink-0">
           <span className="text-[9px] font-black text-slate-500 dark:text-white/50 uppercase tracking-widest mb-0.5 select-none">Access Mode</span>
           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-bold">
             <span className="relative flex h-2 w-2">
@@ -122,17 +124,17 @@ export default function MapTopNavigation({
         <div className="w-px h-8 bg-slate-200 dark:bg-white/10 shrink-0" />
 
         {/* Feed Group */}
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center shrink-0">
           <span className="text-[9px] font-black text-slate-500 dark:text-white/50 uppercase tracking-widest mb-0.5 select-none">Feed</span>
           <div className="flex items-center">
-            <ToolbarBtn active={drawerOpen} onClick={() => setDrawerOpen(o => !o)} icon={<SlidersHorizontal size={14} />} label="Alerts" color="purple" />
+            <ToolbarBtn active={drawerOpen} onClick={() => setDrawerOpen(o => !o)} icon={<SlidersHorizontal size={13} />} label="Alerts" color="purple" />
           </div>
         </div>
 
         <div className="w-px h-8 bg-slate-200 dark:bg-white/10 shrink-0" />
 
         {/* Theme Mode Toggle (Light / Dark) */}
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center shrink-0">
           <span className="text-[9px] font-black text-slate-500 dark:text-white/50 uppercase tracking-widest mb-0.5 select-none">
             {darkMode ? 'Dark' : 'Light'}
           </span>
@@ -148,9 +150,9 @@ export default function MapTopNavigation({
         </div>
       </div>
     ) : (
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 xl:gap-2.5 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-white/10 rounded-2xl px-2.5 xl:px-3.5 py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[calc(100vw-360px)] overflow-visible whitespace-nowrap text-slate-800 dark:text-white">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 xl:gap-2.5 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-white/10 rounded-2xl px-2.5 xl:px-3.5 py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[calc(100%-2rem)] overflow-visible whitespace-nowrap text-slate-800 dark:text-white">
         {/* Institutional Badge: CDRRMO Tactical Map */}
-        <div className="flex items-center gap-2 pr-1">
+        <div className="flex items-center gap-2 pr-1 shrink-0">
           <div className="p-1.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
             <ShieldAlert size={18} />
           </div>
@@ -163,30 +165,32 @@ export default function MapTopNavigation({
         <div className="w-px h-8 bg-slate-200 dark:bg-white/10 shrink-0" />
 
         {/* Option 1: Search & Filter + Recenter Hub (Far Left of Top Bar) */}
-        <UnifiedMapFilterSearch
-          shelters={shelters}
-          hazards={hazards}
-          rescueUnits={rescueUnits}
-          activeRescueMissions={activeRescueMissions}
-          activeFilter={activeMapFilter}
-          onChangeFilter={setActiveMapFilter}
-          showRoadNetwork={showRoadNetwork}
-          onToggleRoadNetwork={setShowRoadNetwork}
-          showHeatmap={showHeatmap}
-          onToggleHeatmap={setShowHeatmap}
-          showWeather={showWeather}
-          onToggleWeather={setShowWeather}
-          isolateZamboanga={isolateZamboanga}
-          onToggleIsolateZamboanga={setIsolateZamboanga}
-          onRecenter={handleRecenterToZamboanga}
-          onSelectLocation={handleSelectMapLocation}
-          isCSWDO={false}
-        />
+        <div className="shrink-0">
+          <UnifiedMapFilterSearch
+            shelters={shelters}
+            hazards={hazards}
+            rescueUnits={rescueUnits}
+            activeRescueMissions={activeRescueMissions}
+            activeFilter={activeMapFilter}
+            onChangeFilter={setActiveMapFilter}
+            showRoadNetwork={showRoadNetwork}
+            onToggleRoadNetwork={setShowRoadNetwork}
+            showHeatmap={showHeatmap}
+            onToggleHeatmap={setShowHeatmap}
+            showWeather={showWeather}
+            onToggleWeather={setShowWeather}
+            isolateZamboanga={isolateZamboanga}
+            onToggleIsolateZamboanga={setIsolateZamboanga}
+            onRecenter={handleRecenterToZamboanga}
+            onSelectLocation={handleSelectMapLocation}
+            isCSWDO={false}
+          />
+        </div>
 
         <div className="w-px h-8 bg-slate-200 dark:bg-white/10 shrink-0" />
 
         {/* Disaster Scenario Simulation Group */}
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center shrink-0">
           <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-0.5 select-none">Disaster Sim</span>
           <select
             value={activeDisasterSim}
@@ -212,7 +216,7 @@ export default function MapTopNavigation({
         <div className="w-px h-8 bg-slate-200 dark:bg-white/10 shrink-0" />
 
         {/* Live OpenWeather Forecast & 24h History Trigger */}
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center shrink-0">
           <span className="text-[9px] font-black uppercase tracking-widest mb-0.5 select-none whitespace-nowrap flex items-center gap-1 text-cyan-600 dark:text-cyan-400">
             <CloudRain size={9} />
             <span>Weather &amp; Forecast</span>
@@ -267,7 +271,7 @@ export default function MapTopNavigation({
         <div className="w-px h-8 bg-slate-200 dark:bg-white/10 shrink-0" />
 
         {/* Proactive Early Warning & Presets Command */}
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center shrink-0">
           <span className="text-[9px] font-black text-red-500 dark:text-red-400 uppercase tracking-widest mb-0.5 select-none whitespace-nowrap">Early Warning</span>
           <button
             type="button"
@@ -283,7 +287,7 @@ export default function MapTopNavigation({
         <div className="w-px h-8 bg-slate-200 dark:bg-white/10 shrink-0" />
 
         {/* Pinpoint & Orbit Tools Group */}
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center shrink-0">
           <span className="text-[9px] font-black text-slate-500 dark:text-white/50 uppercase tracking-widest mb-0.5 select-none">Pinpoint</span>
           <div className="flex items-center gap-1">
             {!pinMode ? (
@@ -301,7 +305,7 @@ export default function MapTopNavigation({
         <div className="w-px h-8 bg-slate-200 dark:bg-white/10 shrink-0" />
 
         {/* Alerts Feed */}
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center shrink-0">
           <span className="text-[9px] font-black text-slate-500 dark:text-white/50 uppercase tracking-widest mb-0.5 select-none">Feed</span>
           <div className="flex items-center">
             <ToolbarBtn active={drawerOpen} onClick={() => setDrawerOpen(o => !o)} icon={<SlidersHorizontal size={13} />} label="Alerts" color="purple" />
@@ -311,7 +315,7 @@ export default function MapTopNavigation({
         <div className="w-px h-8 bg-slate-200 dark:bg-white/10 shrink-0" />
 
         {/* Theme Mode Toggle (Light / Dark) */}
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center shrink-0">
           <span className="text-[9px] font-black text-slate-500 dark:text-white/50 uppercase tracking-widest mb-0.5 select-none">
             {darkMode ? 'Dark' : 'Light'}
           </span>

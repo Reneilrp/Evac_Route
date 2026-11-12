@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Search,
-  Filter,
   Layers,
   MapPin,
   Building2,
@@ -252,9 +251,8 @@ export function UnifiedMapFilterSearch({
     <div ref={containerRef} className="relative flex items-center">
       {/* Top Bar Trigger Group (Seamless Toolbar Integration) */}
       <div className="flex flex-col items-center justify-center">
-        <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-0.5 select-none whitespace-nowrap flex items-center gap-1">
-          <Search size={9} />
-          <span>Search &amp; Filter</span>
+        <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-0.5 select-none whitespace-nowrap">
+          Search &amp; Filter
         </span>
         <div className="flex items-center gap-1">
           <button
@@ -268,7 +266,6 @@ export function UnifiedMapFilterSearch({
                 : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700/90 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
             }`}
           >
-            <Filter size={12} className={isOpen || activeFilter !== 'all' ? 'text-white' : 'text-blue-600 dark:text-blue-400'} />
             <span className="text-[11px] font-bold">
               {activeFilter === 'all' ? 'Filter & Search' : activeOption.label}
             </span>
