@@ -22,8 +22,7 @@ export default function HazardFormModal({
   const handleHazardTypeChange = (e) => {
     const type = e.target.value;
     setHazardType(type);
-    if (type === 'earthquake') {
-      setSeverityLevel('high');
+    if (type !== 'flood') {
       setIsFixedFloodSpot(false);
     }
   };
@@ -46,7 +45,7 @@ export default function HazardFormModal({
     });
   };
 
-  const isSeverityLocked = hazardType === 'earthquake';
+  const isSeverityLocked = false;
 
   const severityOptions = useMemo(() => {
     if (hazardType === 'building_fire' || hazardType === 'fire') {
@@ -70,9 +69,11 @@ export default function HazardFormModal({
         { value: 'high', label: 'High (Chest-deep >1m / Impassable)', desc: 'Completely impassable; rescue boats and air extraction needed.' },
       ];
     }
-    if (hazardType === 'earthquake') {
+    if (hazardType === 'road_block') {
       return [
-        { value: 'high', label: 'Critical (Structural Collapse / Debris)', desc: 'Fissures and collapsed walls blocking thoroughfare.' },
+        { value: 'low', label: 'Low (Minor Debris / Single Lane Passable)', desc: 'Fallen branches or scattered debris; vehicles can bypass with caution.' },
+        { value: 'medium', label: 'Medium (Heavy Obstruction / 4x4 Only)', desc: 'Downed pole or heavy rubble; light vehicles blocked.' },
+        { value: 'high', label: 'High (Total Road Block / Impassable)', desc: 'Entire roadway impassable to all traffic; emergency crews needed.' },
       ];
     }
     return [
@@ -120,12 +121,12 @@ export default function HazardFormModal({
                 <option value="flood">Flood</option>
                 <option value="landslide">Landslide</option>
                 <option value="building_fire">Building Fire</option>
-                <option value="earthquake">Earthquake</option>
+                <option value="road_block">Road Block / Obstruction</option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">
-                Basis of Severity ({hazardType === 'building_fire' ? 'BFP Fire Alarm' : hazardType})
+                Basis of Severity ({hazardType === 'building_fire' ? 'BFP Fire Alarm' : hazardType === 'road_block' ? 'Obstruction Degree' : hazardType})
               </label>
               <select
                 className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 disabled:bg-gray-100 dark:disabled:bg-slate-950 disabled:text-gray-500 dark:disabled:text-slate-650"
@@ -209,7 +210,7 @@ export default function HazardFormModal({
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">
               {hazardType === 'flood' ? 'Estimated Drain Time' : 
-               hazardType === 'earthquake' ? 'Estimated Debris Clearance Time' : 
+               hazardType === 'road_block' ? 'Estimated Clearance Time' : 
                'Estimated Duration'}
             </label>
             <div className="flex gap-2">

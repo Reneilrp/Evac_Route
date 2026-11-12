@@ -34,7 +34,7 @@ const HAZARD_TYPES = [
   { value: 'flood', label: '🌊 Flood' },
   { value: 'landslide', label: '⛰️ Landslide' },
   { value: 'building_fire', label: '🔥 Building Fire' },
-  { value: 'earthquake', label: '🏚️ Earthquake' },
+  { value: 'road_block', label: '🚧 Road Obstruction' },
 ];
 
 const SEVERITY_LEVELS = [
@@ -59,10 +59,10 @@ const CONTEXTUAL_SEVERITY = {
     { level: 'medium', title: 'Medium (Partial Road Blockage)', desc: 'Boulders and mud blocking one lane. Secondary slips imminent; clearance crew required.' },
     { level: 'high', title: 'High (Massive Slope Collapse / Impassable)', desc: 'Complete hillside collapse covering both lanes or structures. Evacuation route severed.' },
   ],
-  earthquake: [
-    { level: 'low', title: 'Low (Minor Surface Cracks)', desc: 'Hairline cracks on pavement or fences. No structural failure.' },
-    { level: 'medium', title: 'Medium (Fractured Pavement / Wall Damage)', desc: 'Road surface displaced, walls cracked, light vehicles must detour.' },
-    { level: 'high', title: 'High (Major Structural / Bridge Collapse)', desc: 'Road fissure, bridge deck dropped, or building collapse blocking thoroughfare.' },
+  road_block: [
+    { level: 'low', title: 'Low (Minor Debris / Passable)', desc: 'Fallen branches or loose debris; vehicles can pass with caution.' },
+    { level: 'medium', title: 'Medium (Partial Obstruction)', desc: 'Downed pole or heavy rubble blocking one lane; detour needed for trucks.' },
+    { level: 'high', title: 'High (Complete Roadblock)', desc: 'Road completely impassable to all traffic; emergency clearance required.' },
   ],
   default: [
     { level: 'low', title: 'Low Priority', desc: 'Minor hazard, manageable locally, no immediate risk to life.' },
@@ -89,7 +89,7 @@ export default function ReportIncident({ navigation, route }) {
     flood: '🌊 Flood: Note whether water is ankle, knee, or waist-deep, and if light vehicles can pass.',
     landslide: '⛰️ Landslide: Note whether soil or debris blocks the entire lane or access road.',
     building_fire: '🔥 Fire: Note if structural, commercial, or residential, and if spread is imminent.',
-    earthquake: '🏚️ Earthquake: Note structural cracks, collapsed walls, or damaged power lines.',
+    road_block: '🚧 Road Obstruction: Note fallen poles, downed power lines, or debris blocking access.',
   };
 
   const PHOTO_ROLE_LABELS = [

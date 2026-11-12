@@ -784,12 +784,12 @@ export default function EvacMap({ navigation, route }) {
       return {
         id: latestSignificantQuake.id,
         name: latestSignificantQuake.place,
-        latitude: latestSignificantQuake.coordinates?.latitude,
-        longitude: latestSignificantQuake.coordinates?.longitude,
-        depth_km: latestSignificantQuake.coordinates?.depth_km,
+        latitude: latestSignificantQuake.latitude ?? latestSignificantQuake.coordinates?.latitude,
+        longitude: latestSignificantQuake.longitude ?? latestSignificantQuake.coordinates?.longitude,
+        depth_km: latestSignificantQuake.depth_km ?? latestSignificantQuake.coordinates?.depth_km,
         magnitude: latestSignificantQuake.magnitude,
         severity: latestSignificantQuake.severity,
-        distance_km: latestSignificantQuake.distance_from_zamboanga_km,
+        distance_km: latestSignificantQuake.distance_km ?? latestSignificantQuake.distance_from_zamboanga_km,
         time: latestSignificantQuake.time,
         source: 'USGS Real-Time Seismic Network',
       };

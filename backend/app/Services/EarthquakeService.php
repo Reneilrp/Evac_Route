@@ -14,7 +14,7 @@ class EarthquakeService
     const ZAMBOANGA_LAT = 6.9214;
     const ZAMBOANGA_LNG = 122.0790;
     const DEFAULT_RADIUS_KM = 350; // Coverage across Zamboanga Peninsula, Basilan, Sulu Sea, Moro Gulf
-    const CACHE_TTL_SECONDS = 300; // 5 minutes cache
+    const CACHE_TTL_SECONDS = 60; // 60 seconds cache for rapid real-time seismic detection
 
     /**
      * Fetch recent earthquakes from USGS API near Zamboanga City or within Philippines

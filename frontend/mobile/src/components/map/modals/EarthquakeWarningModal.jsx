@@ -94,12 +94,23 @@ export default function EarthquakeWarningModal({
             <Text style={{ color: '#fef08a', fontSize: 12, fontWeight: '900', marginBottom: 6, letterSpacing: 0.5 }}>
               📍 EPICENTER LOCATION & DETAILS
             </Text>
-            <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: 'bold' }}>
-              Latitude: {parseFloat(activeEarthquakeHazard?.latitude || 0).toFixed(4)}° N
-            </Text>
-            <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: 'bold', marginTop: 2 }}>
-              Longitude: {parseFloat(activeEarthquakeHazard?.longitude || 0).toFixed(4)}° E
-            </Text>
+            {(() => {
+              const latNum = parseFloat(activeEarthquakeHazard?.latitude ?? activeEarthquakeHazard?.lat);
+              const lngNum = parseFloat(activeEarthquakeHazard?.longitude ?? activeEarthquakeHazard?.lng ?? activeEarthquakeHazard?.lon);
+              const hasValidLat = !isNaN(latNum) && latNum !== 0;
+              const hasValidLng = !isNaN(lngNum) && lngNum !== 0;
+
+              return (
+                <>
+                  <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: 'bold' }}>
+                    Latitude: {hasValidLat ? `${Math.abs(latNum).toFixed(4)}° ${latNum >= 0 ? 'N' : 'S'}` : 'Detecting...'}
+                  </Text>
+                  <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: 'bold', marginTop: 2 }}>
+                    Longitude: {hasValidLng ? `${Math.abs(lngNum).toFixed(4)}° ${lngNum >= 0 ? 'E' : 'W'}` : 'Detecting...'}
+                  </Text>
+                </>
+              );
+            })()}
             {activeEarthquakeHazard?.depth_km != null && (
               <Text style={{ color: '#e2e8f0', fontSize: 13, fontWeight: '600', marginTop: 3 }}>
                 Depth: <Text style={{ color: '#ffffff', fontWeight: 'bold' }}>{activeEarthquakeHazard.depth_km} km</Text>
