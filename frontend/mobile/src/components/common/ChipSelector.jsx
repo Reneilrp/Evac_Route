@@ -34,7 +34,7 @@ export default function ChipSelector({
         return (
           <TouchableOpacity
             key={optValue}
-            onPress={() => onChange(optValue)}
+            onPress={() => onChange?.(optValue)}
             activeOpacity={0.7}
             style={[
               styles.chip,

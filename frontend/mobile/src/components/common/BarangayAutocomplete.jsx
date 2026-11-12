@@ -67,14 +67,28 @@ export const ZAMBOANGA_BARANGAYS = [
   'Zone IV (Poblacion)',
 ];
 
-export default function BarangayAutocomplete({ value, onChangeText, placeholder = 'Search or type Barangay...' }) {
+export default function BarangayAutocomplete({ 
+  value = '', 
+  onChangeText, 
+  onSelect, 
+  placeholder = 'Search or type Barangay...' 
+}) {
   const { colors } = useTheme();
   const styles = useThemedStyles(getStyles);
   const [isOpen, setIsOpen] = useState(false);
 
+  const notifyChange = (text) => {
+    if (typeof onChangeText === 'function') {
+      onChangeText(text);
+    }
+    if (typeof onSelect === 'function') {
+      onSelect(text);
+    }
+  };
+
   // Filter & prioritize barangays that START with the input query, then those that contain it
   const suggestions = useMemo(() => {
-    if (!value || value.trim() === '') return ZAMBOANGA_BARANGAYS;
+    if (!value || typeof value !== 'string' || value.trim() === '') return ZAMBOANGA_BARANGAYS;
 
     const query = value.trim().toLowerCase();
     const startsWith = [];
@@ -94,7 +108,7 @@ export default function BarangayAutocomplete({ value, onChangeText, placeholder 
 
   const handleSelect = (selectedBarangay) => {
     Keyboard.dismiss();
-    onChangeText(selectedBarangay);
+    notifyChange(selectedBarangay);
     setIsOpen(false);
   };
 
@@ -106,9 +120,9 @@ export default function BarangayAutocomplete({ value, onChangeText, placeholder 
           style={styles.input}
           placeholder={placeholder}
           placeholderTextColor={colors.textMuted}
-          value={value}
+          value={typeof value === 'string' ? value : ''}
           onChangeText={(text) => {
-            onChangeText(text);
+            notifyChange(text);
             if (!isOpen) setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}

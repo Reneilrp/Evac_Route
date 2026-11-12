@@ -781,6 +781,7 @@ export default function ReportIncident({ navigation, route }) {
         onClose={() => setShowCreateModal(false)}
         colors={colors}
         isDarkMode={isDarkMode}
+        insets={insets}
         styles={styles}
         name={name}
         setName={setName}
