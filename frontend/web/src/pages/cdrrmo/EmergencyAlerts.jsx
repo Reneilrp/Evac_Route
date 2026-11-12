@@ -3,6 +3,7 @@ import { Megaphone, AlertTriangle, ShieldAlert, Info, Trash2, X, PlusCircle, Use
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import ConfirmationModal from '../../components/common/ConfirmationModal';
+import BroadcastAlertModal from '../../components/alerts/modals/BroadcastAlertModal';
 
 // List of common barangays in Zamboanga City for quick selection (Alphabetical A-Z)
 const COMMON_BARANGAYS = [
@@ -608,139 +609,12 @@ export default function EmergencyAlerts() {
       </div>
 
       {/* Broadcast Modal */}
-      {isModalOpen && (
-        <div 
-          onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}
-          className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-        >
-          <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm flex items-center gap-2">
-                📢 Dispatch Warning Broadcast
-              </h3>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-4 space-y-4">
-              {/* Alert Title */}
-              <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1.5">
-                  Warning Title
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g., Rising Water Alert, Force Evacuation"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full text-xs bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-lg px-3 py-2 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-red-500"
-                />
-              </div>
-
-              {/* Message */}
-              <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1.5">
-                  Warning Message &amp; Instructions
-                </label>
-                <textarea
-                  required
-                  rows="4"
-                  placeholder="Provide precise details, routes, and instructions to the residents..."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  className="w-full text-xs bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-lg px-3 py-2 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-red-500 resize-none"
-                />
-              </div>
-
-              {/* Severity & Target Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1.5">
-                    Severity Level
-                  </label>
-                  <select
-                    value={severity}
-                    onChange={(e) => setSeverity(e.target.value)}
-                    className="w-full text-xs bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-lg px-3 py-2 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-red-500"
-                  >
-                    <option value="info">Info (Blue)</option>
-                    <option value="warning">Warning (Amber)</option>
-                    <option value="critical">Critical (Red)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1.5">
-                    Broadcast Scope
-                  </label>
-                  <select
-                    value={scope}
-                    onChange={(e) => setScope(e.target.value)}
-                    className="w-full text-xs bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-lg px-3 py-2 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-red-500"
-                  >
-                    <option value="all">All Residents (Zamboanga)</option>
-                    <option value="barangay">Specific Barangay</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Barangay Selector */}
-              {scope === 'barangay' && (
-                <div className="p-3 bg-slate-50 dark:bg-slate-950 border dark:border-slate-800 rounded-xl space-y-3 animate-in fade-in duration-200">
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
-                      Target Barangay
-                    </label>
-                    <select
-                      value={selectedBarangay}
-                      onChange={(e) => setSelectedBarangay(e.target.value)}
-                      className="w-full text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg px-3 py-2 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-red-500"
-                    >
-                      {COMMON_BARANGAYS.map((brgy) => (
-                        <option key={brgy} value={brgy}>{brgy}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
-                      Or Custom Barangay / Area
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Tetuan Zone 4, Tugbungan"
-                      value={customBarangay}
-                      onChange={(e) => setCustomBarangay(e.target.value)}
-                      className="w-full text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg px-3 py-2 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-red-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-2 justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border dark:border-slate-800 text-xs font-bold rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 text-white text-xs font-bold rounded-lg transition"
-                >
-                  {isSubmitting ? 'Broadcasting...' : 'Broadcast Alert'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <BroadcastAlertModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={fetchAlerts}
+        commonBarangays={COMMON_BARANGAYS}
+      />
 
       {/* Confirmation Modal */}
       <ConfirmationModal

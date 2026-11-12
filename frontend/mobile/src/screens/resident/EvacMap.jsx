@@ -17,6 +17,12 @@ import DestinationProximityModal from '../../components/map/modals/DestinationPr
 import EarthquakeWarningModal from '../../components/map/modals/EarthquakeWarningModal';
 import PinLocationDetailsModal from '../../components/map/modals/PinLocationDetailsModal';
 import { useTheme, useThemedStyles } from '../../context/ThemeContext';
+import NavigationTurnBanner from '../../components/map/NavigationTurnBanner';
+import ActiveThreatBanner from '../../components/map/ActiveThreatBanner';
+import EvacMapHeaderBar from '../../components/map/EvacMapHeaderBar';
+import EvacMapControlButtons from '../../components/map/EvacMapControlButtons';
+import ShelterBottomSheet from '../../components/map/ShelterBottomSheet';
+import FacilityDetailsModal from '../../components/map/modals/FacilityDetailsModal';
 import { getEcho } from '../../services/echo';
 
 import {
@@ -1498,1423 +1504,143 @@ export default function EvacMap({ navigation, route }) {
       )}
 
       {/* ─── GOOGLE MAPS STYLE TURN-BY-TURN TOP NAVIGATION BANNER ─── */}
-      {isActiveTurnByTurn && (
-        <View style={{
-          position: 'absolute',
-          top: Math.max(insets.top + 10, 50),
-          left: 16,
-          right: 16,
-          backgroundColor: '#0f172a',
-          borderRadius: 20,
-          padding: 16,
-          borderWidth: 2,
-          borderColor: '#16a34a',
-          zIndex: 100,
-          elevation: 15,
-          shadowColor: '#16a34a',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.5,
-          shadowRadius: 10,
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-              <View style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: '#16a34a',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 2,
-                borderColor: '#4ade80',
-              }}>
-                <Text style={{ fontSize: 24, color: '#ffffff' }}>
-                  {routeSteps[currentStepIndex]?.type?.includes('right') || routeSteps[currentStepIndex]?.modifier?.includes('right') ? '↱' :
-                   routeSteps[currentStepIndex]?.type?.includes('left') || routeSteps[currentStepIndex]?.modifier?.includes('left') ? '↰' :
-                   routeSteps[currentStepIndex]?.type?.includes('arrive') ? '🏁' : '⬆️'}
-                </Text>
-              </View>
+      <NavigationTurnBanner
+        isActiveTurnByTurn={isActiveTurnByTurn}
+        setIsActiveTurnByTurn={setIsActiveTurnByTurn}
+        setIsNavigating={setIsNavigating}
+        setCachedRoute={setCachedRoute}
+        setSelectedShelter={setSelectedShelter}
+        triggerCasualHaptic={triggerCasualHaptic}
+        insets={insets}
+        routeSteps={routeSteps}
+        currentStepIndex={currentStepIndex}
+        activeTargetShelter={activeTargetShelter}
+        distanceKm={distanceKm}
+        distanceMeters={distanceMeters}
+        transportationMode={transportationMode}
+        getETAMinutes={getETAMinutes}
+        cameraRef={cameraRef}
+        activeUserLocation={activeUserLocation}
+        cachedRoute={cachedRoute}
+        targetShelterCoords={targetShelterCoords}
+        getBearing={getBearing}
+        isNavigating={isNavigating}
+        sheetHeightRef={sheetHeightRef}
+        handleStartActiveNavigation={handleStartActiveNavigation}
+      />
 
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: '#4ade80', fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>
-                  {routeSteps[currentStepIndex]?.distanceMeters ? `IN ${routeSteps[currentStepIndex].distanceMeters} METERS` : 'TURN INSTRUCTION'}
-                </Text>
-                <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: 'bold', marginTop: 2 }} numberOfLines={2}>
-                  {(routeSteps[currentStepIndex]?.instruction || `Proceed Forward towards ${activeTargetShelter?.name || 'Destination'}`)
-                    .replace(/head\s+(north|south|east|west|northwest|northeast|southwest|southeast)/gi, 'Proceed Forward')
-                    .replace(/\b(north|south|east|west|northwest|northeast|southwest|southeast)\b/gi, 'Forward')}
-                </Text>
-              </View>
-            </View>
+      {/* ─── CRITICAL THREAT & PROXIMITY ALERT BANNER ─── */}
+      <ActiveThreatBanner
+        isRouteBlocked={isRouteBlocked}
+        styles={styles}
+        colors={colors}
+        callEmergencyHotline={callEmergencyHotline}
+        showAlertBanner={showAlertBanner}
+        activeSiegeThreat={activeSiegeThreat}
+        isShelterNearbyForSiege={isShelterNearbyForSiege}
+        distanceKm={distanceKm}
+        distanceMeters={distanceMeters}
+        nearestShelter={nearestShelter}
+        handleOneClickEvacuate={handleOneClickEvacuate}
+        activeTargetShelter={activeTargetShelter}
+        setDismissedAlertKey={setDismissedAlertKey}
+        activeAlertKey={activeAlertKey}
+        activeDisasterNearUser={activeDisasterNearUser}
+        geofencePrompt={geofencePrompt}
+        setGeofencePrompt={setGeofencePrompt}
+        dismissedSheltersRef={dismissedSheltersRef}
+        isGeofenceCheckingIn={isGeofenceCheckingIn}
+        handleConfirmGeofenceCheckIn={handleConfirmGeofenceCheckIn}
+      />
 
-            <TouchableOpacity
-              onPress={() => {
-                setIsActiveTurnByTurn(false);
-                setIsNavigating(false);
-                setCachedRoute(null);
-                triggerCasualHaptic(50);
-              }}
-              style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', padding: 8, borderRadius: 20, borderWidth: 1, borderColor: '#ef4444' }}
-            >
-              <X size={18} color="#f87171" />
-            </TouchableOpacity>
-          </View>
+      {/* ─── TOP BRANDING & LIVE STATUS OVERLAY ─── */}
+      <EvacMapHeaderBar
+        insets={insets}
+        showSituationBrief={showSituationBrief}
+        setShowSituationBrief={setShowSituationBrief}
+        setIsDisasterFilterExpanded={setIsDisasterFilterExpanded}
+        isDisasterFilterExpanded={isDisasterFilterExpanded}
+        setIsFilterExpanded={setIsFilterExpanded}
+        isFilterExpanded={isFilterExpanded}
+        setIsStyleMenuOpen={setIsStyleMenuOpen}
+        triggerCasualHaptic={triggerCasualHaptic}
+        isHighContrast={isHighContrast}
+        isDarkMode={isDarkMode}
+        colors={colors}
+        hazards={hazards}
+        shelters={shelters}
+        selectedDisasterFilter={selectedDisasterFilter}
+        setSelectedDisasterFilter={setSelectedDisasterFilter}
+        selectedCategoryFilter={selectedCategoryFilter}
+        setSelectedCategoryFilter={setSelectedCategoryFilter}
+        cacheSyncStatus={cacheSyncStatus}
+      />
 
-          {/* Bottom stats pill inside turn banner */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.1)' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Navigation size={14} color="#38bdf8" />
-              <Text style={{ color: '#38bdf8', fontSize: 12, fontWeight: '800' }}>
-                {distanceKm} km ({getETAMinutes(distanceMeters, transportationMode)})
-              </Text>
-            </View>
+      {/* ─── FLOATING ACTION CONTROLS, COMPASS & STYLE FAB ─── */}
+      <EvacMapControlButtons
+        sheetHeightRef={sheetHeightRef}
+        isStyleMenuOpen={isStyleMenuOpen}
+        setIsStyleMenuOpen={setIsStyleMenuOpen}
+        setIsDisasterFilterExpanded={setIsDisasterFilterExpanded}
+        setIsFilterExpanded={setIsFilterExpanded}
+        setShowSituationBrief={setShowSituationBrief}
+        triggerCasualHaptic={triggerCasualHaptic}
+        isHighContrast={isHighContrast}
+        setIsHighContrast={setIsHighContrast}
+        isDarkMode={isDarkMode}
+        colors={colors}
+        mapStyleMode={mapStyleMode}
+        setMapStyleMode={setMapStyleMode}
+        currentZoomRef={currentZoomRef}
+        cameraRef={cameraRef}
+        activeUserLocation={activeUserLocation}
+        deviceHeading={deviceHeading}
+        targetShelterCoords={targetShelterCoords}
+        getBearing={getBearing}
+      />
 
-            <TouchableOpacity
-              onPress={() => {
-                if (cameraRef.current && activeUserLocation) {
-                  const nextPoint = (cachedRoute && cachedRoute.length > 1) ? cachedRoute[1] : targetShelterCoords;
-                  const forwardBearing = (nextPoint && activeUserLocation)
-                    ? getBearing(activeUserLocation[1], activeUserLocation[0], nextPoint[1], nextPoint[0])
-                    : 0;
+      {/* ─── BOTTOM INTERACTIVE SLIDING SHEET ─── */}
+      <ShelterBottomSheet
+        styles={styles}
+        sheetHeightRef={sheetHeightRef}
+        isHighContrast={isHighContrast}
+        panResponder={panResponder}
+        isSheetExpanded={isSheetExpanded}
+        setIsSheetExpanded={setIsSheetExpanded}
+        triggerCasualHaptic={triggerCasualHaptic}
+        nearestShelter={nearestShelter}
+        colors={colors}
+        isDarkMode={isDarkMode}
+        distanceMeters={distanceMeters}
+        shelters={shelters}
+        activeSubTab={activeSubTab}
+        setActiveSubTab={setActiveSubTab}
+        transportationMode={transportationMode}
+        setTransportationMode={setTransportationMode}
+        getETAMinutes={getETAMinutes}
+        routeWarnings={routeWarnings}
+        isNavigating={isNavigating}
+        setIsNavigating={setIsNavigating}
+        handleOneClickEvacuate={handleOneClickEvacuate}
+        openExternalNavigation={openExternalNavigation}
+        bottomDockClearance={bottomDockClearance}
+      />
 
-                  cameraRef.current.setCamera({
-                    centerCoordinate: activeUserLocation,
-                    zoomLevel: 17.5,
-                    pitch: 0, // Eagle View: Top-down vertical perspective directly above user location
-                    heading: forwardBearing,
-                    animationDuration: 600,
-                  });
-                  triggerCasualHaptic(40);
-                }
-              }}
-              style={{ backgroundColor: '#0284c7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}
-            >
-              <Text style={{ color: '#ffffff', fontSize: 10, fontWeight: '900' }}>🎯 RECENTER</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* ─── Active Route Overview Floating Bar with ▶ START NAVIGATION ─── */}
-      {isNavigating && !isActiveTurnByTurn && (
-        <Animated.View style={{
-          position: 'absolute',
-          bottom: Animated.add(sheetHeightRef.current, 16),
-          left: 16,
-          right: 16,
-          backgroundColor: '#0f172a',
-          borderRadius: 20,
-          padding: 14,
-          borderWidth: 2,
-          borderColor: '#38bdf8',
-          zIndex: 42,
-          elevation: 12,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-          <View style={{ flex: 1, marginRight: 10 }}>
-            <Text style={{ color: '#38bdf8', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
-              ROUTE CALCULATED ({distanceKm} km)
-            </Text>
-            <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: 'bold' }} numberOfLines={1}>
-              To: {activeTargetShelter?.name || 'Destination'}
-            </Text>
-          </View>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity
-              onPress={handleStartActiveNavigation}
-              style={{
-                backgroundColor: '#16a34a',
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderRadius: 12,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                borderWidth: 1,
-                borderColor: '#4ade80',
-                elevation: 6,
-              }}
-            >
-              <Navigation size={15} color="#ffffff" />
-              <Text style={{ color: '#ffffff', fontSize: 12.5, fontWeight: '900' }}>
-                ▶ START NAVIGATION
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                setIsNavigating(false);
-                setCachedRoute(null);
-                setSelectedShelter(null);
-                triggerCasualHaptic(30);
-              }}
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                padding: 9,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-              }}
-            >
-              <X size={18} color="#94a3b8" />
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      )}
-
-      {/* ─── Critical Overlay ─── */}
-      {isRouteBlocked && (
-        <View style={styles.criticalOverlay}>
-          <Text style={styles.criticalTitle}>
-            CRITICAL ACTION REQUIRED: No safe overland evacuation routes available for your current transportation mode. Move to the highest accessible level immediately and broadcast an emergency rescue signal.
-          </Text>
-          <TouchableOpacity style={styles.emergencyButton} onPress={callEmergencyHotline}>
-            <Phone color={colors.white} size={20} />
-            <Text style={styles.emergencyButtonText}>Call Emergency Hotline</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* ─── Siege / War / Armed Threat Smart Safety Protocol Banner ─── */}
-      {showAlertBanner && activeSiegeThreat && (
-        <View style={{
-          position: 'absolute',
-          top: 100,
-          left: 16,
-          right: 16,
-          backgroundColor: isShelterNearbyForSiege ? '#064e3b' : '#7f1d1d',
-          borderRadius: 16,
-          padding: 14,
-          borderWidth: 2,
-          borderColor: isShelterNearbyForSiege ? '#10b981' : '#ef4444',
-          zIndex: 50,
-          elevation: 10,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.5,
-          shadowRadius: 8,
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 }}>
-                <AlertTriangle color="#ffffff" size={18} />
-                <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 13, flex: 1 }}>
-                  {isShelterNearbyForSiege 
-                    ? `🛡️ NEARBY SECURE SHELTER AVAILABLE (${distanceKm} km)` 
-                    : `🔒 ARMED THREAT / SIEGE: SHELTER IN PLACE`}
-                </Text>
-              </View>
-
-              {isShelterNearbyForSiege ? (
-                <Text style={{ color: '#d1fae5', fontSize: 11.5, lineHeight: 16, fontWeight: '600', marginBottom: 8 }}>
-                  A secured evacuation center (<Text style={{ fontWeight: '900', color: '#ffffff' }}>{nearestShelter?.name}</Text>) is nearby ({distanceKm} km). Proceed immediately using the safest path.
-                </Text>
-              ) : (
-                <Text style={{ color: '#fef2f2', fontSize: 11.5, lineHeight: 16, fontWeight: '600', marginBottom: 8 }}>
-                  ⚠️ Nearest shelter is <Text style={{ fontWeight: '900', color: '#ffffff' }}>TOO FAR ({distanceKm} km)</Text>. <Text style={{ fontWeight: '900', color: '#fbbf24' }}>Lock all doors & windows</Text>, turn off lights, stay away from exterior glass, and remain low indoors until security forces arrive.
-                </Text>
-              )}
-
-              {/* One-Click Navigation Action Button */}
-              <TouchableOpacity
-                onPress={() => handleOneClickEvacuate(nearestShelter)}
-                style={{
-                  backgroundColor: isShelterNearbyForSiege ? '#059669' : '#b91c1c',
-                  paddingVertical: 11,
-                  paddingHorizontal: 14,
-                  borderRadius: 12,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  borderWidth: 1,
-                  borderColor: isShelterNearbyForSiege ? 'rgba(52, 211, 153, 0.5)' : 'rgba(248, 113, 113, 0.5)',
-                  shadowColor: isShelterNearbyForSiege ? '#059669' : '#b91c1c',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.4,
-                  shadowRadius: 6,
-                  elevation: 6,
-                }}
-              >
-                <ShieldAlert color="#ffffff" size={16} />
-                <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 12, letterSpacing: 0.5 }}>
-                  {isShelterNearbyForSiege
-                    ? `⚡ ONE-CLICK SAFE NAVIGATE (${distanceKm} km)`
-                    : `🔒 VIEW STAY INSIDE SAFETY ADVICE (${distanceKm} km)`}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity onPress={() => setDismissedAlertKey(activeAlertKey)} style={{ padding: 4, marginLeft: 8 }}>
-              <X size={18} color="#ffffff" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* ─── Disaster Proximity Recommendation Banner ─── */}
-      {showAlertBanner && !activeSiegeThreat && activeDisasterNearUser && (
-        <View style={{
-          position: 'absolute',
-          top: 100,
-          left: 16,
-          right: 16,
-          backgroundColor: '#c2410c',
-          borderRadius: 16,
-          padding: 14,
-          borderWidth: 2,
-          borderColor: '#fb923c',
-          zIndex: 50,
-          elevation: 10,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.5,
-          shadowRadius: 8,
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 }}>
-                <AlertTriangle color="#ffffff" size={18} />
-                <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 13, flex: 1 }}>
-                  🚨 DISASTER NEAR YOU: {activeDisasterNearUser.name?.toUpperCase()}
-                </Text>
-              </View>
-              <Text style={{ color: '#fff7ed', fontSize: 11.5, lineHeight: 16, fontWeight: '600', marginBottom: 8 }}>
-                Hazard inside location radius ({distanceKm} km to {activeTargetShelter?.name || 'Nearest Shelter'}).
-              </Text>
-              <TouchableOpacity
-                onPress={() => handleOneClickEvacuate(activeTargetShelter)}
-                style={{
-                  backgroundColor: '#ea580c',
-                  paddingVertical: 9,
-                  paddingHorizontal: 12,
-                  borderRadius: 10,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}
-              >
-                <Navigation color="#ffffff" size={15} />
-                <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 12 }}>
-                  ⚡ ONE-CLICK NAVIGATE TO SHELTER ({distanceKm} km)
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity onPress={() => setDismissedAlertKey(activeAlertKey)} style={{ padding: 4, marginLeft: 8 }}>
-              <X size={18} color="#ffffff" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* ─── Automated Geofence Arrival Proximity Banner ─── */}
-      {geofencePrompt && (
-        <View style={{
-          position: 'absolute',
-          top: Math.max(insets.top + 60, 105),
-          left: 16,
-          right: 16,
-          zIndex: 999,
-          backgroundColor: '#0f172a',
-          borderRadius: 16,
-          padding: 14,
-          borderWidth: 2,
-          borderColor: '#22c55e',
-          elevation: 12,
-          shadowColor: '#22c55e',
-          shadowOpacity: 0.4,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 4 },
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <View style={{ backgroundColor: '#15803d', padding: 7, borderRadius: 10 }}>
-              <CheckCircle2 color="#ffffff" size={22} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: '#86efac', fontSize: 10, fontWeight: '900', letterSpacing: 0.8 }}>
-                GEOFENCE PROXIMITY DETECTED ({geofencePrompt.distanceMeters}M)
-              </Text>
-              <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: 'bold' }}>
-                {geofencePrompt.shelter.name}
-              </Text>
-            </View>
-          </View>
-
-          <Text style={{ color: '#cbd5e1', fontSize: 12, marginBottom: 12, lineHeight: 16 }}>
-            You have arrived at this shelter perimeter. Would you like to automatically register your family headcount to secure accommodations and CSWDO relief supplies?
-          </Text>
-
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                backgroundColor: '#22c55e',
-                paddingVertical: 12,
-                borderRadius: 8,
-                alignItems: 'center',
-                flexDirection: 'row',
-                justifyContent: 'center',
-                gap: 6,
-              }}
-              onPress={() => handleConfirmGeofenceCheckIn(geofencePrompt.shelter)}
-              disabled={isGeofenceCheckingIn}
-            >
-              {isGeofenceCheckingIn ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <>
-                  <CheckCircle2 color="#ffffff" size={16} />
-                  <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 13 }}>CONFIRM CHECK-IN</Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={{
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-                backgroundColor: '#334155',
-                borderRadius: 8,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onPress={() => {
-                dismissedSheltersRef.current.add(geofencePrompt.shelter.id);
-                setGeofencePrompt(null);
-              }}
-              disabled={isGeofenceCheckingIn}
-            >
-              <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600' }}>Passing By</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* ─── Unified Floating Pill Header Bar (Option A) ─── */}
-      <View style={{
-        position: 'absolute',
-        top: Math.max(insets.top + 8, 48),
-        left: 16,
-        right: 16,
-        zIndex: 48,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        {/* Left Side: Explicit Live Emergency Status Pill */}
-        <TouchableOpacity
-          onPress={() => {
-            setShowSituationBrief(prev => !prev);
-            setIsDisasterFilterExpanded(false);
-            setIsFilterExpanded(false);
-            setIsStyleMenuOpen(false);
-            triggerCasualHaptic(40);
-          }}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255, 255, 255, 0.96)'),
-            paddingHorizontal: 10,
-            paddingVertical: hazards.length > 0 ? 5 : 8,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: showSituationBrief ? colors.primary : (isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)')),
-            elevation: 6,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDarkMode ? 0.3 : 0.1,
-            shadowRadius: 4,
-            gap: 5,
-          }}
-        >
-          {hazards.length > 0 ? (
-            <View style={{ flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#22c55e' }} />
-                <Text style={{ color: isHighContrast ? '#FFFF00' : colors.textPrimary, fontSize: 10.5, fontWeight: 'bold' }}>
-                  {shelters.length} Shelters
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#ef4444' }} />
-                <Text style={{ color: isDarkMode ? '#f87171' : '#dc2626', fontSize: 10.5, fontWeight: 'bold' }}>
-                  {hazards.length} Hazards
-                </Text>
-              </View>
-            </View>
-          ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#22c55e' }} />
-              <Text style={{ color: isHighContrast ? '#FFFF00' : colors.textPrimary, fontSize: 11, fontWeight: 'bold' }}>
-                {shelters.length} Shelters
-              </Text>
-            </View>
-          )}
-          {isOffline && (
-            <View style={{ backgroundColor: '#eab308', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4 }}>
-              <Text style={{ color: '#0f172a', fontSize: 7.5, fontWeight: '900' }}>
-                {cacheSyncStatus.shelters ? 'OFFLINE · CACHED' : 'OFFLINE · NO CACHE'}
-              </Text>
-            </View>
-          )}
-          <Info size={12} color={colors.textMuted} />
-        </TouchableOpacity>
-
-        {/* Right Side: Dual Dropdown Selector Pills (Disasters & Places) */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          {/* Disaster Event Dropdown Pill */}
-          <TouchableOpacity
-            onPress={() => {
-              setIsDisasterFilterExpanded(prev => !prev);
-              setIsFilterExpanded(false);
-              setShowSituationBrief(false);
-              setIsStyleMenuOpen(false);
-              triggerCasualHaptic(40);
-            }}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: selectedDisasterFilter !== 'all' ? '#0284c7' : (isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.96)')),
-              paddingHorizontal: 10,
-              paddingVertical: 8,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: isDisasterFilterExpanded ? colors.primary : (isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.12)')),
-              elevation: 6,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: isDarkMode ? 0.3 : 0.1,
-              shadowRadius: 4,
-              gap: 5,
-            }}
-          >
-            <Text style={{ fontSize: 12 }}>
-              {selectedDisasterFilter === 'flood' ? '🌊' :
-               selectedDisasterFilter === 'fire' ? '🚒' :
-               selectedDisasterFilter === 'earthquake' ? '🌋' :
-               selectedDisasterFilter === 'siege' ? '⚔️' :
-               selectedDisasterFilter === 'chemical' ? '🧪' : '🌐'}
-            </Text>
-            <Text style={{
-              color: selectedDisasterFilter !== 'all' ? '#ffffff' : (isHighContrast ? '#FFFF00' : colors.textPrimary),
-              fontSize: 11,
-              fontWeight: 'bold'
-            }}>
-              {selectedDisasterFilter === 'flood' ? 'Flood' :
-               selectedDisasterFilter === 'fire' ? 'Fire' :
-               selectedDisasterFilter === 'earthquake' ? 'Quake' :
-               selectedDisasterFilter === 'siege' ? 'Siege' :
-               selectedDisasterFilter === 'chemical' ? 'Chem' : 'Disasters'}
-            </Text>
-            <ChevronDown size={13} color={selectedDisasterFilter !== 'all' ? '#ffffff' : colors.primary} style={{ transform: [{ rotate: isDisasterFilterExpanded ? '180deg' : '0deg' }] }} />
-          </TouchableOpacity>
-
-          {/* Place Category Dropdown Pill */}
-          <TouchableOpacity
-            onPress={() => {
-              setIsFilterExpanded(prev => !prev);
-              setIsDisasterFilterExpanded(false);
-              setShowSituationBrief(false);
-              setIsStyleMenuOpen(false);
-              triggerCasualHaptic(40);
-            }}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: selectedCategoryFilter !== 'all' ? colors.primary : (isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.96)')),
-              paddingHorizontal: 10,
-              paddingVertical: 8,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: isFilterExpanded ? colors.primary : (isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.12)')),
-              elevation: 6,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: isDarkMode ? 0.3 : 0.1,
-              shadowRadius: 4,
-              gap: 5,
-            }}
-          >
-            <Text style={{ fontSize: 12 }}>
-              {selectedCategoryFilter === 'shelter' ? '🏠' :
-               selectedCategoryFilter === 'safe_zone' ? '🛡️' :
-               selectedCategoryFilter === 'assembly_point' ? '🚩' :
-               selectedCategoryFilter === 'security' ? '👮' : '📍'}
-            </Text>
-            <Text style={{
-              color: selectedCategoryFilter !== 'all' ? '#ffffff' : (isHighContrast ? '#FFFF00' : colors.textPrimary),
-              fontSize: 11,
-              fontWeight: 'bold'
-            }}>
-              {selectedCategoryFilter === 'shelter' ? 'Shelters' :
-               selectedCategoryFilter === 'safe_zone' ? 'Safe' :
-               selectedCategoryFilter === 'assembly_point' ? 'Assembly' :
-               selectedCategoryFilter === 'security' ? 'Police' : 'Places'}
-            </Text>
-            <ChevronDown size={13} color={selectedCategoryFilter !== 'all' ? '#ffffff' : colors.primary} style={{ transform: [{ rotate: isFilterExpanded ? '180deg' : '0deg' }] }} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* ─── Tap-Outside Dismiss Backdrop for Open Dropdowns & Overlays ─── */}
-      {(isDisasterFilterExpanded || isFilterExpanded || showSituationBrief || isStyleMenuOpen) && (
-        <Pressable
-          onPress={() => {
-            setIsDisasterFilterExpanded(false);
-            setIsFilterExpanded(false);
-            setShowSituationBrief(false);
-            setIsStyleMenuOpen(false);
-          }}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 42,
-            backgroundColor: 'transparent',
-          }}
-        />
-      )}
-
-      {/* Active Disaster Filter Contextual Notification Banner */}
-      {selectedDisasterFilter !== 'all' && (
-        <View style={{
-          position: 'absolute',
-          top: Math.max(insets.top + 48, 92),
-          left: 16,
-          right: 16,
-          zIndex: 38,
-          backgroundColor: selectedDisasterFilter === 'flood' ? 'rgba(2, 132, 199, 0.95)' :
-                           selectedDisasterFilter === 'fire' ? 'rgba(234, 88, 12, 0.95)' :
-                           selectedDisasterFilter === 'earthquake' ? 'rgba(217, 119, 6, 0.95)' :
-                           selectedDisasterFilter === 'siege' ? 'rgba(79, 70, 229, 0.95)' : 'rgba(225, 29, 72, 0.95)',
-          borderRadius: 14,
-          paddingHorizontal: 12,
-          paddingVertical: 7,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.3)',
-          elevation: 6,
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-            <Text style={{ fontSize: 13 }}>
-              {selectedDisasterFilter === 'flood' ? '🌊' :
-               selectedDisasterFilter === 'fire' ? '🚒' :
-               selectedDisasterFilter === 'earthquake' ? '🌋' :
-               selectedDisasterFilter === 'siege' ? '⚔️' : '🧪'}
-            </Text>
-            <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '800', flex: 1 }} numberOfLines={1}>
-              {selectedDisasterFilter === 'flood' ? 'FLOOD MODE: Safe High-Ground & Evac Centers' :
-               selectedDisasterFilter === 'fire' ? 'FIRE MODE: Safe Assembly Points & Fire Stations' :
-               selectedDisasterFilter === 'earthquake' ? 'EARTHQUAKE MODE: Open Areas & Hospitals' :
-               selectedDisasterFilter === 'siege' ? 'SIEGE MODE: Police & Military Security Points' :
-               'CHEMICAL MODE: Hospitals & Decontamination Safe Zones'}
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => {
-              setSelectedDisasterFilter('all');
-              triggerCasualHaptic(30);
-            }}
-            style={{
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              paddingHorizontal: 8,
-              paddingVertical: 3,
-              borderRadius: 8,
-              marginLeft: 6,
-            }}
-          >
-            <Text style={{ color: '#ffffff', fontSize: 10, fontWeight: '900' }}>RESET</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* ─── Disaster Event Dropdown Menu Options ─── */}
-      {isDisasterFilterExpanded && (
-        <View style={{
-          position: 'absolute',
-          top: Math.max(insets.top + 48, 92),
-          right: 125,
-          width: 175,
-          backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255, 255, 255, 0.98)'),
-          borderRadius: 16,
-          padding: 6,
-          borderWidth: 1,
-          borderColor: isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'),
-          zIndex: 50,
-          elevation: 10,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: isDarkMode ? 0.4 : 0.15,
-          shadowRadius: 8,
-        }}>
-          <Text style={{ fontSize: 9, fontWeight: '900', color: isDarkMode ? '#38bdf8' : colors.primary, paddingHorizontal: 8, paddingVertical: 4, textTransform: 'uppercase' }}>
-            Filter Disaster Event
-          </Text>
-          {[
-            { key: 'all', label: 'All Disasters', icon: '🌐' },
-            { key: 'flood', label: 'Flood Event', icon: '🌊' },
-            { key: 'fire', label: 'Fire Outbreak', icon: '🚒' },
-            { key: 'earthquake', label: 'Earthquake', icon: '🌋' },
-            { key: 'siege', label: 'Armed Siege', icon: '⚔️' },
-            { key: 'chemical', label: 'Chemical Spill', icon: '🧪' },
-          ].map(dItem => (
-            <TouchableOpacity
-              key={dItem.key}
-              onPress={() => {
-                setSelectedDisasterFilter(dItem.key);
-                setIsDisasterFilterExpanded(false);
-                triggerCasualHaptic(30);
-              }}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 12,
-                paddingVertical: 9,
-                borderRadius: 10,
-                backgroundColor: selectedDisasterFilter === dItem.key ? (isHighContrast ? '#FFFF00' : colors.primary) : 'transparent',
-                marginBottom: 2,
-              }}
-            >
-              <Text style={{ fontSize: 13, marginRight: 8 }}>{dItem.icon}</Text>
-              <Text style={{
-                fontSize: 12,
-                fontWeight: '700',
-                color: selectedDisasterFilter === dItem.key ? (isHighContrast ? '#000000' : '#ffffff') : (isDarkMode ? '#cbd5e1' : colors.textPrimary)
-              }}>
-                {dItem.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {/* ─── Place Category Dropdown Menu Options ─── */}
-      {isFilterExpanded && (
-        <View style={{
-          position: 'absolute',
-          top: Math.max(insets.top + 48, 92),
-          right: 16,
-          width: 175,
-          backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255, 255, 255, 0.98)'),
-          borderRadius: 16,
-          padding: 6,
-          borderWidth: 1,
-          borderColor: isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'),
-          zIndex: 50,
-          elevation: 10,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: isDarkMode ? 0.4 : 0.15,
-          shadowRadius: 8,
-        }}>
-          <Text style={{ fontSize: 9, fontWeight: '900', color: isDarkMode ? '#94a3b8' : colors.textSecondary, paddingHorizontal: 8, paddingVertical: 4, textTransform: 'uppercase' }}>
-            Filter Place Type
-          </Text>
-          {[
-            { key: 'all', label: 'All Places', icon: '📍' },
-            { key: 'shelter', label: 'Evac Centers', icon: '🏠' },
-            { key: 'safe_zone', label: 'Safe Zones', icon: '🛡️' },
-            { key: 'assembly_point', label: 'Assembly Points', icon: '🚩' },
-            { key: 'security', label: 'Police/Military', icon: '👮' },
-          ].map(item => (
-            <TouchableOpacity
-              key={item.key}
-              onPress={() => {
-                setSelectedCategoryFilter(item.key);
-                setIsFilterExpanded(false);
-                triggerCasualHaptic(30);
-              }}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 12,
-                paddingVertical: 9,
-                borderRadius: 10,
-                backgroundColor: selectedCategoryFilter === item.key ? (isHighContrast ? '#FFFF00' : colors.primary) : 'transparent',
-                marginBottom: 2,
-              }}
-            >
-              <Text style={{ fontSize: 13, marginRight: 8 }}>{item.icon}</Text>
-              <Text style={{
-                fontSize: 12,
-                fontWeight: '700',
-                color: selectedCategoryFilter === item.key ? (isHighContrast ? '#000000' : '#ffffff') : (isDarkMode ? '#cbd5e1' : colors.textPrimary)
-              }}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {/* ─── Google Maps Style Layers FAB (floating, bottom-left) ─── */}
-      <Animated.View style={{ position: 'absolute', bottom: Animated.add(sheetHeightRef.current, 20), left: 16, zIndex: isStyleMenuOpen ? 50 : 35 }}>
-        <TouchableOpacity
-          onPress={() => {
-            setIsStyleMenuOpen(prev => !prev);
-            setIsDisasterFilterExpanded(false);
-            setIsFilterExpanded(false);
-            setShowSituationBrief(false);
-            triggerCasualHaptic(30);
-          }}
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: 21,
-            backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255, 255, 255, 0.96)'),
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: isStyleMenuOpen ? colors.primary : (isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.12)')),
-            elevation: 6,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: isDarkMode ? 0.3 : 0.15,
-            shadowRadius: 4,
-          }}
-        >
-          <Layers size={20} color={isStyleMenuOpen ? colors.primary : colors.textPrimary} />
-        </TouchableOpacity>
-
-        {/* Expandable Layer Options Menu */}
-        {isStyleMenuOpen && (
-          <View style={{
-            position: 'absolute',
-            bottom: 48,
-            left: 0,
-            width: 140,
-            backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.98)'),
-            borderRadius: 16,
-            padding: 6,
-            borderWidth: 1,
-            borderColor: isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'),
-            elevation: 10,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: isDarkMode ? 0.4 : 0.15,
-            shadowRadius: 8,
-            gap: 4,
-          }}>
-            {[
-              { key: 'dark',      icon: '🌑', label: 'Dark Mode' },
-              { key: 'satellite', icon: '🛰️', label: 'Satellite' },
-              { key: 'streets',   icon: '🗺️', label: 'Standard Map' },
-            ].map(s => (
-              <TouchableOpacity
-                key={s.key}
-                onPress={() => {
-                  setMapStyleMode(s.key);
-                  setIsStyleMenuOpen(false);
-                  triggerCasualHaptic(30);
-                }}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: 10,
-                  paddingVertical: 8,
-                  borderRadius: 10,
-                  backgroundColor: mapStyleMode === s.key ? (isHighContrast ? '#FFFF00' : colors.primary) : 'transparent',
-                  gap: 8,
-                }}
-              >
-                <Text style={{ fontSize: 13 }}>{s.icon}</Text>
-                <Text style={{
-                  fontSize: 11,
-                  fontWeight: 'bold',
-                  color: mapStyleMode === s.key ? (isHighContrast ? '#000000' : '#ffffff') : colors.textSecondary
-                }}>
-                  {s.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </Animated.View>
-
-      {/* ─── Floating Action Controls (floating, bottom-right) ─── */}
-      <Animated.View style={{ position: 'absolute', bottom: Animated.add(sheetHeightRef.current, 20), right: 16, zIndex: 30, gap: 8, alignItems: 'center' }}>
-        {/* Zoom In */}
-        <TouchableOpacity
-          onPress={() => {
-            if (cameraRef.current) {
-              const nextZoom = Math.min(currentZoomRef.current + 1, 20);
-              currentZoomRef.current = nextZoom;
-              cameraRef.current.setCamera({
-                zoomLevel: nextZoom,
-                animationDuration: 250,
-              });
-              triggerCasualHaptic(30);
-            }
-          }}
-          style={styles.mapStyleBtn}
-        >
-          <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: 'bold' }}>+</Text>
-        </TouchableOpacity>
-
-        {/* Zoom Out */}
-        <TouchableOpacity
-          onPress={() => {
-            if (cameraRef.current) {
-              const nextZoom = Math.max(currentZoomRef.current - 1, 3);
-              currentZoomRef.current = nextZoom;
-              cameraRef.current.setCamera({
-                zoomLevel: nextZoom,
-                animationDuration: 250,
-              });
-              triggerCasualHaptic(30);
-            }
-          }}
-          style={styles.mapStyleBtn}
-        >
-          <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: 'bold' }}>−</Text>
-        </TouchableOpacity>
-
-        {/* Recenter & Focus Location Button */}
-        <TouchableOpacity
-          onPress={() => {
-            if (cameraRef.current && activeUserLocation) {
-              cameraRef.current.setCamera({
-                centerCoordinate: activeUserLocation,
-                zoomLevel: 15,
-                animationDuration: 1000,
-              });
-              triggerCasualHaptic(50);
-            }
-          }}
-          style={styles.mapStyleBtn}
-        >
-          <Navigation size={18} color={colors.textPrimary} />
-        </TouchableOpacity>
-
-
-        {/* High Contrast Mode Toggle */}
-        <TouchableOpacity
-          onPress={() => {
-            setIsHighContrast(o => !o);
-            triggerCasualHaptic(80);
-          }}
-          style={[
-            styles.mapStyleBtn,
-            isHighContrast && { backgroundColor: '#FFFF00', borderColor: '#000000', borderWidth: 2 }
-          ]}
-        >
-          <Text style={[
-            styles.mapStyleBtnText,
-            { color: isHighContrast ? '#000000' : colors.textPrimary },
-            isHighContrast && { fontWeight: '900' }
-          ]}>
-            {isHighContrast ? '👁' : '🕶'}
-          </Text>
-        </TouchableOpacity>
-      </Animated.View>
-
-      {/* ─── Compass Heading Widget (floating, top-right) ─── */}
-      {activeUserLocation && targetShelterCoords && (
-        <View style={{ position: 'absolute', top: 110, right: 16, zIndex: 30, alignItems: 'center' }}>
-          <View style={{
-            width: 50,
-            height: 50,
-            borderRadius: 25,
-            backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.95)'),
-            borderWidth: 2,
-            borderColor: isHighContrast ? '#FFFF00' : (isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)'),
-            alignItems: 'center',
-            justifyContent: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: isDarkMode ? 0.3 : 0.15,
-            shadowRadius: 4,
-            elevation: 5,
-          }}>
-            <Animated.View style={{
-              transform: [{
-                rotate: `${(getBearing(activeUserLocation[1], activeUserLocation[0], targetShelterCoords[1], targetShelterCoords[0]) - deviceHeading + 360) % 360}deg`
-              }]
-            }}>
-              <Text style={{ fontSize: 22, color: isHighContrast ? '#FFFF00' : colors.primary }}>▲</Text>
-            </Animated.View>
-          </View>
-          <Text style={{
-            fontSize: 8,
-            fontWeight: '900',
-            color: isHighContrast ? '#FFFF00' : (isDarkMode ? '#ffffff' : colors.textPrimary),
-            marginTop: 4,
-            backgroundColor: isHighContrast ? '#000000' : (isDarkMode ? 'rgba(0, 0, 0, 0.6)' : 'rgba(255, 255, 255, 0.95)'),
-            borderWidth: isHighContrast ? 1 : (isDarkMode ? 0 : 1),
-            borderColor: isHighContrast ? '#FFFF00' : (isDarkMode ? 'transparent' : 'rgba(0, 0, 0, 0.1)'),
-            paddingHorizontal: 6,
-            paddingVertical: 2,
-            borderRadius: 6,
-            overflow: 'hidden',
-            elevation: isDarkMode ? 0 : 2,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: isDarkMode ? 0 : 0.1,
-            shadowRadius: 2,
-          }}>
-            TO SHELTER
-          </Text>
-        </View>
-      )}
-
-      {/* ─── Draggable Bottom Sheet ─── */}
-      <Animated.View style={[
-        styles.bottomSheet, 
-        { height: sheetHeightRef.current }, 
-        isHighContrast && { backgroundColor: '#000000', borderTopWidth: 3, borderTopColor: '#FFFF00' }
-      ]}>
-        {/* Handle Area (Tap to toggle or Drag) */}
-        <View 
-          {...panResponder.panHandlers} 
-          style={[styles.bottomSheetHandle, isHighContrast && { backgroundColor: '#000000' }]}
-        >
-          <View style={[styles.bottomSheetBar, isHighContrast && { backgroundColor: '#FFFF00' }]} />
-          <View style={styles.handleIndicatorRow}>
-            <Text style={[styles.handleHintText, isHighContrast && { color: '#FFFF00' }]}>
-              {isSheetExpanded ? 'Swipe down to minimize' : 'Swipe up for details'}
-            </Text>
-            {isSheetExpanded ? (
-              <ChevronDown size={14} color={isHighContrast ? '#FFFF00' : colors.textMuted} />
-            ) : (
-              <ChevronUp size={14} color={isHighContrast ? '#FFFF00' : colors.textMuted} />
-            )}
-          </View>
-        </View>
-
-        <View style={[styles.bottomSheetContent, { paddingBottom: bottomDockClearance }]}>
-          {nearestShelter ? (
-            <>
-              {/* Header Summary Row */}
-              <View style={styles.sheetHeaderRow}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={[styles.destinationLabel, isHighContrast && { color: '#FFFF00', fontSize: 11, fontWeight: '900' }]}>
-                    NEAREST OPEN SHELTER:
-                  </Text>
-                  <Text style={[styles.destinationName, isHighContrast && { color: '#FFFF00', fontSize: 17, fontWeight: '900' }]} numberOfLines={1}>
-                    {nearestShelter.type === 'primary' ? '⭐ ' : '🏠 '}
-                    {nearestShelter.name}
-                  </Text>
-                </View>
-                <View style={[styles.etaBadge, isHighContrast && { backgroundColor: '#FFFF00', borderColor: '#FFFF00' }]}>
-                  <Text style={[styles.etaBadgeText, isHighContrast && { color: '#000000', fontWeight: '900' }]}>
-                    {getETAMinutes(distanceMeters, transportationMode)} · {(distanceMeters / 1000).toFixed(1)} km
-                  </Text>
-                </View>
-              </View>
-
-              {/* Collapsed Mode: Quick Capacity Pill & Alert summary */}
-              {!isSheetExpanded && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 6 }}>
-                  <View style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: (nearestShelter.current_occupancy / nearestShelter.max_capacity) > 0.8 ? colors.danger : colors.successLight
-                  }} />
-                  <Text style={{ fontSize: 11, color: isHighContrast ? '#FFFF00' : colors.textSecondary, fontWeight: '600' }}>
-                    {nearestShelter.current_occupancy}/{nearestShelter.max_capacity} capacity ({Math.min(100, Math.round((nearestShelter.current_occupancy / nearestShelter.max_capacity) * 100))}%)
-                  </Text>
-                  {routeWarnings.length > 0 && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 'auto', gap: 3 }}>
-                      <AlertTriangle size={12} color="#f59e0b" />
-                      <Text style={{ fontSize: 11, color: '#f59e0b', fontWeight: 'bold' }}>
-                        {routeWarnings.length} alert{routeWarnings.length > 1 ? 's' : ''}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {/* Expanded Mode: Tabs & Scrollable Details */}
-              {isSheetExpanded && (
-                <>
-                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: isHighContrast ? '#FFFF00' : 'rgba(0,0,0,0.06)', marginBottom: 10, paddingBottom: 4 }}>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setActiveSubTab('info');
-                        triggerCasualHaptic(40);
-                      }}
-                      style={{ marginRight: 16, paddingVertical: 4, borderBottomWidth: activeSubTab === 'info' ? 2 : 0, borderBottomColor: isHighContrast ? '#FFFF00' : colors.primary }}
-                    >
-                      <Text style={{ fontSize: 13, fontWeight: 'bold', color: activeSubTab === 'info' ? (isHighContrast ? '#FFFF00' : colors.primary) : (isHighContrast ? '#FFFF00' : '#888') }}>
-                        Map Details
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setActiveSubTab('checklist');
-                        triggerCasualHaptic(40);
-                      }}
-                      style={{ paddingVertical: 4, borderBottomWidth: activeSubTab === 'checklist' ? 2 : 0, borderBottomColor: isHighContrast ? '#FFFF00' : colors.primary }}
-                    >
-                      <Text style={{ fontSize: 13, fontWeight: 'bold', color: activeSubTab === 'checklist' ? (isHighContrast ? '#FFFF00' : colors.primary) : (isHighContrast ? '#FFFF00' : '#888') }}>
-                        Checklist Guide
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <ScrollView 
-                    style={{ flex: 1, marginBottom: 8 }} 
-                    showsVerticalScrollIndicator={false}
-                    nestedScrollEnabled={true}
-                  >
-                    {activeSubTab === 'info' ? (
-                      <View style={styles.routingInfo}>
-                        {/* Transport mode selector inside bottom sheet */}
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: isHighContrast ? '#FFFF00' : colors.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                          Transport Mode
-                        </Text>
-                        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
-                          {[
-                            { key: 'pedestrian', Icon: Footprints, label: 'Walk' },
-                            { key: '2_wheel',    Icon: Bike,       label: 'Bike' },
-                            { key: '4_wheel',    Icon: Car,        label: 'Car'  },
-                          ].map(m => {
-                            const isActive = transportationMode === m.key;
-                            const iconColor = isActive ? colors.white : colors.textSecondary;
-                            return (
-                              <TouchableOpacity
-                                key={m.key}
-                                style={[
-                                  styles.modeButton,
-                                  { flex: 1, paddingVertical: 6, justifyContent: 'center' },
-                                  isActive && styles.modeButtonActive
-                                ]}
-                                onPress={() => {
-                                  setTransportationMode(m.key);
-                                  triggerCasualHaptic(50);
-                                }}
-                                accessibilityLabel={`Switch mode to ${m.label}`}
-                              >
-                                <m.Icon size={16} color={iconColor} style={{ marginBottom: 3 }} />
-                                <Text style={[styles.modeButtonText, isActive && styles.modeButtonTextActive]}>
-                                  {m.label}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </View>
-
-                        {/* Occupancy progress bar */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: isHighContrast ? '#FFFF00' : colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                            Shelter Capacity
-                          </Text>
-                          <Text style={[styles.occupancyText, isHighContrast && { color: '#FFFF00', fontWeight: 'bold' }]}>
-                            {nearestShelter.current_occupancy}/{nearestShelter.max_capacity}
-                          </Text>
-                        </View>
-                        <View style={[styles.occupancyBarTrack, isHighContrast && { borderColor: '#FFFF00', borderWidth: 1, backgroundColor: '#000000' }]}>
-                          <View
-                            style={[
-                              styles.occupancyBarFill,
-                              {
-                                width: `${Math.min(100, Math.round((nearestShelter.current_occupancy / nearestShelter.max_capacity) * 100))}%`,
-                                backgroundColor:
-                                  isHighContrast ? '#FFFF00' : (
-                                    nearestShelter.current_occupancy / nearestShelter.max_capacity > 0.8
-                                      ? colors.danger
-                                      : colors.successLight
-                                  ),
-                              },
-                            ]}
-                          />
-                        </View>
-
-                        {/* Route warnings */}
-                        {routeWarnings.length > 0 && (
-                          <View style={styles.warningsContainer}>
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#f59e0b', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>
-                              Route Alerts & Hazards
-                            </Text>
-                            {routeWarnings.map((w, idx) => (
-                              <View key={idx} style={[styles.warningPill, isHighContrast && { borderColor: '#FFFF00', borderWidth: 1, backgroundColor: '#000000' }]}>
-                                <AlertTriangle size={12} color={isHighContrast ? '#FFFF00' : colors.warningText} />
-                                <Text style={[styles.warningPillText, isHighContrast && { color: '#FFFF00', fontWeight: 'bold' }]}>{w}</Text>
-                              </View>
-                            ))}
-                          </View>
-                        )}
-                      </View>
-                    ) : (
-                      <View style={{ gap: 8, paddingVertical: 4 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                          <Text style={{ fontSize: 14, color: isHighContrast ? '#FFFF00' : '#22C55E', marginRight: 8, fontWeight: '900' }}>✓</Text>
-                          <Text style={{ fontSize: 13, color: isHighContrast ? '#FFFF00' : (isDarkMode ? '#e2e8f0' : '#444'), fontWeight: '700' }}>
-                            Start from your current position
-                          </Text>
-                        </View>
-
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                          <Text style={{ fontSize: 14, color: isHighContrast ? '#FFFF00' : colors.primary, marginRight: 8, fontWeight: '900' }}>➔</Text>
-                          <Text style={{ fontSize: 13, color: isHighContrast ? '#FFFF00' : (isDarkMode ? '#e2e8f0' : '#444'), fontWeight: '700' }}>
-                            Follow designated safe route ({transportationMode === 'pedestrian' ? 'Walking' : transportationMode === '2_wheel' ? 'Bike' : 'Driving'})
-                          </Text>
-                        </View>
-
-                        {routeWarnings.length > 0 ? (
-                          routeWarnings.map((w, idx) => (
-                            <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                              <Text style={{ fontSize: 14, color: isHighContrast ? '#FFFF00' : '#F59E0B', marginRight: 8, fontWeight: '900' }}>⚠</Text>
-                              <Text style={{ fontSize: 13, color: isHighContrast ? '#FFFF00' : (isDarkMode ? '#e2e8f0' : '#444'), fontWeight: '700' }}>
-                                {w}
-                              </Text>
-                            </View>
-                          ))
-                        ) : (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                            <Text style={{ fontSize: 14, color: isHighContrast ? '#FFFF00' : '#22C55E', marginRight: 8, fontWeight: '900' }}>✓</Text>
-                            <Text style={{ fontSize: 13, color: isHighContrast ? '#FFFF00' : (isDarkMode ? '#e2e8f0' : '#444'), fontWeight: '700' }}>
-                              No hazard warning segments crossed
-                            </Text>
-                          </View>
-                        )}
-
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                          <Text style={{ fontSize: 14, color: isHighContrast ? '#FFFF00' : colors.primary, marginRight: 8, fontWeight: '900' }}>🏠</Text>
-                          <Text style={{ fontSize: 13, color: isHighContrast ? '#FFFF00' : (isDarkMode ? '#e2e8f0' : '#444'), fontWeight: '700' }}>
-                            Arrive at {nearestShelter.name}
-                          </Text>
-                        </View>
-
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                          <Text style={{ fontSize: 14, color: isHighContrast ? '#FFFF00' : colors.primary, marginRight: 8, fontWeight: '900' }}>📲</Text>
-                          <Text style={{ fontSize: 13, color: isHighContrast ? '#FFFF00' : (isDarkMode ? '#e2e8f0' : '#444'), fontWeight: '700' }}>
-                            Go to QR Profile and present it to shelter staff to check in
-                          </Text>
-                        </View>
-                      </View>
-                    )}
-                  </ScrollView>
-                </>
-              )}
-
-              {/* Primary Sticky Action Row (Always visible in collapsed & expanded) */}
-              <View style={styles.sheetActionRow}>
-                <View style={{ flex: 1 }}>
-                  <PrimaryButton
-                    title={isNavigating ? "Stop Navigation" : "Start Navigation"}
-                    onPress={() => {
-                      if (!isNavigating) {
-                        handleOneClickEvacuate(nearestShelter);
-                      } else {
-                        setIsNavigating(false);
-                        triggerCasualHaptic(80);
-                      }
-                    }}
-                    variant={isNavigating ? "outline" : "primary"}
-                    size="large"
-                    icon={<Navigation color={isNavigating ? (isHighContrast ? '#FFFF00' : colors.primary) : (isHighContrast ? '#000000' : colors.white)} size={20} />}
-                    style={isHighContrast && { backgroundColor: '#FFFF00' }}
-                    textStyle={isHighContrast && { color: '#000000', fontWeight: '900' }}
-                  />
-                </View>
-                <TouchableOpacity
-                  onPress={openExternalNavigation}
-                  style={[
-                    styles.externalNavBtn,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.border,
-                    },
-                    isHighContrast && { borderColor: '#FFFF00', borderWidth: 2 }
-                  ]}
-                  accessibilityLabel="Open in External Navigation App"
-                >
-                  <Navigation color={isHighContrast ? '#FFFF00' : colors.primary} size={20} />
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <View style={styles.warningBox}>
-              <AlertTriangle color={colors.danger} size={24} />
-              <Text style={styles.warningText}>No open shelters available at this time.</Text>
-            </View>
-          )}
-        </View>
-      </Animated.View>
-      {/* ─── REV-03: Facility Details Card Modal Overlay ─── */}
-      {selectedFacilityDetails && (
-        <Animated.View style={{
-          position: 'absolute',
-          bottom: Animated.add(sheetHeightRef.current, 16),
-          left: 16,
-          right: 16,
-          backgroundColor: '#0f172a',
-          borderRadius: 16,
-          padding: 16,
-          borderWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.2)',
-          zIndex: 48,
-          elevation: 10,
-        }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-              <Text style={{ fontSize: 18, marginRight: 8 }}>
-                {selectedFacilityDetails.facility_type === 'safe_zone' ? '🛡️' :
-                 selectedFacilityDetails.facility_type === 'assembly_point' ? '🚩' :
-                 selectedFacilityDetails.facility_type === 'police_station' || selectedFacilityDetails.facility_type === 'military_base' ? '👮' :
-                 selectedFacilityDetails.facility_type === 'hospital' ? '🏥' : '🏠'}
-              </Text>
-              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 15, flex: 1 }} numberOfLines={1}>
-                {selectedFacilityDetails.name}
-              </Text>
-            </View>
-            <TouchableOpacity onPress={() => setSelectedFacilityDetails(null)} style={{ padding: 4 }}>
-              <X color="#94a3b8" size={20} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-            <Text style={{ backgroundColor: '#1e293b', color: '#38bdf8', fontSize: 11, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, fontWeight: 'bold' }}>
-              {(selectedFacilityDetails.facility_type || 'Evacuation Center').replace('_', ' ').toUpperCase()}
-            </Text>
-            {selectedFacilityDetails.elevation_meters && (
-              <Text style={{ backgroundColor: '#14532d', color: '#4ade80', fontSize: 11, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, fontWeight: 'bold' }}>
-                ⛰️ {selectedFacilityDetails.elevation_meters}m Elevation
-              </Text>
-            )}
-            <Text style={{ backgroundColor: selectedFacilityDetails.current_occupancy > selectedFacilityDetails.max_capacity ? '#b91c1c' : selectedFacilityDetails.status === 'open' ? '#14532d' : '#7f1d1d', color: '#ffffff', fontSize: 11, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, fontWeight: 'bold' }}>
-              {selectedFacilityDetails.current_occupancy > selectedFacilityDetails.max_capacity 
-                ? `⚠️ OVERFLOW (${selectedFacilityDetails.current_occupancy}/${selectedFacilityDetails.max_capacity})` 
-                : selectedFacilityDetails.status?.toUpperCase() || 'OPEN'}
-            </Text>
-          </View>
-
-          {selectedFacilityDetails.transport_schedule && (
-            <View style={{ backgroundColor: '#1e1b4b', padding: 8, borderRadius: 8, marginBottom: 8 }}>
-              <Text style={{ color: '#a78bfa', fontSize: 11, fontWeight: 'bold' }}>
-                🚍 Transport Pickup: {selectedFacilityDetails.transport_schedule}
-              </Text>
-            </View>
-          )}
-
-          {selectedFacilityDetails.amenities && (
-            <Text style={{ color: '#94a3b8', fontSize: 11, marginBottom: 12 }}>
-              📦 Amenities: {selectedFacilityDetails.amenities}
-            </Text>
-          )}
-
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity
-              onPress={() => {
-                const target = selectedFacilityDetails;
-                setSelectedFacilityDetails(null);
-                if (target) {
-                  handleOneClickEvacuate(target);
-                }
-              }}
-              style={{
-                flex: 1,
-                backgroundColor: colors.primary,
-                paddingVertical: 12,
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'row',
-                gap: 8,
-              }}
-            >
-              <Navigation color="#ffffff" size={16} />
-              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}>
-                Route to Shelter
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                const target = selectedFacilityDetails;
-                if (!target) return;
-                triggerCasualHaptic(40);
-                setGeofencePrompt({
-                  shelter: target,
-                  distanceMeters: 45,
-                });
-                Vibration.vibrate([0, 80, 50, 80]);
-                setSelectedFacilityDetails(null);
-              }}
-              style={{
-                backgroundColor: '#16a34a',
-                paddingVertical: 12,
-                paddingHorizontal: 12,
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'row',
-                gap: 6,
-              }}
-              accessibilityLabel="Simulate arrival within 80 meters geofence"
-            >
-              <CheckCircle2 color="#ffffff" size={16} />
-              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 12 }}>
-                ⚡ Simulate Arrival
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      )}
-
-      {/* ─── Emergency Situation Briefing Modal ─── */}
-      {showSituationBrief && (
-        <View style={{
-          position: 'absolute',
-          top: 100,
-          left: 16,
-          right: 16,
-          backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-          borderRadius: 20,
-          padding: 16,
-          borderWidth: 1.5,
-          borderColor: isDarkMode ? '#38bdf8' : colors.primary,
-          zIndex: 60,
-          elevation: 12,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: isDarkMode ? 0.5 : 0.15,
-          shadowRadius: 10,
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <Text style={{ color: isDarkMode ? '#38bdf8' : colors.primary, fontSize: 14, fontWeight: '900' }}>📍 ZAMBOANGA EMERGENCY BRIEFING</Text>
-            <TouchableOpacity onPress={() => setShowSituationBrief(false)}>
-              <X size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={{ gap: 10 }}>
-            <View style={{ backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc', padding: 10, borderRadius: 10, borderWidth: isDarkMode ? 0 : 1, borderColor: 'rgba(0,0,0,0.06)' }}>
-              <Text style={{ color: '#22c55e', fontSize: 12, fontWeight: 'bold', marginBottom: 2 }}>
-                ⭐ {shelters.filter(s => s.type === 'primary').length} Primary Clusters & 🏠 {shelters.filter(s => s.type === 'secondary').length} Secondary Courts
-              </Text>
-              <Text style={{ color: isDarkMode ? '#cbd5e1' : colors.textSecondary, fontSize: 11 }}>
-                Primary clusters are fully-equipped disaster hubs. Secondary courts open during overflow.
-              </Text>
-            </View>
-
-            <View style={{ backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc', padding: 10, borderRadius: 10, borderWidth: isDarkMode ? 0 : 1, borderColor: 'rgba(0,0,0,0.06)' }}>
-              <Text style={{ color: hazards.length > 0 ? (isDarkMode ? '#f87171' : '#dc2626') : (isDarkMode ? '#38bdf8' : colors.primary), fontSize: 12, fontWeight: 'bold', marginBottom: 2 }}>
-                ⚠️ Active Hazard Zones: {hazards.length} Detected
-              </Text>
-              {hazards.length > 0 ? (
-                hazards.map((h, idx) => (
-                  <Text key={idx} style={{ color: isDarkMode ? '#fca5a5' : '#b91c1c', fontSize: 11, marginVertical: 1 }}>
-                    • {h.name || 'Hazard Zone'} ({h.hazard_type} - {h.severity_level || 'moderate'})
-                  </Text>
-                ))
-              ) : (
-                <Text style={{ color: colors.textMuted, fontSize: 11 }}>No critical active hazards reported nearby.</Text>
-              )}
-            </View>
-          </View>
-        </View>
-      )}
+      {/* ─── FACILITY DETAILS & EMERGENCY BRIEFING MODALS ─── */}
+      <FacilityDetailsModal
+        selectedFacilityDetails={selectedFacilityDetails}
+        setSelectedFacilityDetails={setSelectedFacilityDetails}
+        sheetHeightRef={sheetHeightRef}
+        triggerCasualHaptic={triggerCasualHaptic}
+        isDarkMode={isDarkMode}
+        colors={colors}
+        handleOneClickEvacuate={handleOneClickEvacuate}
+        shelters={shelters}
+        setGeofencePrompt={setGeofencePrompt}
+        showSituationBrief={showSituationBrief}
+        setShowSituationBrief={setShowSituationBrief}
+        hazards={hazards}
+      />
 
       {/* ─── CUSTOM STYLED ARMED THREAT: SHELTER IN PLACE MODAL ─── */}
       <ShelterInPlaceModal

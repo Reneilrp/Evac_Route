@@ -23,6 +23,8 @@ import api from '../../services/api';
 import ChipSelector from '../../components/common/ChipSelector';
 import PrimaryButton from '../../components/common/PrimaryButton';
 import ConfirmationModal from '../../components/common/ConfirmationModal';
+import CreateIncidentModal from '../../components/incident/modals/CreateIncidentModal';
+import IncidentReportCard from '../../components/incident/IncidentReportCard';
 import EmergencySOSModal from '../../components/disaster/EmergencySOSModal';
 import { useTheme, useThemedStyles } from '../../context/ThemeContext';
 import { getStyles } from '../../styles/ReportIncident.styles';
@@ -415,213 +417,14 @@ export default function ReportIncident({ navigation, route }) {
   };
 
   // --- Render Individual Incident Card in History ---
-  const renderIncidentCard = ({ item }) => {
-    const isApproved = item.status === 'approved';
-    const isRejected = item.status === 'rejected';
-    const isRead = item.is_read || isApproved || isRejected;
-
-    const photosList = item.photo_urls && item.photo_urls.length > 0
-      ? item.photo_urls
-      : item.photo_url ? [item.photo_url] : [];
-
-    const formattedDate = new Date(item.created_at).toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-    return (
-      <View style={{
-        backgroundColor: colors.surface,
-        borderRadius: 14,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: isRead ? colors.border : '#3b82f6',
-      }}>
-        {/* Top Header: Hazard & Severity */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: colors.textPrimary }}>
-              {HAZARD_TYPES.find(h => h.value === item.hazard_type)?.label || `⚠️ ${item.hazard_type}`}
-            </Text>
-          </View>
-
-          <View style={{
-            backgroundColor: SEVERITY_COLORS[item.severity_level] || colors.surface,
-            paddingHorizontal: 8,
-            paddingVertical: 2,
-            borderRadius: 12,
-          }}>
-            <Text style={{ fontSize: 10, fontWeight: '800', color: '#ffffff', textTransform: 'uppercase' }}>
-              {item.severity_level}
-            </Text>
-          </View>
-        </View>
-
-        {/* Title */}
-        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 }}>
-          {item.name}
-        </Text>
-
-        {item.description ? (
-          <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 8, lineHeight: 18 }}>
-            {item.description}
-          </Text>
-        ) : null}
-
-        {/* Photos Preview */}
-        {photosList.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-            {photosList.map((url, idx) => (
-              <Image key={idx} source={{ uri: url }} style={{ width: 80, height: 70, borderRadius: 8, marginRight: 8 }} />
-            ))}
-          </ScrollView>
-        )}
-
-        {/* Location & Time */}
-        <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 10 }}>
-          📍 {parseFloat(item.latitude).toFixed(4)}, {parseFloat(item.longitude).toFixed(4)} • {formattedDate}
-        </Text>
-
-        {/* OFFICIAL READ & REVIEW STATUS BADGE (Crucial Feature) */}
-        <View style={{
-          paddingVertical: 8,
-          paddingHorizontal: 12,
-          borderRadius: 10,
-          backgroundColor: isApproved
-            ? '#dcfce7'
-            : isRejected
-            ? '#fee2e2'
-            : isRead
-            ? '#e0f2fe'
-            : '#fef3c7',
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
-        }}>
-          {isApproved ? (
-            <>
-              <CheckCircle2 color="#166534" size={16} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#166534' }}>
-                  ✅ Approved & Live on Map
-                </Text>
-                <Text style={{ fontSize: 11, color: '#15803d' }}>
-                  LGU has verified this report and activated it on the live evacuation map.
-                </Text>
-              </View>
-            </>
-          ) : isRejected ? (
-            <>
-              <XCircle color="#991b1b" size={16} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#991b1b' }}>
-                  ❌ Report Rejected
-                </Text>
-                {item.review_note && (
-                  <Text style={{ fontSize: 11, color: '#b91c1c' }}>Note: {item.review_note}</Text>
-                )}
-              </View>
-            </>
-          ) : isRead ? (
-            <>
-              <Eye color="#0369a1" size={16} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#0369a1' }}>
-                  👀 Read by LGU Officials
-                </Text>
-                <Text style={{ fontSize: 11, color: '#0284c7' }}>
-                  Your report has been opened and read by LGU command staff. Currently under evaluation.
-                </Text>
-              </View>
-            </>
-          ) : (
-            <>
-              <Clock color="#b45309" size={16} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#b45309' }}>
-                  ⏳ Pending Review (Unread)
-                </Text>
-                <Text style={{ fontSize: 11, color: '#d97706' }}>
-                  Transmitted to LGU review queue. Waiting for an official to view this report.
-                </Text>
-              </View>
-            </>
-          )}
-        </View>
-
-        {/* Action Bar (Archive / Restore) */}
-        <View style={{
-          marginTop: 12,
-          paddingTop: 10,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          {item.is_archived ? (
-            <>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                <Archive size={13} color={colors.textMuted} />
-                <Text style={{ fontSize: 11, color: colors.textMuted }}>
-                  Archived {item.archived_at ? new Date(item.archived_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => handleUnarchive(item)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 5,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 8,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              >
-                <ArchiveRestore size={13} color={colors.primary} />
-                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>
-                  Restore
-                </Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <Text style={{ fontSize: 11, color: colors.textMuted }}>
-                Report #{item.id}
-              </Text>
-
-              <TouchableOpacity
-                onPress={() => handleArchive(item)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 5,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 8,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              >
-                <Archive size={13} color={colors.textSecondary} />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary }}>
-                  Archive
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-      </View>
-    );
-  };
+  const renderIncidentCard = ({ item }) => (
+    <IncidentReportCard
+      item={item}
+      colors={colors}
+      hazardTypes={HAZARD_TYPES}
+      severityColors={SEVERITY_COLORS}
+    />
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -967,294 +770,33 @@ export default function ReportIncident({ navigation, route }) {
       </TouchableOpacity>
 
       {/* Creation Modal Form */}
-      <Modal
+      <CreateIncidentModal
         visible={showCreateModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowCreateModal(false)}
-      >
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-          <View style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.surface,
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <AlertTriangle color={colors.warning} size={20} />
-              <Text style={{ fontSize: 18, fontWeight: '800', color: colors.textPrimary }}>
-                Report an Incident
-              </Text>
-            </View>
-
-            <TouchableOpacity onPress={() => setShowCreateModal(false)} style={{ padding: 4 }}>
-              <X color={colors.textMuted} size={24} />
-            </TouchableOpacity>
-          </View>
-
-          <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
-          >
-            <ScrollView
-              style={styles.container}
-              contentContainerStyle={[styles.content, { paddingBottom: 150 }]}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
-              showsVerticalScrollIndicator={false}
-            >
-              <Text style={styles.subtitle}>
-              Help your community by reporting road hazards, floods, or blocked paths to LGU with GPS and up to 4 credibility photos.
-            </Text>
-
-            {/* Incident Name */}
-            <Text style={styles.label}>Incident Name *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Flooded Tetuan Main Road"
-              placeholderTextColor={colors.textMuted}
-              value={name}
-              onChangeText={setName}
-              maxLength={100}
-            />
-
-            {/* Description */}
-            <Text style={styles.label}>Description (optional)</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Describe what you observed (water depth, vehicle passability, blockage)..."
-              placeholderTextColor={colors.textMuted}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={3}
-              maxLength={500}
-            />
-
-            {/* Hazard Type */}
-            <Text style={styles.label}>Disaster / Hazard Type *</Text>
-            <ChipSelector options={HAZARD_TYPES} value={hazardType} onChange={setHazardType} />
-
-            {/* Contextual Hazard Hint */}
-            {HAZARD_HINTS[hazardType] && (
-              <View style={styles.hazardHintBox}>
-                <Text style={styles.hazardHintText}>{HAZARD_HINTS[hazardType]}</Text>
-              </View>
-            )}
-
-            {/* Chronic / Bad Drainage Hotspot 1-Tap Toggle */}
-            {hazardType === 'flood' && (
-              <TouchableOpacity
-                onPress={() => setIsRecurringDrainage(!isRecurringDrainage)}
-                activeOpacity={0.8}
-                style={{
-                  backgroundColor: isRecurringDrainage
-                    ? (isDarkMode ? '#1e3a5f' : '#e0f2fe')
-                    : (isDarkMode ? '#1e293b' : '#f8fafc'),
-                  borderWidth: 1.5,
-                  borderColor: isRecurringDrainage
-                    ? '#0284c7'
-                    : (isDarkMode ? '#334155' : '#cbd5e1'),
-                  borderRadius: 12,
-                  padding: 12,
-                  marginBottom: 14,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <View style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 6,
-                  borderWidth: 2,
-                  borderColor: isRecurringDrainage ? '#0284c7' : '#94a3b8',
-                  backgroundColor: isRecurringDrainage ? '#0284c7' : 'transparent',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  {isRecurringDrainage && <Text style={{ color: '#fff', fontSize: 14, fontWeight: '900' }}>✓</Text>}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{
-                    fontSize: 13,
-                    fontWeight: '800',
-                    color: isRecurringDrainage
-                      ? (isDarkMode ? '#7dd3fc' : '#0369a1')
-                      : colors.textPrimary,
-                  }}>
-                    🌧️ Frequent / Chronic Flooding Area
-                  </Text>
-                  <Text style={{
-                    fontSize: 11,
-                    color: isDarkMode ? '#94a3b8' : '#64748b',
-                    marginTop: 2,
-                    lineHeight: 15,
-                  }}>
-                    Check if this street/corner always gets flooded during heavy rain due to clogged canals or low ground.
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-
-            {/* Severity Level (Contextual Disaster Severity Basis) */}
-            <Text style={styles.label}>Basis of Severity ({HAZARD_TYPES.find(h => h.value === hazardType)?.label || hazardType}) *</Text>
-            <View style={{ marginBottom: 12 }}>
-              {(CONTEXTUAL_SEVERITY[hazardType] || CONTEXTUAL_SEVERITY.default).map((opt) => {
-                const isSelected = severityLevel === opt.level;
-                const accentColor = SEVERITY_COLORS[opt.level] || colors.primary;
-                return (
-                  <TouchableOpacity
-                    key={opt.level}
-                    onPress={() => setSeverityLevel(opt.level)}
-                    activeOpacity={0.75}
-                    style={[
-                      styles.contextualSeverityCard,
-                      {
-                        backgroundColor: isSelected
-                          ? (isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)')
-                          : (isDarkMode ? '#1e293b' : '#f8fafc'),
-                        borderColor: isSelected ? accentColor : (isDarkMode ? '#334155' : '#e2e8f0'),
-                      }
-                    ]}
-                  >
-                    <View style={styles.contextualSeverityHeader}>
-                      <Text style={[styles.contextualSeverityTitle, { color: isSelected ? accentColor : colors.textPrimary }]}>
-                        {opt.title}
-                      </Text>
-                      <View style={{
-                        backgroundColor: isSelected ? accentColor : (isDarkMode ? '#334155' : '#cbd5e1'),
-                        paddingHorizontal: 8,
-                        paddingVertical: 2,
-                        borderRadius: 6,
-                      }}>
-                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#ffffff', textTransform: 'uppercase' }}>
-                          {opt.level}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.contextualSeverityDesc, { color: colors.textSecondary }]}>
-                      {opt.desc}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Location Pin */}
-            <Text style={styles.label}>Location & Coordinates *</Text>
-            <TouchableOpacity style={styles.locationBtn} onPress={handleGetLocation} disabled={locating}>
-              {locating ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <MapPin color={coords ? colors.successLight : colors.primary} size={18} />
-              )}
-              <Text style={[styles.locationText, coords && { color: colors.successLight }]}>
-                {locating
-                  ? 'Acquiring GPS & Address...'
-                  : coords
-                  ? `📍 ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`
-                  : 'Use My Current Location'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Reverse Geocoded Address & Barangay Card */}
-            {coords && (
-              <View style={[styles.addressCard, { backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc', borderColor: isDarkMode ? '#334155' : '#e2e8f0' }]}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary }}>
-                  📍 Verified Locality / Barangay
-                </Text>
-                <View style={{ gap: 6 }}>
-                  <View>
-                    <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 2 }}>Barangay</Text>
-                    <TextInput
-                      style={[styles.addressInput, { backgroundColor: colors.background, color: colors.textPrimary, borderColor: colors.border }]}
-                      placeholder="Barangay name (e.g. Tetuan, Tumaga)"
-                      placeholderTextColor={colors.textMuted}
-                      value={barangayName}
-                      onChangeText={setBarangayName}
-                    />
-                  </View>
-                  <View>
-                    <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 2 }}>Street / Landmark</Text>
-                    <TextInput
-                      style={[styles.addressInput, { backgroundColor: colors.background, color: colors.textPrimary, borderColor: colors.border }]}
-                      placeholder="Street or nearest landmark"
-                      placeholderTextColor={colors.textMuted}
-                      value={streetAddress}
-                      onChangeText={setStreetAddress}
-                    />
-                  </View>
-                  <Text style={styles.geocodeCoords}>Coordinates: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}</Text>
-                </View>
-              </View>
-            )}
-
-            {/* Photos */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 6 }}>
-              <Text style={styles.label}>Photos</Text>
-              <Text style={{ fontSize: 12, color: colors.textMuted, fontWeight: '700' }}>{photos.length}/4</Text>
-            </View>
-
-            {photos.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                {photos.map((item, idx) => (
-                  <View key={idx} style={{ position: 'relative', marginRight: 10 }}>
-                    <Image source={{ uri: item.uri }} style={{ width: 95, height: 95, borderRadius: 8 }} />
-                    <TouchableOpacity
-                      style={{
-                        position: 'absolute',
-                        top: 4,
-                        right: 4,
-                        backgroundColor: 'rgba(0,0,0,0.7)',
-                        borderRadius: 12,
-                        padding: 4,
-                      }}
-                      onPress={() => handleRemovePhoto(idx)}
-                    >
-                      <X color={colors.white} size={14} />
-                    </TouchableOpacity>
-                    <View style={styles.photoSlotBadge}>
-                      <Text style={styles.photoSlotBadgeText}>{PHOTO_ROLE_LABELS[idx] || `Photo ${idx + 1}`}</Text>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
-            )}
-
-            {photos.length < 4 && (
-              <TouchableOpacity style={styles.photoBtn} onPress={showPhotoPicker}>
-                <Camera color={colors.textMuted} size={24} />
-                <Text style={styles.photoBtnText}>
-                  {photos.length === 0 ? 'Tap to add photos' : `Add Photo ${photos.length + 1} of 4 (${PHOTO_ROLE_LABELS[photos.length]})`}
-                </Text>
-                <Text style={styles.photoBtnHint}>Include wide scene, depth indicator & landmarks</Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Submit */}
-            <View style={styles.submitBtnContainer}>
-              <PrimaryButton
-                title="Submit Report to LGU"
-                onPress={handleSubmit}
-                loading={submitting}
-                disabled={submitting}
-                variant="primary"
-                size="large"
-              />
-            </View>
-
-            <Text style={styles.disclaimer}>
-              Your report will be evaluated and reviewed by LGU staff before appearing on the live map.
-            </Text>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </Modal>
+        onClose={() => setShowCreateModal(false)}
+        colors={colors}
+        styles={styles}
+        name={name}
+        setName={setName}
+        hazardType={hazardType}
+        setHazardType={setHazardType}
+        severity={severity}
+        setSeverity={setSeverity}
+        description={description}
+        setDescription={setDescription}
+        barangay={barangay}
+        setBarangay={setBarangay}
+        coords={coords}
+        gettingLocation={gettingLocation}
+        handleGetLocation={handleGetLocation}
+        photos={photos}
+        removePhoto={removePhoto}
+        showPhotoPicker={showPhotoPicker}
+        handleSubmit={handleSubmit}
+        submitting={submitting}
+        hazardTypes={HAZARD_TYPES}
+        severityLevels={SEVERITY_LEVELS}
+        photoRoleLabels={PHOTO_ROLE_LABELS}
+      />
 
       {/* Reusable Styled Confirmation Modal */}
       <ConfirmationModal
