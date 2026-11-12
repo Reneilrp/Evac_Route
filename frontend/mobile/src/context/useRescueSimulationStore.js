@@ -47,12 +47,18 @@ export const useRescueSimulationStore = create((set, get) => ({
   startSimulation: (customMission = null) => {
     let resolvedMission = DEFAULT_SIMULATION_MISSION;
     if (customMission) {
+      const lat = customMission.victim_latitude ?? customMission.latitude;
+      const lng = customMission.victim_longitude ?? customMission.longitude;
       resolvedMission = {
         ...DEFAULT_SIMULATION_MISSION,
         ...customMission,
-        victim_latitude: customMission.victim_latitude ? Number(customMission.victim_latitude) : ZAMBOANGA_WMSU[1],
-        victim_longitude: customMission.victim_longitude ? Number(customMission.victim_longitude) : ZAMBOANGA_WMSU[0],
-        target_shelter: customMission.target_shelter || DEFAULT_SIMULATION_MISSION.target_shelter,
+        victim_latitude: (lat !== undefined && lat !== null && !isNaN(Number(lat)))
+          ? Number(lat)
+          : ZAMBOANGA_WMSU[1],
+        victim_longitude: (lng !== undefined && lng !== null && !isNaN(Number(lng)))
+          ? Number(lng)
+          : ZAMBOANGA_WMSU[0],
+        target_shelter: customMission.target_shelter || customMission.targetShelter || DEFAULT_SIMULATION_MISSION.target_shelter,
       };
     }
     set({

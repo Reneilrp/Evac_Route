@@ -98,10 +98,8 @@ export default function EarthquakeWarningModal({
               IMMEDIATE LIFE-SAFETY DIRECTIVES:
             </Text>
             <Text style={{ color: '#e2e8f0', fontSize: 11.5, lineHeight: 17 }}>
-              • <Text style={{ color: '#ffffff', fontWeight: 'bold' }}>DUCK, COVER & HOLD</Text> under a sturdy desk or table.{'
-'}
-              • Stay away from tall buildings, power lines, and falling glass.{'
-'}
+              • <Text style={{ color: '#ffffff', fontWeight: 'bold' }}>DUCK, COVER & HOLD</Text> under a sturdy desk or table.{'\n'}
+              • Stay away from tall buildings, power lines, and falling glass.{'\n'}
               • If indoors, do NOT use elevators. Evacuate to open assembly points once tremors stop.
             </Text>
           </View>

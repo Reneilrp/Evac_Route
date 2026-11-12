@@ -32,6 +32,7 @@ const safeVibrate = (pattern) => {
 export default function RescueSimulationStepper({
   navigation,
   currentScreen = 'duty', // 'duty' | 'map'
+  activeMission = null,
   onClose = null,
 }) {
   const { colors } = useTheme();
@@ -72,7 +73,7 @@ export default function RescueSimulationStepper({
     safeVibrate(20);
     if (stepNum === 1) {
       resetToStandby();
-      startSimulation();
+      startSimulation(activeMission || null);
       if (currentScreen !== 'duty' && navigation) {
         navigation.navigate('Rescue');
       }
@@ -80,7 +81,7 @@ export default function RescueSimulationStepper({
       if (simPhase === 'dispatched') {
         acceptDispatch();
       } else if (simPhase !== 'en_route') {
-        startSimulation();
+        startSimulation(activeMission || null);
         acceptDispatch();
       }
       if (currentScreen !== 'map' && navigation) {
@@ -88,7 +89,7 @@ export default function RescueSimulationStepper({
       }
     } else if (stepNum === 3) {
       if (simPhase === 'dispatched' || simPhase === 'completed') {
-        startSimulation();
+        startSimulation(activeMission || null);
         acceptDispatch();
       }
       if (currentScreen !== 'map' && navigation) {
@@ -97,7 +98,7 @@ export default function RescueSimulationStepper({
       skipToGeofence();
     } else if (stepNum === 4) {
       if (simPhase === 'dispatched' || simPhase === 'completed') {
-        startSimulation();
+        startSimulation(activeMission || null);
         acceptDispatch();
       }
       confirmVictimSecured();
@@ -139,7 +140,7 @@ export default function RescueSimulationStepper({
 
   const handleRestartStep1 = () => {
     resetToStandby();
-    startSimulation();
+    startSimulation(activeMission || null);
     safeVibrate(30);
     if (currentScreen !== 'duty' && navigation) {
       navigation.navigate('Rescue');

@@ -29,6 +29,9 @@ import DispatchQueue from '../screens/cdrrmo/DispatchQueue';
 import DispatchDetail from '../screens/cdrrmo/DispatchDetail';
 import RescueDuty from '../screens/cdrrmo/RescueDuty';
 import RescueMap from '../screens/cdrrmo/RescueMap';
+import PatchNotesScreen from '../screens/common/PatchNotesScreen';
+import AppUpdateModal from '../components/common/AppUpdateModal';
+import { AppUpdateProvider } from '../context/AppUpdateContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -245,87 +248,101 @@ export default function AppNavigator() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar
-        translucent
-        backgroundColor="transparent"
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-      />
-      <NavigationContainer theme={navTheme}>
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-            animation: 'slide_from_right',
-          }}
-        >
-          {user ? (
-            // ─── Authenticated: Protected screens ───
-            <Stack.Group>
-              {user.role === 'admin' || user.role === 'lgu_staff' ? (
-                // Staff: Scanner + Dispatch + Overview tabs, plus Dispatch detail stack
-                <>
+    <AppUpdateProvider>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <StatusBar
+          translucent
+          backgroundColor="transparent"
+          barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        />
+        <NavigationContainer theme={navTheme}>
+          <Stack.Navigator
+            screenOptions={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          >
+            {user ? (
+              // ─── Authenticated: Protected screens ───
+              <Stack.Group>
+                {user.role === 'admin' || user.role === 'lgu_staff' ? (
+                  // Staff: Scanner + Dispatch + Overview tabs, plus Dispatch detail stack
+                  <>
+                    <Stack.Screen
+                      name="Root"
+                    >
+                      {() => (
+                        <StaffTabs
+                          pendingDispatchCount={pendingDispatchCount}
+                          user={user}
+                        />
+                      )}
+                    </Stack.Screen>
+                    <Stack.Screen
+                      name="DispatchDetail"
+                      component={DispatchDetail}
+                      options={{ animation: 'slide_from_right' }}
+                    />
+                    <Stack.Screen
+                      name="RescueMap"
+                      component={RescueMap}
+                      options={{ animation: 'slide_from_right' }}
+                    />
+                    <Stack.Screen
+                      name="PatchNotes"
+                      component={PatchNotesScreen}
+                      options={{ animation: 'slide_from_right' }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Stack.Screen name="Root" component={ResidentTabs} />
+                    <Stack.Screen
+                      name="SafeCheckIn"
+                      component={SafeCheckIn}
+                      options={{ animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen name="EmergencyContacts" component={EmergencyContacts} />
+                    <Stack.Screen name="AlertHistory" component={AlertHistory} />
+                    <Stack.Screen
+                      name="PatchNotes"
+                      component={PatchNotesScreen}
+                      options={{ animation: 'slide_from_right' }}
+                    />
+                  </>
+                )}
+              </Stack.Group>
+            ) : (
+              // ─── Unauthenticated: Onboarding + Auth stack ───
+              <Stack.Group>
+                {!hasOnboarded && (
                   <Stack.Screen
-                    name="Root"
-                  >
-                    {() => (
-                      <StaffTabs
-                        pendingDispatchCount={pendingDispatchCount}
-                        user={user}
-                      />
-                    )}
-                  </Stack.Screen>
-                  <Stack.Screen
-                    name="DispatchDetail"
-                    component={DispatchDetail}
-                    options={{ animation: 'slide_from_right' }}
+                    name="Onboarding"
+                    component={Onboarding}
+                    options={{ animation: 'fade' }}
                   />
-                  <Stack.Screen
-                    name="RescueMap"
-                    component={RescueMap}
-                    options={{ animation: 'slide_from_right' }}
-                  />
-                </>
-              ) : (
-                <>
-                  <Stack.Screen name="Root" component={ResidentTabs} />
-                  <Stack.Screen
-                    name="SafeCheckIn"
-                    component={SafeCheckIn}
-                    options={{ animation: 'slide_from_bottom' }}
-                  />
-                  <Stack.Screen name="EmergencyContacts" component={EmergencyContacts} />
-                  <Stack.Screen name="AlertHistory" component={AlertHistory} />
-                </>
-              )}
-            </Stack.Group>
-          ) : (
-            // ─── Unauthenticated: Onboarding + Auth stack ───
-            <Stack.Group>
-              {!hasOnboarded && (
+                )}
                 <Stack.Screen
-                  name="Onboarding"
-                  component={Onboarding}
+                  name="Login"
+                  component={Login}
                   options={{ animation: 'fade' }}
                 />
-              )}
-              <Stack.Screen
-                name="Login"
-                component={Login}
-                options={{ animation: 'fade' }}
-              />
-              <Stack.Screen
-                name="SetupProfile"
-                component={ProfileSetup}
-                options={{
-                  headerShown: false,
-                  animation: 'slide_from_right',
-                }}
-              />
-            </Stack.Group>
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
-    </View>
+                <Stack.Screen
+                  name="SetupProfile"
+                  component={ProfileSetup}
+                  options={{
+                    headerShown: false,
+                    animation: 'slide_from_right',
+                  }}
+                />
+              </Stack.Group>
+            )}
+          </Stack.Navigator>
+        </NavigationContainer>
+        {/* Global EAS Over-The-Air Update Modal */}
+        <AppUpdateModal />
+      </View>
+    </AppUpdateProvider>
   );
 }
 

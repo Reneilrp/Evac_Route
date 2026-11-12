@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 export default function StartSimModal({
   visible,
+  activeMission = null,
   onClose,
   onStartSimulation,
 }) {
@@ -23,9 +24,13 @@ export default function StartSimModal({
             <Play size={28} color="#f59e0b" />
           </View>
 
-          <Text style={[styles.startSimTitle, { color: colors.textPrimary || '#ffffff' }]}>⚡ START RESCUE SIMULATION</Text>
+          <Text style={[styles.startSimTitle, { color: colors.textPrimary || '#ffffff' }]}>
+            {activeMission ? '⚡ SIMULATE DISPATCHED SOS' : '⚡ START RESCUE SIMULATION'}
+          </Text>
           <Text style={[styles.startSimSubtitle, { color: colors.textSecondary || '#94a3b8' }]}>
-            This will initiate an interactive 5-step emergency rescue sequence with automated 10m/s tactical routing and 20-meter geofencing triggers.
+            {activeMission
+              ? `Simulating dynamic mission for ${activeMission.victim_name || 'Dispatched SOS'} (${activeMission.headcount || 1} pax at ${activeMission.barangay || 'Scene'}). Automated tactical routing with live CDRRMO Web telemetry.`
+              : 'Initiate an interactive 5-step emergency rescue sequence with automated 10m/s tactical routing and 20-meter geofencing triggers.'}
           </Text>
 
           <View style={[styles.startSimStepsList, { backgroundColor: colors.surfaceElevated || '#0f172a' }]}>

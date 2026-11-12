@@ -19,6 +19,7 @@ import {
   Navigation,
   Sun,
   Moon,
+  Sparkles,
 } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, useThemedStyles } from '../../context/ThemeContext';
@@ -215,6 +216,22 @@ export default function StaffProfile({ navigation }) {
               <ChevronRight size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
+
+          {/* What's New & Updates / Patch Notes */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('PatchNotes')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+              <Sparkles size={18} color="#f59e0b" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.menuTitle}>What's New &amp; Updates</Text>
+              <Text style={styles.menuSubtitle}>v1.3.0 Release Notes, Dynamic SOS &amp; OTA updates</Text>
+            </View>
+            <ChevronRight size={18} color={colors.textMuted} />
+          </TouchableOpacity>
         </View>
 
         {/* Security & System Info */}
@@ -249,7 +266,12 @@ export default function StaffProfile({ navigation }) {
         <Text style={styles.footerNote}>
           Signing out concludes your active duty session on this mobile device.
         </Text>
-        <Text style={styles.versionText}>{APP_FULL_VERSION}</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('PatchNotes')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.versionText}>{APP_FULL_VERSION} · Tap for Patch Notes</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Styled Logout Confirmation Modal */}

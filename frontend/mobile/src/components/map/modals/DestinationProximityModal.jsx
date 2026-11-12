@@ -105,9 +105,7 @@ export default function DestinationProximityModal({
               RECOMMENDED SAFETY ACTIONS:
             </Text>
             <Text style={{ color: '#e2e8f0', fontSize: 11.5, lineHeight: 16 }}>
-              • Reroute to a safe shelter located further away from the threat zone.{'
-'}
-              • Follow official LGU DRRM emergency directives.
+              {`• Reroute to a safe shelter located further away from the threat zone.\n• Follow official LGU DRRM emergency directives.`}
             </Text>
           </View>
 

@@ -389,9 +389,13 @@ export default function RescueDuty({ navigation }) {
               <Text style={{ fontSize: 13 }}>⚡</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.simBannerTitle}>GUIDED RESCUE SIMULATOR</Text>
+              <Text style={styles.simBannerTitle}>
+                {realMission ? 'DYNAMIC RESCUE SIMULATOR' : 'GUIDED RESCUE SIMULATOR'}
+              </Text>
               <Text style={styles.simBannerSub} numberOfLines={1}>
-                Simulate 5-step mission with 10m/s tactical navigation
+                {realMission
+                  ? `Simulate mission: ${realMission.victim_name || realMission.control_no}`
+                  : 'Simulate 5-step mission with 10m/s tactical navigation'}
               </Text>
             </View>
           </View>
@@ -403,14 +407,14 @@ export default function RescueDuty({ navigation }) {
               Alert.alert(
                 '⚡ Rescue Simulation Mode Active',
                 realMission
-                  ? `Simulation loaded for assigned mission: ${realMission.victim_name || realMission.control_no}!`
-                  : 'An emergency search & rescue dispatch order has arrived! Review and accept the dispatch below to start tactical 10m/s navigation.'
+                  ? `Simulation dynamically linked to dispatched SOS: ${realMission.victim_name || realMission.control_no} (${realMission.headcount || 1} pax at ${realMission.barangay || 'Scene'})!`
+                  : 'Emergency search & rescue simulator ready. Review and accept the dispatch below to start tactical navigation.'
               );
             }}
             activeOpacity={0.8}
           >
             <Text style={styles.simToggleBtnText}>
-              {realMission ? 'SIMULATE MISSION' : 'START SIM'}
+              {realMission ? 'SIMULATE SOS' : 'START SIM'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -435,6 +439,7 @@ export default function RescueDuty({ navigation }) {
             <RescueSimulationStepper
               navigation={navigation}
               currentScreen="duty"
+              activeMission={realMission || currentMission}
             />
           </View>
         )}

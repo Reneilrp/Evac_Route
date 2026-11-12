@@ -2094,6 +2094,7 @@ export default function RescueMap({ navigation, route }) {
           <RescueSimulationStepper
             navigation={navigation}
             currentScreen="map"
+            activeMission={currentMission || activeMission}
             onClose={() => setShowDemoControls(false)}
           />
         </View>
@@ -2397,10 +2398,11 @@ export default function RescueMap({ navigation, route }) {
       {/* ─── MODAL: RESCUE SIMULATION CONFIRMATION (STEPS 1-5) ─── */}
       <StartSimModal
         visible={showStartSimModal}
+        activeMission={currentMission}
         onClose={() => setShowStartSimModal(false)}
         onStartSimulation={() => {
           setShowStartSimModal(false);
-          startSimulation();
+          startSimulation(currentMission || null);
           if (navigation) {
             navigation.navigate('Rescue');
           }

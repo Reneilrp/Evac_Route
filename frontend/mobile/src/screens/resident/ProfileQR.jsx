@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, Modal, TextInput, Switch, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
-import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon, Edit3, Footprints, Bike, Car, Check, Vibrate, VibrateOff } from 'lucide-react-native';
+import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon, Edit3, Footprints, Bike, Car, Check, Vibrate, VibrateOff, Sparkles } from 'lucide-react-native';
 import { useResidentStore } from '../../context/useResidentStore';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, useThemedStyles } from '../../context/ThemeContext';
@@ -431,6 +431,13 @@ export default function ProfileQR({ navigation }) {
               iconBg: colors.primaryGlow,
               onPress: () => navigation.navigate('SafeCheckIn'),
             },
+            {
+              title: "What's New & Updates",
+              subtitle: `v1.3.0 Release Notes, dynamic SOS & patch history`,
+              icon: <Sparkles size={20} color="#f59e0b" />,
+              iconBg: 'rgba(245, 158, 11, 0.15)',
+              onPress: () => navigation.navigate('PatchNotes'),
+            },
           ].map((item, index, array) => (
             <TouchableOpacity
               key={index}
@@ -479,17 +486,22 @@ export default function ProfileQR({ navigation }) {
         </View>
 
         {/* ─── App Version Stamp (Synced via Hub) ─── */}
-        <Text style={{
-          textAlign: 'center',
-          color: colors.textMuted,
-          fontSize: 11,
-          fontWeight: '700',
-          letterSpacing: 0.8,
-          marginBottom: 24,
-          opacity: 0.8,
-        }}>
-          {APP_FULL_VERSION}
-        </Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('PatchNotes')}
+          activeOpacity={0.7}
+        >
+          <Text style={{
+            textAlign: 'center',
+            color: colors.textMuted,
+            fontSize: 11,
+            fontWeight: '700',
+            letterSpacing: 0.8,
+            marginBottom: 24,
+            opacity: 0.8,
+          }}>
+            {APP_FULL_VERSION} · Tap for Patch Notes
+          </Text>
+        </TouchableOpacity>
 
       </ScrollView>
 
