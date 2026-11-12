@@ -80,7 +80,28 @@ class SystemHealthController extends Controller
         $altApkPath = public_path('downloads/Evac_Route.apk');
         $hasApk = file_exists($apkPath) || file_exists($altApkPath);
         $targetApk = file_exists($apkPath) ? $apkPath : (file_exists($altApkPath) ? $altApkPath : null);
-        $apkSizeMb = $targetApk ? round(filesize($targetApk) / 1024 / 1024, 2) : 106.8;
+        $apkSizeMb = $targetApk ? round(filesize($targetApk) / 1024 / 1024, 2) : 151.0;
+
+        // Dynamically parse mobile app metadata from app.json
+        $mobileAppJsonPath = base_path('../frontend/mobile/app.json');
+        $mobileConfig = file_exists($mobileAppJsonPath) 
+            ? (json_decode(file_get_contents($mobileAppJsonPath), true)['expo'] ?? [])
+            : [];
+
+        $mobileName = $mobileConfig['name'] ?? 'Evac_RouteMobile';
+        $mobileVersion = $mobileConfig['version'] ?? '1.3.0';
+        $mobileVersionCode = $mobileConfig['android']['versionCode'] ?? 13;
+        $mobilePackage = $mobileConfig['android']['package'] ?? 'com.pheinz.evacroutemobile';
+        $mobileIosBundle = $mobileConfig['ios']['bundleIdentifier'] ?? 'com.pheinz.evacroutemobile';
+
+        // Dynamically parse web client metadata from package.json
+        $webPackageJsonPath = base_path('../frontend/web/package.json');
+        $webConfig = file_exists($webPackageJsonPath)
+            ? (json_decode(file_get_contents($webPackageJsonPath), true) ?? [])
+            : [];
+        $webName = $webConfig['name'] ?? 'evac-routeweb';
+        $viteVersion = isset($webConfig['devDependencies']['vite']) ? ltrim($webConfig['devDependencies']['vite'], '^~') : '8.0.12';
+        $mapboxVersion = isset($webConfig['dependencies']['mapbox-gl']) ? ltrim($webConfig['dependencies']['mapbox-gl'], '^~') : '3.24.0';
 
         return response()->json([
             'status' => 'success',
@@ -115,10 +136,14 @@ class SystemHealthController extends Controller
                 ],
                 'web_and_mobile' => [
                     'mobile_client' => [
-                        'app_name' => 'EvacRoute Mobile',
-                        'package' => 'com.evacroute.mobile',
-                        'version' => '1.0.4',
-                        'target_sdk' => 'Android 14 (API 34 / Expo SDK 56)',
+                        'app_name' => $mobileName,
+                        'display_name' => 'Evac_Route Mobile',
+                        'package' => $mobilePackage,
+                        'ios_bundle' => $mobileIosBundle,
+                        'version' => $mobileVersion,
+                        'version_code' => $mobileVersionCode,
+                        'build_tag' => "v{$mobileVersion} (Build {$mobileVersionCode})",
+                        'target_sdk' => 'Android 14/15 (API 34-35 / Expo SDK 56)',
                         'apk_download_ready' => $hasApk,
                         'apk_size_mb' => $apkSizeMb,
                         'offline_queue_support' => 'Enabled (AsyncStorage + NetInfo auto-sync)',
@@ -126,9 +151,10 @@ class SystemHealthController extends Controller
                         'gps_geofence' => 'Zamboanga City (6.70°N - 7.52°N, 121.75°E - 122.45°E)',
                     ],
                     'web_client' => [
-                        'app_name' => 'EvacRoute Web (EOC Tactical Console)',
-                        'bundler' => 'Vite Production Build',
-                        'map_engine' => 'Mapbox GL JS + 3D Extrusions',
+                        'app_name' => 'Evac_RouteWeb (EOC Tactical Console)',
+                        'package' => $webName,
+                        'bundler' => "Vite {$viteVersion} (Production Build)",
+                        'map_engine' => "Mapbox GL JS v{$mapboxVersion} + 3D Extrusions",
                         'seismic_radar' => 'USGS Live Stream (60s Cache TTL, 350km Radius)',
                         'websocket_gateway' => $wsStatus === 'operational' ? 'Connected (Laravel Reverb)' : 'Fallback HTTP Polling (3s refresh)',
                     ],

@@ -227,15 +227,17 @@ export default function SystemHealth() {
           <div className="space-y-2 text-sm pt-2">
             <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
               <span className="text-gray-500 dark:text-slate-400">Application Name:</span>
-              <span className="font-bold text-gray-800 dark:text-white">{mobile.app_name || 'EvacRoute Mobile'} (v{mobile.version || '1.0.4'})</span>
+              <span className="font-bold text-gray-800 dark:text-white">
+                {mobile.app_name || 'Evac_RouteMobile'} {mobile.version ? `(v${mobile.version} • Build ${mobile.version_code || 13})` : ''}
+              </span>
             </div>
             <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
               <span className="text-gray-500 dark:text-slate-400">Application Package:</span>
-              <span className="font-mono text-xs text-sky-600 dark:text-sky-400">{mobile.package || 'com.evacroute.mobile'}</span>
+              <span className="font-mono text-xs text-sky-600 dark:text-sky-400">{mobile.package || 'com.pheinz.evacroutemobile'}</span>
             </div>
             <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
               <span className="text-gray-500 dark:text-slate-400">Target Framework &amp; SDK:</span>
-              <span className="font-medium text-gray-800 dark:text-slate-200">{mobile.target_sdk || 'Android 14 (API 34 / Expo SDK 56)'}</span>
+              <span className="font-medium text-gray-800 dark:text-slate-200">{mobile.target_sdk || 'Android 14/15 (Expo SDK 56 / API 34-35)'}</span>
             </div>
             <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
               <span className="text-gray-500 dark:text-slate-400">Offline Disaster Queue:</span>
@@ -244,7 +246,7 @@ export default function SystemHealth() {
             <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
               <span className="text-gray-500 dark:text-slate-400">APK Distribution Binary:</span>
               <span className="font-bold text-slate-800 dark:text-slate-200">
-                {mobile.apk_download_ready ? `${mobile.apk_size_mb || 106.8} MB (Direct Download Available)` : '106.8 MB (Preview Build)'}
+                {mobile.apk_download_ready ? `${mobile.apk_size_mb || 151} MB (Direct Download Available)` : '151 MB (Preview Build)'}
               </span>
             </div>
             <div className="flex justify-between py-1.5">
@@ -270,7 +272,7 @@ export default function SystemHealth() {
           <div className="space-y-2 text-sm pt-2">
             <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
               <span className="text-gray-500 dark:text-slate-400">Web Application:</span>
-              <span className="font-bold text-gray-800 dark:text-white">{web.app_name || 'EvacRoute Web (EOC Tactical Console)'}</span>
+              <span className="font-bold text-gray-800 dark:text-white">{web.app_name || 'Evac_RouteWeb (EOC Tactical Console)'}</span>
             </div>
             <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
               <span className="text-gray-500 dark:text-slate-400">Frontend Bundler &amp; Engine:</span>
