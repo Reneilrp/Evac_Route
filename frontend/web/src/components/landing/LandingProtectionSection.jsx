@@ -32,8 +32,7 @@ export default function LandingProtectionSection({
 }) {
   return (
     <section
-      id="protection"
-      className="scroll-mt-16 border-t border-slate-200 dark:border-slate-800"
+      className="border-t border-slate-200 dark:border-slate-800"
     >
       {/* Continuous Telemetry Metric Ticker */}
       <div className="py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 overflow-hidden select-none">
@@ -88,7 +87,7 @@ export default function LandingProtectionSection({
 
       {/* Asymmetrical 3-Pillar Architectural Layout */}
       <div className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mb-12 text-left">
+        <div id="how-it-works" className="scroll-mt-24 max-w-3xl mb-12 text-left">
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">
             How EvacRoute Keeps Your Family Safe
           </h2>

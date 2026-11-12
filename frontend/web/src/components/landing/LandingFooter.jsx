@@ -42,10 +42,10 @@ export default function LandingFooter({
                 </li>
                 <li>
                   <button
-                    onClick={() => scrollToSection("protection")}
+                    onClick={() => scrollToSection("how-it-works")}
                     className="hover:text-blue-400 transition cursor-pointer"
                   >
-                    Household Protection
+                    How it Works
                   </button>
                 </li>
                 <li>

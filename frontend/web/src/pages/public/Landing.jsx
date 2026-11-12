@@ -81,7 +81,7 @@ export default function Landing() {
 
   const navItems = [
     { id: "overview", label: "Overview", shortLabel: "Overview", icon: Smartphone },
-    { id: "protection", label: "Household Protection", shortLabel: "Protection", icon: ShieldCheck },
+    { id: "how-it-works", label: "How it Works", shortLabel: "How it Works", icon: ShieldCheck },
     { id: "shelters", label: "Safe Shelters", shortLabel: "Shelters", icon: Building2 },
     { id: "install-guide", label: "Installation", shortLabel: "Install", icon: Download },
   ];
@@ -146,7 +146,7 @@ export default function Landing() {
 
       if (isClickScrollingRef.current) return;
 
-      const sectionIds = ["overview", "protection", "shelters", "install-guide"];
+      const sectionIds = ["overview", "how-it-works", "shelters", "install-guide"];
       const scrollThreshold = 140;
 
       if (scrollY < 80) {
@@ -239,7 +239,9 @@ export default function Landing() {
         behavior: "smooth",
       });
     } else {
-      const element = document.getElementById(id);
+      const element =
+        document.getElementById(id) ||
+        (id === "protection" ? document.getElementById("how-it-works") : null);
       if (element) {
         const headerOffset = 80;
         const elementPosition = element.getBoundingClientRect().top;
@@ -358,10 +360,10 @@ export default function Landing() {
 
                     <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
                       <button
-                        onClick={() => scrollToSection("protection")}
+                        onClick={() => scrollToSection("how-it-works")}
                         className="w-full sm:w-auto px-4 py-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[0.98] text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 transition flex items-center justify-center gap-1.5 cursor-pointer"
                       >
-                        <span>How It Protects</span>
+                        <span>How it Works</span>
                       </button>
 
                       <button
