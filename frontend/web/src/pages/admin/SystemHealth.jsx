@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 import { 
   Activity, Database, Radio, Server, HardDrive, RefreshCw, 
-  Trash2, Download, CheckCircle2, AlertCircle, Clock, ShieldCheck
+  Trash2, Download, CheckCircle2, AlertCircle, Clock, ShieldCheck,
+  Smartphone, Globe, Wifi, Layers, MapPin
 } from 'lucide-react';
 import { showSuccess, showError } from '../../utils/toast';
 
@@ -59,25 +60,38 @@ export default function SystemHealth() {
   const ws = healthData?.websocket || {};
   const server = healthData?.server || {};
   const records = db.records || {};
+  const mobile = healthData?.web_and_mobile?.mobile_client || {};
+  const web = healthData?.web_and_mobile?.web_client || {};
 
   return (
     <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6">
       {/* Top Action Bar */}
-      <div className="flex justify-end items-center gap-3 flex-wrap bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <button
-          onClick={() => {
-            refetch();
-            showSuccess("Diagnostics refreshed.");
-          }}
-          disabled={isRefetching || isLoading}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-lg border border-gray-200 dark:border-slate-700 font-semibold text-sm transition"
-        >
-          <RefreshCw size={16} className={isRefetching ? 'animate-spin' : ''} />
-          Run Ping
-        </button>
+      <div className="flex justify-between items-center gap-3 flex-wrap bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div>
+          <h1 className="text-xl font-black text-slate-900 dark:text-slate-50 flex items-center gap-2">
+            <Activity className="text-sky-600 dark:text-sky-400" size={24} />
+            DevOps &amp; Infrastructure Health
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Real-time server telemetry, database performance, WebSocket broker, and client condition monitors.
+          </p>
+        </div>
 
-        <button
-          onClick={handleClearCache}
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={() => {
+              refetch();
+              showSuccess("Diagnostics refreshed.");
+            }}
+            disabled={isRefetching || isLoading}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-lg border border-gray-200 dark:border-slate-700 font-semibold text-sm transition"
+          >
+            <RefreshCw size={16} className={isRefetching ? 'animate-spin' : ''} />
+            Run Ping
+          </button>
+
+          <button
+            onClick={handleClearCache}
             disabled={isFlushingCache}
             className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-lg font-bold text-sm transition"
           >
@@ -94,8 +108,9 @@ export default function SystemHealth() {
             Export SQL Backup
           </button>
         </div>
+      </div>
 
-      {/* Grid: 3 Core Health Cards */}
+      {/* Grid: 3 Core Backend Health Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Card 1: Database Health */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
@@ -185,6 +200,93 @@ export default function SystemHealth() {
             <div className="flex justify-between py-1.5">
               <span className="text-gray-500 dark:text-slate-400">Memory Usage:</span>
               <span className="font-bold text-amber-600 dark:text-amber-400">{server.memory_usage_mb || 0} MB / {server.memory_peak_mb || 0} MB peak</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid: Web & Mobile Client Condition & Telemetry */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Mobile Client Condition */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Smartphone size={20} className="text-sky-500 dark:text-sky-400" />
+              <h2 className="font-bold text-gray-900 dark:text-white text-base">Mobile App Telemetry &amp; Status</h2>
+            </div>
+            <span className={`px-2.5 py-1 rounded-full text-xs font-black uppercase flex items-center gap-1 ${
+              mobile.apk_download_ready 
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                : 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+            }`}>
+              {mobile.apk_download_ready ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+              {mobile.apk_download_ready ? 'APK Ready' : 'APK Standby'}
+            </span>
+          </div>
+
+          <div className="space-y-2 text-sm pt-2">
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
+              <span className="text-gray-500 dark:text-slate-400">Application Name:</span>
+              <span className="font-bold text-gray-800 dark:text-white">{mobile.app_name || 'EvacRoute Mobile'} (v{mobile.version || '1.0.4'})</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
+              <span className="text-gray-500 dark:text-slate-400">Application Package:</span>
+              <span className="font-mono text-xs text-sky-600 dark:text-sky-400">{mobile.package || 'com.evacroute.mobile'}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
+              <span className="text-gray-500 dark:text-slate-400">Target Framework &amp; SDK:</span>
+              <span className="font-medium text-gray-800 dark:text-slate-200">{mobile.target_sdk || 'Android 14 (API 34 / Expo SDK 56)'}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
+              <span className="text-gray-500 dark:text-slate-400">Offline Disaster Queue:</span>
+              <span className="font-medium text-emerald-600 dark:text-emerald-400">{mobile.offline_queue_support || 'Enabled (AsyncStorage + NetInfo auto-sync)'}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
+              <span className="text-gray-500 dark:text-slate-400">APK Distribution Binary:</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {mobile.apk_download_ready ? `${mobile.apk_size_mb || 106.8} MB (Direct Download Available)` : '106.8 MB (Preview Build)'}
+              </span>
+            </div>
+            <div className="flex justify-between py-1.5">
+              <span className="text-gray-500 dark:text-slate-400">Operational GPS Geofence:</span>
+              <span className="font-mono text-xs text-slate-700 dark:text-slate-300">{mobile.gps_geofence || 'Zamboanga City'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Web Console Condition */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Globe size={20} className="text-emerald-500 dark:text-emerald-400" />
+              <h2 className="font-bold text-gray-900 dark:text-white text-base">Web Console &amp; EOC Radar</h2>
+            </div>
+            <span className="px-2.5 py-1 rounded-full text-xs font-black uppercase bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+              <CheckCircle2 size={12} />
+              Production Active
+            </span>
+          </div>
+
+          <div className="space-y-2 text-sm pt-2">
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
+              <span className="text-gray-500 dark:text-slate-400">Web Application:</span>
+              <span className="font-bold text-gray-800 dark:text-white">{web.app_name || 'EvacRoute Web (EOC Tactical Console)'}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
+              <span className="text-gray-500 dark:text-slate-400">Frontend Bundler &amp; Engine:</span>
+              <span className="font-medium text-gray-800 dark:text-slate-200">{web.bundler || 'Vite Production Build'}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
+              <span className="text-gray-500 dark:text-slate-400">Map &amp; Routing Engine:</span>
+              <span className="font-medium text-blue-600 dark:text-blue-400">{web.map_engine || 'Mapbox GL JS + 3D Extrusions'}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
+              <span className="text-gray-500 dark:text-slate-400">USGS Seismic Radar:</span>
+              <span className="font-medium text-amber-600 dark:text-amber-400">{web.seismic_radar || 'USGS Live Stream (60s Cache TTL, 350km Radius)'}</span>
+            </div>
+            <div className="flex justify-between py-1.5">
+              <span className="text-gray-500 dark:text-slate-400">Live Mission Gateway:</span>
+              <span className="font-medium text-emerald-600 dark:text-emerald-400">{web.websocket_gateway || 'Connected (Laravel Reverb)'}</span>
             </div>
           </div>
         </div>

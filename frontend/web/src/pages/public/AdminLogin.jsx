@@ -16,8 +16,9 @@ export default function AdminLogin() {
   // If already authenticated, redirect directly into the respective command portal
   useEffect(() => {
     if (user) {
-      if (user.role === 'admin' && user.operator_type === 'admin') {
-        navigate('/admin/staff');
+      const isSysAdmin = (user.role === 'admin' && user.operator_type === 'admin') || (user.email?.toLowerCase() === 'admin@lgu.gov.ph');
+      if (isSysAdmin && !user.email?.toLowerCase().includes('drrm')) {
+        navigate('/admin/system-health');
       } else {
         navigate('/admin/dashboard');
       }
@@ -30,8 +31,9 @@ export default function AdminLogin() {
       const success = await login(targetEmail, targetPassword);
       if (success) {
         showSuccess("Welcome! Logged in successfully.");
-        if (targetEmail.toLowerCase().includes('admin')) {
-          navigate('/admin/staff');
+        const isSysAdmin = targetEmail.toLowerCase() === 'admin@lgu.gov.ph' || (targetEmail.toLowerCase().includes('admin') && !targetEmail.toLowerCase().includes('drrm'));
+        if (isSysAdmin) {
+          navigate('/admin/system-health');
         } else {
           navigate('/admin/dashboard');
         }

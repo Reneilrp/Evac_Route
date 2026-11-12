@@ -13,15 +13,6 @@ import { useAuth } from '../../context/AuthContext';
 
 const OPERATOR_TYPES = [
   {
-    id: 'general',
-    label: 'LGU Staff / DRRM Dispatcher',
-    description: 'CDRRMO command center monitoring & emergency incident dispatch',
-    icon: Building2,
-    role: 'lgu_staff',
-    color: 'blue',
-    badgeCls: 'bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/50'
-  },
-  {
     id: 'rescue',
     label: 'Rescue Field Operator',
     description: 'Field Search & Rescue crew with assigned vehicle / medic unit',
@@ -59,8 +50,8 @@ const OPERATOR_TYPES = [
   },
   {
     id: 'admin',
-    label: 'System Admin',
-    description: 'Full administrative control over systems & users',
+    label: 'System Admin (DevOps / IT)',
+    description: 'Technical infrastructure, server uptime, API health & audit monitoring',
     icon: Shield,
     role: 'admin',
     color: 'purple',
@@ -71,7 +62,7 @@ const OPERATOR_TYPES = [
 import { RESCUE_ROLES } from '../../config/staffRoles';
 export { RESCUE_ROLES };
 
-const CDRRMO_ROLES = ['general', 'rescue', 'cdrrmo'];
+const CDRRMO_ROLES = ['rescue', 'cdrrmo'];
 const CSWDO_ROLES = ['logistics', 'scanner'];
 const REGISTRABLE_OPERATOR_TYPES = OPERATOR_TYPES.filter(type => type.id !== 'admin' && type.id !== 'cdrrmo');
 
@@ -93,7 +84,7 @@ export default function StaffManagement() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [operatorType, setOperatorType] = useState('general');
+  const [operatorType, setOperatorType] = useState('rescue');
   const [status, setStatus] = useState('active');
 
   // Dynamic Rescue Unit fields (when operatorType === 'rescue')
@@ -218,7 +209,7 @@ export default function StaffManagement() {
     setName(user.name);
     setEmail(user.email);
     setPassword('');
-    setOperatorType(user.operator_type || (user.role === 'admin' ? 'admin' : 'general'));
+    setOperatorType(user.operator_type || (user.role === 'admin' ? 'admin' : 'rescue'));
     setStatus(user.status);
     setRescueMode('existing');
     setRescueRole(user.rescue_role || 'boat_pilot');
@@ -297,7 +288,7 @@ export default function StaffManagement() {
 
   // Scope staff by agency filter
   const agencyStaff = staff.filter(u => {
-    const op = u.operator_type || (u.role === 'admin' ? 'admin' : 'general');
+    const op = u.operator_type || (u.role === 'admin' ? 'admin' : 'rescue');
     if (agencyScope === 'cdrmo') {
       return CDRRMO_ROLES.includes(op) || u.role === 'admin';
     }
@@ -310,7 +301,7 @@ export default function StaffManagement() {
   // Filtered staff list by role pill
   const filteredStaff = agencyStaff.filter(u => {
     if (filterType === 'all') return true;
-    const opType = u.operator_type || (u.role === 'admin' ? 'admin' : 'general');
+    const opType = u.operator_type || (u.role === 'admin' ? 'admin' : 'rescue');
     return opType === filterType;
   });
 
@@ -354,7 +345,7 @@ export default function StaffManagement() {
           All {agencyScope === 'cdrmo' ? 'CDRRMO' : agencyScope === 'cswdo' ? 'CSWDO' : ''} Operators ({agencyStaff.length})
         </button>
         {activeFilterOptions.map(t => {
-          const count = agencyStaff.filter(u => (u.operator_type || (u.role === 'admin' ? 'admin' : 'general')) === t.id).length;
+          const count = agencyStaff.filter(u => (u.operator_type || (u.role === 'admin' ? 'admin' : 'rescue')) === t.id).length;
           const Icon = t.icon;
           return (
             <button
@@ -404,7 +395,7 @@ export default function StaffManagement() {
                   </tr>
                 ) : (
                   filteredStaff.map(user => {
-                    const opTypeKey = user.operator_type || (user.role === 'admin' ? 'admin' : 'general');
+                    const opTypeKey = user.operator_type || (user.role === 'admin' ? 'admin' : 'rescue');
                     const opConfig = OPERATOR_TYPES.find(t => t.id === opTypeKey) || OPERATOR_TYPES[0];
                     const Icon = opConfig.icon;
 
@@ -439,6 +430,14 @@ export default function StaffManagement() {
                                     </span>
                                   </>
                                 )}
+                              </div>
+                            )}
+
+                            {/* System Administrator DevOps Display */}
+                            {opTypeKey === 'admin' && (
+                              <div className="flex items-center gap-1.5 text-[11px] text-purple-700 dark:text-purple-400 font-medium">
+                                <span>🛠️</span>
+                                <span className="font-bold">DevOps &amp; IT Administrator (Non-Field)</span>
                               </div>
                             )}
 

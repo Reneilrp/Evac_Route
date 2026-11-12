@@ -537,42 +537,35 @@ function DashboardLayout({ children }) {
                         ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
                         : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800'
                   }`}>
-                    {activeAgency === 'admin' ? 'ADMIN' : (activeAgency === 'cswdo' ? 'CSWDO' : 'CDRRMO')}
+                    {activeAgency === 'admin' ? 'DEVOPS ADMIN' : (activeAgency === 'cswdo' ? 'CSWDO' : 'CDRRMO')}
                   </span>
                 </div>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase font-bold tracking-widest">
-                {activeAgency === 'admin' ? 'System & City Control' : (activeAgency === 'cswdo' ? 'Relief & Camp Desk' : 'Disaster Operations')}
+                {activeAgency === 'admin' ? 'DevOps & Infrastructure' : (activeAgency === 'cswdo' ? 'Relief & Camp Desk' : 'Disaster Operations')}
               </p>
             </div>
           )}
         </div>
         <nav className={`flex-1 ${isMapRoute ? 'p-2' : 'p-3'} space-y-1 overflow-y-auto`}>
           {activeAgency === 'admin' ? (
-            /* === SYSTEM ADMIN CONSOLE (USER MANAGEMENT, RESIDENTS, AUDIT LOGS, SYSTEM HEALTH) === */
+            /* === DEVOPS & SYSTEM ADMIN CONSOLE === */
             <>
-              {!isMapRoute && <p className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-2 mt-2 px-3">User &amp; Access Control</p>}
+              {!isMapRoute && <p className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-2 mt-2 px-3">DevOps &amp; Telemetry</p>}
               {isMapRoute ? (
-                <IconNavLink to="/admin/staff" icon={<Users size={20} />} label="User Management" />
+                <IconNavLink to="/admin/system-health" icon={<Activity size={20} />} label="System &amp; API Health" />
               ) : (
-                <NavLink to="/admin/staff">User Management</NavLink>
+                <NavLink to="/admin/system-health">
+                  <div className="flex items-center justify-between w-full">
+                    <span>System &amp; API Health</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  </div>
+                </NavLink>
               )}
-              {isMapRoute ? (
-                <IconNavLink to="/admin/residents" icon={<Contact size={20} />} label="Resident Registry" />
-              ) : (
-                <NavLink to="/admin/residents">Resident Registry</NavLink>
-              )}
-
-              {!isMapRoute && <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 mt-5 px-3">System &amp; Security</p>}
               {isMapRoute ? (
                 <IconNavLink to="/admin/audit-logs" icon={<ShieldAlert size={20} />} label="Security &amp; Audit Logs" />
               ) : (
                 <NavLink to="/admin/audit-logs">Security &amp; Audit Logs</NavLink>
-              )}
-              {isMapRoute ? (
-                <IconNavLink to="/admin/system-health" icon={<Activity size={20} />} label="System &amp; API Health" />
-              ) : (
-                <NavLink to="/admin/system-health">System &amp; API Health</NavLink>
               )}
             </>
           ) : activeAgency === 'cswdo' ? (

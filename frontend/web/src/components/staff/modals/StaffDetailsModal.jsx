@@ -13,7 +13,7 @@ export default function StaffDetailsModal({
 }) {
   if (!viewingStaff) return null;
 
-  const opTypeKey = viewingStaff.operator_type || (viewingStaff.role === 'admin' ? 'admin' : 'general');
+  const opTypeKey = viewingStaff.operator_type || (viewingStaff.role === 'admin' ? 'admin' : 'rescue');
   const opConfig = OPERATOR_TYPES.find(t => t.id === opTypeKey) || OPERATOR_TYPES[0];
   const OpIcon = opConfig.icon;
   const isSelf = viewingStaff.id === currentUser?.id;
@@ -191,11 +191,11 @@ export default function StaffDetailsModal({
                 <div className="p-3.5 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 text-[11px] text-blue-900 dark:text-blue-300 space-y-1">
                   <div className="font-bold">Access Scope &amp; System Privileges:</div>
                   <p className="text-blue-800 dark:text-blue-400 leading-relaxed">
-                    {opConfig.id === 'admin' && 'Has full command over resident logs, shelter allocations, fleet dispatch, and operator accounts.'}
+                    {opConfig.id === 'admin' && 'Technical DevOps Administrator: Infrastructure monitoring, database backups, server runtime, API diagnostics, and security audit logs.'}
+                    {opConfig.id === 'cdrrmo' && 'CDRRMO Tactical Director: Highest operational disaster command, emergency incident verification, hazard zoning, and siren broadcasts.'}
                     {opConfig.id === 'rescue' && 'Assigned to field search & rescue operations, evacuee staging handovers, and fleet management.'}
                     {opConfig.id === 'scanner' && 'Equipped with QR scanner privileges for shelter intake gates and real-time ration validation.'}
                     {opConfig.id === 'logistics' && 'Authorized to manage CSWDO warehouse relief goods, bundle builder, and emergency ration dispatches.'}
-                    {opConfig.id === 'general' && 'Standard command center situational monitoring and general incident tracking.'}
                   </p>
                 </div>
               </div>
