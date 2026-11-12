@@ -235,9 +235,8 @@ export default function RescueDispatch() {
       showSuccess(`Rescue Mission update: ${data.rescue_unit_name} is now ${data.status.replace('_', ' ')}.`);
     });
 
-    channel.listen('.rescue.sos.received', (data) => {
+    channel.listen('.rescue.sos.received', () => {
       queryClient.invalidateQueries({ queryKey: ['incidents-pending-rescue'] });
-      showError(`⚠️ NEW EMERGENCY RESCUE SOS: ${data.name}`);
     });
 
     return () => {

@@ -13,7 +13,69 @@
   scrollbar-width: none !important;
 }
 
+/* ==========================================================================
+   Universal Custom Scrollbar Styles (Option 1: Floating Capsule / Sleek Pill)
+   Applies across the entire app (all content, tables, sidebars, modals)
+   ========================================================================== */
+
+/* Universal Light Mode Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 150ms ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
+/* Universal Dark Mode Scrollbar */
+.dark,
+.dark * {
+  scrollbar-color: #475569 transparent;
+}
+
+.dark::-webkit-scrollbar-thumb,
+.dark *::-webkit-scrollbar-thumb {
+  background-color: #334155;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark::-webkit-scrollbar-thumb:hover,
+.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: #64748b;
+}
+
+/* Explicit class alias for scoped overrides */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.dark .custom-scrollbar,
+.custom-scrollbar.dark {
+  scrollbar-color: #475569 transparent;
+}
+
 :root {
+  color-scheme: light;
   --bg-primary: #ffffff;
   --bg-secondary: #f9fafb;
   --bg-tertiary: #f3f4f6;
@@ -24,6 +86,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --bg-primary: #0f172a;
   --bg-secondary: #1e293b;
   --bg-tertiary: #0b0f19;

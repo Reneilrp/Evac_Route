@@ -251,7 +251,7 @@ export function UnifiedMapFilterSearch({
     <div ref={containerRef} className="relative flex items-center">
       {/* Top Bar Trigger Group (Seamless Toolbar Integration) */}
       <div className="flex flex-col items-center justify-center">
-        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-0.5 select-none whitespace-nowrap flex items-center gap-1">
+        <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-0.5 select-none whitespace-nowrap flex items-center gap-1">
           <Search size={9} />
           <span>Search &amp; Filter</span>
         </span>

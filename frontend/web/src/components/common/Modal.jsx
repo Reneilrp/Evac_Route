@@ -98,7 +98,7 @@ export default function Modal({
         )}
 
         {/* Scrollable Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 custom-scrollbar">
           {children}
         </div>
 

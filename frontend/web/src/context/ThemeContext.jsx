@@ -56,15 +56,24 @@ export function ThemeProvider({ children }) {
     }
   }, [darkMode]);
 
-  const toggleDarkMode = () => {
+  const setDarkModePersisted = (valueOrFn) => {
     setDarkMode(prev => {
-      const next = !prev;
+      const next = typeof valueOrFn === 'function' ? valueOrFn(prev) : valueOrFn;
       try {
         localStorage.setItem('theme_override', next ? 'dark' : 'light');
         localStorage.setItem('theme', next ? 'dark' : 'light');
       } catch (e) {}
+      if (next) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
       return next;
     });
+  };
+
+  const toggleDarkMode = () => {
+    setDarkModePersisted(prev => !prev);
   };
 
   const resetToSystemTheme = () => {
@@ -72,11 +81,17 @@ export function ThemeProvider({ children }) {
       localStorage.removeItem('theme_override');
       localStorage.removeItem('theme');
     } catch (e) {}
-    setDarkMode(getSystemTheme());
+    const sys = getSystemTheme();
+    setDarkMode(sys);
+    if (sys) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   };
 
   return (
-    <ThemeContext.Provider value={{ darkMode, setDarkMode, toggleDarkMode, resetToSystemTheme }}>
+    <ThemeContext.Provider value={{ darkMode, setDarkMode: setDarkModePersisted, toggleDarkMode, resetToSystemTheme }}>
       {children}
     </ThemeContext.Provider>
   );

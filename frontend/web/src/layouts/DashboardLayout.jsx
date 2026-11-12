@@ -7,11 +7,12 @@ import {
   Users, LogOut, Sun, Moon, Contact, Settings, X, Megaphone, LifeBuoy,
   Activity, Truck, FileSpreadsheet, Download
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
 import echo from '../services/echo';
-import { playNotificationSound } from '../services/sound';
+import { playNotificationSound, playSosAlarmSound } from '../services/sound';
 import LogoutConfirmModal from '../components/common/LogoutConfirmModal';
 import AdminSettingsModal from '../components/admin/AdminSettingsModal';
 
@@ -126,6 +127,13 @@ function DashboardLayout({ children }) {
     return () => clearInterval(interval);
   }, [checkTimeDrift]);
 
+  // Request browser notification permissions for mission-critical SOS alerts
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
+
   const { darkMode, toggleDarkMode } = useTheme();
 
   const handleConfirmLogout = async () => {
@@ -160,6 +168,106 @@ function DashboardLayout({ children }) {
   // Hook in WebSockets
   useEffect(() => {
     const channel = echo.channel('map-updates');
+
+    // 0. Mission-Critical Emergency SOS Distress Alert
+    channel.listen('.rescue.sos.received', (data) => {
+      playSosAlarmSound();
+
+      // Trigger browser desktop notification if permitted
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification('🚨 CRITICAL RESCUE SOS RECEIVED', {
+            body: `${data.reporter_name || data.name || 'Citizen in Distress'} (${data.headcount || 1} people) - Immediate Rescue Required!`,
+            icon: '/favicon.ico',
+            tag: `rescue-sos-${data.id}`,
+            requireInteraction: true
+          });
+        } catch (_) {}
+      }
+
+      const headcount = data.headcount || 1;
+      const headcountText = `${headcount} ${Number(headcount) === 1 ? 'person' : 'people'}`;
+      const reporterDisplay = data.reporter_name || data.name || 'Citizen in Distress';
+
+      const newNotif = {
+        id: `rescue-sos-${data.id}-${Date.now()}`,
+        title: `🚨 RESCUE SOS: ${reporterDisplay}`,
+        message: `${headcountText} in distress • ${data.hazard_type || 'SOS'} • Location: ${Number(data.latitude || 0).toFixed(4)}, ${Number(data.longitude || 0).toFixed(4)}`,
+        time: new Date(),
+        type: 'rescue_sos',
+        link: '/admin/rescue-dispatch',
+        severity: 'critical'
+      };
+      setNotifications(prev => [newNotif, ...prev]);
+      setUnreadCount(prev => prev + 1);
+
+      // Invalidate relevant query keys so counters and dispatch rosters refresh immediately
+      queryClient.invalidateQueries({ queryKey: ['incidents-pending-rescue'] });
+      queryClient.invalidateQueries({ queryKey: ['rescue-missions'] });
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+
+      toast.custom((t) => (
+        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-lg w-full bg-red-950 border-2 border-red-500 text-white shadow-2xl rounded-2xl pointer-events-auto flex ring-2 ring-red-500/50 backdrop-blur-md overflow-hidden`}>
+          <div className="flex-1 w-0 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                <span className="text-2xl animate-bounce inline-block">🚨</span>
+              </div>
+              <div className="ml-3 flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black bg-red-600 text-white px-2 py-0.5 rounded uppercase tracking-wider animate-pulse">
+                    EMERGENCY SOS DISTRESS
+                  </span>
+                  <span className="text-xs font-bold text-red-200">
+                    {headcountText}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm font-black text-white truncate">
+                  {reporterDisplay}
+                </p>
+                {data.reporter_phone && (
+                  <p className="text-xs text-red-200 font-mono mt-0.5">
+                    📞 Contact: {data.reporter_phone}
+                  </p>
+                )}
+                <p className="text-[10px] text-red-200/80 mt-1 uppercase font-semibold">
+                  Hazard: {data.hazard_type || 'Emergency Rescue'} | Lat/Lng: {Number(data.latitude || 0).toFixed(4)}, {Number(data.longitude || 0).toFixed(4)}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-red-800/80 items-stretch divide-x divide-red-800/80">
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                window.location.href = '/admin/rescue-dispatch';
+              }}
+              className="px-3.5 py-3 text-xs font-black text-white bg-red-600 hover:bg-red-700 transition flex items-center justify-center cursor-pointer uppercase tracking-wider whitespace-nowrap"
+            >
+              DISPATCH
+            </button>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                window.location.href = '/admin/map';
+              }}
+              className="px-3 py-3 text-xs font-black text-red-300 hover:text-white hover:bg-red-900/40 transition flex items-center justify-center cursor-pointer whitespace-nowrap"
+              title="View on Map"
+            >
+              MAP
+            </button>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-3 py-3 text-xs font-black text-red-400 hover:text-white hover:bg-red-900/40 transition flex items-center justify-center cursor-pointer"
+              title="Close Notification"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      ), { duration: 15000 });
+    });
 
     channel.listen('.emergency.alert', (data) => {
       playNotificationSound();
@@ -782,12 +890,14 @@ function DashboardLayout({ children }) {
                          className="block p-3 hover:bg-blue-50/40 dark:hover:bg-slate-800/50 transition flex items-start gap-3"
                        >
                          <div className={`p-1.5 rounded-lg text-white mt-0.5 flex-shrink-0 ${
+                           n.type === 'rescue_sos' ? 'bg-red-600 animate-pulse' :
                            n.type === 'incident_submitted' ? 'bg-blue-500' :
                            n.type === 'hazard_created' ? 'bg-red-500' :
                            n.type === 'hazard_resolved' ? 'bg-green-500' :
                            'bg-amber-500'
                          }`}>
-                           {n.type === 'incident_submitted' ? <AlertCircle size={14} /> :
+                           {n.type === 'rescue_sos' ? <LifeBuoy size={14} /> :
+                            n.type === 'incident_submitted' ? <AlertCircle size={14} /> :
                             n.type === 'hazard_created' ? <ShieldAlert size={14} /> :
                             n.type === 'hazard_resolved' ? <CheckCircle size={14} /> :
                             <TrendingUp size={14} />}

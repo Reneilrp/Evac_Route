@@ -1,3 +1,45 @@
+export const playSosAlarmSound = () => {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioCtx = new AudioContextClass();
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+
+    const now = audioCtx.currentTime;
+
+    // High-urgency pulsating two-tone emergency siren (3 pulses)
+    const playPulse = (start, highFreq, lowFreq) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(highFreq, start);
+      osc.frequency.linearRampToValueAtTime(lowFreq, start + 0.12);
+      osc.frequency.setValueAtTime(highFreq, start + 0.24);
+      osc.frequency.linearRampToValueAtTime(lowFreq, start + 0.36);
+
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.25, start + 0.02);
+      gain.gain.setValueAtTime(0.22, start + 0.38);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.48);
+
+      osc.start(start);
+      osc.stop(start + 0.50);
+    };
+
+    // 3 successive warble bursts
+    playPulse(now, 960, 720);
+    playPulse(now + 0.55, 960, 720);
+    playPulse(now + 1.10, 1020, 760);
+  } catch (e) {
+    console.warn("Failed to play SOS emergency alarm sound:", e);
+  }
+};
+
 export const playNotificationSound = () => {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();

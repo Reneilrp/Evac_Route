@@ -862,7 +862,7 @@ export default function MapDashboard() {
   };
 
   return (
-    <div className="flex flex-col h-full relative bg-gray-950">
+    <div className="flex flex-col h-full relative bg-slate-100 dark:bg-gray-950 transition-colors duration-200">
       {showShelterForm && pendingLocation && <ShelterFormModal location={pendingLocation} onConfirm={handleConfirmShelter} onCancel={handleCancelPin} isLoading={addShelterMutation.isPending} />}
       {showHazardForm && pendingLocation && (
         <HazardFormModal 
