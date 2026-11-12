@@ -10,10 +10,10 @@ export const MAPBOX_PUBLIC_TOKEN =
 
 // Zamboanga City Geographical Boundaries
 export const ZAMBOANGA_BOUNDS = {
-  minLng: 121.85,
-  maxLng: 122.35,
-  minLat: 6.75,
-  maxLat: 7.30,
+  minLng: 121.75,
+  maxLng: 122.45,
+  minLat: 6.70,
+  maxLat: 7.52,
 };
 
 // Strategic Zamboanga City Reference Points
@@ -300,7 +300,15 @@ export const BARANGAY_COORDS = {
   'Arena Blanco': [122.1333, 6.9028],
   'Rio Hondo': [122.0833, 6.9000],
   'Mampang': [122.1139, 6.9167],
-  'Talon-Talon': [122.1000, 6.8972]
+  'Talon-Talon': [122.1000, 6.8972],
+  'Licomo': [122.3358, 7.4484],
+  'Manalipa': [122.2744, 6.8917],
+  'Tumalutab': [122.3501, 6.9827],
+  'Landang Gua': [122.2555, 6.9568],
+  'Pasilmanta': [122.2741, 6.9921],
+  'Buenavista': [122.2597, 7.2400],
+  'Tictapul': [122.3256, 7.4177],
+  'Limaong': [122.3350, 7.3909]
 };
 
 /**

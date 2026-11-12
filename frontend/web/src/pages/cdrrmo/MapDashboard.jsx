@@ -350,6 +350,38 @@ export default function MapDashboard() {
   const [layersOpen, setLayersOpen] = useState(false);
   const [isEarthquakeDrawerOpen, setIsEarthquakeDrawerOpen] = useState(false);
   const [selectedEarthquake, setSelectedEarthquake] = useState(null);
+  const [dismissedEarthquakeIds, setDismissedEarthquakeIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem('evac_dismissed_earthquake_ids');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handleDismissEarthquake = useCallback((eqId) => {
+    setDismissedEarthquakeIds(prev => {
+      const updated = Array.from(new Set([...prev, eqId]));
+      try {
+        localStorage.setItem('evac_dismissed_earthquake_ids', JSON.stringify(updated));
+      } catch {
+        // Ignore storage errors
+      }
+      return updated;
+    });
+  }, []);
+
+  const handleRestoreEarthquake = useCallback((eqId) => {
+    setDismissedEarthquakeIds(prev => {
+      const updated = prev.filter(id => id !== eqId);
+      try {
+        localStorage.setItem('evac_dismissed_earthquake_ids', JSON.stringify(updated));
+      } catch {
+        // Ignore storage errors
+      }
+      return updated;
+    });
+  }, []);
   const [isolateZamboanga, setIsolateZamboanga] = useState(true);
   const [showBarangayBoundaries, setShowBarangayBoundaries] = useState(true);
 
@@ -432,7 +464,7 @@ export default function MapDashboard() {
     if (!showRescueUnits || !activeRescueMissions || activeRescueMissions.length === 0) return null;
     const features = [];
 
-    const isInZamboanga = (lng, lat) => lat >= 6.75 && lat <= 7.30 && lng >= 121.85 && lng <= 122.35;
+    const isInZamboanga = (lng, lat) => lat >= 6.70 && lat <= 7.52 && lng >= 121.75 && lng <= 122.45;
 
     activeRescueMissions.forEach((mission) => {
       // 1. Only show active navigation route line when unit is ACTIVELY en route or transporting
@@ -862,7 +894,7 @@ export default function MapDashboard() {
         setIsWeatherModalOpen={setIsWeatherModalOpen}
         isEarthquakeDrawerOpen={isEarthquakeDrawerOpen}
         setIsEarthquakeDrawerOpen={setIsEarthquakeDrawerOpen}
-        recentEarthquakesCount={recentEarthquakes.length}
+        recentEarthquakesCount={recentEarthquakes.filter(eq => !dismissedEarthquakeIds.includes(eq.id)).length}
         pinMode={pinMode}
         setPinMode={setPinMode}
         handleCancelPin={handleCancelPin}
@@ -1077,31 +1109,45 @@ export default function MapDashboard() {
             </div>
           )}
 
-          {/* 4. Live Seismic Alert / Recent Earthquake Banner (≥ M4.0 within 250km) */}
-          {recentEarthquakes.length > 0 && recentEarthquakes.some(eq => eq.magnitude >= 4.0 && eq.distance_km <= 250) && (
-            <div className="bg-amber-950/95 backdrop-blur-md border-2 border-amber-500 text-white rounded-2xl px-5 py-2.5 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
-              <span className="flex h-3 w-3 relative shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
-              </span>
-              <div className="text-xs">
-                <span className="font-black text-amber-300 uppercase tracking-wide">🌋 RECENT SEISMIC EVENT DETECTED:</span>{' '}
-                <span>
-                  <strong>M {recentEarthquakes[0].magnitude.toFixed(1)}</strong> — {recentEarthquakes[0].place} ({recentEarthquakes[0].distance_km} km from Zamboanga City, Depth {recentEarthquakes[0].depth_km} km).
+          {/* 4. Live Seismic Alert / Recent Earthquake Banner (≥ M4.0 within 250km and undismissed) */}
+          {(() => {
+            const activeMajorQuake = recentEarthquakes.find(eq => !dismissedEarthquakeIds.includes(eq.id) && eq.magnitude >= 4.0 && eq.distance_km <= 250);
+            if (!activeMajorQuake) return null;
+
+            return (
+              <div className="bg-amber-950/95 backdrop-blur-md border-2 border-amber-500 text-white rounded-2xl px-5 py-2.5 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                <span className="flex h-3 w-3 relative shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
                 </span>
+                <div className="text-xs">
+                  <span className="font-black text-amber-300 uppercase tracking-wide">🌋 RECENT SEISMIC EVENT DETECTED:</span>{' '}
+                  <span>
+                    <strong>M {activeMajorQuake.magnitude.toFixed(1)}</strong> — {activeMajorQuake.place} ({activeMajorQuake.distance_km} km from Zamboanga City, Depth {activeMajorQuake.depth_km} km).
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                  <button
+                    onClick={() => {
+                      setSelectedEarthquake(activeMajorQuake);
+                      inspectLocation(parseFloat(activeMajorQuake.longitude), parseFloat(activeMajorQuake.latitude));
+                      setIsEarthquakeDrawerOpen(true);
+                    }}
+                    className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-slate-950 rounded-lg text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-md whitespace-nowrap"
+                  >
+                    View Epicenter
+                  </button>
+                  <button
+                    onClick={() => handleDismissEarthquake(activeMajorQuake.id)}
+                    title="Acknowledge and dismiss alert banner"
+                    className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white/70 hover:text-white rounded-lg text-xs font-bold transition cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => {
-                  setSelectedEarthquake(recentEarthquakes[0]);
-                  inspectLocation(parseFloat(recentEarthquakes[0].longitude), parseFloat(recentEarthquakes[0].latitude));
-                  setIsEarthquakeDrawerOpen(true);
-                }}
-                className="ml-2 px-3 py-1 bg-amber-600 hover:bg-amber-500 text-slate-950 rounded-lg text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-md whitespace-nowrap shrink-0"
-              >
-                View Epicenter
-              </button>
-            </div>
-          )}
+            );
+          })()}
         </div>
         <LocalSimulationModal
           isOpen={showLocalSimulation && !isCSWDO}
@@ -1171,6 +1217,8 @@ export default function MapDashboard() {
           selectedEarthquake={selectedEarthquake}
           setSelectedEarthquake={setSelectedEarthquake}
           recentEarthquakes={recentEarthquakes}
+          dismissedEarthquakeIds={dismissedEarthquakeIds}
+          onDismissEarthquake={handleDismissEarthquake}
         />
         <RiskAlertsDrawer
           hazards={hazards}
@@ -1183,6 +1231,9 @@ export default function MapDashboard() {
           onClose={() => setIsEarthquakeDrawerOpen(false)}
           earthquakes={recentEarthquakes}
           isLoading={isLoadingEarthquakes}
+          dismissedEarthquakeIds={dismissedEarthquakeIds}
+          onDismissEarthquake={handleDismissEarthquake}
+          onRestoreEarthquake={handleRestoreEarthquake}
           onSelectEarthquake={(eq) => {
             setSelectedEarthquake(eq);
             inspectLocation(parseFloat(eq.longitude), parseFloat(eq.latitude));

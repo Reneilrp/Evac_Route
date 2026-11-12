@@ -1,5 +1,5 @@
-import React from 'react';
-import { Activity, X, ChevronRight, AlertTriangle, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { Activity, X, Eye, EyeOff, RotateCcw, AlertTriangle, ExternalLink, ShieldCheck } from 'lucide-react';
 
 export default function EarthquakeFeedDrawer({
   isOpen,
@@ -7,8 +7,18 @@ export default function EarthquakeFeedDrawer({
   earthquakes = [],
   isLoading = false,
   onSelectEarthquake,
+  dismissedEarthquakeIds = [],
+  onDismissEarthquake,
+  onRestoreEarthquake,
 }) {
+  const [activeTab, setActiveTab] = useState('active'); // 'active' | 'dismissed'
+
   if (!isOpen) return null;
+
+  const activeEarthquakes = earthquakes.filter(eq => !dismissedEarthquakeIds.includes(eq.id));
+  const dismissedEarthquakes = earthquakes.filter(eq => dismissedEarthquakeIds.includes(eq.id));
+
+  const currentList = activeTab === 'active' ? activeEarthquakes : dismissedEarthquakes;
 
   return (
     <div className="absolute top-20 right-4 z-40 w-96 max-w-[calc(100vw-2rem)] bg-slate-950/95 backdrop-blur-xl border border-amber-500/30 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-right-4 duration-200">
@@ -37,23 +47,74 @@ export default function EarthquakeFeedDrawer({
         </button>
       </div>
 
+      {/* Tabs: Active vs Acknowledged */}
+      <div className="flex border-b border-white/10 bg-slate-900/60 p-1">
+        <button
+          onClick={() => setActiveTab('active')}
+          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+            activeTab === 'active'
+              ? 'bg-amber-500 text-slate-950 shadow-sm'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <span>Active on Map</span>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+            activeTab === 'active' ? 'bg-slate-950 text-amber-300' : 'bg-white/10 text-white/80'
+          }`}>
+            {activeEarthquakes.length}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('dismissed')}
+          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+            activeTab === 'dismissed'
+              ? 'bg-amber-500 text-slate-950 shadow-sm'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <span>Acknowledged</span>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+            activeTab === 'dismissed' ? 'bg-slate-950 text-amber-300' : 'bg-white/10 text-white/80'
+          }`}>
+            {dismissedEarthquakes.length}
+          </span>
+        </button>
+      </div>
+
       {/* Earthquakes List */}
-      <div className="max-h-[60vh] overflow-y-auto divide-y divide-white/5 p-2">
+      <div className="max-h-[55vh] overflow-y-auto divide-y divide-white/5 p-2">
         {isLoading ? (
           <div className="py-8 text-center text-white/40 text-xs flex flex-col items-center gap-2">
             <span className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
             Loading real-time seismic feed...
           </div>
-        ) : earthquakes.length === 0 ? (
+        ) : currentList.length === 0 ? (
           <div className="py-8 text-center text-white/40 text-xs px-4">
-            <p className="font-bold text-emerald-400">No Notable Earthquakes</p>
-            <p className="mt-1 text-[11px]">No seismic events ≥ M2.5 recorded within 350km in the last 30 days.</p>
+            {activeTab === 'active' ? (
+              <>
+                <p className="font-bold text-emerald-400">All Seismic Events Acknowledged</p>
+                <p className="mt-1 text-[11px]">No active unacknowledged earthquakes on the map.</p>
+              </>
+            ) : (
+              <>
+                <p className="font-bold text-white/60">No Acknowledged Events</p>
+                <p className="mt-1 text-[11px]">Earthquakes you dismiss from the map will be catalogued here.</p>
+              </>
+            )}
           </div>
         ) : (
-          earthquakes.map((eq) => {
+          currentList.map((eq) => {
             const isHigh = eq.magnitude >= 5.0;
             const isModerate = eq.magnitude >= 4.0 && eq.magnitude < 5.0;
-            const magBg = isHigh ? 'bg-rose-500 text-white' : isModerate ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-800 text-amber-400 border border-amber-500/30';
+            const magBg = isHigh
+              ? 'bg-rose-500 text-white'
+              : isModerate
+              ? 'bg-amber-500 text-slate-950 font-black'
+              : 'bg-slate-800 text-amber-400 border border-amber-500/30';
+
+            const eqTimeMs = eq.time ? Number(eq.time) : (eq.time_formatted ? new Date(eq.time_formatted).getTime() : 0);
+            const ageMinutes = eqTimeMs ? Math.max(0, Math.floor((Date.now() - eqTimeMs) / (1000 * 60))) : 999;
+            const isRecentShockwave = ageMinutes <= 30;
 
             return (
               <div
@@ -69,9 +130,25 @@ export default function EarthquakeFeedDrawer({
 
                 {/* Details */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-white truncate group-hover:text-amber-400 transition">
-                    {eq.place}
-                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="text-xs font-bold text-white truncate group-hover:text-amber-400 transition">
+                      {eq.place}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-[10px] mt-1">
+                    {isRecentShockwave ? (
+                      <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-extrabold border border-rose-500/40 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
+                        {ageMinutes}m ago (Active Shockwave)
+                      </span>
+                    ) : (
+                      <span className="text-white/50 font-medium">
+                        {ageMinutes < 60 ? `${ageMinutes}m ago` : `${Math.floor(ageMinutes / 60)}h ago`} • Monitoring
+                      </span>
+                    )}
+                  </div>
+
                   <div className="flex items-center gap-2 text-[10px] text-white/50 mt-1">
                     <span>{eq.distance_km} km away</span>
                     <span>&bull;</span>
@@ -84,8 +161,29 @@ export default function EarthquakeFeedDrawer({
                   )}
                 </div>
 
-                <div className="text-white/30 group-hover:text-amber-400 transition self-center">
-                  &rarr;
+                {/* Action Button: Dismiss or Restore */}
+                <div className="shrink-0 flex items-center self-center" onClick={(e) => e.stopPropagation()}>
+                  {activeTab === 'active' ? (
+                    <button
+                      type="button"
+                      onClick={() => onDismissEarthquake && onDismissEarthquake(eq.id)}
+                      title="Acknowledge and hide from live map"
+                      className="px-2 py-1 rounded-lg bg-white/5 hover:bg-amber-500/20 text-white/50 hover:text-amber-300 border border-white/10 hover:border-amber-500/30 text-[10px] font-bold transition flex items-center gap-1"
+                    >
+                      <EyeOff size={12} />
+                      <span className="hidden sm:inline">Acknowledge</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onRestoreEarthquake && onRestoreEarthquake(eq.id)}
+                      title="Restore onto live map"
+                      className="px-2 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/20 text-white/50 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 text-[10px] font-bold transition flex items-center gap-1"
+                    >
+                      <RotateCcw size={12} />
+                      <span className="hidden sm:inline">Restore</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -95,8 +193,8 @@ export default function EarthquakeFeedDrawer({
 
       {/* Footer Info */}
       <div className="p-3 bg-black/40 border-t border-white/5 text-[10px] text-white/40 flex items-center justify-between">
-        <span>Click event to view epicenter pin</span>
-        <span className="text-amber-400/80 font-bold">Auto-updates 5m</span>
+        <span>Click event to center & inspect pin</span>
+        <span className="text-amber-400/80 font-bold">Auto-updates 1m</span>
       </div>
     </div>
   );

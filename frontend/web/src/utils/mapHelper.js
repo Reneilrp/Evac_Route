@@ -447,44 +447,48 @@ export const ZAMBOANGA_CENTER = {
 };
 
 // Tight bounding box enclosing all 98 barangays, coastal buffer, and Santa Cruz islands
+// Tight bounding box enclosing all 98 barangays, coastal buffer, Sacol, Manalipa, and Santa Cruz islands
 // [[minLng, minLat], [maxLng, maxLat]]
 export const ZAMBOANGA_MAX_BOUNDS = [
-  [121.80, 6.75], // Southwest limit (West Coast / Santa Cruz Islands / Basilan Strait buffer)
-  [122.45, 7.50], // Northeast limit (Vitali / Licomo border with Zamboanga Sibugay)
+  [121.75, 6.70], // Southwest limit (West Coast / Santa Cruz Islands / Basilan Strait buffer)
+  [122.45, 7.52], // Northeast limit (Vitali / Licomo border with Zamboanga Sibugay)
 ];
 
-export const ZAMBOANGA_MIN_ZOOM = 10.2;
+export const ZAMBOANGA_MIN_ZOOM = 10.0;
 export const ZAMBOANGA_MAX_ZOOM = 19.5;
 
 // Perimeter coordinates tracing the administrative territory of Zamboanga City
+// Encompasses Licomo (northeast tip), Sacol Island, Tumalutap, and Manalipa Island (east)
 export const ZAMBOANGA_PERIMETER_COORDS = [
-  [122.0300, 6.8400], // South of Great Santa Cruz Island in Basilan Strait
-  [121.9900, 6.9100], // Southwest coastal approach
+  [122.0500, 6.8000], // South of Great Santa Cruz Island in Basilan Strait
+  [122.0100, 6.8200], // Basilan Strait western channel
+  [121.9800, 6.8900], // Southwest coastal approach
   [121.9600, 6.9450], // Recodo / Sinunuc offshore
   [121.9300, 6.9600], // Ayala / Cawit offshore
   [121.9100, 7.0200], // Talisayan offshore
   [121.8800, 7.0800], // Labuan offshore
   [121.8600, 7.1400], // Patalon offshore
-  [121.8500, 7.2000], // Limpapa offshore
-  [121.8700, 7.2500], // Limpapa river basin border with Sibuco
+  [121.8400, 7.2000], // Limpapa offshore
+  [121.8600, 7.2500], // Limpapa river basin border with Sibuco
   [121.9200, 7.3000], // Mount Dapiak / northern mountain border
   [122.0000, 7.3400], // Sibuco watershed ridge
   [122.1000, 7.3700], // Central Zamboanga Peninsula cordillera
   [122.2000, 7.4000], // Tungawan / Sirawai border crest
   [122.2800, 7.4300], // Upper Vitali ridge
-  [122.3600, 7.4500], // Licomo mountain ridge
-  [122.4100, 7.4200], // Licomo coastal border with Tungawan, Zamboanga Sibugay
-  [122.4000, 7.3500], // Vitali Island / Taguiti Bay
-  [122.3400, 7.2500], // Curuan / Mangusu offshore
-  [122.3000, 7.1800], // Buenavista / Quiniput offshore
-  [122.2700, 7.1000], // Sangali / Bolong offshore
-  [122.2450, 7.0400], // Manicahan / Victoria offshore
-  [122.2100, 6.9850], // Taluksangay / Cabaluay offshore
-  [122.1850, 6.9450], // Mercedes / Talabaan offshore
-  [122.1550, 6.8950], // Mampang / Talon-Talon coast
-  [122.1200, 6.8600], // South of Talon-Talon / Arena Blanco
-  [122.0800, 6.8400], // South of Rio Hondo / Fort Pilar
-  [122.0300, 6.8400], // Closed ring
+  [122.3400, 7.4600], // Licomo mountain ridge
+  [122.3800, 7.4800], // Licomo northern apex / Tungawan Sibugay border
+  [122.4300, 7.4500], // Licomo coastal border with Tungawan, Zamboanga Sibugay
+  [122.4200, 7.3500], // Vitali Island / Taguiti Bay offshore
+  [122.3900, 7.2800], // Tumitus / Mangusu offshore
+  [122.3400, 7.2000], // Buenavista / Quiniput offshore
+  [122.3200, 7.1000], // Sangali / Bolong offshore
+  [122.3800, 7.0100], // East of Tumalutab Island & Sacol Island (Sibuguey Bay)
+  [122.3700, 6.9500], // East of Sacol Island / Pasilmanta offshore
+  [122.3200, 6.8700], // East of Manalipa Island
+  [122.2700, 6.8400], // South of Manalipa Island
+  [122.1900, 6.8200], // South of Tigtabon Island
+  [122.1200, 6.8000], // South of Talon-Talon / Arena Blanco
+  [122.0500, 6.8000], // South of Great Santa Cruz Island (closed ring)
 ];
 
 /**
@@ -536,12 +540,12 @@ export function getZamboangaBoundaryLineGeoJSON() {
 }
 
 export const ZAMBOANGA_BARANGAYS = [
-  "Arena Blanco", "Ayala", "Baliwasan", "Boalan", "Cabaluay", "Calarian",
+  "Arena Blanco", "Ayala", "Baliwasan", "Boalan", "Buenavista", "Cabaluay", "Calarian",
   "Canelar", "Cawit", "Culianan", "Curuan", "Divisoria", "Guiwan",
-  "Labuan", "Manicahan", "Mampang", "Mercedes", "Pasonanca", "Putik",
-  "Recodo", "Rio Hondo", "San Jose", "San Roque", "Santa Catalina",
-  "Santa Maria", "Talon-Talon", "Taluksangay", "Tetuan", "Tugbungan",
-  "Tumaga", "Vitali", "Zone I (Poblacion)", "Zone II (Poblacion)",
+  "Labuan", "Landang Gua", "Licomo", "Limaong", "Manalipa", "Manicahan", "Mampang", "Mercedes", "Pasonanca",
+  "Pasilmanta", "Putik", "Recodo", "Rio Hondo", "San Jose", "San Roque", "Santa Catalina",
+  "Santa Maria", "Talon-Talon", "Taluksangay", "Tetuan", "Tictapul", "Tugbungan",
+  "Tumaga", "Tumalutab", "Vitali", "Zone I (Poblacion)", "Zone II (Poblacion)",
   "Zone III (Poblacion)", "Zone IV (Poblacion)"
 ];
 
@@ -565,6 +569,14 @@ export const ZAMBOANGA_BARANGAY_CENTROIDS = {
   "Cawit": { lat: 6.9556, lng: 121.9739 },
   "Labuan": { lat: 7.0918, lng: 121.9027 },
   "Vitali": { lat: 7.3777, lng: 122.2893 },
+  "Licomo": { lat: 7.4484, lng: 122.3358 },
+  "Manalipa": { lat: 6.8917, lng: 122.2744 },
+  "Tumalutab": { lat: 6.9827, lng: 122.3501 },
+  "Landang Gua": { lat: 6.9568, lng: 122.2555 },
+  "Pasilmanta": { lat: 6.9921, lng: 122.2741 },
+  "Buenavista": { lat: 7.2400, lng: 122.2597 },
+  "Tictapul": { lat: 7.4177, lng: 122.3256 },
+  "Limaong": { lat: 7.3909, lng: 122.3350 },
   "Curuan": { lat: 7.2100, lng: 122.2313 },
   "Manicahan": { lat: 7.0200, lng: 122.1500 },
   "Cabaluay": { lat: 6.9800, lng: 122.1700 },

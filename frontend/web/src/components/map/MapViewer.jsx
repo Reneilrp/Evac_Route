@@ -79,6 +79,8 @@ const MapViewer = React.memo(({
   selectedEarthquake = null,
   setSelectedEarthquake = null,
   recentEarthquakes = [],
+  dismissedEarthquakeIds = [],
+  onDismissEarthquake = null,
 }) => {
   const containerRef = useRef(null);
   const { darkMode, setDarkMode } = useTheme();
@@ -967,62 +969,92 @@ const MapViewer = React.memo(({
           );
         })}
 
-        {/* Live USGS Earthquake Epicenter Markers with Concentric Ripple Waves */}
-        {recentEarthquakes.map(eq => {
-          const isSelected = selectedEarthquake?.id === eq.id;
-          const isMajor = eq.magnitude >= 5.0;
-          return (
-            <Marker
-              key={`eq-epicenter-${eq.id}`}
-              longitude={parseFloat(eq.longitude)}
-              latitude={parseFloat(eq.latitude)}
-              anchor="center"
-            >
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedEarthquake && setSelectedEarthquake(eq);
-                  inspectLocation(parseFloat(eq.longitude), parseFloat(eq.latitude));
-                }}
-                className="relative flex items-center justify-center cursor-pointer group"
-                title={`M ${eq.magnitude.toFixed(1)} Earthquake - ${eq.place}`}
+        {/* Live USGS Earthquake Epicenter Markers (Option A: Hybrid Time-Decay + CDRRMO Dismissal) */}
+        {['all', 'earthquake'].includes(activeMapFilter) && recentEarthquakes
+          .filter(eq => !dismissedEarthquakeIds.includes(eq.id))
+          .map(eq => {
+            const isSelected = selectedEarthquake?.id === eq.id;
+            const isMajor = eq.magnitude >= 5.0;
+
+            const eqTimeMs = eq.time ? Number(eq.time) : (eq.time_formatted ? new Date(eq.time_formatted).getTime() : 0);
+            const ageMinutes = eqTimeMs ? Math.max(0, Math.floor((Date.now() - eqTimeMs) / (1000 * 60))) : 999;
+            const isRecentShockwave = ageMinutes <= 30; // Active concentric ripple waves for the first 30 minutes
+
+            return (
+              <Marker
+                key={`eq-epicenter-${eq.id}`}
+                longitude={parseFloat(eq.longitude)}
+                latitude={parseFloat(eq.latitude)}
+                anchor="center"
               >
-                {/* Concentric Seismic Wave Pulse (Radar effect) */}
-                <span className={`absolute inline-flex h-16 w-16 rounded-full animate-ping opacity-75 ${isMajor ? 'bg-rose-500' : 'bg-amber-500'}`} />
-                <span className={`absolute inline-flex h-10 w-10 rounded-full animate-ping delay-150 opacity-50 ${isMajor ? 'bg-rose-400' : 'bg-amber-400'}`} />
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedEarthquake && setSelectedEarthquake(eq);
+                    inspectLocation(parseFloat(eq.longitude), parseFloat(eq.latitude));
+                  }}
+                  className="relative flex items-center justify-center cursor-pointer group"
+                  title={`M ${eq.magnitude.toFixed(1)} Earthquake - ${eq.place}`}
+                >
+                  {/* Concentric Seismic Wave Pulse (Only active for first 30 minutes to eliminate permanent visual noise) */}
+                  {isRecentShockwave && (
+                    <>
+                      <span className={`absolute inline-flex h-16 w-16 rounded-full animate-ping opacity-75 ${isMajor ? 'bg-rose-500' : 'bg-amber-500'}`} />
+                      <span className={`absolute inline-flex h-10 w-10 rounded-full animate-ping delay-150 opacity-50 ${isMajor ? 'bg-rose-400' : 'bg-amber-400'}`} />
+                    </>
+                  )}
 
-                {/* Epicenter Core Pin */}
-                <div className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center border-2 shadow-2xl font-black text-xs transition-transform group-hover:scale-125 ${
-                  isMajor
-                    ? 'bg-rose-600 border-white text-white shadow-rose-500/80 ring-4 ring-rose-500/30'
-                    : 'bg-amber-500 border-slate-950 text-slate-950 shadow-amber-500/80 ring-4 ring-amber-400/30'
-                } ${isSelected ? 'scale-125 ring-8 ring-amber-400' : ''}`}>
-                  <span>🌋</span>
-                </div>
-
-                {/* Magnitude Label Pill */}
-                <div className="absolute -bottom-6 px-2 py-0.5 rounded-full bg-slate-950/90 border border-white/20 text-white text-[10px] font-black shadow-lg whitespace-nowrap">
-                  M {eq.magnitude.toFixed(1)}
-                </div>
-
-                {/* Detailed Hover Card */}
-                <div className="absolute bottom-full mb-3 hidden group-hover:flex flex-col w-64 bg-slate-950/95 border border-amber-500/40 rounded-xl p-3 shadow-2xl z-50 pointer-events-none">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider">SEISMIC EPICENTER</span>
-                    <span className="text-[10px] font-bold text-white/50">{eq.distance_km} km away</span>
+                  {/* Epicenter Core Pin */}
+                  <div className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center border-2 shadow-2xl font-black text-xs transition-transform group-hover:scale-125 ${
+                    isMajor
+                      ? 'bg-rose-600 border-white text-white shadow-rose-500/80 ring-4 ring-rose-500/30'
+                      : 'bg-amber-500 border-slate-950 text-slate-950 shadow-amber-500/80 ring-4 ring-amber-400/30'
+                  } ${isSelected ? 'scale-125 ring-8 ring-amber-400' : ''}`}>
+                    <span>🌋</span>
                   </div>
-                  <p className="font-extrabold text-white text-xs mt-1">{eq.place}</p>
-                  <div className="mt-2 text-[10px] text-white/70 space-y-0.5 border-t border-white/10 pt-1.5">
-                    <p>• Magnitude: <strong className="text-amber-300">M {eq.magnitude.toFixed(1)}</strong></p>
-                    <p>• Depth: <strong className="text-white">{eq.depth_km} km</strong></p>
-                    <p>• Coordinates: <span className="font-mono">{eq.latitude.toFixed(4)}°N, {eq.longitude.toFixed(4)}°E</span></p>
-                    {eq.time_formatted && <p>• Recorded: {eq.time_formatted}</p>}
+
+                  {/* Magnitude Label Pill */}
+                  <div className="absolute -bottom-6 px-2 py-0.5 rounded-full bg-slate-950/90 border border-white/20 text-white text-[10px] font-black shadow-lg whitespace-nowrap flex items-center gap-1">
+                    <span>M {eq.magnitude.toFixed(1)}</span>
+                    {isRecentShockwave ? (
+                      <span className="text-[9px] text-amber-400 font-extrabold">• {ageMinutes}m ago</span>
+                    ) : (
+                      <span className="text-[9px] text-slate-400 font-normal">• Standby</span>
+                    )}
+                  </div>
+
+                  {/* Detailed Hover / Inspect Card */}
+                  <div className="absolute bottom-full mb-3 hidden group-hover:flex flex-col w-64 bg-slate-950/95 border border-amber-500/40 rounded-xl p-3 shadow-2xl z-50 pointer-events-auto">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider">SEISMIC EPICENTER</span>
+                      <span className="text-[10px] font-bold text-white/50">{eq.distance_km} km away</span>
+                    </div>
+                    <p className="font-extrabold text-white text-xs mt-1">{eq.place}</p>
+                    <div className="mt-2 text-[10px] text-white/70 space-y-0.5 border-t border-white/10 pt-1.5">
+                      <p>• Magnitude: <strong className="text-amber-300">M {eq.magnitude.toFixed(1)}</strong></p>
+                      <p>• Depth: <strong className="text-white">{eq.depth_km} km</strong></p>
+                      <p>• Age: <span className="font-bold text-white">{ageMinutes < 60 ? `${ageMinutes} mins ago` : `${Math.floor(ageMinutes / 60)}h ago`}</span></p>
+                      <p>• Coordinates: <span className="font-mono">{eq.latitude.toFixed(4)}°N, {eq.longitude.toFixed(4)}°E</span></p>
+                      {eq.time_formatted && <p>• Recorded: {eq.time_formatted}</p>}
+                    </div>
+
+                    {onDismissEarthquake && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDismissEarthquake(eq.id);
+                        }}
+                        className="mt-2 w-full py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <span>Acknowledge &amp; Hide from Map</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-              </div>
-            </Marker>
-          );
-        })}
+              </Marker>
+            );
+          })}
 
         {/* Pending pin */}
         {pendingLocation && !showShelterForm && !showHazardForm && (
@@ -1185,9 +1217,15 @@ const MapViewer = React.memo(({
         {activeRescueMissions.map((m) => {
           const lat = parseFloat(m.victim_latitude);
           const lng = parseFloat(m.victim_longitude);
-          if (isNaN(lat) || isNaN(lng) || m.status === 'transporting' || m.status === 'completed') return null;
+          // Only show active SOS pulsing beacon if the victim is waiting for or undergoing rescue
+          // Once transported, staged at assembly, or completed, remove the pulsing distress pin
+          if (
+            isNaN(lat) ||
+            isNaN(lng) ||
+            ['transporting', 'staged_at_assembly', 'completed', 'aborted'].includes(m.status)
+          ) return null;
           // Ignore coordinates outside Zamboanga City (e.g. Android emulator default Mountain View, California)
-          if (lat < 6.75 || lat > 7.30 || lng < 121.85 || lng > 122.35) return null;
+          if (lat < 6.70 || lat > 7.52 || lng < 121.75 || lng > 122.45) return null;
 
           return (
             <Marker

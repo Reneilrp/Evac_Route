@@ -224,6 +224,10 @@ export function UnifiedMapFilterSearch({
       return ['fire', 'wildfire', 'smoke', 'explosion'].some(k => t.includes(k));
     }).length;
 
+    const activeSosCount = activeRescueMissions.filter(m => 
+      ['pending', 'dispatched', 'en_route', 'on_scene'].includes(m.status)
+    ).length;
+
     return {
       all: hazards.length + shelters.length + rescueUnits.length,
       flood: floodCount,
@@ -232,7 +236,7 @@ export function UnifiedMapFilterSearch({
       fire: fireCount,
       rescue_units: rescueUnits.length,
       shelters: shelters.length,
-      sos: activeRescueMissions.length,
+      sos: activeSosCount,
     };
   }, [hazards, shelters, rescueUnits, activeRescueMissions]);
 
