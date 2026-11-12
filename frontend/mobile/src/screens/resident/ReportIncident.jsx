@@ -780,6 +780,7 @@ export default function ReportIncident({ navigation, route }) {
         visible={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         colors={colors}
+        isDarkMode={isDarkMode}
         styles={styles}
         name={name}
         setName={setName}
@@ -789,8 +790,12 @@ export default function ReportIncident({ navigation, route }) {
         setSeverity={setSeverityLevel}
         description={description}
         setDescription={setDescription}
+        isRecurringDrainage={isRecurringDrainage}
+        setIsRecurringDrainage={setIsRecurringDrainage}
         barangay={barangayName}
         setBarangay={setBarangayName}
+        streetAddress={streetAddress}
+        setStreetAddress={setStreetAddress}
         coords={coords}
         gettingLocation={locating}
         handleGetLocation={handleGetLocation}
@@ -801,6 +806,9 @@ export default function ReportIncident({ navigation, route }) {
         submitting={submitting}
         hazardTypes={HAZARD_TYPES}
         severityLevels={SEVERITY_LEVELS}
+        contextualSeverity={CONTEXTUAL_SEVERITY}
+        severityColors={SEVERITY_COLORS}
+        hazardHints={HAZARD_HINTS}
         photoRoleLabels={PHOTO_ROLE_LABELS}
       />
 
