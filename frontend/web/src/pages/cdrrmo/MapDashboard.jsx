@@ -116,18 +116,15 @@ export default function MapDashboard() {
           map.flyTo({
             center: [lng, lat],
             zoom: 16.5,
-            pitch: 52,
-            duration: 1800,
+            pitch: is3D ? 45 : 0,
+            duration: 1200,
             essential: true
           });
         }
       }
     }
-  }, [focusLat, focusLng, mapRef]);
+  }, [focusLat, focusLng, mapRef, is3D]);
 
-  const [isInspecting, setIsInspecting] = useState(false);
-  const isInspectingRef = useRef(false);
-  const orbitAnimationRef = useRef(null);
   const [simulationGeoJSON, setSimulationGeoJSON] = useState(null);
 
   const [isDrawingRadius, setIsDrawingRadius] = useState(false);
@@ -186,28 +183,6 @@ export default function MapDashboard() {
       setPinMode(null);
     });
   }, []);
-
-  const stopInspection = useCallback(() => {
-    const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
-    if (map) {
-      map.stop();
-      map.flyTo({
-        center: [122.0790, 6.9214],
-        zoom: 12.8,
-        pitch: is3D ? 45 : 0,
-        bearing: 0,
-        duration: 1500,
-        essential: true
-      });
-    }
-    if (orbitAnimationRef.current) {
-      cancelAnimationFrame(orbitAnimationRef.current);
-      orbitAnimationRef.current = null;
-    }
-    isInspectingRef.current = false;
-    setIsInspecting(false);
-    setSimulationGeoJSON(null);
-  }, [is3D]);
 
   const handleRecenterToZamboanga = useCallback(() => {
     const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
@@ -348,76 +323,18 @@ export default function MapDashboard() {
 
   const inspectLocation = useCallback((lng, lat) => {
     const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
-    if (!map) return;
+    if (!map || !map.flyTo) return;
 
-    // CSWDO View-Only: smooth pan/zoom to location without 3D orbit tilt/rotation
-    if (isCSWDO) {
-      map.flyTo({
-        center: [lng, lat],
-        zoom: 16.5,
-        duration: 1200,
-        essential: true,
-      });
-      return;
-    }
-
-    // Halt any ongoing sweep first
-    stopInspection();
-
-    isInspectingRef.current = true;
-    setIsInspecting(true);
-
-    // 1. Fly to location
+    // Direct, smooth zoom in only (3D sweep completely removed)
     map.flyTo({
       center: [lng, lat],
-      zoom: 17.8, // scope of ~50-100m
-      pitch: 62,
-      duration: 2500,
-      essential: true
+      zoom: 17,
+      pitch: is3D ? 45 : 0,
+      bearing: is3D ? -15 : 0,
+      duration: 1200,
+      essential: true,
     });
-
-    // 2. Start 360 orbit rotation
-    map.once('moveend', () => {
-      // Abort if canceled during flight
-      if (!isInspectingRef.current) return;
-
-      let lastTimestamp = null;
-      let elapsed = 0; // accumulated elapsed time
-      const duration = 20000; // 20 seconds (slower by half)
-      const startBearing = map.getBearing();
-
-      const animateOrbit = (timestamp) => {
-        if (!isInspectingRef.current) return; // Abort if canceled mid-orbit
-
-        if (lastTimestamp === null) {
-          lastTimestamp = timestamp;
-          orbitAnimationRef.current = requestAnimationFrame(animateOrbit);
-          return;
-        }
-
-        const delta = Math.min(timestamp - lastTimestamp, 100);
-        lastTimestamp = timestamp;
-
-        if (!isModalOpenRef.current) {
-          elapsed += delta;
-        }
-
-        const progress = Math.min(elapsed / duration, 1);
-        const currentBearing = startBearing + (progress * 360);
-        map.setBearing(currentBearing % 360);
-
-        if (progress < 1) {
-          orbitAnimationRef.current = requestAnimationFrame(animateOrbit);
-        } else {
-          isInspectingRef.current = false;
-          setIsInspecting(false);
-          orbitAnimationRef.current = null;
-        }
-      };
-
-      orbitAnimationRef.current = requestAnimationFrame(animateOrbit);
-    });
-  }, [stopInspection, isCSWDO]);
+  }, [mapRef, is3D]);
 
 
 
@@ -431,6 +348,7 @@ export default function MapDashboard() {
   const [showRescueUnits, setShowRescueUnits] = useState(true);
   const [layersOpen, setLayersOpen] = useState(false);
   const [isolateZamboanga, setIsolateZamboanga] = useState(true);
+  const [showBarangayBoundaries, setShowBarangayBoundaries] = useState(true);
 
   const { data: dashboardData } = useQuery({
     queryKey: ['map-dashboard'],
@@ -921,6 +839,8 @@ export default function MapDashboard() {
         setShowWeather={setShowWeather}
         isolateZamboanga={isolateZamboanga}
         setIsolateZamboanga={setIsolateZamboanga}
+        showBarangayBoundaries={showBarangayBoundaries}
+        setShowBarangayBoundaries={setShowBarangayBoundaries}
         handleSelectMapLocation={handleSelectMapLocation}
         handleRecenterToZamboanga={handleRecenterToZamboanga}
         drawerOpen={drawerOpen}
@@ -1067,7 +987,7 @@ export default function MapDashboard() {
                     )}
                   </div>
                 ) : (
-                  <span>🔍 <strong className="font-black tracking-wide uppercase">Tactical 3D Inspection Active:</strong> Click any location on the map to run a 360° situational orbit.</span>
+                  <span>🔍 <strong className="font-black tracking-wide uppercase">Tactical Inspection Active:</strong> Click any location on the map to zoom in and inspect.</span>
                 )}
               </div>
               <button
@@ -1160,16 +1080,6 @@ export default function MapDashboard() {
           setSimulationGeoJSON={setSimulationGeoJSON}
           handleSetLocalSimulation={handleSetLocalSimulation}
         />
-        {isInspecting && !isCSWDO && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 animate-in fade-in zoom-in duration-200">
-            <button
-              onClick={stopInspection}
-              className="bg-red-600/95 backdrop-blur-md border border-red-500/50 hover:bg-red-700 text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-[0_8px_32px_rgba(239,68,68,0.4)] flex items-center gap-2 transition transform hover:scale-105 active:scale-95 duration-200"
-            >
-              <span className="w-2.5 h-2.5 bg-white rounded-sm"></span> Stop 3D Sweep
-            </button>
-          </div>
-        )}
         <MapViewer
           shelters={shelters} hazards={hazards} demographics={demographics}
           pinMode={pinMode} pendingLocation={pendingLocation}
@@ -1186,6 +1096,7 @@ export default function MapDashboard() {
           showHazards={showHazards}
           activeMapFilter={activeMapFilter}
           isolateZamboanga={isolateZamboanga}
+          showBarangayBoundaries={showBarangayBoundaries}
           is3D={is3D}
           setIs3D={setIs3D}
           mapRef={mapRef}

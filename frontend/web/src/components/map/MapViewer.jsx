@@ -18,6 +18,7 @@ import {
   getZamboangaBoundaryLineGeoJSON,
   BARANGAY_COORDS,
 } from '../../utils/mapHelper';
+import zamboangaBarangaysGeoJSON from '../../data/zamboanga_barangays.json';
 
 const MAP_STYLES = {
   dark:      { id: 'dark',      label: 'Dark',      icon: <Moon size={13} />,      url: 'mapbox://styles/mapbox/dark-v11' },
@@ -67,6 +68,7 @@ const MapViewer = React.memo(({
   filteredSheltersForView = [],
   isCSWDO = false,
   isolateZamboanga = true,
+  showBarangayBoundaries = true,
   showRescueUnits = true,
   activeRescueMissions = [],
   rescueUnits = [],
@@ -76,7 +78,7 @@ const MapViewer = React.memo(({
   incidentName = null,
 }) => {
   const containerRef = useRef(null);
-  const { setDarkMode } = useTheme();
+  const { darkMode, setDarkMode } = useTheme();
 
   const zamboangaMaskData = useMemo(() => getZamboangaIsolationMaskGeoJSON(), []);
   const zamboangaBoundaryLine = useMemo(() => getZamboangaBoundaryLineGeoJSON(), []);
@@ -548,6 +550,60 @@ const MapViewer = React.memo(({
               'fill-extrusion-opacity': 0.6
             }}
           />
+        )}
+
+        {/* Zamboanga City 98 Barangay Boundaries & Labels */}
+        {showBarangayBoundaries && (
+          <Source id="zamboanga-barangay-boundaries" type="geojson" data={zamboangaBarangaysGeoJSON}>
+            <Layer
+              id="barangay-fills"
+              type="fill"
+              paint={{
+                'fill-color': darkMode ? '#38bdf8' : '#0284c7',
+                'fill-opacity': 0.04,
+              }}
+            />
+            <Layer
+              id="barangay-borders"
+              type="line"
+              paint={{
+                'line-color': darkMode ? '#38bdf8' : '#2563eb',
+                'line-width': [
+                  'interpolate', ['linear'], ['zoom'],
+                  10, 1.2,
+                  13, 2.0,
+                  16, 2.8
+                ],
+                'line-opacity': darkMode ? 0.85 : 0.75,
+                'line-dasharray': [4, 2],
+              }}
+            />
+            <Layer
+              id="barangay-labels"
+              type="symbol"
+              minzoom={11}
+              layout={{
+                'text-field': ['get', 'name'],
+                'text-size': [
+                  'interpolate', ['linear'], ['zoom'],
+                  11, 9.5,
+                  13, 11.5,
+                  15, 13.5
+                ],
+                'text-transform': 'uppercase',
+                'text-letter-spacing': 0.08,
+                'text-anchor': 'center',
+                'text-max-width': 8,
+              }}
+              paint={{
+                'text-color': darkMode ? '#e2e8f0' : '#1e293b',
+                'text-halo-color': darkMode ? '#0f172a' : '#ffffff',
+                'text-halo-width': 2,
+                'text-halo-blur': 1,
+                'text-opacity': 0.9,
+              }}
+            />
+          </Source>
         )}
 
         {/* GIS Population Heatmap */}

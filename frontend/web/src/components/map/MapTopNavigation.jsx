@@ -51,6 +51,8 @@ export default function MapTopNavigation({
   setShowWeather,
   isolateZamboanga,
   setIsolateZamboanga,
+  showBarangayBoundaries = true,
+  setShowBarangayBoundaries,
   handleSelectMapLocation,
   handleRecenterToZamboanga,
   drawerOpen,
@@ -101,6 +103,8 @@ export default function MapTopNavigation({
             onToggleWeather={setShowWeather}
             isolateZamboanga={isolateZamboanga}
             onToggleIsolateZamboanga={setIsolateZamboanga}
+            showBarangayBoundaries={showBarangayBoundaries}
+            onToggleBarangayBoundaries={setShowBarangayBoundaries}
             onRecenter={handleRecenterToZamboanga}
             onSelectLocation={handleSelectMapLocation}
             isCSWDO={true}
@@ -181,6 +185,8 @@ export default function MapTopNavigation({
             onToggleWeather={setShowWeather}
             isolateZamboanga={isolateZamboanga}
             onToggleIsolateZamboanga={setIsolateZamboanga}
+            showBarangayBoundaries={showBarangayBoundaries}
+            onToggleBarangayBoundaries={setShowBarangayBoundaries}
             onRecenter={handleRecenterToZamboanga}
             onSelectLocation={handleSelectMapLocation}
             isCSWDO={false}

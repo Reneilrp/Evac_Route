@@ -18,7 +18,7 @@ export default function MapLegend({ simulationMode }) {
         <span>Legend</span>
       </button>
       {open && (
-        <div className="absolute bottom-full right-0 mb-3 bg-white/98 dark:bg-gray-900/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-slate-200 dark:border-white/10 w-56 z-50 text-slate-800 dark:text-white">
+        <div className="absolute bottom-full right-0 mb-3 bg-white dark:bg-slate-900 p-4 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 w-56 z-50 text-slate-800 dark:text-white">
           <p className="text-[10px] font-black text-slate-400 dark:text-white/40 uppercase tracking-widest mb-3">Shelters</p>
           <div className="space-y-2 mb-3">
             <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded-full bg-green-500 shadow-green-500/60 shadow" /><span className="text-xs text-slate-700 dark:text-white/80">Open Shelter</span></div>

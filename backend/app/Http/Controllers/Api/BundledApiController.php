@@ -246,14 +246,18 @@ class BundledApiController extends Controller
         ];
 
         // Match against shelters serving this barangay or in the immediate area
-        $shelters = Shelter::where(function ($query) use ($barangay) {
+        $localShelters = Shelter::where(function ($query) use ($barangay) {
             $query->where('barangay', 'like', "%{$barangay}%")
                 ->orWhere('name', 'like', "%{$barangay}%");
         })->get();
 
-        // If no shelters explicitly tagged with this barangay, provide all open/operational shelters
-        if ($shelters->isEmpty()) {
+        $hasLocalShelters = !$localShelters->isEmpty();
+
+        // If no shelters explicitly tagged with this barangay, provide open/operational overflow shelters
+        if ($localShelters->isEmpty()) {
             $shelters = Shelter::whereIn('status', ['open', 'full'])->get();
+        } else {
+            $shelters = $localShelters;
         }
 
         $totalCapacity = (int) $shelters->sum('max_capacity');
@@ -273,6 +277,8 @@ class BundledApiController extends Controller
                 'transportation_modes' => $transportBreakdown,
             ],
             'shelter_feasibility' => [
+                'has_local_shelters' => $hasLocalShelters,
+                'local_shelters_count' => $localShelters->count(),
                 'matched_shelters_count' => $shelters->count(),
                 'total_shelter_capacity' => $totalCapacity,
                 'current_shelter_occupancy' => $currentOccupancy,
@@ -280,18 +286,24 @@ class BundledApiController extends Controller
                 'capacity_surplus_or_deficit' => $netBalance,
                 'has_deficit' => $hasDeficit,
                 'deficit_amount' => $deficitAmount,
-                'recommendation' => $hasDeficit
-                    ? "SHELTER DEFICIT ALERT: Requires opening secondary overflow shelter for {$deficitAmount} evacuees."
-                    : "SHELTER CAPACITY ADEQUATE: Surplus of {$netBalance} beds available in designated shelters.",
-                'shelters' => $shelters->map(function ($s) {
+                'recommendation' => !$hasLocalShelters
+                    ? "NO LOCAL SHELTERS: Barangay {$barangay} has no local evacuation center. Designated city overflow facilities shown."
+                    : ($hasDeficit
+                        ? "SHELTER DEFICIT ALERT: Requires opening secondary overflow shelter for {$deficitAmount} evacuees."
+                        : "SHELTER CAPACITY ADEQUATE: Surplus of {$netBalance} beds available in designated shelters."),
+                'shelters' => $shelters->map(function ($s) use ($barangay) {
+                    $isLocal = str_contains(strtolower($s->barangay ?? ''), strtolower($barangay)) || str_contains(strtolower($s->name ?? ''), strtolower($barangay));
                     return [
                         'id' => $s->id,
                         'name' => $s->name,
                         'barangay' => $s->barangay,
                         'status' => $s->status,
-                        'max_capacity' => $s->max_capacity,
-                        'current_occupancy' => $s->current_occupancy,
-                        'available_spaces' => max(0, $s->max_capacity - $s->current_occupancy),
+                        'is_local' => $isLocal,
+                        'max_capacity' => (int) $s->max_capacity,
+                        'current_occupancy' => (int) $s->current_occupancy,
+                        'available_spaces' => max(0, (int) $s->max_capacity - (int) $s->current_occupancy),
+                        'latitude' => $s->latitude,
+                        'longitude' => $s->longitude,
                     ];
                 }),
             ],

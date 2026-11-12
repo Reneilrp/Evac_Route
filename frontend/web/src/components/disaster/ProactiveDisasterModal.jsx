@@ -3,20 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   X, AlertTriangle, CloudRain, Sun, ShieldAlert, Users,
   CheckCircle2, AlertOctagon,
-  Droplets, Waves, Mountain, Sparkles, RotateCcw
+  Droplets, Waves, Mountain, Sparkles, RotateCcw,
+  Building2, Crosshair, MapPin
 } from 'lucide-react';
 import api from '../../services/api';
 import { showSuccess, showError } from '../../utils/toast';
+import { BARANGAY_COORDS } from '../../utils/mapHelper';
 
-const ZAMBOANGA_BARANGAYS = [
-  "Arena Blanco", "Ayala", "Baliwasan", "Boalan", "Cabaluay", "Calarian",
-  "Canelar", "Cawit", "Culianan", "Curuan", "Divisoria", "Guiwan",
-  "Labuan", "Manicahan", "Mampang", "Mercedes", "Pasonanca", "Putik",
-  "Recodo", "Rio Hondo", "San Jose", "San Roque", "Santa Catalina",
-  "Santa Maria", "Talon-Talon", "Taluksangay", "Tetuan", "Tugbungan",
-  "Tumaga", "Vitali", "Zone I (Poblacion)", "Zone II (Poblacion)",
-  "Zone III (Poblacion)", "Zone IV (Poblacion)"
-];
+const ZAMBOANGA_BARANGAYS = Object.keys(BARANGAY_COORDS).sort();
 
 const PRESET_ICONS = {
   tumaga_basin: <Waves className="text-blue-500" size={20} />,
@@ -32,9 +26,11 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
 
   // Form state for Tab 2: Declare Zone
   const [selectedBarangay, setSelectedBarangay] = useState('Tumaga');
+  const [scopeMode, setScopeMode] = useState('entire_barangay'); // 'entire_barangay' | 'localized'
+  const [landmark, setLandmark] = useState('');
   const [hazardType, setHazardType] = useState('flood');
   const [severityLevel, setSeverityLevel] = useState('critical');
-  const [radiusMeters, setRadiusMeters] = useState(1000);
+  const [radiusMeters, setRadiusMeters] = useState(300);
   const [durationHours, setDurationHours] = useState(6);
   const [sendBroadcast, setSendBroadcast] = useState(true);
   const [customAdvisory, setCustomAdvisory] = useState('');
@@ -129,14 +125,26 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
 
   const handleDeclareSubmit = (e) => {
     e.preventDefault();
+    const coords = BARANGAY_COORDS[selectedBarangay] || [122.0790, 6.9214];
+    const isEntireBarangay = scopeMode === 'entire_barangay';
+
+    const defaultAdvisory = isEntireBarangay
+      ? `OFFICIAL CDRRMO ALERT: An active ${hazardType} emergency advisory has been declared for the entire Barangay ${selectedBarangay}. Pre-emptive evacuation and route avoidance advised for all residents.`
+      : `LOCAL EMERGENCY ALERT: A ${severityLevel} ${hazardType} incident occurred near ${landmark || selectedBarangay}. Residents within ${radiusMeters}m isolation perimeter must take immediate precautionary actions.`;
+
     declareZoneMutation.mutate({
       barangay: selectedBarangay,
+      name: isEntireBarangay
+        ? `CDRRMO Hazard Warning: Entire Barangay ${selectedBarangay}`
+        : (landmark ? `${hazardType.toUpperCase()}: ${landmark} (${selectedBarangay})` : `CDRRMO Hazard: Barangay ${selectedBarangay}`),
+      latitude: coords[1],
+      longitude: coords[0],
+      radius_meters: isEntireBarangay ? 2500 : Number(radiusMeters),
       hazard_type: hazardType,
       severity_level: severityLevel,
-      radius_meters: Number(radiusMeters),
       estimated_duration_hours: Number(durationHours),
       send_broadcast: sendBroadcast,
-      advisory_message: customAdvisory || undefined,
+      advisory_message: customAdvisory.trim() || defaultAdvisory,
     });
   };
 
@@ -352,6 +360,61 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
           {activeTab === 'declare' && (
             <form onSubmit={handleDeclareSubmit} className="space-y-4 max-w-2xl mx-auto">
               <div className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-gray-200 dark:border-slate-800 space-y-4">
+                {/* Scope Selection */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
+                    Incident Scope &amp; Target Geography
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setScopeMode('entire_barangay')}
+                      className={`py-2 px-3 rounded-lg text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+                        scopeMode === 'entire_barangay'
+                          ? 'bg-red-600 text-white shadow-xs'
+                          : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <ShieldAlert size={15} />
+                      <span>Entire Barangay Alert</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScopeMode('localized')}
+                      className={`py-2 px-3 rounded-lg text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer ${
+                        scopeMode === 'localized'
+                          ? 'bg-red-600 text-white shadow-xs'
+                          : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <Crosshair size={15} />
+                      <span>Localized Incident Buffer</span>
+                    </button>
+                  </div>
+                </div>
+
+                {scopeMode === 'entire_barangay' ? (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded-xl flex items-start gap-2.5 text-xs text-red-900 dark:text-red-200">
+                    <ShieldAlert size={18} className="text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-extrabold block">Barangay-Wide Early Warning &amp; Evacuation</span>
+                      <span className="text-[11px] leading-relaxed">
+                        No circular radius needed. The official boundary polygon of <strong>Barangay {selectedBarangay}</strong> will be marked as an active hazard zone on the live map. All registered resident families living in Barangay {selectedBarangay} will receive emergency push notifications.
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
+                    <Crosshair size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-extrabold block">Pinpoint Isolation Perimeter</span>
+                      <span className="text-[11px] leading-relaxed">
+                        For localized fires, chemical leaks, or structural collapse. Only residents within the chosen isolation radius will receive urgent evacuation sirens and detour navigation.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
@@ -386,7 +449,32 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {scopeMode === 'localized' && (
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
+                        Incident Landmark / Street Address (e.g. Sitio, Purok, School)
+                      </label>
+                      <input
+                        type="text"
+                        value={landmark}
+                        onChange={(e) => setLandmark(e.target.value)}
+                        placeholder="e.g. Purok 4 near Tumaga River Bridge / St. Joseph School"
+                        className="w-full bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-bold text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 font-mono">
+                      <span>
+                        Center Coordinates: Lat {BARANGAY_COORDS[selectedBarangay]?.[1]?.toFixed(4) || '6.9214'}, Lon {BARANGAY_COORDS[selectedBarangay]?.[0]?.toFixed(4) || '122.0790'}
+                      </span>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">
+                        Centroid: {selectedBarangay}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                       Basis of Severity ({hazardType === 'fire' ? 'BFP Fire Alarm' : hazardType})
@@ -403,7 +491,7 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
                           <option value="medium">🟡 1st Alarm (Initial Engine / Single Room)</option>
                           <option value="low">⚪ Minor / Smoldering (Standby)</option>
                         </>
-                      ) : hazardType === 'landslide' ? (
+                      ) : hazardType === 'landslide' || hazardType === 'debris' ? (
                         <>
                           <option value="critical">🔴 Critical (Complete Slope Collapse / Road Buried)</option>
                           <option value="high">🟠 High (Partial Lane Blockage / Active Mudflow)</option>
@@ -430,21 +518,6 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
 
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
-                      Hazard Radius (Meters)
-                    </label>
-                    <input
-                      type="number"
-                      min={100}
-                      max={5000}
-                      step={50}
-                      value={radiusMeters}
-                      onChange={(e) => setRadiusMeters(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-bold text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-red-500 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                       Est. Duration (Hours)
                     </label>
                     <input
@@ -457,6 +530,35 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
                     />
                   </div>
                 </div>
+
+                {scopeMode === 'localized' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold text-gray-700 dark:text-slate-300">
+                        Isolation Perimeter Buffer
+                      </label>
+                      <span className="text-xs font-mono font-black text-red-600 dark:text-red-400">
+                        {radiusMeters} meters
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[100, 300, 500, 1000].map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setRadiusMeters(r)}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                            radiusMeters === r
+                              ? 'bg-red-50 dark:bg-red-950/60 border-red-500 text-red-700 dark:text-red-300'
+                              : 'border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600 dark:text-slate-400'
+                          }`}
+                        >
+                          {r}m {r === 100 ? '(Street)' : r === 300 ? '(Purok)' : r === 500 ? '(Cluster)' : '(Corridor)'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
@@ -594,6 +696,101 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
                         {riskData.shelter_feasibility?.available_shelter_capacity}
                       </span>
                       <span className="text-[10px] text-gray-500 dark:text-slate-400 block mt-0.5">Currently Free</span>
+                    </div>
+                  </div>
+
+                  {/* Itemized Shelters Matching Profile */}
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Building2 size={16} className="text-blue-600 dark:text-blue-400" />
+                        <h5 className="text-xs font-black text-gray-900 dark:text-slate-100 uppercase tracking-wider">
+                          Designated Shelters Breakdown ({riskData.shelter_feasibility?.shelters?.length || 0})
+                        </h5>
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400">
+                        {riskData.shelter_feasibility?.has_local_shelters
+                          ? `🟢 Local Shelters Located in Barangay ${riskBarangay}`
+                          : `🟡 Assigned Overflow Shelters (No local facilities)`}
+                      </span>
+                    </div>
+
+                    {!riskData.shelter_feasibility?.has_local_shelters && (
+                      <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded-lg text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
+                        <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-bold">No registered local evacuation shelters in Barangay {riskBarangay}</strong>
+                          <span className="text-[11px] leading-relaxed">
+                            This barangay has 0 internal shelter facilities. Evacuees must be routed across barangay borders to designated city overflow centers listed below.
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      {riskData.shelter_feasibility?.shelters?.map((shelter) => {
+                        const cap = shelter.max_capacity || 0;
+                        const occ = shelter.current_occupancy || 0;
+                        const free = shelter.available_spaces ?? Math.max(0, cap - occ);
+                        const pct = cap > 0 ? Math.min(100, Math.round((occ / cap) * 100)) : 0;
+                        const isFull = occ >= cap;
+
+                        return (
+                          <div
+                            key={shelter.id}
+                            className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-black text-slate-900 dark:text-slate-100">
+                                  {shelter.name}
+                                </span>
+                                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                  shelter.is_local
+                                    ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                                    : 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                                }`}>
+                                  {shelter.is_local ? `Local (${shelter.barangay})` : `Overflow (${shelter.barangay})`}
+                                </span>
+                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${
+                                  isFull
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                                }`}>
+                                  {isFull ? 'FULL' : 'ACTIVE / OPEN'}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                                Location: {shelter.barangay} • GPS: {Number(shelter.latitude).toFixed(4)}, {Number(shelter.longitude).toFixed(4)}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 shrink-0">
+                              <div className="w-36 space-y-1">
+                                <div className="flex justify-between text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                  <span>{occ} / {cap} beds</span>
+                                  <span>{pct}% full</span>
+                                </div>
+                                <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all duration-300 ${
+                                      pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500'
+                                    }`}
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="text-right min-w-[75px]">
+                                <span className="text-[10px] font-bold uppercase block text-slate-400">Vacancies</span>
+                                <span className={`text-sm font-black font-mono ${free > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                  {free} free
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 

@@ -102,8 +102,8 @@ export function FloatingMapSearch({ shelters = [], hazards = [], onSelectLocatio
 
   return (
     <div ref={containerRef} className={`relative font-sans ${className || 'w-48 sm:w-60 md:w-72 lg:w-80'}`}>
-      <div className="relative flex items-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-white/10 rounded-2xl shadow-xl transition focus-within:border-blue-500/60 focus-within:ring-2 focus-within:ring-blue-500/20">
-        <Search size={15} className="ml-3.5 text-slate-400 dark:text-white/50 shrink-0" />
+      <div className="relative flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xs transition focus-within:border-blue-500/60 focus-within:ring-2 focus-within:ring-blue-500/20">
+        <Search size={15} className="ml-3.5 text-slate-400 dark:text-slate-400 shrink-0" />
         <input
           ref={inputRef}
           type="text"
@@ -112,12 +112,12 @@ export function FloatingMapSearch({ shelters = [], hazards = [], onSelectLocatio
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder="Search barangay or shelter..."
-          className="w-full bg-transparent px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 focus:outline-none"
+          className="w-full bg-transparent px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:outline-none"
         />
         {query && (
           <button
             onClick={() => { setQuery(''); setIsOpen(false); }}
-            className="mr-3 text-slate-400 hover:text-slate-600 dark:text-white/40 dark:hover:text-white transition cursor-pointer"
+            className="mr-3 text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
           >
             <X size={14} />
           </button>
@@ -125,12 +125,12 @@ export function FloatingMapSearch({ shelters = [], hazards = [], onSelectLocatio
       </div>
 
       {isOpen && results.length > 0 && (
-        <div className="mt-1.5 bg-white/98 dark:bg-gray-900/95 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden py-1 divide-y divide-slate-100 dark:divide-white/5 animate-in fade-in duration-150">
+        <div className="mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden py-1 divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in duration-150">
           {results.map((res, i) => (
             <div
               key={i}
               onClick={() => handleSelect(res)}
-              className="px-3.5 py-2.5 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer flex items-center justify-between text-xs transition"
+              className="px-3.5 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between text-xs transition"
             >
               <div className="flex items-center gap-2.5 overflow-hidden">
                 {res.type === 'shelter' ? (
@@ -180,6 +180,8 @@ export function UnifiedMapFilterSearch({
   onRecenter,
   isolateZamboanga = true,
   onToggleIsolateZamboanga,
+  showBarangayBoundaries = true,
+  onToggleBarangayBoundaries,
   isCSWDO = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -312,13 +314,13 @@ export function UnifiedMapFilterSearch({
         </div>
       </div>
 
-      {/* Floating Dropdown Panel with Integrated Search Bar & Granular Filters */}
-      <div className={`absolute top-full left-0 mt-2.5 w-80 sm:w-96 max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-thin bg-white/98 dark:bg-gray-900/95 backdrop-blur-2xl border border-slate-200 dark:border-white/15 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.8)] p-4 text-slate-800 dark:text-white space-y-4 transition-all duration-150 ${
+      {/* Floating Dropdown Panel with Integrated Search Bar & Granular Filters (Solid Surface, Zero Glassmorphism) */}
+      <div className={`absolute top-full left-0 mt-2.5 w-80 sm:w-96 max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-thin bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-4 text-slate-800 dark:text-white space-y-4 transition-all duration-150 ${
         isOpen ? 'block z-50 animate-in fade-in slide-in-from-top-2' : 'hidden'
       }`}>
           {/* 1. Embedded Search Bar at Top */}
           <div>
-            <div className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+            <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
               <span>Search Map</span>
               <span className="text-[9px] text-blue-600 dark:text-blue-400">Barangays, Shelters &amp; Hazards</span>
             </div>
@@ -335,22 +337,22 @@ export function UnifiedMapFilterSearch({
           </div>
 
           {/* 2. Distress SOS Guarantee Alert */}
-          <div className="flex items-center justify-between bg-rose-50 dark:bg-red-950/60 border border-rose-200 dark:border-red-500/40 rounded-xl px-3 py-2 text-xs">
+          <div className="flex items-center justify-between bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-xl px-3 py-2 text-xs">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
               </span>
-              <span className="font-extrabold text-rose-700 dark:text-red-200">SOS Distress Signals</span>
+              <span className="font-extrabold text-rose-700 dark:text-rose-200">SOS Distress Signals</span>
             </div>
-            <span className="text-[10px] font-bold text-rose-600 dark:text-red-300 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-rose-600 dark:text-rose-300 uppercase tracking-wider">
               {counts.sos > 0 ? `${counts.sos} Active Beacons` : 'Standby (Always Visible)'}
             </span>
           </div>
 
           {/* 3. Granular Filter Options */}
           <div>
-            <div className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+            <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
               <span>Filter Map Entities</span>
               {activeFilter !== 'all' && (
                 <button
@@ -376,7 +378,7 @@ export function UnifiedMapFilterSearch({
                     className={`flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
                       isActive
                         ? 'bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-600/25'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 dark:bg-white/5 dark:hover:bg-white/10 dark:text-white/80 dark:border-white/5'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
@@ -385,7 +387,7 @@ export function UnifiedMapFilterSearch({
                     </div>
                     {typeof opt.count === 'number' && (
                       <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
-                        isActive ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-600 dark:bg-black/30 dark:text-white/50'
+                        isActive ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-600 dark:bg-slate-950 dark:text-slate-300'
                       }`}>
                         {opt.count}
                       </span>
@@ -397,11 +399,11 @@ export function UnifiedMapFilterSearch({
           </div>
 
           {/* 4. Base Map Overlays Toggle */}
-          <div className="border-t border-slate-200 dark:border-white/10 pt-3 space-y-2">
-            <div className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Base GIS Overlays</div>
+          <div className="border-t border-slate-200 dark:border-slate-800 pt-3 space-y-2">
+            <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Base GIS Overlays</div>
             <div className="space-y-1.5 text-xs">
-              <label className="flex items-center justify-between p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
-                <span className="flex items-center gap-2 text-slate-700 dark:text-white/80">
+              <label className="flex items-center justify-between p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition select-none">
+                <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
                   <span className="w-2 h-2 rounded-full bg-cyan-400" />
                   Isolate Zamboanga (Spotlight)
                 </span>
@@ -409,13 +411,26 @@ export function UnifiedMapFilterSearch({
                   type="checkbox"
                   checked={isolateZamboanga}
                   onChange={e => onToggleIsolateZamboanga?.(e.target.checked)}
-                  className="rounded border-slate-300 dark:border-white/20 text-cyan-500 bg-white dark:bg-white/10 focus:ring-0 cursor-pointer"
+                  className="rounded border-slate-300 dark:border-slate-600 text-cyan-500 bg-white dark:bg-slate-800 focus:ring-0 cursor-pointer"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition select-none">
+                <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                  Barangay Boundaries (98)
+                </span>
+                <input
+                  type="checkbox"
+                  checked={showBarangayBoundaries}
+                  onChange={e => onToggleBarangayBoundaries?.(e.target.checked)}
+                  className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 bg-white dark:bg-slate-800 focus:ring-0 cursor-pointer"
                 />
               </label>
 
               {!isCSWDO && (
-                <label className="flex items-center justify-between p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
-                  <span className="flex items-center gap-2 text-slate-700 dark:text-white/80">
+                <label className="flex items-center justify-between p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition select-none">
+                  <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
                     <span className="w-2 h-2 rounded-full bg-blue-400" />
                     Road Network Graph (GIS)
                   </span>
@@ -423,13 +438,13 @@ export function UnifiedMapFilterSearch({
                     type="checkbox"
                     checked={showRoadNetwork}
                     onChange={e => onToggleRoadNetwork(e.target.checked)}
-                    className="rounded border-slate-300 dark:border-white/20 text-blue-600 bg-white dark:bg-white/10 focus:ring-0 cursor-pointer"
+                    className="rounded border-slate-300 dark:border-slate-600 text-blue-600 bg-white dark:bg-slate-800 focus:ring-0 cursor-pointer"
                   />
                 </label>
               )}
 
-              <label className="flex items-center justify-between p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
-                <span className="flex items-center gap-2 text-slate-700 dark:text-white/80">
+              <label className="flex items-center justify-between p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition select-none">
+                <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
                   <span className="w-2 h-2 rounded-full bg-sky-400" />
                   Live Weather Radar (Doppler)
                 </span>
@@ -437,13 +452,13 @@ export function UnifiedMapFilterSearch({
                   type="checkbox"
                   checked={showWeather}
                   onChange={e => onToggleWeather(e.target.checked)}
-                  className="rounded border-slate-300 dark:border-white/20 text-blue-600 bg-white dark:bg-white/10 focus:ring-0 cursor-pointer"
+                  className="rounded border-slate-300 dark:border-slate-600 text-blue-600 bg-white dark:bg-slate-800 focus:ring-0 cursor-pointer"
                 />
               </label>
 
               {!isCSWDO && (
-                <label className="flex items-center justify-between p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
-                  <span className="flex items-center gap-2 text-slate-700 dark:text-white/80">
+                <label className="flex items-center justify-between p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition select-none">
+                  <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
                     <span className="w-2 h-2 rounded-full bg-amber-400" />
                     Demographics Heatmap
                   </span>
@@ -451,7 +466,7 @@ export function UnifiedMapFilterSearch({
                     type="checkbox"
                     checked={showHeatmap}
                     onChange={e => onToggleHeatmap(e.target.checked)}
-                    className="rounded border-slate-300 dark:border-white/20 text-amber-500 bg-white dark:bg-white/10 focus:ring-0 cursor-pointer"
+                    className="rounded border-slate-300 dark:border-slate-600 text-amber-500 bg-white dark:bg-slate-800 focus:ring-0 cursor-pointer"
                   />
                 </label>
               )}
