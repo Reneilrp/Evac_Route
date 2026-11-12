@@ -295,7 +295,7 @@ export default function RescueDispatch() {
 
       {/* Fleet Availability Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">Available Fleet</p>
             <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{availableUnits.length}</p>
@@ -306,7 +306,7 @@ export default function RescueDispatch() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">Active Operations</p>
             <p className="text-2xl font-black text-rose-600 dark:text-rose-400">{activeMissions.length}</p>
@@ -317,7 +317,7 @@ export default function RescueDispatch() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">Distress Calls / SOS</p>
             <p className="text-2xl font-black text-amber-600 dark:text-amber-400">{pendingIncidents.length}</p>
@@ -328,7 +328,7 @@ export default function RescueDispatch() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">Rescues Completed</p>
             <p className="text-2xl font-black text-blue-600 dark:text-blue-400">{completedMissions.length}</p>
@@ -388,7 +388,7 @@ export default function RescueDispatch() {
       {activeTab === 'sos' && (
         <div className="space-y-4">
           {pendingIncidents.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-12 text-center border border-gray-100 dark:border-slate-800 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-12 text-center border border-slate-200 dark:border-slate-800 shadow-sm">
               <CheckCircle2 size={40} className="mx-auto text-emerald-500 mb-3" />
               <h3 className="font-bold text-gray-800 dark:text-slate-100 text-base">No Pending Distress Calls</h3>
               <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">All flood SOS and rescue requests have been dispatched or addressed.</p>
@@ -487,7 +487,7 @@ export default function RescueDispatch() {
       {activeTab === 'active' && (
         <div className="space-y-4">
           {activeMissions.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-12 text-center border border-gray-100 dark:border-slate-800 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-12 text-center border border-slate-200 dark:border-slate-800 shadow-sm">
               <LifeBuoy size={40} className="mx-auto text-gray-400 dark:text-slate-500 mb-3" />
               <h3 className="font-bold text-gray-800 dark:text-slate-100 text-base">No Active Rescue Missions</h3>
               <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">All rescue units are currently standing by on base.</p>
@@ -546,7 +546,7 @@ export default function RescueDispatch() {
                   </div>
 
                   {/* Stepper Controls */}
-                  <div className="flex flex-col justify-between border-t md:border-t-0 md:border-l border-gray-100 dark:border-slate-800 pt-4 md:pt-0 md:pl-6 w-full md:w-56 space-y-2">
+                  <div className="flex flex-col justify-between border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 pt-4 md:pt-0 md:pl-6 w-full md:w-56 space-y-2">
                     <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Mission Action Stepper</p>
                     
                     {m.status === 'dispatched' && (
@@ -630,7 +630,7 @@ export default function RescueDispatch() {
       {/* TAB 3: Fleet Status Roster */}
       {activeTab === 'fleet' && (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-xs">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
             <div>
               <h4 className="font-bold text-gray-900 dark:text-slate-100 text-xs">CDRRMO Rescue Fleet Inventory</h4>
               <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
@@ -673,7 +673,7 @@ export default function RescueDispatch() {
                   </span>
                 </div>
 
-                <div className="text-xs text-gray-500 dark:text-slate-400 space-y-2 pt-2 border-t border-gray-100 dark:border-slate-800">
+                <div className="text-xs text-gray-500 dark:text-slate-400 space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
                   <div className="flex justify-between items-center">
                     <span>Direct Hotline:</span>
                     <span className="font-mono text-gray-800 dark:text-slate-200">{u.contact_number || '0917-RESCUE'}</span>
@@ -750,7 +750,7 @@ export default function RescueDispatch() {
       {/* TAB 4: Completed Mission Logs */}
       {activeTab === 'history' && (
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setHistoryArchiveView('active')}
@@ -1069,7 +1069,7 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters = [], 
 
   return (
     <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-xs z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-slate-800">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800">
         <div className="bg-red-600 text-white p-5 flex justify-between items-center">
           <div className="flex items-center gap-2.5">
             <LifeBuoy size={20} />
@@ -1452,7 +1452,7 @@ function StagingHandoverModal({ mission, shelters, onClose, onConfirm, isSubmitt
 
   return (
     <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-xs z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 dark:border-slate-800 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
         <div className="bg-teal-700 text-white p-5 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <span className="text-xl">🌊</span>
@@ -1546,7 +1546,7 @@ function RegisterRescueUnitModal({ staff = [], onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-xs z-[100] flex items-center justify-center p-4 animate-in fade-in duration-150" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-100 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-5 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Truck size={20} />

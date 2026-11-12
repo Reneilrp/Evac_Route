@@ -863,7 +863,7 @@ function HazardFormModal({
             </p>
           </div>
           {hazardType === 'flood' && (
-            <div className="flex items-start gap-2 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800/80">
+            <div className="flex items-start gap-2 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-800/80">
               <input
                 type="checkbox"
                 id="is_fixed_flood_spot"
@@ -945,7 +945,7 @@ function ShelterViewModal({ shelter, onCancel, onNavigateShelter }) {
             <span className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Shelter Name</span>
             <p className="font-semibold text-gray-900 dark:text-white text-base">{shelter.name}</p>
           </div>
-          <div className="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-slate-950 p-3 rounded-lg border border-gray-100 dark:border-slate-800">
+          <div className="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
             <div>
               <span className="block text-xs text-gray-500 dark:text-slate-400">Current Occupancy</span>
               <p className="text-lg font-bold text-gray-900 dark:text-white">{shelter.current_occupancy ?? 0}</p>
@@ -1049,7 +1049,7 @@ function ShelterEditModal({ shelter, onUpdate, onDelete, onCancel, isLoading }) 
             </select>
           </div>
 
-          <div className="bg-gray-50 dark:bg-slate-950 p-3 rounded-lg flex items-center justify-between border border-gray-100 dark:border-slate-800">
+          <div className="bg-gray-50 dark:bg-slate-950 p-3 rounded-lg flex items-center justify-between border border-slate-200 dark:border-slate-800">
             <span className="text-xs text-gray-500 dark:text-slate-400">
               Current Occupancy: <strong className="text-gray-700 dark:text-slate-200">{shelter.current_occupancy}</strong>
             </span>

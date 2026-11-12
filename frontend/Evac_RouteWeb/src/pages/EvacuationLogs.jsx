@@ -203,26 +203,26 @@ export default function EvacuationLogs() {
         )}
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-950/50">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/70 dark:bg-slate-950/50">
           <div className="flex gap-3 w-1/2">
             <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={18} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
               <input 
                 type="text" 
                 placeholder="Search family name, QR hash, or shelter..." 
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
               />
             </div>
             <button 
               type="button"
               onClick={() => setIsFilterOpen(prev => !prev)}
-              className={`border px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm cursor-pointer ${
+              className={`border px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-xs cursor-pointer ${
                 isFilterOpen || activeFilterCount > 0
                   ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-500 text-blue-600 dark:text-blue-400 font-bold'
-                  : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-750'
+                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750'
               }`}
             >
               <Filter size={16} />
@@ -234,14 +234,14 @@ export default function EvacuationLogs() {
               )}
             </button>
           </div>
-          <div className="text-sm text-gray-500 dark:text-slate-400 flex items-center gap-2">
+          <div className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
             <Calendar size={16} /> {today}
           </div>
         </div>
 
         {/* Collapsible Filter Panel */}
         {isFilterOpen && (
-          <div className="p-4 bg-gray-50/90 dark:bg-slate-950/80 border-b border-gray-200/80 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 animate-in fade-in duration-150">
+          <div className="p-4 bg-slate-50/90 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 animate-in fade-in duration-150">
             <div>
               <label className="block text-[11px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">
                 Stay Status
@@ -347,7 +347,7 @@ export default function EvacuationLogs() {
                   <th className="py-3 px-6 font-semibold">Status / Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                 {filteredLogs.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-gray-400 dark:text-slate-500 font-medium">
@@ -428,22 +428,22 @@ export default function EvacuationLogs() {
 
         {/* Pagination Controls */}
         {!isLoading && logsData?.data && (
-          <div className="p-4 border-t border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-950/50">
-            <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">
+          <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/70 dark:bg-slate-950/50">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
               Showing page {page} of {logsData.data.last_page || 1} (Total: {logsData.data.total || 0} logs)
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded text-xs font-bold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition disabled:opacity-50"
+                className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition disabled:opacity-50 cursor-pointer shadow-2xs"
               >
                 Previous
               </button>
               <button
                 onClick={() => setPage(p => Math.min(logsData.data.last_page || 1, p + 1))}
                 disabled={page === (logsData.data.last_page || 1)}
-                className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded text-xs font-bold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition disabled:opacity-50"
+                className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition disabled:opacity-50 cursor-pointer shadow-2xs"
               >
                 Next
               </button>

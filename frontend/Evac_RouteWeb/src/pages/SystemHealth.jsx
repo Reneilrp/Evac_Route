@@ -63,7 +63,7 @@ export default function SystemHealth() {
   return (
     <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6">
       {/* Top Action Bar */}
-      <div className="flex justify-end items-center gap-3 flex-wrap bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm">
+      <div className="flex justify-end items-center gap-3 flex-wrap bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <button
           onClick={() => {
             refetch();
@@ -98,7 +98,7 @@ export default function SystemHealth() {
       {/* Grid: 3 Core Health Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Card 1: Database Health */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Database size={20} className="text-emerald-500 dark:text-emerald-400" />
@@ -113,11 +113,11 @@ export default function SystemHealth() {
           </div>
 
           <div className="space-y-2 text-sm pt-2">
-            <div className="flex justify-between py-1.5 border-b border-gray-100 dark:border-slate-800">
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
               <span className="text-gray-500 dark:text-slate-400">Database Driver:</span>
               <span className="font-bold text-gray-800 dark:text-white uppercase">{db.driver || 'MySQL'}</span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-gray-100 dark:border-slate-800">
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
               <span className="text-gray-500 dark:text-slate-400">Query Ping Latency:</span>
               <span className="font-bold text-emerald-600 dark:text-emerald-400">{db.latency_ms ?? 0} ms</span>
             </div>
@@ -131,7 +131,7 @@ export default function SystemHealth() {
         </div>
 
         {/* Card 2: Reverb WebSocket Telemetry */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Radio size={20} className="text-blue-500 dark:text-blue-400" />
@@ -146,11 +146,11 @@ export default function SystemHealth() {
           </div>
 
           <div className="space-y-2 text-sm pt-2">
-            <div className="flex justify-between py-1.5 border-b border-gray-100 dark:border-slate-800">
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
               <span className="text-gray-500 dark:text-slate-400">Broadcast Protocol:</span>
               <span className="font-bold text-gray-800 dark:text-white uppercase">{ws.driver || 'Laravel Reverb'}</span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-gray-100 dark:border-slate-800">
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
               <span className="text-gray-500 dark:text-slate-400">WebSocket Port:</span>
               <span className="font-bold text-blue-600 dark:text-blue-400">{ws.port || 8080}</span>
             </div>
@@ -162,7 +162,7 @@ export default function SystemHealth() {
         </div>
 
         {/* Card 3: Server & Memory Runtime */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Server size={20} className="text-purple-500 dark:text-purple-400" />
@@ -174,11 +174,11 @@ export default function SystemHealth() {
           </div>
 
           <div className="space-y-2 text-sm pt-2">
-            <div className="flex justify-between py-1.5 border-b border-gray-100 dark:border-slate-800">
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
               <span className="text-gray-500 dark:text-slate-400">PHP Version:</span>
               <span className="font-bold text-gray-800 dark:text-white">PHP {server.php_version}</span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-gray-100 dark:border-slate-800">
+            <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800">
               <span className="text-gray-500 dark:text-slate-400">Laravel Core:</span>
               <span className="font-bold text-gray-800 dark:text-white">v{server.laravel_version}</span>
             </div>
@@ -191,7 +191,7 @@ export default function SystemHealth() {
       </div>
 
       {/* Record Volume Metrics Table */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm space-y-4">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <HardDrive size={20} className="text-blue-500 dark:text-blue-400" />

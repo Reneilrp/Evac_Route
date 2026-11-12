@@ -107,9 +107,9 @@ export default function ResidentRegistry() {
         </button>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
         {/* Search Bar */}
-        <div className="p-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/50 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/50 flex items-center justify-between">
           <div className="relative w-80">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -224,7 +224,7 @@ export default function ResidentRegistry() {
 
         {/* Pagination controls */}
         {!isLoading && pagination.last_page > 1 && (
-          <div className="p-4 border-t border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-950/50">
+          <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-950/50">
             <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">
               Showing page {page} of {pagination.last_page} (Total: {pagination.total} records)
             </p>
@@ -285,7 +285,7 @@ function ResidentHistoryModal({ resident, onClose }) {
 
         {/* Profile Card details */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-lg">
+          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
             <span className="flex items-center gap-1 text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
               <MapPin size={10} /> Barangay
             </span>
@@ -293,7 +293,7 @@ function ResidentHistoryModal({ resident, onClose }) {
               {resident.barangay}
             </span>
           </div>
-          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-lg">
+          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
             <span className="flex items-center gap-1 text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
               <Phone size={10} /> Contact Number
             </span>
@@ -301,7 +301,7 @@ function ResidentHistoryModal({ resident, onClose }) {
               {resident.contact_number}
             </span>
           </div>
-          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-lg">
+          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
             <span className="flex items-center gap-1 text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
               <User size={10} /> Registered Size
             </span>
@@ -309,7 +309,7 @@ function ResidentHistoryModal({ resident, onClose }) {
               {resident.headcount} Pax
             </span>
           </div>
-          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-lg">
+          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
             <span className="flex items-center gap-1 text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
               <Truck size={10} /> Transport
             </span>
@@ -326,7 +326,7 @@ function ResidentHistoryModal({ resident, onClose }) {
             Evacuation &amp; Relief Stay History
           </h4>
 
-          <div className="border border-gray-100 dark:border-slate-800 rounded-lg overflow-hidden">
+          <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
             <table className="min-w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider">
@@ -424,7 +424,7 @@ function ResidentHistoryModal({ resident, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end pt-3 border-t border-gray-100 dark:border-slate-800">
+        <div className="flex justify-end pt-3 border-t border-slate-200 dark:border-slate-800">
           <button
             onClick={onClose}
             className="bg-gray-200 hover:bg-gray-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 px-4 py-2 rounded-lg font-bold text-xs uppercase transition"

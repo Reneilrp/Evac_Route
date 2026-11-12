@@ -146,7 +146,7 @@ export default function RescueVehicles() {
 
       {/* Summary Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5 shrink-0">
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-xs border border-gray-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Total Fleet</p>
             <p className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-0.5">{totalCount}</p>
@@ -157,7 +157,7 @@ export default function RescueVehicles() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-xs border border-gray-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Ready on Standby</p>
             <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{standbyCount}</p>
@@ -168,7 +168,7 @@ export default function RescueVehicles() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-xs border border-gray-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Active Operations</p>
             <p className="text-2xl font-black text-sky-600 dark:text-sky-400 mt-0.5">{activeMissionCount}</p>
@@ -179,7 +179,7 @@ export default function RescueVehicles() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-xs border border-gray-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Off-Duty / Maintenance</p>
             <p className="text-2xl font-black text-slate-500 dark:text-slate-400 mt-0.5">{offDutyCount}</p>
@@ -282,7 +282,7 @@ export default function RescueVehicles() {
 
       {/* Main Vehicle Fleet Grid */}
       {isLoading ? (
-        <div className="flex items-center justify-center h-48 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800">
+        <div className="flex items-center justify-center h-48 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <span className="flex h-5 w-5 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -292,7 +292,7 @@ export default function RescueVehicles() {
           </div>
         </div>
       ) : filteredUnits.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 text-center">
+        <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
           <Truck size={42} className="text-gray-300 dark:text-slate-600 mb-3" />
           <p className="text-sm font-bold text-gray-800 dark:text-slate-200">No rescue vehicles found.</p>
           <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 max-w-sm">
@@ -322,7 +322,7 @@ export default function RescueVehicles() {
             return (
               <div
                 key={unit.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between"
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between"
               >
                 <div>
                   {/* Card Header: Type Badge & Status */}
@@ -370,7 +370,7 @@ export default function RescueVehicles() {
                   </div>
 
                   {/* Operational Details */}
-                  <div className="space-y-2 text-xs bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 mb-3">
+                  <div className="space-y-2 text-xs bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800/80 mb-3">
                     {/* Operator in-charge */}
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500 dark:text-slate-400 font-medium">Assigned Driver:</span>
@@ -420,7 +420,7 @@ export default function RescueVehicles() {
                 </div>
 
                 {/* Card Actions */}
-                <div className="pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between gap-1.5">
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1.5">
                   <div className="flex items-center gap-1.5">
                     {/* Locate on Map Button */}
                     {unit.current_latitude && unit.current_longitude && (
@@ -577,7 +577,7 @@ export function VehicleModal({ title, initialData = null, staff = [], onClose, o
       className="fixed inset-0 bg-gray-900/70 backdrop-blur-xs z-[100] flex items-center justify-center p-4 animate-in fade-in duration-150"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-100 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-5 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Truck size={20} />

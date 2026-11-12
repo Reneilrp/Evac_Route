@@ -62,7 +62,7 @@ export default function NotFound() {
         </div>
 
         {/* System footer */}
-        <div className="mt-8 pt-6 border-t border-gray-100 dark:border-slate-800/80 flex items-center justify-center gap-2 text-xs text-gray-400 dark:text-slate-500 font-medium">
+        <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-center gap-2 text-xs text-slate-400 dark:text-slate-500 font-medium">
           <ShieldAlert size={14} className="text-blue-500" />
           <span>EvacRoute • CDRRMO & CSWDO Disaster Portal</span>
         </div>

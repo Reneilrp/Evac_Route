@@ -215,8 +215,8 @@ export default function ShelterManagement() {
 
       {/* Tab 1: Shelters & Capacities */}
       {activeTab === 'capacities' && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-950/50">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-950/50">
             <h3 className="font-semibold text-gray-700 dark:text-slate-200">Evacuation Centers Status</h3>
             {selectedShelterForScanner && (
               <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-bold px-3 py-1 rounded-full">
@@ -311,7 +311,7 @@ export default function ShelterManagement() {
                             </div>
 
                             {activeTemplate && (
-                              <div className="mt-2.5 flex items-center justify-between text-[11px] bg-gray-50/70 dark:bg-slate-950/40 p-1.5 rounded-lg border border-gray-100 dark:border-slate-800">
+                              <div className="mt-2.5 flex items-center justify-between text-[11px] bg-gray-50/70 dark:bg-slate-950/40 p-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
                                 <span className="text-gray-500 dark:text-slate-400 font-medium truncate max-w-[170px]" title="Remaining buffer slots">
                                   Buffer ({Math.max(0, shelter.max_capacity - shelter.current_occupancy)}):{' '}
                                   <strong className="text-gray-700 dark:text-slate-200">
@@ -421,7 +421,7 @@ export default function ShelterManagement() {
             <>
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                   <div>
                     <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Active Planning Profile</span>
                     <div className="flex items-center gap-2 mt-1">
@@ -432,7 +432,7 @@ export default function ShelterManagement() {
                   <p className="mt-4 text-xs text-gray-500 dark:text-slate-400">All predictions are dynamically computed using this profile's quotas.</p>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Active Evacuee Demand (Current)</span>
                   <div className="text-2xl font-black text-gray-900 dark:text-slate-100 mt-1">
                     {shelters.reduce((acc, s) => acc + s.current_occupancy, 0)} <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Pax currently checked in</span>
@@ -449,7 +449,7 @@ export default function ShelterManagement() {
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Recommended Stock (Full Max Capacity)</span>
                   <div className="text-2xl font-black text-green-600 dark:text-green-400 mt-1">
                     {shelters.reduce((acc, s) => acc + s.max_capacity, 0)} <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Max potential capacity</span>
@@ -468,8 +468,8 @@ export default function ShelterManagement() {
               </div>
 
               {/* Demand Table */}
-              <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
-                <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-gray-50/50 dark:bg-slate-950/50">
+              <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-gray-50/50 dark:bg-slate-950/50">
                   <div>
                     <h3 className="font-bold text-gray-700 dark:text-slate-200">Shelter Logistical Projections</h3>
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Calculated requirements and safety stock recommendations based on max capacity slots.</p>
@@ -715,12 +715,12 @@ function BarangayReliefCalculatorWidget({ isCSWDO, onDispatchManifest }) {
       </div>
 
       {isLoading ? (
-        <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-gray-100 dark:border-slate-800 text-center">
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
           <span className="animate-pulse font-bold text-gray-500">Calculating proactive relief manifest for Brgy. {selectedBarangay}...</span>
         </div>
       ) : summary ? (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block">Target Barangay</span>
             <div className="text-xl font-black text-gray-900 dark:text-slate-100 mt-1">
               📍 Brgy. {summary.barangay}
@@ -730,7 +730,7 @@ function BarangayReliefCalculatorWidget({ isCSWDO, onDispatchManifest }) {
             </p>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block">Registered Headcount</span>
             <div className="text-xl font-black text-blue-600 dark:text-blue-400 mt-1">
               {summary.total_affected_headcount} <span className="text-xs font-medium text-gray-500">Base Pax</span>
@@ -752,7 +752,7 @@ function BarangayReliefCalculatorWidget({ isCSWDO, onDispatchManifest }) {
             </p>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col justify-center">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center">
             <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block">Pre-Staging Dispatch</span>
             {isCSWDO ? (
               <button
@@ -769,7 +769,7 @@ function BarangayReliefCalculatorWidget({ isCSWDO, onDispatchManifest }) {
           </div>
 
           {/* Supply Breakdown Table */}
-          <div className="md:col-span-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 p-5 shadow-sm">
+          <div className="md:col-span-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
             <div className="flex justify-between items-center mb-3">
               <h4 className="font-bold text-gray-800 dark:text-slate-200 text-sm">
                 Proactive Relief Supply Breakdown Manifest (Brgy. {summary.barangay})
@@ -781,7 +781,7 @@ function BarangayReliefCalculatorWidget({ isCSWDO, onDispatchManifest }) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {summary.estimated_supplies_needed?.map((item, idx) => (
-                <div key={idx} className="bg-gray-50 dark:bg-slate-950 p-4 rounded-lg border border-gray-100 dark:border-slate-800">
+                <div key={idx} className="bg-gray-50 dark:bg-slate-950 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
                   <span className="block text-xs font-bold text-gray-700 dark:text-slate-300">{item.item_name}</span>
                   <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
                     {item.recommended_total_amount} <span className="text-xs font-semibold text-gray-500">{item.unit_type}</span>
@@ -861,7 +861,7 @@ function ShelterDetailsModal({ shelterId, onClose, onLaunchScanner }) {
         </div>
 
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-lg">
+          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
             <span className="block text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">Status</span>
             <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-black uppercase ${
               shelter?.status === 'open' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' :
@@ -871,13 +871,13 @@ function ShelterDetailsModal({ shelterId, onClose, onLaunchScanner }) {
               {shelter?.status}
             </span>
           </div>
-          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-lg">
+          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
             <span className="block text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">Occupancy</span>
             <span className="block mt-1 text-sm font-bold text-gray-700 dark:text-slate-200">
               {shelter?.current_occupancy} / {shelter?.max_capacity}
             </span>
           </div>
-          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-lg">
+          <div className="p-3 bg-gray-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
             <span className="block text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">Capacity Load</span>
             <span className="block mt-1 text-sm font-bold text-gray-700 dark:text-slate-200">
               {Math.min(100, Math.round((shelter?.current_occupancy / shelter?.max_capacity) * 100))}%
@@ -901,7 +901,7 @@ function ShelterDetailsModal({ shelterId, onClose, onLaunchScanner }) {
             </button>
           </div>
 
-          <div className="border border-gray-100 dark:border-slate-800 rounded-lg overflow-hidden">
+          <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
             <table className="min-w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-[10px] uppercase font-bold tracking-wider">
@@ -970,7 +970,7 @@ function ShelterDetailsModal({ shelterId, onClose, onLaunchScanner }) {
           </div>
         </div>
 
-        <div className="flex justify-end pt-2 border-t border-gray-100 dark:border-slate-800">
+        <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-slate-800">
           <button
             onClick={onClose}
             className="bg-gray-200 hover:bg-gray-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 px-4 py-2 rounded-lg font-bold text-xs uppercase transition"

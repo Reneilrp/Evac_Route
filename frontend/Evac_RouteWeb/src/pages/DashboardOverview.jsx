@@ -220,7 +220,7 @@ export default function DashboardOverview() {
       {activeAgency === 'cdrmo' ? (
         /* CDRRMO TACTICAL STAT CARDS */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-gray-100 dark:border-slate-800 flex items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 flex items-center">
             <div className="bg-orange-100 dark:bg-orange-950/70 p-4 rounded-lg mr-4">
               <AlertTriangle size={24} className="text-orange-600 dark:text-orange-400" />
             </div>
@@ -231,7 +231,7 @@ export default function DashboardOverview() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-gray-100 dark:border-slate-800 flex items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 flex items-center">
             <div className="bg-red-100 dark:bg-red-950/70 p-4 rounded-lg mr-4">
               <Flag size={24} className="text-red-600 dark:text-red-400" />
             </div>
@@ -242,7 +242,7 @@ export default function DashboardOverview() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-gray-100 dark:border-slate-800 flex items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 flex items-center">
             <div className="bg-blue-100 dark:bg-blue-950/70 p-4 rounded-lg mr-4">
               <LifeBuoy size={24} className="text-blue-600 dark:text-blue-400" />
             </div>
@@ -255,7 +255,7 @@ export default function DashboardOverview() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-gray-100 dark:border-slate-800 flex items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 flex items-center">
             <div className="bg-purple-100 dark:bg-purple-950/70 p-4 rounded-lg mr-4">
               <Megaphone size={24} className="text-purple-600 dark:text-purple-400" />
             </div>
@@ -269,7 +269,7 @@ export default function DashboardOverview() {
       ) : (
         /* CSWDO RELIEF STAT CARDS */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-gray-100 dark:border-slate-800 flex items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 flex items-center">
             <div className="bg-blue-100 dark:bg-blue-950/70 p-4 rounded-lg mr-4">
               <Users size={24} className="text-blue-600 dark:text-blue-400" />
             </div>
@@ -280,7 +280,7 @@ export default function DashboardOverview() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-gray-100 dark:border-slate-800 flex items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 flex items-center">
             <div className="bg-green-100 dark:bg-green-950/70 p-4 rounded-lg mr-4">
               <Home size={24} className="text-green-600 dark:text-green-400" />
             </div>
@@ -291,7 +291,7 @@ export default function DashboardOverview() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-gray-100 dark:border-slate-800 flex items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 flex items-center">
             <div className="bg-red-100 dark:bg-red-950/70 p-4 rounded-lg mr-4">
               <Activity size={24} className="text-red-600 dark:text-red-400" />
             </div>
@@ -302,7 +302,7 @@ export default function DashboardOverview() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-gray-100 dark:border-slate-800 flex items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 flex items-center">
             <div className="bg-amber-100 dark:bg-amber-950/70 p-4 rounded-lg mr-4">
               <Package size={24} className="text-amber-600 dark:text-amber-400" />
             </div>
@@ -319,7 +319,7 @@ export default function DashboardOverview() {
       {activeAgency === 'cdrmo' ? (
         /* CDRRMO TACTICAL CHARTS */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-gray-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm">Distress Incident Reports by Status</h3>
               <Link to="/admin/incidents" className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1">
@@ -339,7 +339,7 @@ export default function DashboardOverview() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-gray-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm">Search &amp; Rescue Fleet Deployment</h3>
               <Link to="/admin/rescue-dispatch" className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1">
@@ -362,7 +362,7 @@ export default function DashboardOverview() {
       ) : (
         /* CSWDO CHARTS */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-gray-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-slate-200 dark:border-slate-800">
             <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm mb-4">Shelter Occupancy vs Max Capacity</h3>
             <div className="h-64 w-full">
               {shelterChartData.length === 0 ? (
@@ -386,7 +386,7 @@ export default function DashboardOverview() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-gray-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-xs border border-slate-200 dark:border-slate-800">
             <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm mb-4">Relief Supplies &amp; Logistics Stock</h3>
             <div className="h-64 w-full">
               {inventoryChartData.length === 0 ? (
@@ -414,8 +414,8 @@ export default function DashboardOverview() {
       {/* Live Feed Component */}
       {activeAgency === 'cdrmo' ? (
         /* CDRRMO TACTICAL LIVE INCIDENTS FEED */
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-gray-100 dark:border-slate-800 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/40 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/40 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="flex h-2.5 w-2.5 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -430,7 +430,7 @@ export default function DashboardOverview() {
 
           {(tactical.recent_incidents || []).length === 0 ? (
             <div className="p-6">
-              <div className="flex items-center justify-center h-28 border-2 border-dashed border-gray-200 dark:border-slate-800 rounded-lg bg-gray-50 dark:bg-slate-950/20">
+              <div className="flex items-center justify-center h-28 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-lg bg-gray-50 dark:bg-slate-950/20">
                 <p className="text-gray-400 dark:text-slate-500 font-medium flex items-center gap-2 text-xs">
                   <ShieldAlert size={16} /> No pending field incidents reported at this time.
                 </p>
@@ -497,8 +497,8 @@ export default function DashboardOverview() {
         </div>
       ) : (
         /* CSWDO RECENT CHECK-INS FEED */
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-gray-100 dark:border-slate-800 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/40 flex items-center gap-2">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/40 flex items-center gap-2">
             <span className="flex h-2.5 w-2.5 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
@@ -508,7 +508,7 @@ export default function DashboardOverview() {
 
           {recentLogs.length === 0 ? (
             <div className="p-6">
-              <div className="flex items-center justify-center h-28 border-2 border-dashed border-gray-200 dark:border-slate-800 rounded-lg bg-gray-50 dark:bg-slate-950/20">
+              <div className="flex items-center justify-center h-28 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-lg bg-gray-50 dark:bg-slate-950/20">
                 <p className="text-gray-400 dark:text-slate-500 font-medium flex items-center gap-2">
                   <span className="flex h-3 w-3 relative">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>

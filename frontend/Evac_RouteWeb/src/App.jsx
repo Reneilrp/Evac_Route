@@ -39,7 +39,11 @@ function NavLink({ to, children }) {
   return (
     <Link 
       to={to} 
-      className={`block py-2 px-3 rounded text-sm whitespace-nowrap transition duration-200 ${isActive ? 'bg-blue-600 text-white font-semibold' : 'hover:bg-gray-800 text-gray-300 hover:text-white'}`}
+      className={`block py-2 px-3 rounded-lg text-sm font-medium whitespace-nowrap transition duration-200 ${
+        isActive 
+          ? 'bg-blue-600 text-white font-semibold shadow-xs' 
+          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+      }`}
     >
       {children}
     </Link>
@@ -54,12 +58,14 @@ function IconNavLink({ to, icon, label, badge = 0 }) {
       to={to}
       title={label}
       className={`flex justify-center items-center relative p-2 rounded-lg transition duration-200 ${
-        isActive ? 'bg-blue-600 text-white' : 'hover:bg-gray-800 text-gray-400 hover:text-white'
+        isActive 
+          ? 'bg-blue-600 text-white shadow-xs' 
+          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
       }`}
     >
       {icon}
       {badge > 0 && (
-        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black rounded-full h-4 w-4 flex items-center justify-center animate-pulse">
+        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black rounded-full h-4 w-4 flex items-center justify-center animate-pulse shadow-xs">
           {badge}
         </span>
       )}
@@ -420,41 +426,41 @@ function DashboardLayout({ children }) {
   }, [location.pathname, queryClient]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-slate-950">
-      {/* Sidebar */}
-      <aside className={`${isMapRoute ? 'w-16' : 'w-64'} bg-gray-900 text-white flex flex-col z-20 shadow-xl transition-all duration-300`}>
-        <div className={`border-b border-gray-800 flex items-center justify-center ${isMapRoute ? 'p-3' : 'p-4'}`}>
+    <div className="flex h-screen overflow-hidden bg-slate-100/80 dark:bg-slate-950">
+      {/* Sidebar - Adaptive light/dark palette */}
+      <aside className={`${isMapRoute ? 'w-16' : 'w-64'} bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col z-20 shadow-md border-r border-slate-200 dark:border-slate-800 transition-all duration-300`}>
+        <div className={`border-b border-slate-200 dark:border-slate-800 flex items-center justify-center ${isMapRoute ? 'p-3' : 'p-4'}`}>
           {isMapRoute ? (
             <div className="flex flex-col items-center gap-1.5">
-              <span className="text-blue-400 font-black text-lg" title="Evac_Route">E</span>
+              <span className="text-blue-600 dark:text-blue-400 font-black text-lg" title="Evac_Route">E</span>
             </div>
           ) : (
             <div className="w-full">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-black tracking-wider text-blue-400">Evac_Route</h1>
+                  <h1 className="text-xl font-black tracking-wider text-blue-600 dark:text-blue-400">Evac_Route</h1>
                   <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wide border ${
                     activeAgency === 'admin'
-                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                      ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800'
                       : activeAgency === 'cswdo'
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                        : 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+                        : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800'
                   }`}>
                     {activeAgency === 'admin' ? 'ADMIN' : (activeAgency === 'cswdo' ? 'CSWDO' : 'CDRRMO')}
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-gray-400 mt-1 uppercase font-bold tracking-widest">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase font-bold tracking-widest">
                 {activeAgency === 'admin' ? 'System & City Control' : (activeAgency === 'cswdo' ? 'Relief & Camp Desk' : 'Disaster Operations')}
               </p>
             </div>
           )}
         </div>
-        <nav className={`flex-1 ${isMapRoute ? 'p-2' : 'p-4'} space-y-1 overflow-y-auto`}>
+        <nav className={`flex-1 ${isMapRoute ? 'p-2' : 'p-3'} space-y-1 overflow-y-auto`}>
           {activeAgency === 'admin' ? (
             /* === SYSTEM ADMIN CONSOLE (USER MANAGEMENT, RESIDENTS, AUDIT LOGS, SYSTEM HEALTH) === */
             <>
-              {!isMapRoute && <p className="text-[10px] font-bold text-purple-400 uppercase tracking-wider mb-2 mt-2 px-3">User &amp; Access Control</p>}
+              {!isMapRoute && <p className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-2 mt-2 px-3">User &amp; Access Control</p>}
               {isMapRoute ? (
                 <IconNavLink to="/admin/staff" icon={<Users size={20} />} label="User Management" />
               ) : (
@@ -466,7 +472,7 @@ function DashboardLayout({ children }) {
                 <NavLink to="/admin/residents">Resident Registry</NavLink>
               )}
 
-              {!isMapRoute && <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 mt-6 px-3">System &amp; Security</p>}
+              {!isMapRoute && <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 mt-5 px-3">System &amp; Security</p>}
               {isMapRoute ? (
                 <IconNavLink to="/admin/audit-logs" icon={<ShieldAlert size={20} />} label="Security &amp; Audit Logs" />
               ) : (
@@ -481,7 +487,7 @@ function DashboardLayout({ children }) {
           ) : activeAgency === 'cswdo' ? (
             /* === CSWDO CAMP & RELIEF HUB === */
             <>
-              {!isMapRoute && <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-2 mt-2 px-3">Relief &amp; Camp Operations</p>}
+              {!isMapRoute && <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2 mt-2 px-3">Relief &amp; Camp Operations</p>}
               {isMapRoute ? (
                 <IconNavLink to="/admin/dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard Overview" />
               ) : (
@@ -498,7 +504,7 @@ function DashboardLayout({ children }) {
                 <NavLink to="/admin/shelters">Shelter Capacity</NavLink>
               )}
 
-              {!isMapRoute && <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 mt-6 px-3">Camp Monitoring &amp; Records</p>}
+              {!isMapRoute && <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 mt-5 px-3">Camp Monitoring &amp; Records</p>}
               {isMapRoute ? (
                 <IconNavLink to="/admin/reports" icon={<FileText size={20} />} label="Evacuation & Relief Logs" />
               ) : (
@@ -530,7 +536,7 @@ function DashboardLayout({ children }) {
           ) : (
             /* === CDRRMO TACTICAL OPERATIONS (SHELTER CAPACITY & INVENTORY REMOVED) === */
             <>
-              {!isMapRoute && <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-2 mt-2 px-3">CDRRMO Tactical Operations</p>}
+              {!isMapRoute && <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2 mt-2 px-3">CDRRMO Tactical Operations</p>}
               {isMapRoute ? (
                 <IconNavLink to="/admin/dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard Overview" />
               ) : (
@@ -585,7 +591,7 @@ function DashboardLayout({ children }) {
                 <NavLink to="/admin/alerts">Emergency Warnings</NavLink>
               )}
 
-              {!isMapRoute && <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 mt-6 px-3">Administration &amp; Records</p>}
+              {!isMapRoute && <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 mt-5 px-3">Administration &amp; Records</p>}
               {isMapRoute ? (
                 <IconNavLink to="/admin/reports" icon={<FileText size={20} />} label="Evacuation Logs" />
               ) : (
@@ -612,14 +618,14 @@ function DashboardLayout({ children }) {
           )}
 
         </nav>
-        <div className={`border-t border-gray-800 bg-gray-950/20 ${isMapRoute ? 'p-2' : 'p-4'}`}>
+        <div className={`border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 ${isMapRoute ? 'p-2' : 'p-3'}`}>
           {isMapRoute ? (
             <div className="flex flex-col gap-2 w-full items-center">
               {user?.role === 'admin' && (
                 <button
                   onClick={() => setIsSettingsOpen(true)}
                   title="Admin Settings"
-                  className="w-full flex justify-center items-center p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition"
+                  className="w-full flex justify-center items-center p-2 bg-white hover:bg-slate-100 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 transition"
                 >
                   <Settings size={18} />
                 </button>
@@ -627,7 +633,7 @@ function DashboardLayout({ children }) {
               <button
                 onClick={() => setIsLogoutOpen(true)}
                 title="Logout"
-                className="w-full flex justify-center items-center p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition"
+                className="w-full flex justify-center items-center p-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-500/10 dark:hover:bg-red-500/20 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-900/40 transition"
               >
                 <LogOut size={18} />
               </button>
@@ -636,7 +642,7 @@ function DashboardLayout({ children }) {
             <div className="flex gap-2 w-full">
               <button
                 onClick={() => setIsLogoutOpen(true)}
-                className="flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2.5 rounded-lg transition font-bold text-sm tracking-wide"
+                className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-500/10 dark:hover:bg-red-500/20 dark:text-red-400 py-2 rounded-lg border border-red-200 dark:border-red-900/40 transition font-bold text-xs tracking-wide cursor-pointer"
               >
                 Logout
               </button>
@@ -644,7 +650,7 @@ function DashboardLayout({ children }) {
                 <button
                   onClick={() => setIsSettingsOpen(true)}
                   title="Admin Settings"
-                  className="px-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition flex items-center justify-center"
+                  className="px-3 bg-white hover:bg-slate-100 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 transition flex items-center justify-center cursor-pointer"
                 >
                   <Settings size={18} />
                 </button>
@@ -750,11 +756,11 @@ function DashboardLayout({ children }) {
                    setIsDropdownOpen(!isDropdownOpen);
                    setUnreadCount(0);
                  }}
-                 className="relative p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 transition focus:outline-none"
+                 className="relative p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition focus:outline-none cursor-pointer"
                >
                  <Bell size={20} />
                  {unreadCount > 0 && (
-                   <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-black rounded-full h-4 w-4 flex items-center justify-center animate-pulse">
+                   <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-black rounded-full h-4 w-4 flex items-center justify-center animate-pulse shadow-xs">
                      {unreadCount}
                    </span>
                  )}
@@ -762,20 +768,20 @@ function DashboardLayout({ children }) {
 
              {/* Dropdown menu */}
              {isDropdownOpen && (
-               <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50 animate-enter max-h-96 overflow-y-auto">
-                 <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                   <span className="font-extrabold text-xs text-gray-500 uppercase tracking-widest">Operation Feed</span>
+               <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 py-2 z-50 animate-enter max-h-96 overflow-y-auto">
+                 <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/70 dark:bg-slate-950/60">
+                   <span className="font-extrabold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest">Operation Feed</span>
                    <button
                      onClick={() => setNotifications([])}
-                     className="text-[10px] text-gray-400 hover:text-red-500 font-bold transition"
+                     className="text-[10px] text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 font-bold transition cursor-pointer"
                    >
                      Clear Feed
                    </button>
                  </div>
                  
-                 <div className="divide-y divide-gray-100">
+                 <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
                    {notifications.length === 0 ? (
-                     <div className="p-6 text-center text-gray-400 text-xs font-semibold">
+                     <div className="p-6 text-center text-slate-400 dark:text-slate-500 text-xs font-semibold">
                        No operational alerts received.
                      </div>
                    ) : (
@@ -784,7 +790,7 @@ function DashboardLayout({ children }) {
                          key={n.id}
                          to={n.link}
                          onClick={() => setIsDropdownOpen(false)}
-                         className="block p-3 hover:bg-blue-50/30 transition flex items-start gap-3"
+                         className="block p-3 hover:bg-blue-50/40 dark:hover:bg-slate-800/50 transition flex items-start gap-3"
                        >
                          <div className={`p-1.5 rounded-lg text-white mt-0.5 flex-shrink-0 ${
                            n.type === 'incident_submitted' ? 'bg-blue-500' :
@@ -798,9 +804,9 @@ function DashboardLayout({ children }) {
                             <TrendingUp size={14} />}
                          </div>
                          <div className="min-w-0">
-                           <p className="font-bold text-xs text-gray-800">{n.title}</p>
-                           <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">{n.message}</p>
-                           <p className="text-[9px] text-gray-400 mt-1 font-medium">{new Date(n.time).toLocaleTimeString()}</p>
+                           <p className="font-bold text-xs text-slate-800 dark:text-slate-200">{n.title}</p>
+                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{n.message}</p>
+                           <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-1 font-medium">{new Date(n.time).toLocaleTimeString()}</p>
                          </div>
                        </Link>
                      ))
@@ -1116,16 +1122,16 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
   return (
     <div 
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
     >
-      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] h-full sm:h-[560px] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] h-full sm:h-[560px] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-100 dark:border-slate-800 shrink-0">
-          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
+        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg flex items-center gap-2">
             ⚙️ LGU System Control Center
           </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 transition">
             <X size={22} />
           </button>
         </div>
@@ -1134,7 +1140,7 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
         <div className="flex-1 flex overflow-hidden">
           
           {/* Left Sidebar Menu */}
-          <aside className="w-1/3 bg-gray-50/50 dark:bg-slate-950/20 border-r border-gray-100 dark:border-slate-800 p-4 space-y-1.5 overflow-y-auto shrink-0">
+          <aside className="w-1/3 bg-slate-50/70 dark:bg-slate-950/40 border-r border-slate-200 dark:border-slate-800 p-4 space-y-1.5 overflow-y-auto shrink-0">
             <span className="block text-[9px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-2 px-1">Settings Groups</span>
             <button
               type="button"
@@ -1453,7 +1459,7 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
               <form onSubmit={handleConfigSubmit} className="space-y-4">
                 <h4 className="font-bold text-sm text-gray-800 dark:text-slate-200 border-b border-gray-200 dark:border-slate-800 pb-2">Audio Notifications</h4>
                 
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
                   <div>
                     <span className="block text-xs font-bold text-gray-750 dark:text-slate-300">Enable Alert Sounders</span>
                     <span className="text-[10px] text-gray-400 dark:text-slate-500 block mt-0.5">Play audio sirens and alert tones at operator desk.</span>
@@ -1518,7 +1524,7 @@ function AdminSettingsModal({ isOpen, onClose, user, setUser }) {
                   <span className="text-[10px] text-gray-400 dark:text-slate-500 block mt-1.5">Removes older audit logs to conserve database storage space.</span>
                 </div>
 
-                <div className="border-t border-gray-100 dark:border-slate-800 pt-5">
+                <div className="border-t border-slate-200 dark:border-slate-800 pt-5">
                   <h4 className="font-bold text-sm text-gray-800 dark:text-slate-200 mb-3">System Disaster Recovery</h4>
                   <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-lg text-xs text-blue-800 dark:text-blue-300 leading-relaxed mb-3">
                     Backup generates an instant <strong>SQL dump</strong> script containing all database schemas, table structures, and resident check-ins and log records. Save it securely.

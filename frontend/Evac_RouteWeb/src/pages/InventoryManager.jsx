@@ -69,7 +69,7 @@ export function AddStockModal({ onCancel, onAdd }) {
       className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
     >
       <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800">
+        <div className="flex justify-between items-center p-5 border-b border-slate-200 dark:border-slate-800">
           <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
             <Package size={20} className="text-blue-500" /> Receive New Delivery
           </h3>
@@ -186,7 +186,7 @@ function RationTemplateForm({ items, onCancel, onCreate }) {
       className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
     >
       <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-lg overflow-y-auto max-h-[90vh]">
-        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800">
+        <div className="flex justify-between items-center p-5 border-b border-slate-200 dark:border-slate-800">
           <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
             <ClipboardList size={20} className="text-blue-500" /> New Ration Template
           </h3>
@@ -259,7 +259,7 @@ function RationTemplateForm({ items, onCancel, onCreate }) {
             </div>
           </div>
 
-          <div className="flex gap-3 pt-2 border-t border-gray-100 dark:border-slate-800">
+          <div className="flex gap-3 pt-2 border-t border-slate-200 dark:border-slate-800">
             <button type="button" onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-2.5 rounded-lg font-semibold text-sm transition">
               Cancel
             </button>
@@ -298,7 +298,7 @@ function AdjustStockModal({ item, onCancel, onAdjust }) {
       className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
     >
       <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800">
+        <div className="flex justify-between items-center p-5 border-b border-slate-200 dark:border-slate-800">
           <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
             <Package size={20} className="text-blue-500" /> Adjust Stock — {item.item_name}
           </h3>
@@ -566,8 +566,8 @@ export default function InventoryManager() {
 
       {/* Tab 1: Warehouse Stock */}
       {activeTab === 'stock' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-gray-50/50">
             <h3 className="font-semibold text-gray-700">Current Stock Levels</h3>
             {isCSWDO ? (
               <button 
@@ -694,9 +694,9 @@ export default function InventoryManager() {
       {/* Tab 2: Ration Builder */}
       {activeTab === 'rations' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between">
             <div>
-              <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
+              <div className="flex justify-between items-center mb-4 border-b border-slate-200 dark:border-slate-800 pb-4">
                 <h3 className="font-semibold text-gray-700 text-lg">Active Configuration</h3>
                 <span className="flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold uppercase">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> Live
@@ -733,7 +733,7 @@ export default function InventoryManager() {
             </div>
 
             {/* Saved Templates List */}
-            <div className="border-t border-gray-100 pt-6 mt-6">
+            <div className="border-t border-slate-200 dark:border-slate-800 pt-6 mt-6">
               <h4 className="font-bold text-gray-800 text-sm mb-4">Saved Ration Templates</h4>
               <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
                 {templates.filter(t => !t.is_active).map(t => (
@@ -816,8 +816,8 @@ export default function InventoryManager() {
             />
           )}
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50/50">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50/50">
               <div>
                 <div className="flex items-center gap-3">
                   <h3 className="font-semibold text-gray-700">Delivery Dispatch Orders</h3>
@@ -1083,7 +1083,7 @@ function CreateDispatchModal({ inventoryItems, shelters, activeTemplate, onCance
       className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
     >
       <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800">
+        <div className="flex justify-between items-center p-5 border-b border-slate-200 dark:border-slate-800">
           <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
             <Truck size={20} className="text-blue-500" /> New Dispatch Order
           </h3>

@@ -90,8 +90,8 @@ export default function PrePopulatedDispatchModal({
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
       className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"
     >
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto border border-gray-100 dark:border-slate-800">
-        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto border border-slate-200 dark:border-slate-800">
+        <div className="flex justify-between items-center p-5 border-b border-slate-200 dark:border-slate-800">
           <div>
             <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
               <Truck size={20} className="text-blue-500" /> Auto-Generated Dispatch Order

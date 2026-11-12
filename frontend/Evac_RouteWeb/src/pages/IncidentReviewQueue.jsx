@@ -319,11 +319,11 @@ export default function IncidentReviewQueue() {
                 )}
 
                 {activeTab !== 'pending' && incident.review_note && (
-                  <p className="text-xs text-gray-400 dark:text-slate-500 italic border-t border-gray-100 dark:border-slate-800 pt-2">Note: {incident.review_note}</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500 italic border-t border-slate-200 dark:border-slate-800 pt-2">Note: {incident.review_note}</p>
                 )}
 
                 {(activeTab === 'approved' || activeTab === 'rejected') && (
-                  <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex justify-end">
+                  <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex justify-end">
                     <button
                       onClick={() => archiveMutation.mutate(incident.id)}
                       disabled={archiveMutation.isPending}
@@ -337,7 +337,7 @@ export default function IncidentReviewQueue() {
                 )}
 
                 {activeTab === 'archived' && (
-                  <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex justify-end">
+                  <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex justify-end">
                     <button
                       onClick={() => unarchiveMutation.mutate(incident.id)}
                       disabled={unarchiveMutation.isPending}
@@ -361,7 +361,7 @@ export default function IncidentReviewQueue() {
           onClick={(e) => { if (e.target === e.currentTarget) setReviewModal(null); }}
           className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[100] p-4 animate-in fade-in duration-150"
         >
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-1 capitalize">
               {reviewModal.action} Incident
             </h2>

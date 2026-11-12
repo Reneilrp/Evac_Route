@@ -536,7 +536,7 @@ export default function EmergencyAlerts() {
                     ? 'bg-amber-50/20 dark:bg-amber-950/10 border-amber-200 dark:border-amber-900/30'
                     : (alert.severity || '').toLowerCase() === 'info'
                     ? 'bg-blue-50/20 dark:bg-blue-950/10 border-blue-200 dark:border-blue-900/30'
-                    : 'bg-slate-50/50 dark:bg-slate-950/20 border-gray-100 dark:border-slate-800'
+                    : 'bg-slate-50/70 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800'
                 }`}
               >
                 <div>
@@ -593,7 +593,7 @@ export default function EmergencyAlerts() {
                   </p>
                 </div>
 
-                <div className="border-t border-gray-100 dark:border-slate-800/60 mt-4 pt-3 flex justify-between items-center text-[10px] text-gray-400 dark:text-slate-500 font-semibold uppercase tracking-wider">
+                <div className="border-t border-slate-200 dark:border-slate-800/60 mt-4 pt-3 flex justify-between items-center text-[10px] text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider">
                   <span className="flex items-center gap-1">
                     <Clock size={11} /> {new Date(alert.created_at).toLocaleString()}
                   </span>
@@ -614,7 +614,7 @@ export default function EmergencyAlerts() {
           className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
         >
           <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-4 border-b border-gray-100 dark:border-slate-800">
+            <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-800">
               <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm flex items-center gap-2">
                 📢 Dispatch Warning Broadcast
               </h3>

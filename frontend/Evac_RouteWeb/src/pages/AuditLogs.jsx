@@ -206,7 +206,7 @@ export default function AuditLogs() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-xs border border-gray-100 dark:border-slate-800 mb-6 space-y-3">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 mb-6 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
           {/* Search by user / keyword */}
           <div className="relative">
@@ -261,7 +261,7 @@ export default function AuditLogs() {
       </div>
 
       {/* Logs Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-gray-100 dark:border-slate-800 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-40">
             <span className="flex h-6 w-6 relative mr-3">
@@ -279,7 +279,7 @@ export default function AuditLogs() {
           <div className="overflow-x-auto">
             <table className="min-w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wider border-b border-gray-100 dark:border-slate-800">
+                <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
                   <th className="py-3.5 px-6 font-semibold">Timestamp</th>
                   <th className="py-3.5 px-6 font-semibold">Acting Operator</th>
                   <th className="py-3.5 px-6 font-semibold">Action Performed</th>
@@ -287,7 +287,7 @@ export default function AuditLogs() {
                   <th className="py-3.5 px-6 font-semibold text-right">Payload Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-xs">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-xs">
                 {logs.map((log) => {
                   const badge = getActionBadge(log.action);
                   const isExpanded = expandedLogId === log.id;
@@ -399,7 +399,7 @@ export default function AuditLogs() {
         )}
 
         {/* Pagination Footer */}
-        <div className="p-4 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">
           <span>Showing page {page} of {lastPage} ({total} total audit records)</span>
           <div className="flex items-center gap-1.5">
             <button

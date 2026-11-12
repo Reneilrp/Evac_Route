@@ -128,9 +128,9 @@ export default function QRScannerModal({ isOpen, onClose, selectedShelterId }) {
 
   return (
     <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col border border-gray-100 dark:border-slate-800">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-950">
+        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
           <div>
             <h3 className="font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
               <QrCode size={20} className="text-blue-500" /> Shelter Relief Desk Check-In
@@ -146,7 +146,7 @@ export default function QRScannerModal({ isOpen, onClose, selectedShelterId }) {
 
         {/* 3 Non-Discriminatory Relief Claim Options */}
         {!scanResult && !loading && (
-          <div className="flex border-b border-gray-100 dark:border-slate-800 bg-gray-100/50 dark:bg-slate-900/50 p-1">
+          <div className="flex border-b border-slate-200 dark:border-slate-800 bg-gray-100/50 dark:bg-slate-900/50 p-1">
             <button
               onClick={() => { setActiveTab('scan'); setError(null); }}
               className={`flex-1 py-2 text-[11px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition ${
@@ -338,7 +338,7 @@ export default function QRScannerModal({ isOpen, onClose, selectedShelterId }) {
                 {scanResult.data?.action === 'checkin' && 'Check-In Successful!'}
               </h4>
               
-              <div className="bg-gray-50 dark:bg-slate-800/80 p-3 rounded-lg w-full text-left text-xs space-y-1 mb-4 border border-gray-100 dark:border-slate-700">
+              <div className="bg-gray-50 dark:bg-slate-800/80 p-3 rounded-lg w-full text-left text-xs space-y-1 mb-4 border border-slate-200 dark:border-slate-700">
                 <p><strong className="text-gray-700 dark:text-slate-200">Result Message:</strong> {scanResult.message}</p>
                 <p><strong className="text-gray-700 dark:text-slate-200">Allocated Rations:</strong> {scanResult.data?.ration_applied}</p>
                 {scanResult.data?.generated_qr_hash && (

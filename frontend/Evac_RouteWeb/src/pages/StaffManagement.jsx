@@ -377,7 +377,7 @@ export default function StaffManagement() {
       </div>
 
       {/* Staff List Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-gray-100 dark:border-slate-800 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
             <span className="flex h-6 w-6 relative mr-3">
@@ -390,7 +390,7 @@ export default function StaffManagement() {
           <div className="overflow-x-auto">
             <table className="min-w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wider border-b border-gray-100 dark:border-slate-800">
+                <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
                   <th className="py-3.5 px-6 font-semibold">Operator</th>
                   <th className="py-3.5 px-6 font-semibold">Email &amp; Login</th>
                   <th className="py-3.5 px-6 font-semibold">Operational Role / Assignment</th>
@@ -490,8 +490,8 @@ export default function StaffManagement() {
           onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
           className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs z-[100] flex items-center justify-center p-4 animate-in fade-in duration-150"
         >
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 w-full max-w-2xl max-h-[92vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-blue-50/50 to-indigo-50/30 dark:from-slate-950 dark:to-slate-900">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-blue-50/50 to-indigo-50/30 dark:from-slate-950 dark:to-slate-900">
               <h3 className="font-black text-gray-900 dark:text-slate-100 text-base flex items-center gap-2">
                 <User size={18} className="text-blue-600" /> 
                 {editingStaff ? `Edit Operator #${editingStaff.id}` : (agencyScope === 'cdrmo' ? 'Register New Field Rescue Operator' : 'Register New CSWDO Operator')}
@@ -564,7 +564,7 @@ export default function StaffManagement() {
               </div>
 
               {/* Basic Credentials */}
-              <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-slate-800">
+              <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
                 <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
                   2. Operator Profile &amp; Login
                 </label>
@@ -623,7 +623,7 @@ export default function StaffManagement() {
 
               {/* Specific Configuration: Rescue Operator Assignment */}
               {operatorType === 'rescue' && (
-                <div className="space-y-4 pt-3 border-t border-gray-100 dark:border-slate-800 bg-rose-50/30 dark:bg-rose-950/20 p-4 rounded-xl border border-rose-100 dark:border-rose-900/30">
+                <div className="space-y-4 pt-3 border-t border-slate-200 dark:border-slate-800 bg-rose-50/30 dark:bg-rose-950/20 p-4 rounded-xl border border-rose-100 dark:border-rose-900/30">
                   <div className="flex items-center gap-2">
                     <LifeBuoy size={16} className="text-rose-600 dark:text-rose-400" />
                     <label className="text-xs font-bold text-rose-900 dark:text-rose-300 uppercase tracking-wider">
@@ -771,7 +771,7 @@ export default function StaffManagement() {
 
               {/* Specific Configuration: Shelter Scanner Assignment */}
               {operatorType === 'scanner' && (
-                <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-slate-800 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+                <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
                   <div className="flex items-center gap-2">
                     <QrCode size={16} className="text-emerald-600 dark:text-emerald-400" />
                     <label className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider">
@@ -802,7 +802,7 @@ export default function StaffManagement() {
               )}
 
               {/* Submit Buttons */}
-              <div className="flex justify-end gap-2 pt-4 border-t border-gray-100 dark:border-slate-800">
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
                 <button 
                   type="button" 
                   onClick={closeModal} 
@@ -839,9 +839,9 @@ export default function StaffManagement() {
             onClick={(e) => { if (e.target === e.currentTarget) setViewingStaff(null); }}
             className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs z-[100] flex items-center justify-center p-4 animate-in fade-in duration-150"
           >
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 w-full max-w-xl max-h-[92vh] overflow-y-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-xl max-h-[92vh] overflow-y-auto">
               {/* Header */}
-              <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-blue-50/40 dark:from-slate-950 dark:to-slate-900">
+              <div className="flex justify-between items-center p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-blue-50/40 dark:from-slate-950 dark:to-slate-900">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black">
                     <OpIcon size={20} />
@@ -870,7 +870,7 @@ export default function StaffManagement() {
               <div className="p-6 space-y-5 text-xs">
                 {/* Details Grid */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 block mb-1">
                       Assigned Role / Duty
                     </span>
@@ -883,7 +883,7 @@ export default function StaffManagement() {
                     </p>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 block mb-1">
                       Account Status
                     </span>
@@ -899,7 +899,7 @@ export default function StaffManagement() {
                     </p>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800 col-span-2">
+                  <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 col-span-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 block mb-1">
                       Official Email / Account
                     </span>
@@ -1015,7 +1015,7 @@ export default function StaffManagement() {
               </div>
 
               {/* Footer Actions */}
-              <div className="p-5 border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50 flex items-center justify-between gap-3">
+              <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50 flex items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => setViewingStaff(null)}
