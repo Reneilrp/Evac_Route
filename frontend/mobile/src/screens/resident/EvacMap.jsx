@@ -1657,6 +1657,7 @@ export default function EvacMap({ navigation, route }) {
         setSelectedDisasterFilter={setSelectedDisasterFilter}
         selectedCategoryFilter={selectedCategoryFilter}
         setSelectedCategoryFilter={setSelectedCategoryFilter}
+        isOffline={isOffline}
         cacheSyncStatus={cacheSyncStatus}
       />
 

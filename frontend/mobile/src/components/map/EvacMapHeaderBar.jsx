@@ -21,7 +21,8 @@ export default function EvacMapHeaderBar({
   setSelectedDisasterFilter,
   selectedCategoryFilter,
   setSelectedCategoryFilter,
-  cacheSyncStatus,
+  isOffline = false,
+  cacheSyncStatus = {},
 }) {
   return (
     <>
