@@ -46,7 +46,7 @@ export default function StaffScanner() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { user } = useAuth();
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const styles = useThemedStyles(getStyles);
 
   const [permission, requestPermission, getPermission] = useCameraPermissions();
