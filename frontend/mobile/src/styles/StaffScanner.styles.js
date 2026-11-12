@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { spacing, radii, typography, shadows } from './theme';
 
 const getStyles = (colors, isDarkMode) =>

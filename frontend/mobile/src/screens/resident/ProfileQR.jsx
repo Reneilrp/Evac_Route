@@ -13,6 +13,8 @@ import EmptyState from '../../components/common/EmptyState';
 import ConfirmationModal from '../../components/common/ConfirmationModal';
 import PinpointHomeModal from '../../components/resident/modals/PinpointHomeModal';
 import TransportProtocolModal from '../../components/resident/modals/TransportProtocolModal';
+import * as Location from 'expo-location';
+import { clampToZamboanga, ZAMBOANGA_WMSU, getNearestBarangay } from '../../utils/zamboangaGeo';
 import { getStyles } from '../../styles/ProfileQR.styles';
 import * as Crypto from 'expo-crypto';
 import { APP_FULL_VERSION } from '../../config/version';
@@ -69,8 +71,56 @@ export default function ProfileQR({ navigation }) {
   const [isHomeModalOpen, setIsHomeModalOpen] = useState(false);
   const [isTransportModalOpen, setIsTransportModalOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [customLat, setCustomLat] = useState(homeLocation ? homeLocation[1].toString() : '6.9185');
-  const [customLng, setCustomLng] = useState(homeLocation ? homeLocation[0].toString() : '122.0882');
+  const [homeLatInput, setHomeLatInput] = useState(homeLocation ? homeLocation[1].toString() : '6.9185');
+  const [homeLngInput, setHomeLngInput] = useState(homeLocation ? homeLocation[0].toString() : '122.0882');
+  const [homeBarangay, setHomeBarangay] = useState(effectiveBarangay);
+  const [homeAddressDesc, setHomeAddressDesc] = useState('');
+  const [isPinpointLoading, setIsPinpointLoading] = useState(false);
+
+  const handleUseCurrentGps = async () => {
+    setIsPinpointLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Location permission is required to capture current GPS.');
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const clamped = clampToZamboanga([loc.coords.longitude, loc.coords.latitude], ZAMBOANGA_WMSU);
+      setHomeLngInput(clamped[0].toFixed(5));
+      setHomeLatInput(clamped[1].toFixed(5));
+      const nearest = getNearestBarangay(clamped[0], clamped[1]);
+      if (nearest) setHomeBarangay(nearest);
+      Alert.alert('GPS Captured', `Coordinates set to ${clamped[1].toFixed(4)}°N, ${clamped[0].toFixed(4)}°E (${nearest}).`);
+    } catch (_err) {
+      Alert.alert('Error', 'Failed to retrieve current GPS location.');
+    } finally {
+      setIsPinpointLoading(false);
+    }
+  };
+
+  const handleSaveHomeLocation = () => {
+    const lat = parseFloat(homeLatInput);
+    const lng = parseFloat(homeLngInput);
+    if (isNaN(lat) || isNaN(lng)) {
+      Alert.alert('Invalid Coordinates', 'Please enter valid numerical latitude and longitude values.');
+      return;
+    }
+    const clamped = clampToZamboanga([lng, lat], ZAMBOANGA_WMSU);
+    setHomeLocation([clamped[0], clamped[1]]);
+    setProfileData({
+      ...(profile || {}),
+      name: effectiveName,
+      barangay: homeBarangay || effectiveBarangay,
+      headcount: effectiveHeadcount,
+    }, effectiveQrHash);
+    setIsHomeModalOpen(false);
+    Alert.alert(
+      '📍 Home Location Saved',
+      `Home location set to [${clamped[1].toFixed(4)}, ${clamped[0].toFixed(4)}]. Evacuation routes will originate from this location.`,
+      [{ text: 'OK' }]
+    );
+  };
 
   const familyObj = user?.family_profile || user?.familyProfile || user?.family || {};
   const effectiveId = profile?.user_id || user?.id || profile?.id || 1;
@@ -533,9 +583,21 @@ export default function ProfileQR({ navigation }) {
         onClose={() => setIsTransportModalOpen(false)}
         colors={colors}
         isDarkMode={isDarkMode}
-        selectedMode={transportMode}
-        onSelectMode={(mode) => saveTransportMode(mode)}
-        transportOptions={TRANSPORT_OPTIONS}
+        selectedMode={effectiveTransportMode}
+        onSelectMode={(mode) => {
+          setTransportationMode(mode);
+          setProfileData({
+            ...(profile || {}),
+            transportation_mode: mode,
+          }, effectiveQrHash);
+          setIsTransportModalOpen(false);
+          Alert.alert(
+            'Transportation Mode Updated',
+            `Switched evacuation mode. Routes on the map will now adapt to this protocol.`,
+            [{ text: 'OK' }]
+          );
+        }}
+        transportOptions={TRANSPORTATION_OPTIONS}
       />
 
       {/* Styled Logout Confirmation Modal */}

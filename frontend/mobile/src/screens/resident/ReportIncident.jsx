@@ -37,6 +37,12 @@ const HAZARD_TYPES = [
   { value: 'earthquake', label: '🏚️ Earthquake' },
 ];
 
+const SEVERITY_LEVELS = [
+  { value: 'low', label: '🟢 Low Priority' },
+  { value: 'medium', label: '🟡 Medium Priority' },
+  { value: 'high', label: '🔴 High / Critical' },
+];
+
 const CONTEXTUAL_SEVERITY = {
   building_fire: [
     { level: 'low', title: '1st Alarm (Low)', desc: 'Early stage / localized room fire. Contained to single room or small area, 2-3 fire engines sufficient.' },
@@ -779,17 +785,17 @@ export default function ReportIncident({ navigation, route }) {
         setName={setName}
         hazardType={hazardType}
         setHazardType={setHazardType}
-        severity={severity}
-        setSeverity={setSeverity}
+        severity={severityLevel}
+        setSeverity={setSeverityLevel}
         description={description}
         setDescription={setDescription}
-        barangay={barangay}
-        setBarangay={setBarangay}
+        barangay={barangayName}
+        setBarangay={setBarangayName}
         coords={coords}
-        gettingLocation={gettingLocation}
+        gettingLocation={locating}
         handleGetLocation={handleGetLocation}
         photos={photos}
-        removePhoto={removePhoto}
+        removePhoto={handleRemovePhoto}
         showPhotoPicker={showPhotoPicker}
         handleSubmit={handleSubmit}
         submitting={submitting}
