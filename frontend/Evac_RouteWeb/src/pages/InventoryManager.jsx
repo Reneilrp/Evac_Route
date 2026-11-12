@@ -492,7 +492,7 @@ export default function InventoryManager() {
   };
 
   return (
-    <div className="p-6 h-full overflow-y-auto bg-gray-50">
+    <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
       {showAddStockModal && (
         <AddStockModal
           onCancel={() => setShowAddStockModal(false)}
@@ -515,16 +515,16 @@ export default function InventoryManager() {
       )}
 
       {!isCSWDO && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3.5 text-blue-900 shadow-sm">
-          <ShieldAlert size={22} className="text-blue-600 shrink-0" />
+        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 rounded-xl flex items-center gap-3.5 text-blue-900 dark:text-blue-200 shadow-sm">
+          <ShieldAlert size={22} className="text-blue-600 dark:text-blue-400 shrink-0" />
           <div>
             <div className="text-xs font-black uppercase flex items-center gap-2">
               <span>CDRRMO Situational View</span>
-              <span className="text-[9px] bg-blue-100 text-blue-700 border border-blue-300 px-2 py-0.5 rounded-full font-bold">
+              <span className="text-[9px] bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 px-2 py-0.5 rounded-full font-bold">
                 Read-Only
               </span>
             </div>
-            <p className="text-xs text-blue-700 mt-0.5">
+            <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
               Central inventory stocks, ration formulas, and transport manifests are managed by <strong>CSWDO Logistics</strong>. CDRRMO monitors stock levels for situational awareness and rescue prioritization.
             </p>
           </div>
@@ -532,27 +532,27 @@ export default function InventoryManager() {
       )}
 
       {/* Custom Tabs */}
-      <div className="flex space-x-1 bg-gray-200 p-1 rounded-lg w-fit mb-6">
+      <div className="flex space-x-1 bg-gray-200 dark:bg-slate-800 p-1 rounded-lg w-fit mb-6 border border-gray-300 dark:border-slate-700">
         <button
           onClick={() => setActiveTab('stock')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
-            activeTab === 'stock' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer ${
+            activeTab === 'stock' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100'
           }`}
         >
           <Package size={16} /> Relief Supplies &amp; Stock
         </button>
         <button
           onClick={() => setActiveTab('rations')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
-            activeTab === 'rations' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer ${
+            activeTab === 'rations' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100'
           }`}
         >
           <ClipboardList size={16} /> Ration Builder
         </button>
         <button
           onClick={() => setActiveTab('dispatch')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
-            activeTab === 'dispatch' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer ${
+            activeTab === 'dispatch' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100'
           }`}
         >
           <Truck size={16} /> Dispatch Orders
@@ -566,18 +566,18 @@ export default function InventoryManager() {
 
       {/* Tab 1: Warehouse Stock */}
       {activeTab === 'stock' && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-gray-50/50">
-            <h3 className="font-semibold text-gray-700">Current Stock Levels</h3>
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-950/40">
+            <h3 className="font-semibold text-gray-700 dark:text-slate-200">Current Stock Levels</h3>
             {isCSWDO ? (
               <button 
                 onClick={() => setShowAddStockModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm cursor-pointer"
               >
                 <Plus size={16} /> Receive Delivery
               </button>
             ) : (
-              <span className="text-xs text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg font-semibold select-none flex items-center gap-1.5">
+              <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900/60 px-3 py-1.5 rounded-lg font-semibold select-none flex items-center gap-1.5">
                 <ShieldAlert size={14} className="text-blue-500" /> Managed by CSWDO Logistics
               </span>
             )}
@@ -610,7 +610,7 @@ export default function InventoryManager() {
             ) : (
               <table className="min-w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                  <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wider">
                     <th className="py-3 px-6 font-semibold">Item Name</th>
                     <th className="py-3 px-6 font-semibold">Available to Dispatch (ATP)</th>
                     <th className="py-3 px-6 font-semibold">Reserved (In Dispatches)</th>
@@ -619,10 +619,10 @@ export default function InventoryManager() {
                     <th className="py-3 px-6 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                   {items.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-gray-400 font-medium">
+                      <td colSpan={6} className="py-12 text-center text-gray-400 dark:text-slate-500 font-medium">
                         No inventory items yet. Add your first delivery.
                       </td>
                     </tr>
@@ -631,8 +631,8 @@ export default function InventoryManager() {
                       const avail = item.available_stock ?? Math.max(0, item.total_stock - (item.reserved_quantity || 0));
                       const reserved = item.reserved_quantity || 0;
                       return (
-                        <tr key={item.id} className="hover:bg-blue-50/30 transition">
-                          <td className="py-4 px-6 font-medium text-gray-800">{item.item_name}</td>
+                        <tr key={item.id} className="hover:bg-blue-50/30 dark:hover:bg-slate-800/40 transition">
+                          <td className="py-4 px-6 font-medium text-gray-800 dark:text-slate-200">{item.item_name}</td>
                           <td className="py-4 px-6">
                             <div className="flex items-center gap-3">
                               <span className={`py-1 px-3 rounded-full text-xs font-bold w-16 text-center inline-block ${
@@ -642,7 +642,7 @@ export default function InventoryManager() {
                               }`}>
                                 {avail}
                               </span>
-                              <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden flex-shrink-0">
+                              <div className="w-24 bg-gray-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden flex-shrink-0">
                                 <div 
                                   className={`h-full rounded-full transition-all duration-500 ${
                                     avail < 200 ? 'bg-red-500' :
@@ -652,32 +652,32 @@ export default function InventoryManager() {
                                   style={{ width: `${Math.min(100, Math.max(5, (avail / 1000) * 100))}%` }}
                                 />
                               </div>
-                              <span className="text-[10px] text-gray-400 font-bold uppercase select-none">
+                              <span className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase select-none">
                                 {Math.min(100, Math.round((avail / 1000) * 100))}%
                               </span>
                             </div>
                           </td>
                           <td className="py-4 px-6 text-sm">
                             {reserved > 0 ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60">
                                 {reserved} {item.unit_type}
                               </span>
                             ) : (
-                              <span className="text-gray-400 text-xs">0</span>
+                              <span className="text-gray-400 dark:text-slate-500 text-xs">0</span>
                             )}
                           </td>
-                          <td className="py-4 px-6 font-semibold text-gray-700 text-sm">{item.total_stock}</td>
-                          <td className="py-4 px-6 text-gray-600 text-sm">{item.unit_type}</td>
+                          <td className="py-4 px-6 font-semibold text-gray-700 dark:text-slate-300 text-sm">{item.total_stock}</td>
+                          <td className="py-4 px-6 text-gray-600 dark:text-slate-400 text-sm">{item.unit_type}</td>
                           <td className="py-4 px-6 text-right">
                             {isCSWDO ? (
                               <button 
                                 onClick={() => setAdjustingItem(item)}
-                                className="text-blue-600 hover:text-blue-800 font-semibold text-sm transition cursor-pointer"
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-semibold text-sm transition cursor-pointer"
                               >
                                 Edit
                               </button>
                             ) : (
-                              <span className="text-gray-400 text-xs italic">View Only</span>
+                              <span className="text-gray-400 dark:text-slate-500 text-xs italic">View Only</span>
                             )}
                           </td>
                         </tr>
@@ -694,53 +694,53 @@ export default function InventoryManager() {
       {/* Tab 2: Ration Builder */}
       {activeTab === 'rations' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-                <h3 className="font-semibold text-gray-700 text-lg">Active Configuration</h3>
-                <span className="flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold uppercase">
+                <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-lg">Active Configuration</h3>
+                <span className="flex items-center gap-1 bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300 px-3 py-1 rounded-full text-xs font-bold uppercase border border-green-200 dark:border-green-800">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> Live
                 </span>
               </div>
               
               {isLoadingTemplates ? (
                 <div className="flex items-center justify-center h-32">
-                  <p className="text-gray-500 text-sm">Loading template configurations...</p>
+                  <p className="text-gray-500 dark:text-slate-400 text-sm">Loading template configurations...</p>
                 </div>
               ) : activeTemplate ? (
                 <div className="mb-6">
-                  <h4 className="font-bold text-gray-900 text-xl mb-1">{activeTemplate.name}</h4>
-                  <p className="text-sm text-gray-500 mb-4 flex items-center gap-1">
+                  <h4 className="font-bold text-gray-900 dark:text-slate-100 text-xl mb-1">{activeTemplate.name}</h4>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mb-4 flex items-center gap-1">
                     <AlertCircle size={14} /> Deducted per 1 headcount checked into the shelter.
                   </p>
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 divide-y divide-gray-200/50">
+                  <div className="bg-gray-50 dark:bg-slate-800/60 rounded-lg p-4 border border-gray-200 dark:border-slate-700 divide-y divide-gray-200/50 dark:divide-slate-700/50">
                     {activeTemplate.items?.map((item, idx) => {
                       const actualItem = item.inventory_item || item.inventoryItem;
                       return (
-                        <div key={idx} className="flex justify-between py-2 text-sm text-gray-700 first:pt-0 last:pb-0">
+                        <div key={idx} className="flex justify-between py-2 text-sm text-gray-700 dark:text-slate-300 first:pt-0 last:pb-0">
                           <span className="font-medium">{actualItem?.item_name || 'Item'}</span>
-                          <span className="font-bold text-blue-600">{item.quantity_per_head} {actualItem?.unit_type}</span>
+                          <span className="font-bold text-blue-600 dark:text-blue-400">{item.quantity_per_head} {actualItem?.unit_type}</span>
                         </div>
                       );
                     })}
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50 p-4 mb-6">
-                  <p className="text-gray-400 text-sm">No active ration template. Activate one from saved templates below or build a new one.</p>
+                <div className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-gray-200 dark:border-slate-800 rounded-lg bg-gray-50 dark:bg-slate-950/40 p-4 mb-6">
+                  <p className="text-gray-400 dark:text-slate-500 text-sm">No active ration template. Activate one from saved templates below or build a new one.</p>
                 </div>
               )}
             </div>
 
             {/* Saved Templates List */}
             <div className="border-t border-slate-200 dark:border-slate-800 pt-6 mt-6">
-              <h4 className="font-bold text-gray-800 text-sm mb-4">Saved Ration Templates</h4>
+              <h4 className="font-bold text-gray-800 dark:text-slate-200 text-sm mb-4">Saved Ration Templates</h4>
               <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
                 {templates.filter(t => !t.is_active).map(t => (
-                  <div key={t.id} className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm flex justify-between items-center hover:border-blue-300 transition">
+                  <div key={t.id} className="bg-white dark:bg-slate-800/80 rounded-lg p-3 border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center hover:border-blue-300 dark:hover:border-blue-500 transition">
                     <div className="flex-1 mr-3 min-w-0">
-                      <p className="font-semibold text-gray-800 text-sm truncate">{t.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5 truncate">
+                      <p className="font-semibold text-gray-800 dark:text-slate-200 text-sm truncate">{t.name}</p>
+                      <p className="text-xs text-gray-400 dark:text-slate-400 mt-0.5 truncate">
                         {t.items?.map(i => {
                           const actualItem = i.inventory_item || i.inventoryItem;
                           return `${actualItem?.item_name || 'Item'} (${i.quantity_per_head})`;
@@ -751,44 +751,44 @@ export default function InventoryManager() {
                       <button 
                         onClick={() => activateTemplateMutation.mutate(t.id)}
                         disabled={activateTemplateMutation.isPending}
-                        className="bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-600 text-xs font-bold px-3 py-1.5 rounded transition disabled:opacity-50"
+                        className="bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-600 dark:bg-blue-950/50 dark:text-blue-300 dark:border dark:border-blue-800/80 dark:hover:bg-blue-600 dark:hover:text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-blue-200 transition disabled:opacity-50 cursor-pointer"
                       >
                         Activate
                       </button>
                     ) : (
-                      <span className="text-xs text-gray-400 font-semibold bg-gray-50 border border-gray-200 px-2.5 py-1 rounded select-none">
+                      <span className="text-xs text-gray-400 dark:text-slate-500 font-semibold bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-2.5 py-1 rounded select-none">
                         CSWDO Managed
                       </span>
                     )}
                   </div>
                 ))}
                 {templates.filter(t => !t.is_active).length === 0 && (
-                  <p className="text-gray-400 text-xs italic">No other saved templates available.</p>
+                  <p className="text-gray-400 dark:text-slate-500 text-xs italic">No other saved templates available.</p>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-dashed border-gray-300 p-6 flex flex-col items-center justify-center text-center">
-            <div className="bg-blue-50 p-4 rounded-full mb-4">
-              <ClipboardList size={32} className="text-blue-500" />
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-dashed border-gray-300 dark:border-slate-700 p-6 flex flex-col items-center justify-center text-center">
+            <div className="bg-blue-50 dark:bg-blue-950/50 p-4 rounded-full mb-4">
+              <ClipboardList size={32} className="text-blue-500 dark:text-blue-400" />
             </div>
-            <h3 className="font-bold text-gray-800 mb-2">Build New Template</h3>
-            <p className="text-sm text-gray-500 mb-6 max-w-sm">
+            <h3 className="font-bold text-gray-800 dark:text-slate-100 mb-2">Build New Template</h3>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mb-6 max-w-sm">
               Create a new relief allocation strategy. Define exactly what each person receives upon shelter check-in.
             </p>
             {isCSWDO ? (
               <button 
                 onClick={() => setShowTemplateForm(true)}
                 disabled={items.length === 0}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition w-full max-w-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition w-full max-w-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {items.length === 0 ? 'Add Stock Items First' : 'Create New Template'}
               </button>
             ) : (
               <button 
                 disabled
-                className="bg-gray-100 text-gray-400 font-bold py-2 px-6 rounded-lg w-full max-w-xs border border-gray-200 cursor-not-allowed"
+                className="bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 font-bold py-2 px-6 rounded-lg w-full max-w-xs border border-gray-200 dark:border-slate-700 cursor-not-allowed"
               >
                 CSWDO Managed Profiles
               </button>
@@ -816,11 +816,11 @@ export default function InventoryManager() {
             />
           )}
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50/50">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50/50 dark:bg-slate-950/40">
               <div>
                 <div className="flex items-center gap-3">
-                  <h3 className="font-semibold text-gray-700">Delivery Dispatch Orders</h3>
+                  <h3 className="font-semibold text-gray-700 dark:text-slate-200">Delivery Dispatch Orders</h3>
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
@@ -828,7 +828,7 @@ export default function InventoryManager() {
                       className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer border ${
                         dispatchArchiveFilter === 'active'
                           ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                          : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'
                       }`}
                     >
                       <Truck size={12} />
@@ -840,7 +840,7 @@ export default function InventoryManager() {
                       className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer border ${
                         dispatchArchiveFilter === 'archived'
                           ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                          : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'
                       }`}
                     >
                       <Archive size={12} />
@@ -848,7 +848,7 @@ export default function InventoryManager() {
                     </button>
                   </div>
                 </div>
-                <p className="text-xs text-gray-400 mt-0.5">Stock is reserved upon creation to prevent over-allocation, and deducted from physical inventory upon delivery confirmation.</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">Stock is reserved upon creation to prevent over-allocation, and deducted from physical inventory upon delivery confirmation.</p>
               </div>
               {isCSWDO ? (
                 <button
@@ -858,23 +858,23 @@ export default function InventoryManager() {
                   <Plus size={16} /> New Dispatch Order
                 </button>
               ) : (
-                <span className="text-xs text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg font-semibold select-none flex items-center gap-1.5">
+                <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900/60 px-3 py-1.5 rounded-lg font-semibold select-none flex items-center gap-1.5">
                   <ShieldAlert size={14} className="text-blue-500" /> Dispatches Initiated by CSWDO
                 </span>
               )}
             </div>
 
             {isLoadingDispatch ? (
-              <div className="flex items-center justify-center h-32 text-gray-400 text-sm">Loading orders…</div>
+              <div className="flex items-center justify-center h-32 text-gray-400 dark:text-slate-500 text-sm">Loading orders…</div>
             ) : dispatchOrders.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-40 gap-3 text-gray-400">
+              <div className="flex flex-col items-center justify-center h-40 gap-3 text-gray-400 dark:text-slate-500">
                 <Truck size={32} />
                 <p className="text-sm">No dispatch orders yet. Create one to send supplies to a shelter.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50/80 text-xs text-gray-500 uppercase tracking-wider">
+                  <thead className="bg-gray-50/80 dark:bg-slate-950/80 text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     <tr>
                       <th className="px-4 py-3 text-left">#</th>
                       <th className="px-4 py-3 text-left">Destination</th>
@@ -884,32 +884,32 @@ export default function InventoryManager() {
                       <th className="px-4 py-3 text-left">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                     {dispatchOrders.map(order => {
                       const scfg = {
-                        pending:    { label: 'Pending',    cls: 'bg-red-100 text-red-700',    Icon: Clock },
-                        in_transit: { label: 'In Transit', cls: 'bg-amber-100 text-amber-700', Icon: Truck },
-                        delivered:  { label: 'Delivered',  cls: 'bg-green-100 text-green-700', Icon: CheckCircle },
-                        cancelled:  { label: 'Cancelled',  cls: 'bg-gray-100 text-gray-500',  Icon: X },
-                      }[order.status] ?? { label: order.status, cls: 'bg-gray-100 text-gray-500', Icon: Package };
+                        pending:    { label: 'Pending',    cls: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400',    Icon: Clock },
+                        in_transit: { label: 'In Transit', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400', Icon: Truck },
+                        delivered:  { label: 'Delivered',  cls: 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400', Icon: CheckCircle },
+                        cancelled:  { label: 'Cancelled',  cls: 'bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400',  Icon: X },
+                      }[order.status] ?? { label: order.status, cls: 'bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400', Icon: Package };
                       const { Icon } = scfg;
                       return (
-                        <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-4 py-3 font-bold text-gray-700">#{order.id}</td>
+                        <tr key={order.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-4 py-3 font-bold text-gray-700 dark:text-slate-300">#{order.id}</td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-1.5 font-semibold text-gray-800">
+                            <div className="flex items-center gap-1.5 font-semibold text-gray-800 dark:text-slate-200">
                               <MapPin size={13} className="text-blue-500 flex-shrink-0" />
                               {order.shelter?.name ?? '—'}
                             </div>
-                            {order.notes && <p className="text-xs text-gray-400 mt-0.5 italic truncate max-w-[180px]">{order.notes}</p>}
+                            {order.notes && <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5 italic truncate max-w-[180px]">{order.notes}</p>}
                           </td>
                           <td className="px-4 py-3">
-                            <ul className="space-y-0.5 text-xs text-gray-600">
+                            <ul className="space-y-0.5 text-xs text-gray-600 dark:text-slate-350">
                               {order.items?.map(item => (
                                 <li key={item.id} className="flex items-center gap-1.5">
                                   <span className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0" />
-                                  <span className="font-semibold text-gray-800">{item.inventory_item?.item_name ?? `Item #${item.inventory_item_id}`}</span>
-                                  <span className="text-gray-400">× {item.quantity} {item.inventory_item?.unit_type}</span>
+                                  <span className="font-semibold text-gray-800 dark:text-slate-200">{item.inventory_item?.item_name ?? `Item #${item.inventory_item_id}`}</span>
+                                  <span className="text-gray-400 dark:text-slate-500">× {item.quantity} {item.inventory_item?.unit_type}</span>
                                 </li>
                               ))}
                             </ul>
@@ -919,16 +919,16 @@ export default function InventoryManager() {
                               <Icon size={12} /> {scfg.label}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-xs text-gray-500 space-y-0.5">
+                          <td className="px-4 py-3 text-xs text-gray-500 dark:text-slate-400 space-y-0.5">
                             <div>Created: {new Date(order.created_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-                            {order.departed_at && <div className="text-amber-600">Departed: {new Date(order.departed_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>}
-                            {order.delivered_at && <div className="text-green-600">Delivered: {new Date(order.delivered_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>}
+                            {order.departed_at && <div className="text-amber-600 dark:text-amber-400">Departed: {new Date(order.departed_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>}
+                            {order.delivered_at && <div className="text-green-600 dark:text-green-400">Delivered: {new Date(order.delivered_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => setPrintingOrder(order)}
-                                className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded font-bold flex items-center gap-1 transition shadow-xs cursor-pointer"
+                                className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:hover:bg-blue-900/70 dark:text-blue-300 border border-blue-200 dark:border-blue-800/80 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer"
                                 title="Print Official Requisition Manifest"
                               >
                                 <Printer size={13} /> Manifest
