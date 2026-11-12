@@ -132,7 +132,7 @@ export const useRescueSimulationStore = create((set, get) => ({
     }));
   },
 
-  confirmHandoverAndStandby: () => {
+  confirmHandoverAndStandby: (shelterCoords = null) => {
     set((state) => ({
       simPhase: 'completed',
       simMission: {
@@ -141,7 +141,7 @@ export const useRescueSimulationStore = create((set, get) => ({
       },
       isNavigating: false,
       isPaused: false,
-      simCoords: ZAMBOANGA_RESCUER_BASE,
+      simCoords: shelterCoords || state.simCoords,
       shouldFastForwardGeofence: false,
     }));
   },

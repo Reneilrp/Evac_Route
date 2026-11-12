@@ -849,31 +849,51 @@ export default function RescueMap({ navigation, route }) {
           safeVibrate([0, 200, 100, 300, 100, 400]);
           setProximityAnnouncement({
             title: '🎯 ARRIVED ON SCENE (≤ 20M)',
-            subtitle: isSuppressionMission ? 'Threat Neutralized • Mission Complete' : 'Victims Secured • Auto-Commencing Shelter Transport',
+            subtitle: isSuppressionMission ? 'Threat Neutralized • Mission Complete' : 'Victims Located • Confirm Extraction to Shelter',
             color: '#f59e0b',
           });
           setTimeout(() => setProximityAnnouncement(null), 4000);
-          // Hands-free: Automatically transition without requiring button click
-          if (isSuppressionMission) {
-            confirmHandoverAndStandby();
-            setRouteData(null);
-            resetSimulation();
-          } else {
-            confirmVictimSecured(shelters[0]);
+
+          // Park vehicle precisely at the victim's location
+          if (victimLngLat) {
+            setSimCoords(victimLngLat, heading);
+            api.post('/user/location', {
+              latitude: victimLngLat[1],
+              longitude: victimLngLat[0],
+            }).catch(() => {});
           }
+
+          // Clear completed en-route route and reset distance so it doesn't collide with the shelter route
+          setRouteData(null);
+          traveledDistanceRef.current = 0;
+
+          // Open arrival modal for explicit user confirmation (NO auto-advance)
+          setShowVictimArrivalModal(true);
         } else if (storeState.simPhase === 'transporting') {
           useRescueSimulationStore.getState().setSimPhase('shelter_arrival');
           safeVibrate([0, 250, 100, 250, 100, 500]);
           setProximityAnnouncement({
             title: '🏁 ARRIVED AT SHELTER (≤ 20M)',
-            subtitle: 'Safe CSWDO Intake Confirmed • Unit Reset to Standby',
+            subtitle: 'Evacuees Delivered • Confirm CSWDO Intake Handover',
             color: '#10b981',
           });
           setTimeout(() => setProximityAnnouncement(null), 4000);
-          // Hands-free: Automatically complete handover & standby
-          confirmHandoverAndStandby();
+
+          // Park vehicle precisely at the shelter entrance and sync to CDRRMO Live Map
+          if (shelterLngLat) {
+            setSimCoords(shelterLngLat, heading);
+            api.post('/user/location', {
+              latitude: shelterLngLat[1],
+              longitude: shelterLngLat[0],
+            }).catch(() => {});
+          }
+
+          // Clear completed route and reset distance
           setRouteData(null);
-          resetSimulation();
+          traveledDistanceRef.current = 0;
+
+          // Open shelter arrival modal for explicit handover confirmation (NO auto-handover)
+          setShowShelterArrivalModal(true);
         }
       }
     }, 150);
@@ -973,21 +993,8 @@ export default function RescueMap({ navigation, route }) {
         });
         setTimeout(() => setProximityAnnouncement(null), 4000);
 
-        // Hands-free: Automatically transition to next phase after brief scene intake without requiring button press
-        setTimeout(() => {
-          if (isSuppressionMission) {
-            safeUpdateMissionStatus({
-              id: currentMission.id,
-              status: 'completed',
-            });
-          } else {
-            safeUpdateMissionStatus({
-              id: currentMission.id,
-              status: 'transporting',
-              target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
-            });
-          }
-        }, 800);
+        // Show arrival modal for explicit responder confirmation
+        setShowVictimArrivalModal(true);
       }
     }
 
@@ -1006,17 +1013,13 @@ export default function RescueMap({ navigation, route }) {
 
         setProximityAnnouncement({
           title: '🏁 ARRIVED AT SHELTER (≤ 20M)',
-          subtitle: 'Safe CSWDO Intake Confirmed • Unit Reset to Standby',
+          subtitle: 'Safe CSWDO Intake Confirmed • Ready for Handover',
           color: '#10b981',
         });
         setTimeout(() => setProximityAnnouncement(null), 4000);
 
-        // Hands-free: Automatically complete CSWDO intake turnover without requiring button click
-        safeUpdateMissionStatus({
-          id: currentMission.id,
-          status: 'completed',
-          target_shelter_id: currentMission.target_shelter_id || shelters[0]?.id,
-        });
+        // Show handover confirmation modal for explicit responder sign-off (NO auto-handover)
+        setShowShelterArrivalModal(true);
       }
     }
   }, [
@@ -1163,6 +1166,11 @@ export default function RescueMap({ navigation, route }) {
     setSimulationStep(3);
     setShowVictimArrivalModal(false);
 
+    // Reset distance and clear previous route before computing new route
+    traveledDistanceRef.current = 0;
+    setRouteData(null);
+    setActivePolylineCoords(null);
+
     if (isSimulationActive) {
       confirmVictimSecured(shelters[0]);
     } else if (currentMission && !currentMission.id?.toString().startsWith('demo-')) {
@@ -1192,9 +1200,6 @@ export default function RescueMap({ navigation, route }) {
       });
     }
   };
-
-
-
 
   const handleBackToDutyHub = useCallback(() => {
     // 1. Instantly pause simulation navigation to halt interval camera animations and avoid Fabric race condition (Tag 338)
@@ -1229,8 +1234,16 @@ export default function RescueMap({ navigation, route }) {
     setShowShelterArrivalModal(false);
 
     if (isSimulationActive) {
-      confirmHandoverAndStandby();
+      confirmHandoverAndStandby(shelterLngLat);
       setRouteData(null);
+      setActivePolylineCoords(null);
+      if (shelterLngLat) {
+        setSimCoords(shelterLngLat, simHeading || 0);
+        api.post('/user/location', {
+          latitude: shelterLngLat[1],
+          longitude: shelterLngLat[0],
+        }).catch(() => {});
+      }
     } else if (currentMission && !currentMission.id?.toString().startsWith('demo-')) {
       safeUpdateMissionStatus({
         id: currentMission.id,
@@ -1239,43 +1252,15 @@ export default function RescueMap({ navigation, route }) {
       });
     }
 
-    resetSimulation();
+    if (cameraRef.current && (shelterLngLat || activeRescuerLocation)) {
+      cameraRef.current.setCamera({
+        centerCoordinate: shelterLngLat || activeRescuerLocation,
+        zoomLevel: 17.0,
+        pitch: 35,
+        animationDuration: 1000,
+      });
+    }
   };
-
-  // Hands-free auto-dismiss and stage advancement timers (rescuers never blocked by popups)
-  useEffect(() => {
-    if (showVictimArrivalModal) {
-      const timer = setTimeout(() => {
-        setShowVictimArrivalModal(false);
-        if (isSuppressionMission) {
-          handleStep5_HandoverAndStandby();
-        } else if (isSimulationActive) {
-          confirmVictimSecured(shelters[0]);
-        } else {
-          handleStep3_ExtractAndReRoute();
-          setSimulationStep(4);
-        }
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showVictimArrivalModal]);
-
-  useEffect(() => {
-    if (showShelterArrivalModal) {
-      const timer = setTimeout(() => {
-        setShowShelterArrivalModal(false);
-        if (isSimulationActive) {
-          confirmHandoverAndStandby();
-          setRouteData(null);
-        } else {
-          handleStep5_HandoverAndStandby();
-        }
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showShelterArrivalModal]);
 
   const isExpoGo = Constants.appOwnership === 'expo' || !Mapbox?.MapView;
 
@@ -1723,6 +1708,8 @@ export default function RescueMap({ navigation, route }) {
         handleCallVictim={handleCallVictim}
         handleSmsVictim={handleSmsVictim}
         handleOpenGoogleMaps={handleOpenGoogleMaps}
+        handleStep3_ExtractAndReRoute={handleStep3_ExtractAndReRoute}
+        handleStep5_HandoverAndStandby={handleStep5_HandoverAndStandby}
         confirmVictimSecured={confirmVictimSecured}
         safeUpdateMissionStatus={safeUpdateMissionStatus}
         shelters={shelters}
@@ -1746,8 +1733,6 @@ export default function RescueMap({ navigation, route }) {
           setShowVictimArrivalModal(false);
           if (isSuppressionMission) {
             handleStep5_HandoverAndStandby();
-          } else if (isSimulationActive) {
-            confirmVictimSecured(shelters[0]);
           } else {
             handleStep3_ExtractAndReRoute();
             setSimulationStep(4);
@@ -1765,20 +1750,7 @@ export default function RescueMap({ navigation, route }) {
         isPending={updateStatusMutation.isPending}
         onConfirmHandover={() => {
           setShowShelterArrivalModal(false);
-          if (isSimulationActive) {
-            confirmHandoverAndStandby();
-            setRouteData(null);
-            if (cameraRef.current) {
-              cameraRef.current.setCamera({
-                centerCoordinate: gpsLocation || ZAMBOANGA_RESCUER_BASE,
-                zoomLevel: 16.5,
-                pitch: 35,
-                animationDuration: 1000,
-              });
-            }
-          } else {
-            handleStep5_HandoverAndStandby();
-          }
+          handleStep5_HandoverAndStandby();
         }}
       />
 

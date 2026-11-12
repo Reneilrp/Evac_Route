@@ -26,6 +26,8 @@ export default function RescueMissionActionBar({
   handleCallVictim,
   handleSmsVictim,
   handleOpenGoogleMaps,
+  handleStep3_ExtractAndReRoute,
+  handleStep5_HandoverAndStandby,
   confirmVictimSecured,
   safeUpdateMissionStatus,
   shelters = [],
@@ -177,7 +179,9 @@ export default function RescueMissionActionBar({
             <TouchableOpacity
               style={[styles.dockBtn, styles.transportBtn, { width: '100%', paddingVertical: 12 }]}
               onPress={() => {
-                if (isSimulationActive) {
+                if (handleStep3_ExtractAndReRoute) {
+                  handleStep3_ExtractAndReRoute();
+                } else if (isSimulationActive) {
                   confirmVictimSecured && confirmVictimSecured(shelters[0]);
                 } else if (isSuppressionMission) {
                   safeUpdateMissionStatus && safeUpdateMissionStatus({
@@ -205,7 +209,13 @@ export default function RescueMissionActionBar({
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
                 style={[styles.dockBtn, styles.completeBtn, { flex: 1, paddingVertical: 12 }]}
-                onPress={() => setShowShelterArrivalModal && setShowShelterArrivalModal(true)}
+                onPress={() => {
+                  if (setShowShelterArrivalModal) {
+                    setShowShelterArrivalModal(true);
+                  } else if (handleStep5_HandoverAndStandby) {
+                    handleStep5_HandoverAndStandby();
+                  }
+                }}
                 disabled={updateStatusMutation?.isPending}
               >
                 <CheckCircle2 size={16} color={colors.white} />
