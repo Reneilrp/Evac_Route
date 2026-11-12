@@ -581,6 +581,16 @@ class RescueMissionController extends Controller
             'current_longitude' => 'nullable|numeric',
         ]);
 
+        if (!empty($validated['assigned_personnel_id'])) {
+            $assignedUser = User::find($validated['assigned_personnel_id']);
+            if ($assignedUser && (in_array($assignedUser->operator_type, ['admin', 'logistics', 'scanner']) || $assignedUser->email === 'admin@lgu.gov.ph')) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'System Administrators and CSWDO personnel cannot be assigned as field rescue vehicle commanders.',
+                ], 422);
+            }
+        }
+
         $unit = RescueUnit::create([
             'name' => $validated['name'],
             'call_sign' => strtoupper($validated['call_sign']),
@@ -637,6 +647,16 @@ class RescueMissionController extends Controller
         if (array_key_exists('assigned_personnel_id', $validated)) {
             $oldPersonnelId = $unit->assigned_personnel_id;
             $newPersonnelId = $validated['assigned_personnel_id'];
+
+            if ($newPersonnelId) {
+                $assignedUser = User::find($newPersonnelId);
+                if ($assignedUser && (in_array($assignedUser->operator_type, ['admin', 'logistics', 'scanner']) || $assignedUser->email === 'admin@lgu.gov.ph')) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'System Administrators and CSWDO personnel cannot be assigned as field rescue vehicle commanders.',
+                    ], 422);
+                }
+            }
 
             if ($oldPersonnelId && $oldPersonnelId != $newPersonnelId) {
                 User::where('id', $oldPersonnelId)->where('assigned_rescue_unit_id', $unit->id)->update([

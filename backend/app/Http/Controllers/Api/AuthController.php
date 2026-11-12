@@ -108,10 +108,9 @@ class AuthController extends Controller
             ->whereIn('role', ['admin', 'lgu_staff']);
 
         $agency = $request->query('agency');
-        if ($agency === 'cdrmo') {
+        if ($agency === 'cdrmo' || $agency === 'cdrrmo') {
             $query->where(function ($q) {
-                $q->whereIn('operator_type', ['general', 'rescue'])
-                  ->orWhere('role', 'admin');
+                $q->whereIn('operator_type', ['rescue', 'cdrrmo']);
             });
         } elseif ($agency === 'cswdo') {
             $query->whereIn('operator_type', ['logistics', 'scanner']);

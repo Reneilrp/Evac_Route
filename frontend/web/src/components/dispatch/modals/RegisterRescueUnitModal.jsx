@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X, Truck } from 'lucide-react';
 import api from '../../../services/api';
 import { showError } from '../../../utils/toast';
@@ -11,6 +11,26 @@ function RegisterRescueUnitModal({ staff = [], onClose, onSuccess }) {
   const [contactNumber, setContactNumber] = useState('');
   const [assignedPersonnelId, setAssignedPersonnelId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Filter staff to ONLY allow CDRRMO Search & Rescue field operators (Exclude System Admin & CSWDO)
+  const eligibleStaff = useMemo(() => {
+    return (staff || []).filter(u => {
+      const opType = (u.operator_type || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+
+      // Explicitly exclude System Admin
+      if (opType === 'admin' || email === 'admin@lgu.gov.ph' || (u.role === 'admin' && opType !== 'cdrrmo')) {
+        return false;
+      }
+
+      // Explicitly exclude CSWDO personnel (logistics & scanner)
+      if (['logistics', 'scanner'].includes(opType) || email.includes('logistics') || email.includes('scanner')) {
+        return false;
+      }
+
+      return opType.includes('rescue') || opType === 'cdrrmo';
+    });
+  }, [staff]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -116,15 +136,18 @@ function RegisterRescueUnitModal({ staff = [], onClose, onSuccess }) {
             <select
               value={assignedPersonnelId}
               onChange={e => setAssignedPersonnelId(e.target.value)}
-              className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-xl font-semibold"
+              className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100 rounded-xl font-semibold cursor-pointer"
             >
               <option value="">No assigned operator (On Duty pool)</option>
-              {staff.map(u => (
+              {eligibleStaff.map(u => (
                 <option key={u.id} value={u.id}>
-                  {u.name} ({u.operator_type?.toUpperCase() || u.role}) — {u.email}
+                  {u.name} ({u.operator_type === 'cdrrmo' ? 'Tactical Command' : 'Field Rescue Operator'}) — {u.email}
                 </option>
               ))}
             </select>
+            <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
+              Only qualified CDRRMO Search &amp; Rescue field operators can be assigned to fleet vehicles.
+            </p>
           </div>
 
           <div className="flex gap-2.5 pt-2">

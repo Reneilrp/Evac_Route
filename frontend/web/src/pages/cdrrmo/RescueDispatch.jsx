@@ -84,10 +84,10 @@ export default function RescueDispatch() {
     queryFn: () => api.get('/shelters').then(res => res.data.data),
   });
 
-  // 5. Fetch staff for unit assignment
+  // 5. Fetch staff for unit assignment (CDRRMO rescue field units)
   const { data: staffData } = useQuery({
-    queryKey: ['staff'],
-    queryFn: () => api.get('/staff').then(res => res.data.data),
+    queryKey: ['staff', 'cdrrmo'],
+    queryFn: () => api.get('/staff?agency=cdrrmo').then(res => res.data?.data || res.data || []),
   });
 
   const units = unitsData ?? [];

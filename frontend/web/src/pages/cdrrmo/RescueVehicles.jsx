@@ -48,10 +48,10 @@ export default function RescueVehicles() {
   });
   const units = Array.isArray(unitsData) ? unitsData : [];
 
-  // 2. Fetch Staff for operator assignment
+  // 2. Fetch Staff for operator assignment (CDRRMO rescue field units)
   const { data: staffData } = useQuery({
-    queryKey: ['staff'],
-    queryFn: () => api.get('/staff').then(res => res.data?.data || res.data || []),
+    queryKey: ['staff', 'cdrrmo'],
+    queryFn: () => api.get('/staff?agency=cdrrmo').then(res => res.data?.data || res.data || []),
   });
   const staff = Array.isArray(staffData) ? staffData : [];
 
