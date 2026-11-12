@@ -69,7 +69,7 @@ echo "✅ Frontend dist synced."
 # 4. Restart Supervisor Workers & PHP-FPM
 echo ""
 echo "⚡ [4/4] Restarting background workers & reloading PHP-FPM on VM..."
-ssh "$VM_HOST" "sudo supervisorctl restart evac-reverb evac-queue || true; sudo systemctl reload php8.3-fpm || true"
+ssh "$VM_HOST" "sudo supervisorctl restart evac-reverb evac-queue || true; sudo systemctl reload php8.3-fpm nginx || true"
 
 echo ""
 echo "=========================================================="
