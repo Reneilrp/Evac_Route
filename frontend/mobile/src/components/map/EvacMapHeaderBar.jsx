@@ -10,6 +10,7 @@ export default function EvacMapHeaderBar({
   isDisasterFilterExpanded,
   setIsFilterExpanded,
   isFilterExpanded,
+  isStyleMenuOpen = false,
   setIsStyleMenuOpen,
   triggerCasualHaptic,
   isHighContrast,

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { Layers, Navigation } from 'lucide-react-native';
 
 export default function EvacMapControlButtons({
+  styles,
   sheetHeightRef,
   isStyleMenuOpen,
   setIsStyleMenuOpen,

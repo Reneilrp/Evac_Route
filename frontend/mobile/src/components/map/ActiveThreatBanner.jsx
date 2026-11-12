@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Phone, AlertTriangle, ShieldAlert, CheckCircle2, X, Navigation } from 'lucide-react-native';
 
 export default function ActiveThreatBanner({
+  insets,
   isRouteBlocked,
   styles,
   colors,

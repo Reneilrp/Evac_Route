@@ -1615,6 +1615,7 @@ export default function EvacMap({ navigation, route }) {
 
       {/* ─── CRITICAL THREAT & PROXIMITY ALERT BANNER ─── */}
       <ActiveThreatBanner
+        insets={insets}
         isRouteBlocked={isRouteBlocked}
         styles={styles}
         colors={colors}
@@ -1646,6 +1647,7 @@ export default function EvacMap({ navigation, route }) {
         isDisasterFilterExpanded={isDisasterFilterExpanded}
         setIsFilterExpanded={setIsFilterExpanded}
         isFilterExpanded={isFilterExpanded}
+        isStyleMenuOpen={isStyleMenuOpen}
         setIsStyleMenuOpen={setIsStyleMenuOpen}
         triggerCasualHaptic={triggerCasualHaptic}
         isHighContrast={isHighContrast}
@@ -1663,6 +1665,7 @@ export default function EvacMap({ navigation, route }) {
 
       {/* ─── FLOATING ACTION CONTROLS, COMPASS & STYLE FAB ─── */}
       <EvacMapControlButtons
+        styles={styles}
         sheetHeightRef={sheetHeightRef}
         isStyleMenuOpen={isStyleMenuOpen}
         setIsStyleMenuOpen={setIsStyleMenuOpen}
