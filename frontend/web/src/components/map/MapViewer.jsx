@@ -559,22 +559,22 @@ const MapViewer = React.memo(({
               id="barangay-fills"
               type="fill"
               paint={{
-                'fill-color': darkMode ? '#38bdf8' : '#0284c7',
-                'fill-opacity': 0.04,
+                'fill-color': darkMode ? '#64748b' : '#475569',
+                'fill-opacity': 0.02,
               }}
             />
             <Layer
               id="barangay-borders"
               type="line"
               paint={{
-                'line-color': darkMode ? '#38bdf8' : '#2563eb',
+                'line-color': darkMode ? '#94a3b8' : '#475569',
                 'line-width': [
                   'interpolate', ['linear'], ['zoom'],
                   10, 1.2,
-                  13, 2.0,
-                  16, 2.8
+                  13, 1.8,
+                  16, 2.6
                 ],
-                'line-opacity': darkMode ? 0.85 : 0.75,
+                'line-opacity': darkMode ? 0.8 : 0.7,
                 'line-dasharray': [4, 2],
               }}
             />
@@ -596,7 +596,7 @@ const MapViewer = React.memo(({
                 'text-max-width': 8,
               }}
               paint={{
-                'text-color': darkMode ? '#e2e8f0' : '#1e293b',
+                'text-color': darkMode ? '#cbd5e1' : '#334155',
                 'text-halo-color': darkMode ? '#0f172a' : '#ffffff',
                 'text-halo-width': 2,
                 'text-halo-blur': 1,

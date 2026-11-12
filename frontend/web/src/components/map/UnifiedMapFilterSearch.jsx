@@ -417,14 +417,14 @@ export function UnifiedMapFilterSearch({
 
               <label className="flex items-center justify-between p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition select-none">
                 <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                  <span className="w-2 h-2 rounded-full bg-slate-500 dark:bg-slate-400" />
                   Barangay Boundaries (98)
                 </span>
                 <input
                   type="checkbox"
                   checked={showBarangayBoundaries}
                   onChange={e => onToggleBarangayBoundaries?.(e.target.checked)}
-                  className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 bg-white dark:bg-slate-800 focus:ring-0 cursor-pointer"
+                  className="rounded border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 focus:ring-0 cursor-pointer"
                 />
               </label>
 
