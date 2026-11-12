@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, X, Shield, LifeBuoy } from 'lucide-react';
+import { User, X, Shield, LifeBuoy, QrCode } from 'lucide-react';
 
 export default function StaffFormModal({
   isOpen,

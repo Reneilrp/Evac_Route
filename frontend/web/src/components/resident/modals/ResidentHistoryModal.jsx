@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, X, Phone, MapPin } from 'lucide-react';
+import { User, X, Phone, MapPin, Truck, History } from 'lucide-react';
 
 // ─── Scoped Resident Stay History Modal Component ───────────────────────────────────────────
 function ResidentHistoryModal({ resident, onClose }) {

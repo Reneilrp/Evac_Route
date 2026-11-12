@@ -12,7 +12,8 @@ import {
   Waves,
   Truck,
   TriangleAlert,
-  Crosshair
+  Crosshair,
+  X
 } from 'lucide-react';
 import { BARANGAY_COORDS } from '../../utils/mapHelper';
 

@@ -15,6 +15,7 @@ import echo from '../services/echo';
 import { playNotificationSound, playSosAlarmSound } from '../services/sound';
 import LogoutConfirmModal from '../components/common/LogoutConfirmModal';
 import AdminSettingsModal from '../components/admin/AdminSettingsModal';
+import RoleGuard from '../components/common/RoleGuard';
 
 function NavLink({ to, children }) {
   const location = useLocation();

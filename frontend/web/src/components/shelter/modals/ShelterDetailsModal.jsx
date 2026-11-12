@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, QrCode } from 'lucide-react';
+import { X, QrCode, MapPin } from 'lucide-react';
 import api from '../../../services/api';
 import { showSuccess, showError } from '../../../utils/toast';
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Shield, Trash2, LifeBuoy, Edit2 } from 'lucide-react';
+import { X, Shield, Trash2, LifeBuoy, Edit2, QrCode } from 'lucide-react';
 
 export default function StaffDetailsModal({
   viewingStaff,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Trash2, Sparkles } from 'lucide-react';
+import { Plus, X, Trash2, Sparkles, Truck } from 'lucide-react';
 import api from '../../../services/api';
 
 // --- Create Dispatch Modal ---

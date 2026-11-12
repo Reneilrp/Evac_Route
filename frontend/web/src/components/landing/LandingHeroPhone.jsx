@@ -11,6 +11,7 @@ import {
   Download,
   QrCode,
   Check,
+  X,
 } from "lucide-react";
 
 export default function LandingHeroPhone({

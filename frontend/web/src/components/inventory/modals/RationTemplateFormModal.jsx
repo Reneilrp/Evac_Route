@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, X, Trash2 } from 'lucide-react';
+import { Plus, X, Trash2, ClipboardList } from 'lucide-react';
 
 function RationTemplateForm({ items, onCancel, onCreate }) {
   const [templateName, setTemplateName] = useState('');
