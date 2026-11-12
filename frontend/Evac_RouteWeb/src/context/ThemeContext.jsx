@@ -3,28 +3,80 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
+  const getSystemTheme = () => {
+    return typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : false;
+  };
+
   const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved) {
-      return saved === 'dark';
-    }
-    return window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)').matches : true;
+    try {
+      const override = localStorage.getItem('theme_override');
+      if (override === 'dark') return true;
+      if (override === 'light') return false;
+    } catch (e) {}
+    return getSystemTheme();
   });
+
+  // Listen for browser / OS color scheme changes in real-time
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const handleChange = (e) => {
+      try {
+        const override = localStorage.getItem('theme_override');
+        // If user has not set an explicit manual toggle override, follow system theme
+        if (!override) {
+          setDarkMode(e.matches);
+        }
+      } catch (err) {}
+    };
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+    } else if (mediaQuery.addListener) {
+      mediaQuery.addListener(handleChange);
+    }
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleChange);
+      } else if (mediaQuery.removeListener) {
+        mediaQuery.removeListener(handleChange);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
     }
   }, [darkMode]);
 
-  const toggleDarkMode = () => setDarkMode(prev => !prev);
+  const toggleDarkMode = () => {
+    setDarkMode(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('theme_override', next ? 'dark' : 'light');
+        localStorage.setItem('theme', next ? 'dark' : 'light');
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const resetToSystemTheme = () => {
+    try {
+      localStorage.removeItem('theme_override');
+      localStorage.removeItem('theme');
+    } catch (e) {}
+    setDarkMode(getSystemTheme());
+  };
 
   return (
-    <ThemeContext.Provider value={{ darkMode, setDarkMode, toggleDarkMode }}>
+    <ThemeContext.Provider value={{ darkMode, setDarkMode, toggleDarkMode, resetToSystemTheme }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -33,7 +85,12 @@ export function ThemeProvider({ children }) {
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    return {
+      darkMode: false,
+      setDarkMode: () => {},
+      toggleDarkMode: () => {},
+      resetToSystemTheme: () => {}
+    };
   }
   return context;
 }

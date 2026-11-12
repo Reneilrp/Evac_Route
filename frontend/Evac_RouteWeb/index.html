@@ -7,6 +7,19 @@
     <meta name="description" content="EvacRoute - CDRRMO & CSWDO Intelligent Emergency Evacuation Route Optimization, Tactical Rescue Fleet Tracking, and Relief Shelter Command Center." />
     <meta name="theme-color" content="#2563eb" />
     <title>EvacRoute | Smart Disaster Evacuation & Command Center</title>
+    <script>
+      (function() {
+        try {
+          var override = localStorage.getItem('theme_override');
+          var isDark = override ? override === 'dark' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

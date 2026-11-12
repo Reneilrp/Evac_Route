@@ -12,6 +12,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import ConfirmationModal from '../components/common/ConfirmationModal';
 import ProactiveDisasterModal from '../components/disaster/ProactiveDisasterModal';
 import ZamboangaWeatherModal from '../components/disaster/ZamboangaWeatherModal';
@@ -3134,6 +3135,7 @@ function RiskAlertsDrawer({ hazards, simulationMode, drawerOpen, setDrawerOpen }
 export default function MapDashboard() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { darkMode } = useTheme();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isCSWDO = user?.email?.toLowerCase().includes('logistics') || user?.email?.toLowerCase().includes('cswdo');
@@ -3169,7 +3171,18 @@ export default function MapDashboard() {
   const [showResidentSignals, setShowResidentSignals] = useState(false); // On-demand resident GPS layer
   const [activeMapFilter, setActiveMapFilter] = useState('all');
 
-  const [mapStyle, setMapStyle] = useState('dark');
+  const [mapStyle, setMapStyle] = useState(() => (darkMode ? 'dark' : 'terrain'));
+
+  // Synchronize default map style with theme (Light -> Terrain, Dark -> Dark)
+  useEffect(() => {
+    setMapStyle(prev => {
+      if (prev === 'dark' || prev === 'terrain') {
+        return darkMode ? 'dark' : 'terrain';
+      }
+      return prev; // Preserve manual selection if user selected 'satellite'
+    });
+  }, [darkMode]);
+
   const [is3D, setIs3D] = useState(true);
   const mapRef = useRef(null);
 
