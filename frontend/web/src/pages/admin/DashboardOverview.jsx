@@ -423,7 +423,7 @@ export default function DashboardOverview() {
               </span>
               <h3 className="font-bold text-gray-800 dark:text-slate-100">Live Field Incident &amp; Distress Stream</h3>
             </div>
-            <Link to="/admin/incidents" className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
+            <Link to="/admin/incidents?tab=pending" className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
               Open Queue ({tactical.pending_incidents} pending) &rarr;
             </Link>
           </div>
@@ -450,46 +450,66 @@ export default function DashboardOverview() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-                  {(tactical.recent_incidents || []).map(inc => (
-                    <tr key={inc.id} className="hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition">
-                      <td className="py-3 px-6 font-medium text-gray-800 dark:text-slate-200 text-sm">
-                        {inc.name}
-                      </td>
-                      <td className="py-3 px-6 text-xs text-gray-600 dark:text-slate-400 uppercase font-semibold">
-                        {inc.hazard_type}
-                      </td>
-                      <td className="py-3 px-6">
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
-                          inc.severity_level === 'critical' ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400' :
-                          inc.severity_level === 'high' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-400' :
-                          'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
-                        }`}>
-                          {inc.severity_level}
-                        </span>
-                      </td>
-                      <td className="py-3 px-6 text-xs text-gray-500 dark:text-slate-400">
-                        {inc.reporter?.name || 'Resident'}
-                      </td>
-                      <td className="py-3 px-6">
-                        <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded ${
-                          inc.status === 'pending' ? 'bg-red-500 text-white animate-pulse' :
-                          inc.status === 'verified' ? 'bg-amber-500 text-white' :
-                          inc.status === 'responding' ? 'bg-blue-500 text-white' :
-                          'bg-green-600 text-white'
-                        }`}>
-                          {inc.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-6 text-right">
-                        <Link 
-                          to="/admin/incidents" 
-                          className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
-                        >
-                          Review &rarr;
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
+                  {(tactical.recent_incidents || []).map(inc => {
+                    const isSos = inc.name?.startsWith('EMERGENCY SOS:');
+                    return (
+                      <tr key={inc.id} className="hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition">
+                        <td className="py-3 px-6 font-medium text-gray-800 dark:text-slate-200 text-sm">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {isSos && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950/70 dark:text-red-300 border border-red-200 dark:border-red-900/50">
+                                🚨 SOS DISTRESS
+                              </span>
+                            )}
+                            <span>{inc.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-6 text-xs text-gray-600 dark:text-slate-400 uppercase font-semibold">
+                          {inc.hazard_type}
+                        </td>
+                        <td className="py-3 px-6">
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                            inc.severity_level === 'critical' ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400' :
+                            inc.severity_level === 'high' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-400' :
+                            'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
+                          }`}>
+                            {inc.severity_level}
+                          </span>
+                        </td>
+                        <td className="py-3 px-6 text-xs text-gray-500 dark:text-slate-400">
+                          {inc.reporter?.name || 'Resident'}
+                        </td>
+                        <td className="py-3 px-6">
+                          <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded ${
+                            inc.status === 'pending' ? 'bg-red-500 text-white animate-pulse' :
+                            inc.status === 'approved' ? 'bg-emerald-600 text-white' :
+                            inc.status === 'verified' ? 'bg-amber-500 text-white' :
+                            inc.status === 'responding' ? 'bg-blue-500 text-white' :
+                            'bg-green-600 text-white'
+                          }`}>
+                            {inc.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-6 text-right">
+                          {isSos ? (
+                            <Link 
+                              to="/admin/dispatch" 
+                              className="inline-flex items-center gap-1 text-xs font-bold text-red-600 dark:text-red-400 hover:underline"
+                            >
+                              Dispatch Mission &rarr;
+                            </Link>
+                          ) : (
+                            <Link 
+                              to={`/admin/incidents?tab=${inc.status || 'pending'}`} 
+                              className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              Review &rarr;
+                            </Link>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

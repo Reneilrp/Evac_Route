@@ -451,6 +451,16 @@ class RescueMissionController extends Controller
                     }
                 }
             }
+
+            // Auto-archive corresponding PendingIncident when rescue mission completes
+            if ($newStatus === 'completed' && $mission->pending_incident_id) {
+                PendingIncident::where('id', $mission->pending_incident_id)
+                    ->whereNull('archived_at')
+                    ->update([
+                        'archived_at' => now(),
+                        'review_note' => "Mission completed by " . ($mission->rescueUnit?->name ?? 'Rescue Unit') . " (Mission {$mission->control_no})",
+                    ]);
+            }
         });
 
         $mission->refresh()->load(['rescueUnit', 'targetShelter', 'stagingPoint']);

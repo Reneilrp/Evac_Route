@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { Archive, ArchiveRestore } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Archive, ArchiveRestore, Radio, ShieldAlert } from 'lucide-react';
 import api from '../../services/api';
 import { getNearestBarangay } from '../../utils/mapHelper';
 import IncidentReviewModal from '../../components/incident/modals/IncidentReviewModal';
@@ -30,6 +30,12 @@ function getBarangayDisplay(incident) {
 
 const STATUS_TABS = ['pending', 'approved', 'rejected', 'archived'];
 
+const TYPE_OPTIONS = [
+  { id: 'all', label: 'All Incidents' },
+  { id: 'report', label: 'Citizen Reports' },
+  { id: 'sos', label: '🚨 SOS Distress' },
+];
+
 const HAZARD_COLORS = {
   flood: 'bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50',
   earthquake: 'bg-orange-100 text-orange-800 dark:bg-orange-950/70 dark:text-orange-300 border border-orange-200 dark:border-orange-900/50',
@@ -45,7 +51,26 @@ const SEVERITY_COLORS = {
 
 export default function IncidentReviewQueue() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('pending');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'pending';
+  const typeFilter = searchParams.get('type') || 'all';
+
+  const setActiveTab = (tab) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    });
+  };
+
+  const setTypeFilter = (type) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('type', type);
+      return next;
+    });
+  };
+
   const [reviewModal, setReviewModal] = useState(null); // { id, action: 'approve'|'reject', evaluation }
   const [activePhotoModal, setActivePhotoModal] = useState(null); // URL of full photo
   const [note, setNote] = useState('');
@@ -65,8 +90,14 @@ export default function IncidentReviewQueue() {
   }, [reviewModal, activePhotoModal]);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['incidents', activeTab, 'report'],
-    queryFn: () => api.get(`/incidents?status=${activeTab}&type=report`).then(r => r.data.data),
+    queryKey: ['incidents', activeTab, typeFilter],
+    queryFn: () => {
+      let url = `/incidents?status=${activeTab}`;
+      if (typeFilter && typeFilter !== 'all') {
+        url += `&type=${typeFilter}`;
+      }
+      return api.get(url).then(r => r.data.data);
+    },
   });
 
   const reviewMutation = useMutation({
@@ -96,27 +127,45 @@ export default function IncidentReviewQueue() {
   });
 
   const rawIncidents = data?.data ?? data ?? [];
-  const incidents = Array.isArray(rawIncidents)
-    ? rawIncidents.filter(inc => !inc?.name?.startsWith('EMERGENCY SOS:'))
-    : [];
+  const incidents = Array.isArray(rawIncidents) ? rawIncidents : [];
 
   return (
     <div className="p-6 h-full overflow-y-auto bg-gray-50 dark:bg-slate-950">
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-slate-800">
-        {STATUS_TABS.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-bold capitalize rounded-t-lg transition ${
-              activeTab === tab
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-900'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+      {/* Header Tabs & Filters */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-gray-200 dark:border-slate-800 pb-2">
+        {/* Status Tabs */}
+        <div className="flex gap-2 overflow-x-auto">
+          {STATUS_TABS.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-bold capitalize rounded-t-lg transition cursor-pointer ${
+                activeTab === tab
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-900'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Incident Type Filter */}
+        <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-slate-900 p-1 rounded-xl self-start sm:self-auto border border-gray-200 dark:border-slate-800">
+          {TYPE_OPTIONS.map(opt => (
+            <button
+              key={opt.id}
+              onClick={() => setTypeFilter(opt.id)}
+              className={`px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer ${
+                typeFilter === opt.id
+                  ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 shadow-xs'
+                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Content */}
@@ -143,6 +192,7 @@ export default function IncidentReviewQueue() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {incidents.map(incident => {
+          const isSos = incident.name?.startsWith('EMERGENCY SOS:') || Boolean(incident.modifiers);
           const photos = incident.photo_urls && incident.photo_urls.length > 0
             ? incident.photo_urls
             : incident.photo_url ? [incident.photo_url] : [];
@@ -151,8 +201,30 @@ export default function IncidentReviewQueue() {
           return (
             <div key={incident.id} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden flex flex-col justify-between hover:shadow-md transition">
               <div>
-                {/* Photo Gallery (Up to 4 photos for credibility) */}
-                {photos.length > 0 ? (
+                {/* Photo Gallery or SOS Distress Banner */}
+                {isSos ? (
+                  <div className="w-full h-44 bg-gradient-to-br from-rose-600 via-red-600 to-amber-700 p-4 flex flex-col justify-between text-white relative overflow-hidden">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black tracking-wider bg-black/35 backdrop-blur-xs uppercase border border-white/20">
+                        <span className="w-2 h-2 rounded-full bg-red-200 animate-ping" />
+                        🚨 EMERGENCY SOS
+                      </span>
+                      {incident.headcount && (
+                        <span className="text-xs font-black bg-white/20 px-2 py-0.5 rounded-full">
+                          👥 {incident.headcount} {incident.headcount > 1 ? 'Persons' : 'Person'}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-base font-extrabold tracking-tight leading-snug drop-shadow-xs">
+                        Life-Safety Distress Alert
+                      </p>
+                      <p className="text-xs text-rose-100 font-medium">
+                        Immediate tactical rescue assistance requested via Resident Mobile App
+                      </p>
+                    </div>
+                  </div>
+                ) : photos.length > 0 ? (
                   <div className="relative bg-gray-900">
                     {photos.length === 1 ? (
                       <img
@@ -206,6 +278,17 @@ export default function IncidentReviewQueue() {
                       </span>
                     )}
                   </div>
+
+                  {/* Special Needs Modifiers for SOS */}
+                  {Array.isArray(incident.modifiers) && incident.modifiers.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {incident.modifiers.map(m => (
+                        <span key={m} className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40">
+                          ⚠️ {m.replace(/_/g, ' ')}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Hotspot / Frequency Evaluation Banner */}
                   {evalData?.is_frequent_hotspot ? (
@@ -325,11 +408,20 @@ export default function IncidentReviewQueue() {
                 )}
 
                 {(activeTab === 'approved' || activeTab === 'rejected') && (
-                  <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+                  <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+                    {isSos && (
+                      <button
+                        onClick={() => navigate('/admin/dispatch')}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg transition border border-red-200 dark:border-red-800/50 cursor-pointer"
+                        title="View mission in Rescue Dispatch Console"
+                      >
+                        <span>Rescue Dispatch ↗</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => archiveMutation.mutate(incident.id)}
                       disabled={archiveMutation.isPending}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition border border-amber-200 dark:border-amber-800/50 cursor-pointer disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition border border-amber-200 dark:border-amber-800/50 cursor-pointer disabled:opacity-50 ml-auto"
                       title="Archive this reviewed report"
                     >
                       <Archive size={13} />
@@ -339,11 +431,20 @@ export default function IncidentReviewQueue() {
                 )}
 
                 {activeTab === 'archived' && (
-                  <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+                  <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+                    {isSos && (
+                      <button
+                        onClick={() => navigate('/admin/dispatch')}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg transition border border-red-200 dark:border-red-800/50 cursor-pointer"
+                        title="View mission in Rescue Dispatch Console"
+                      >
+                        <span>Rescue Dispatch ↗</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => unarchiveMutation.mutate(incident.id)}
                       disabled={unarchiveMutation.isPending}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition border border-blue-200 dark:border-blue-800/50 cursor-pointer disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition border border-blue-200 dark:border-blue-800/50 cursor-pointer disabled:opacity-50 ml-auto"
                       title="Restore report to active queue"
                     >
                       <ArchiveRestore size={13} />
