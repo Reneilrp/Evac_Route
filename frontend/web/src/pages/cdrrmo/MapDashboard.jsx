@@ -276,11 +276,11 @@ export { BARANGAY_COORDS } from '../../utils/mapHelper';
 
 function ToolbarBtn({ active, onClick, icon, label, color = 'blue', disabled = false }) {
   const colorMap = {
-    blue:   { active: 'bg-blue-600 text-white shadow-blue-500/40', hover: 'hover:bg-white/20 text-white/70 hover:text-white' },
-    red:    { active: 'bg-red-600 text-white shadow-red-500/40', hover: 'hover:bg-white/20 text-white/70 hover:text-white' },
-    amber:  { active: 'bg-amber-500 text-white shadow-amber-400/40', hover: 'hover:bg-white/20 text-white/70 hover:text-white' },
-    green:  { active: 'bg-green-600 text-white shadow-green-500/40', hover: 'hover:bg-white/20 text-white/70 hover:text-white' },
-    purple: { active: 'bg-purple-600 text-white shadow-purple-500/40', hover: 'hover:bg-white/20 text-white/70 hover:text-white' },
+    blue:   { active: 'bg-blue-600 text-white shadow-blue-500/40', hover: 'hover:bg-slate-100 dark:hover:bg-white/20 text-slate-600 hover:text-slate-900 dark:text-white/70 dark:hover:text-white' },
+    red:    { active: 'bg-red-600 text-white shadow-red-500/40', hover: 'hover:bg-slate-100 dark:hover:bg-white/20 text-slate-600 hover:text-slate-900 dark:text-white/70 dark:hover:text-white' },
+    amber:  { active: 'bg-amber-500 text-white shadow-amber-400/40', hover: 'hover:bg-slate-100 dark:hover:bg-white/20 text-slate-600 hover:text-slate-900 dark:text-white/70 dark:hover:text-white' },
+    green:  { active: 'bg-green-600 text-white shadow-green-500/40', hover: 'hover:bg-slate-100 dark:hover:bg-white/20 text-slate-600 hover:text-slate-900 dark:text-white/70 dark:hover:text-white' },
+    purple: { active: 'bg-purple-600 text-white shadow-purple-500/40', hover: 'hover:bg-slate-100 dark:hover:bg-white/20 text-slate-600 hover:text-slate-900 dark:text-white/70 dark:hover:text-white' },
   };
   const c = colorMap[color] || colorMap.blue;
   return (
@@ -288,8 +288,8 @@ function ToolbarBtn({ active, onClick, icon, label, color = 'blue', disabled = f
       onClick={onClick}
       disabled={disabled}
       title={label}
-      className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 select-none whitespace-nowrap ${
-        active ? `${c.active} shadow-lg` : c.hover
+      className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 select-none whitespace-nowrap cursor-pointer ${
+        active ? `${c.active} shadow-md` : c.hover
       } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
     >
       {icon}
@@ -305,36 +305,36 @@ function MapLegend({ simulationMode }) {
     <div className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 select-none ${
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 select-none cursor-pointer ${
           open 
             ? 'bg-blue-600 text-white shadow-md' 
-            : 'text-white/60 hover:text-white hover:bg-white/10'
+            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10'
         }`}
       >
         <SlidersHorizontal size={13} />
         <span>Legend</span>
       </button>
       {open && (
-        <div className="absolute bottom-full right-0 mb-3 bg-gray-900/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-white/10 w-56 z-50">
-          <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-3">Shelters</p>
+        <div className="absolute bottom-full right-0 mb-3 bg-white/98 dark:bg-gray-900/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-slate-200 dark:border-white/10 w-56 z-50 text-slate-800 dark:text-white">
+          <p className="text-[10px] font-black text-slate-400 dark:text-white/40 uppercase tracking-widest mb-3">Shelters</p>
           <div className="space-y-2 mb-3">
-            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded-full bg-green-400 shadow-green-400/60 shadow" /><span className="text-xs text-white/80">Open Shelter</span></div>
-            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded-full bg-red-400 shadow-red-400/60 shadow" /><span className="text-xs text-white/80">Full / Closed</span></div>
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded-full bg-green-500 shadow-green-500/60 shadow" /><span className="text-xs text-slate-700 dark:text-white/80">Open Shelter</span></div>
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded-full bg-red-500 shadow-red-500/60 shadow" /><span className="text-xs text-slate-700 dark:text-white/80">Full / Closed</span></div>
           </div>
-          <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-3">Hazard Zones</p>
+          <p className="text-[10px] font-black text-slate-400 dark:text-white/40 uppercase tracking-widest mb-3">Hazard Zones</p>
           <div className="space-y-2 mb-3">
-            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-blue-600/50 border border-blue-400" /><span className="text-xs text-white/80">Flood — Low</span></div>
-            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-blue-800/60 border border-amber-400" /><span className="text-xs text-white/80">Flood — Medium</span></div>
-            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-red-700/60 border border-white/30" /><span className="text-xs text-white/80">Flood — High</span></div>
-            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-red-950/80 border-2 border-red-500" /><span className="text-xs text-white/80 font-bold">Earthquake — Block</span></div>
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-blue-600/50 border border-blue-400" /><span className="text-xs text-slate-700 dark:text-white/80">Flood — Low</span></div>
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-blue-800/60 border border-amber-400" /><span className="text-xs text-slate-700 dark:text-white/80">Flood — Medium</span></div>
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-red-700/60 border border-white/30" /><span className="text-xs text-slate-700 dark:text-white/80">Flood — High</span></div>
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-red-950/80 border-2 border-red-500" /><span className="text-xs text-slate-700 dark:text-white/80 font-bold">Earthquake — Block</span></div>
           </div>
           {simulationMode && (
             <>
-              <p className="text-[10px] font-black text-amber-400/80 uppercase tracking-widest mb-2">Simulation Roads</p>
+              <p className="text-[10px] font-black text-amber-600 dark:text-amber-400/80 uppercase tracking-widest mb-2">Simulation Roads</p>
               <div className="space-y-2">
-                <div className="flex items-center gap-2.5"><div className="w-6 h-0.5 bg-green-400" /><span className="text-xs text-white/80">Viable Route</span></div>
-                <div className="flex items-center gap-2.5"><div className="w-6 h-0.5 bg-amber-400" /><span className="text-xs text-white/80">Caution Zone</span></div>
-                <div className="flex items-center gap-2.5"><div className="w-6 h-0.5 bg-red-500 border-dashed" /><span className="text-xs text-white/80">Risk — Avoid</span></div>
+                <div className="flex items-center gap-2.5"><div className="w-6 h-0.5 bg-green-500" /><span className="text-xs text-slate-700 dark:text-white/80">Viable Route</span></div>
+                <div className="flex items-center gap-2.5"><div className="w-6 h-0.5 bg-amber-500" /><span className="text-xs text-slate-700 dark:text-white/80">Caution Zone</span></div>
+                <div className="flex items-center gap-2.5"><div className="w-6 h-0.5 bg-red-500 border-dashed" /><span className="text-xs text-slate-700 dark:text-white/80">Risk — Avoid</span></div>
               </div>
             </>
           )}
@@ -1739,36 +1739,43 @@ const MapViewer = React.memo(({
       )}
 
       {/* Floating Style Picker and Map Legend */}
-      <div className={`absolute bottom-6 z-30 flex items-center bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-xl p-1 shadow-2xl transition-all duration-300 ${
+      <div className={`absolute bottom-6 z-30 flex items-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-white/10 rounded-xl p-1 shadow-2xl transition-all duration-300 ${
         drawerOpen ? 'right-[320px]' : 'right-6'
       }`}>
         {Object.values(MAP_STYLES).map(s => (
           <button
             key={s.id}
-            onClick={() => setMapStyle(s.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+            onClick={() => {
+              setMapStyle(s.id);
+              if (s.id === 'terrain') {
+                setDarkMode(false);
+              } else if (s.id === 'dark') {
+                setDarkMode(true);
+              }
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
               mapStyle === s.id
                 ? 'bg-blue-600 text-white shadow-md'
-                : 'text-white/60 hover:text-white hover:bg-white/10'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10'
             }`}
           >
             {s.icon}
             <span className="hidden md:inline">{s.label}</span>
           </button>
         ))}
-        <div className="w-px h-5 bg-white/10 mx-1.5 self-center" />
+        <div className="w-px h-5 bg-slate-200 dark:bg-white/10 mx-1.5 self-center" />
         <button
           onClick={() => setIs3D(prev => !prev)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
             is3D
               ? 'bg-purple-600 text-white shadow-md'
-              : 'text-white/60 hover:text-white hover:bg-white/10'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10'
           }`}
         >
           <Mountain size={13} />
           <span className="hidden md:inline">3D View</span>
         </button>
-        <div className="w-px h-5 bg-white/10 mx-1.5 self-center" />
+        <div className="w-px h-5 bg-slate-200 dark:bg-white/10 mx-1.5 self-center" />
         {/* Map Legend button */}
         <MapLegend simulationMode={simulationMode} />
       </div>
@@ -1813,19 +1820,19 @@ function RiskAlertsDrawer({ hazards, simulationMode, drawerOpen, setDrawerOpen }
     >
       <button
         onClick={() => setDrawerOpen(o => !o)}
-        className="absolute -left-8 top-1/2 -translate-y-1/2 bg-gray-900/90 border border-white/10 text-white/60 hover:text-white rounded-l-xl px-1.5 py-4 flex items-center transition"
+        className="absolute -left-8 top-1/2 -translate-y-1/2 bg-white/95 dark:bg-gray-900/90 border border-slate-200 dark:border-white/10 text-slate-600 hover:text-slate-900 dark:text-white/60 dark:hover:text-white rounded-l-xl px-1.5 py-4 flex items-center transition cursor-pointer shadow-md"
       >
         {drawerOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>
 
-      <div className="w-full h-full bg-gray-950/95 backdrop-blur-xl border-l border-white/10 flex flex-col">
-        <div className="p-4 border-b border-white/10">
-          <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Command Feed</p>
-          <h3 className="text-sm font-black text-white mt-0.5 flex items-center gap-2">
-            <Shield size={15} className="text-blue-400" />
+      <div className="w-full h-full bg-white/98 dark:bg-gray-950/95 backdrop-blur-xl border-l border-slate-200 dark:border-white/10 flex flex-col text-slate-800 dark:text-white">
+        <div className="p-4 border-b border-slate-200 dark:border-white/10">
+          <p className="text-[10px] font-black text-slate-400 dark:text-white/40 uppercase tracking-widest">Command Feed</p>
+          <h3 className="text-sm font-black text-slate-900 dark:text-white mt-0.5 flex items-center gap-2">
+            <Shield size={15} className="text-blue-600 dark:text-blue-400" />
             {simulationMode ? `Simulation: ${simulationMode === 'rain' ? '🌧 Heavy Rain' : '🌋 Tremors'}` : 'Active Risk Alerts'}
           </h3>
-          <p className="text-[10px] text-white/30 mt-1">Showing {combinedAlerts.length} alert{combinedAlerts.length !== 1 ? 's' : ''} in current scope</p>
+          <p className="text-[10px] text-slate-500 dark:text-white/30 mt-1">Showing {combinedAlerts.length} alert{combinedAlerts.length !== 1 ? 's' : ''} in current scope</p>
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -1871,7 +1878,7 @@ function RiskAlertsDrawer({ hazards, simulationMode, drawerOpen, setDrawerOpen }
 export default function MapDashboard() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { darkMode } = useTheme();
+  const { darkMode, toggleDarkMode, setDarkMode } = useTheme();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isCSWDO = user?.email?.toLowerCase().includes('logistics') || user?.email?.toLowerCase().includes('cswdo');
@@ -2725,19 +2732,19 @@ export default function MapDashboard() {
       )}
 
       {isCSWDO ? (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 xl:gap-3.5 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl px-3 xl:px-4 py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] max-w-[calc(100vw-360px)] overflow-visible whitespace-nowrap">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 xl:gap-3.5 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-white/10 rounded-2xl px-3 xl:px-4 py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.6)] max-w-[calc(100vw-360px)] overflow-visible whitespace-nowrap text-slate-800 dark:text-white">
           {/* Title & Subtitle Section */}
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 shrink-0">
+            <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-400 shrink-0">
               <Building2 size={20} />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-black text-white tracking-wide uppercase">CSWDO Situational Map</span>
-              <span className="text-[10px] text-white/50 font-medium">Shelter Locations, Live Headcount &amp; Hazards</span>
+              <span className="text-xs font-black text-slate-900 dark:text-white tracking-wide uppercase">CSWDO Situational Map</span>
+              <span className="text-[10px] text-slate-500 dark:text-white/50 font-medium">Shelter Locations, Live Headcount &amp; Hazards</span>
             </div>
           </div>
 
-          <div className="w-px h-8 bg-white/10" />
+          <div className="w-px h-8 bg-slate-200 dark:bg-white/10" />
 
           {/* Search & Filter for CSWDO (Option 1: Integrated in Top Navigation) */}
           <UnifiedMapFilterSearch
@@ -2760,60 +2767,76 @@ export default function MapDashboard() {
             isCSWDO={true}
           />
 
-          <div className="w-px h-8 bg-white/10" />
+          <div className="w-px h-8 bg-slate-200 dark:bg-white/10" />
 
           {/* Dedicated View Only Status Column */}
           <div className="flex flex-col items-center justify-center px-1">
-            <span className="text-[9px] font-black text-white/40 uppercase tracking-wider mb-0.5 select-none">Access</span>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 rounded-lg uppercase tracking-wider shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[9px] font-black text-slate-400 dark:text-white/40 uppercase tracking-wider mb-0.5 select-none">Access</span>
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-3 py-1 rounded-lg uppercase tracking-wider shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               View Only
             </span>
           </div>
 
-          <div className="w-px h-8 bg-white/10" />
+          <div className="w-px h-8 bg-slate-200 dark:bg-white/10" />
 
           {/* Headcount & Hazards Summary - Single Row */}
           <div className="flex items-center gap-3">
             {/* Shelters & Total Headcount */}
-            <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-xl">
-              <MapPin size={15} className="text-emerald-400 shrink-0" />
+            <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-3.5 py-1.5 rounded-xl">
+              <MapPin size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-white/60 font-medium text-[11px]">Shelters:</span>
-                <span className="font-extrabold text-white text-[12px]">{shelters?.length || 0}</span>
-                <span className="text-white/20">|</span>
-                <span className="text-white/60 font-medium text-[11px]">Total Headcount:</span>
-                <span className="text-emerald-400 font-mono font-bold text-[12px]">
+                <span className="text-slate-500 dark:text-white/60 font-medium text-[11px]">Shelters:</span>
+                <span className="font-extrabold text-slate-900 dark:text-white text-[12px]">{shelters?.length || 0}</span>
+                <span className="text-slate-300 dark:text-white/20">|</span>
+                <span className="text-slate-500 dark:text-white/60 font-medium text-[11px]">Total Headcount:</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold text-[12px]">
                   {shelters?.reduce((acc, s) => acc + (parseInt(s.current_occupancy) || 0), 0) || 0}
                 </span>
-                <span className="text-white/40 text-[10px] font-mono">
+                <span className="text-slate-400 dark:text-white/40 text-[10px] font-mono">
                   / {shelters?.reduce((acc, s) => acc + (parseInt(s.max_capacity) || 0), 0) || 0} Cap
                 </span>
               </div>
             </div>
 
             {/* Active Hazards */}
-            <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-xl">
-              <AlertTriangle size={15} className="text-amber-400 shrink-0" />
+            <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-3.5 py-1.5 rounded-xl">
+              <AlertTriangle size={15} className="text-amber-500 dark:text-amber-400 shrink-0" />
               <div className="flex items-center gap-1.5 text-xs">
-                <span className="text-white/60 font-medium text-[11px]">Active Hazards:</span>
-                <span className="font-extrabold text-amber-400 text-[12px]">{hazards?.length || 0} Active</span>
+                <span className="text-slate-500 dark:text-white/60 font-medium text-[11px]">Active Hazards:</span>
+                <span className="font-extrabold text-amber-600 dark:text-amber-400 text-[12px]">{hazards?.length || 0} Active</span>
               </div>
             </div>
           </div>
 
-          <div className="w-px h-8 bg-white/10" />
+          <div className="w-px h-8 bg-slate-200 dark:bg-white/10" />
 
           {/* Feed Group */}
           <div className="flex flex-col items-center">
-            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-0.5 select-none">Feed</span>
+            <span className="text-[9px] font-black text-slate-400 dark:text-white/40 uppercase tracking-widest mb-0.5 select-none">Feed</span>
             <div className="flex items-center">
               <ToolbarBtn active={drawerOpen} onClick={() => setDrawerOpen(o => !o)} icon={<SlidersHorizontal size={14} />} label="Alerts" color="purple" />
             </div>
           </div>
+
+          <div className="w-px h-8 bg-slate-200 dark:bg-white/10" />
+
+          {/* Theme Mode Toggle (Light / Dark) */}
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-[9px] font-black text-slate-400 dark:text-white/40 uppercase tracking-widest mb-0.5 select-none">Theme</span>
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              aria-label="Toggle theme mode"
+              className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 transition cursor-pointer shadow-xs"
+            >
+              {darkMode ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} className="text-indigo-600" />}
+            </button>
+          </div>
         </div>
       ) : (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-1.5 xl:gap-2 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1 xl:p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[calc(100vw-360px)] overflow-visible whitespace-nowrap">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-1.5 xl:gap-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-white/10 rounded-2xl p-1 xl:p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-max max-w-[calc(100vw-360px)] overflow-visible whitespace-nowrap text-slate-800 dark:text-white">
           {/* Option 1: Search & Filter + Recenter Hub (Far Left of Top Bar) */}
           <UnifiedMapFilterSearch
             shelters={shelters}
@@ -2835,11 +2858,11 @@ export default function MapDashboard() {
             isCSWDO={false}
           />
 
-          <div className="w-px bg-white/10 self-stretch my-0.5" />
+          <div className="w-px bg-slate-200 dark:bg-white/10 self-stretch my-0.5" />
 
           {/* Disaster Scenario Simulation Group */}
           <div className="flex flex-col items-center justify-center">
-            <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-0.5 select-none">Disaster Sim</span>
+            <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-0.5 select-none">Disaster Sim</span>
             <select
               value={activeDisasterSim}
               aria-label="Disaster scenario simulation"
@@ -2850,7 +2873,7 @@ export default function MapDashboard() {
                   .then(() => queryClient.invalidateQueries(['mapDashboard']))
                   .catch(err => console.warn('Sim toggle warning:', err));
               }}
-              className="bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-extrabold rounded-lg px-2 py-1 focus:ring-1 focus:ring-amber-400 outline-none cursor-pointer shadow-sm"
+              className="bg-slate-100 dark:bg-slate-800 text-amber-700 dark:text-amber-300 border border-amber-500/40 text-[11px] font-extrabold rounded-lg px-2 py-1 focus:ring-1 focus:ring-amber-400 outline-none cursor-pointer shadow-xs"
             >
               <option value="none">⚪ Off</option>
               <option value="siege">⚔️ Siege</option>
@@ -2861,25 +2884,25 @@ export default function MapDashboard() {
             </select>
           </div>
 
-          <div className="w-px bg-white/10 self-stretch my-0.5" />
+          <div className="w-px bg-slate-200 dark:bg-white/10 self-stretch my-0.5" />
 
           {/* Live OpenWeather Forecast & 24h History Trigger */}
           <div className="flex flex-col items-center justify-center">
-            <span className="text-[9px] font-black uppercase tracking-widest mb-0.5 select-none whitespace-nowrap flex items-center gap-1 text-cyan-400">
+            <span className="text-[9px] font-black uppercase tracking-widest mb-0.5 select-none whitespace-nowrap flex items-center gap-1 text-cyan-600 dark:text-cyan-400">
               <CloudRain size={9} />
               <span>Weather &amp; Forecast</span>
             </span>
             <button
               type="button"
               onClick={() => setIsWeatherModalOpen(true)}
-              className={`flex items-center gap-1.5 px-2 xl:px-2.5 py-1 rounded-lg border text-xs font-bold transition shadow-sm cursor-pointer whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-2 xl:px-2.5 py-1 rounded-lg border text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap ${
                 weatherTelemetry?.is_raining
                   ? (weatherTelemetry.continuous_rain_duration_minutes >= (weatherTelemetry?.flood_trigger_threshold_minutes || 45)
-                      ? 'bg-rose-950/90 hover:bg-rose-900/90 border-rose-500 text-rose-200 animate-pulse'
+                      ? 'bg-rose-100 dark:bg-rose-950/90 hover:bg-rose-200 dark:hover:bg-rose-900/90 border-rose-300 dark:border-rose-500 text-rose-800 dark:text-rose-200 animate-pulse'
                       : weatherTelemetry.continuous_rain_duration_minutes >= Math.max(15, (weatherTelemetry?.flood_trigger_threshold_minutes || 45) - 15)
-                        ? 'bg-amber-950/90 hover:bg-amber-900/90 border-amber-500 text-amber-200'
-                        : 'bg-blue-950/90 hover:bg-blue-900/90 border-blue-500 text-blue-200')
-                  : 'bg-slate-800/90 hover:bg-slate-700/90 border-slate-700 text-slate-200'
+                        ? 'bg-amber-100 dark:bg-amber-950/90 hover:bg-amber-200 dark:hover:bg-amber-900/90 border-amber-300 dark:border-amber-500 text-amber-800 dark:text-amber-200'
+                        : 'bg-blue-100 dark:bg-blue-950/90 hover:bg-blue-200 dark:hover:bg-blue-900/90 border-blue-300 dark:border-blue-500 text-blue-800 dark:text-blue-200')
+                  : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700/90 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
               }`}
               title="Click to open Zamboanga Weather Forecast, 24-Hour History & Rainfall Timeline"
             >
@@ -2889,26 +2912,26 @@ export default function MapDashboard() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
                   </span>
-                  <span className="font-extrabold text-white text-[11px]">
+                  <span className="font-extrabold text-slate-900 dark:text-white text-[11px]">
                     {weatherTelemetry.continuous_rain_duration_minutes >= (weatherTelemetry?.flood_trigger_threshold_minutes || 45)
                       ? `🚨 ${weatherTelemetry.continuous_rain_duration_minutes}m Rain (EOC)`
                       : `🌧️ ${weatherTelemetry.continuous_rain_duration_minutes > 0 ? `${weatherTelemetry.continuous_rain_duration_minutes}m Rain` : 'Rain Starting'}`}
                   </span>
                   {weatherTelemetry.rain_mm > 0 && (
-                    <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-black/40 text-cyan-300">
+                    <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-200 dark:bg-black/40 text-cyan-700 dark:text-cyan-300 font-bold">
                       {weatherTelemetry.rain_mm}mm/h
                     </span>
                   )}
                   {weatherTelemetry.temp_c && (
-                    <span className="text-[10px] text-slate-300 font-normal">
+                    <span className="text-[10px] text-slate-600 dark:text-slate-300 font-medium">
                       {weatherTelemetry.temp_c}°C
                     </span>
                   )}
                 </>
               ) : (
                 <>
-                  <Sun size={12} className="text-amber-400" />
-                  <span className="text-slate-200 font-semibold text-[11px]">
+                  <Sun size={12} className="text-amber-500 dark:text-amber-400" />
+                  <span className="text-slate-700 dark:text-slate-200 font-semibold text-[11px]">
                     ☀️ Clear {weatherTelemetry?.temp_c ? `(${weatherTelemetry.temp_c}°C)` : ''}
                   </span>
                 </>
@@ -2916,15 +2939,15 @@ export default function MapDashboard() {
             </button>
           </div>
 
-          <div className="w-px bg-white/10 self-stretch my-0.5" />
+          <div className="w-px bg-slate-200 dark:bg-white/10 self-stretch my-0.5" />
 
           {/* Proactive Early Warning & Presets Command */}
           <div className="flex flex-col items-center justify-center">
-            <span className="text-[9px] font-black text-red-400 uppercase tracking-widest mb-0.5 select-none whitespace-nowrap">Early Warning</span>
+            <span className="text-[9px] font-black text-red-500 dark:text-red-400 uppercase tracking-widest mb-0.5 select-none whitespace-nowrap">Early Warning</span>
             <button
               type="button"
               onClick={() => setIsProactiveModalOpen(true)}
-              className="flex items-center gap-1 px-2 xl:px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white border border-red-500/40 text-xs font-bold rounded-lg shadow-sm hover:shadow-red-500/30 transition cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1 px-2 xl:px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white border border-red-500/40 text-xs font-bold rounded-lg shadow-xs hover:shadow-red-500/30 transition cursor-pointer whitespace-nowrap"
               title="Open CDRRMO Proactive Hazard Command & River Basin Controls"
             >
               <ShieldAlert size={13} className="text-white" />
@@ -2932,11 +2955,11 @@ export default function MapDashboard() {
             </button>
           </div>
 
-          <div className="w-px bg-white/10 self-stretch my-0.5" />
+          <div className="w-px bg-slate-200 dark:bg-white/10 self-stretch my-0.5" />
 
           {/* Pinpoint & Orbit Tools Group */}
           <div className="flex flex-col items-center justify-center">
-            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-0.5 select-none">Pinpoint</span>
+            <span className="text-[9px] font-black text-slate-400 dark:text-white/40 uppercase tracking-widest mb-0.5 select-none">Pinpoint</span>
             <div className="flex items-center gap-1">
               {!pinMode ? (
                 <>
@@ -2950,14 +2973,30 @@ export default function MapDashboard() {
             </div>
           </div>
 
-          <div className="w-px bg-white/10 self-stretch my-0.5" />
+          <div className="w-px bg-slate-200 dark:bg-white/10 self-stretch my-0.5" />
 
           {/* Alerts Feed */}
           <div className="flex flex-col items-center justify-center">
-            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-0.5 select-none">Feed</span>
+            <span className="text-[9px] font-black text-slate-400 dark:text-white/40 uppercase tracking-widest mb-0.5 select-none">Feed</span>
             <div className="flex items-center">
               <ToolbarBtn active={drawerOpen} onClick={() => setDrawerOpen(o => !o)} icon={<SlidersHorizontal size={13} />} label="Alerts" color="purple" />
             </div>
+          </div>
+
+          <div className="w-px bg-slate-200 dark:bg-white/10 self-stretch my-0.5" />
+
+          {/* Theme Mode Toggle (Light / Dark) */}
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-[9px] font-black text-slate-400 dark:text-white/40 uppercase tracking-widest mb-0.5 select-none">Theme</span>
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              aria-label="Toggle theme mode"
+              className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 transition cursor-pointer shadow-xs"
+            >
+              {darkMode ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} className="text-indigo-600" />}
+            </button>
           </div>
         </div>
       )}
@@ -3169,7 +3208,7 @@ export default function MapDashboard() {
           )}
         </div>
         {showLocalSimulation && !isCSWDO && (
-          <div className="absolute top-20 left-6 z-40 w-80 bg-gray-950/95 backdrop-blur-xl border border-white/10 rounded-3xl p-5 shadow-[0_12px_40px_rgba(0,0,0,0.7)] flex flex-col gap-4 animate-in slide-in-from-left duration-250">
+          <div className="absolute top-20 left-6 z-40 w-80 bg-white/98 dark:bg-gray-950/95 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 shadow-[0_12px_40px_rgba(0,0,0,0.15)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.7)] text-slate-800 dark:text-white flex flex-col gap-4 animate-in slide-in-from-left duration-250">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Waves className="text-blue-400 animate-pulse" size={18} />

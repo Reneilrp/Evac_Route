@@ -603,6 +603,13 @@ function DashboardLayout({ children }) {
         <div className={`border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 ${isMapRoute ? 'p-2' : 'p-3'}`}>
           {isMapRoute ? (
             <div className="flex flex-col gap-2 w-full items-center">
+              <button
+                onClick={toggleDarkMode}
+                title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                className="w-full flex justify-center items-center p-2 bg-white hover:bg-slate-100 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+              >
+                {darkMode ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-indigo-600" />}
+              </button>
               {user?.role === 'admin' && (
                 <button
                   onClick={() => setIsSettingsOpen(true)}

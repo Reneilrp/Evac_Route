@@ -102,8 +102,8 @@ export function FloatingMapSearch({ shelters = [], hazards = [], onSelectLocatio
 
   return (
     <div ref={containerRef} className={`relative font-sans ${className || 'w-48 sm:w-60 md:w-72 lg:w-80'}`}>
-      <div className="relative flex items-center bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl transition focus-within:border-blue-500/60 focus-within:ring-2 focus-within:ring-blue-500/20">
-        <Search size={15} className="ml-3.5 text-white/50 shrink-0" />
+      <div className="relative flex items-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-white/10 rounded-2xl shadow-xl transition focus-within:border-blue-500/60 focus-within:ring-2 focus-within:ring-blue-500/20">
+        <Search size={15} className="ml-3.5 text-slate-400 dark:text-white/50 shrink-0" />
         <input
           ref={inputRef}
           type="text"
@@ -112,12 +112,12 @@ export function FloatingMapSearch({ shelters = [], hazards = [], onSelectLocatio
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder="Search barangay or shelter..."
-          className="w-full bg-transparent px-3 py-2 text-xs text-white placeholder-white/40 focus:outline-none"
+          className="w-full bg-transparent px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 focus:outline-none"
         />
         {query && (
           <button
             onClick={() => { setQuery(''); setIsOpen(false); }}
-            className="mr-3 text-white/40 hover:text-white transition cursor-pointer"
+            className="mr-3 text-slate-400 hover:text-slate-600 dark:text-white/40 dark:hover:text-white transition cursor-pointer"
           >
             <X size={14} />
           </button>
@@ -125,32 +125,32 @@ export function FloatingMapSearch({ shelters = [], hazards = [], onSelectLocatio
       </div>
 
       {isOpen && results.length > 0 && (
-        <div className="mt-1.5 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1 divide-y divide-white/5 animate-in fade-in duration-150">
+        <div className="mt-1.5 bg-white/98 dark:bg-gray-900/95 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden py-1 divide-y divide-slate-100 dark:divide-white/5 animate-in fade-in duration-150">
           {results.map((res, i) => (
             <div
               key={i}
               onClick={() => handleSelect(res)}
-              className="px-3.5 py-2.5 hover:bg-white/10 cursor-pointer flex items-center justify-between text-xs transition"
+              className="px-3.5 py-2.5 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer flex items-center justify-between text-xs transition"
             >
               <div className="flex items-center gap-2.5 overflow-hidden">
                 {res.type === 'shelter' ? (
-                  <Building2 size={15} className="text-emerald-400 shrink-0" />
+                  <Building2 size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
                 ) : res.type === 'hazard' ? (
-                  <AlertTriangle size={15} className="text-amber-400 shrink-0" />
+                  <AlertTriangle size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
                 ) : (
-                  <MapPin size={15} className="text-blue-400 shrink-0" />
+                  <MapPin size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />
                 )}
                 <div className="truncate">
-                  <div className="font-bold text-white text-xs truncate">{res.name}</div>
-                  <div className="text-[10px] text-white/50 truncate">{res.subtitle}</div>
+                  <div className="font-bold text-slate-900 dark:text-white text-xs truncate">{res.name}</div>
+                  <div className="text-[10px] text-slate-500 dark:text-white/50 truncate">{res.subtitle}</div>
                 </div>
               </div>
               <span className={`text-[9px] uppercase font-black px-1.5 py-0.5 rounded shrink-0 border ${
                 res.type === 'shelter'
-                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30'
                   : res.type === 'hazard'
-                    ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-                    : 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30'
+                    : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/30'
               }`}>
                 {res.type}
               </span>
@@ -261,18 +261,18 @@ export function UnifiedMapFilterSearch({
             onClick={() => setIsOpen(o => !o)}
             aria-expanded={isOpen}
             aria-label="Map Filter and Search Hub"
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition shadow-sm cursor-pointer whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap ${
               isOpen || activeFilter !== 'all'
-                ? 'bg-blue-600/90 text-white border-blue-400 shadow-blue-500/20'
-                : 'bg-slate-800/90 hover:bg-slate-700/90 border-slate-700 text-slate-200'
+                ? 'bg-blue-600 text-white border-blue-500 shadow-blue-500/20'
+                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700/90 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
             }`}
           >
-            <Filter size={12} className={isOpen || activeFilter !== 'all' ? 'text-white' : 'text-blue-400'} />
+            <Filter size={12} className={isOpen || activeFilter !== 'all' ? 'text-white' : 'text-blue-600 dark:text-blue-400'} />
             <span className="text-[11px] font-bold">
               {activeFilter === 'all' ? 'Filter & Search' : activeOption.label}
             </span>
             {activeFilter !== 'all' && (
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
             )}
           </button>
 
@@ -282,7 +282,7 @@ export function UnifiedMapFilterSearch({
               type="button"
               onClick={onRecenter}
               title="Recenter Map to Zamboanga City Center"
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-200 border border-cyan-500/30 transition cursor-pointer text-xs font-bold whitespace-nowrap"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-500/10 dark:hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-500/30 transition cursor-pointer text-xs font-bold whitespace-nowrap shadow-xs"
             >
               <Crosshair size={12} />
               <span className="text-[11px]">Recenter</span>
@@ -306,7 +306,7 @@ export function UnifiedMapFilterSearch({
               type="button"
               onClick={() => onChangeFilter('all')}
               title="Reset filter to Show All"
-              className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:text-white/50 dark:hover:text-white dark:hover:bg-white/10 transition cursor-pointer"
             >
               <X size={12} />
             </button>
@@ -315,14 +315,14 @@ export function UnifiedMapFilterSearch({
       </div>
 
       {/* Floating Dropdown Panel with Integrated Search Bar & Granular Filters */}
-      <div className={`absolute top-full left-0 mt-2.5 w-80 sm:w-96 max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-thin bg-gray-900/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] p-4 text-white space-y-4 transition-all duration-150 ${
+      <div className={`absolute top-full left-0 mt-2.5 w-80 sm:w-96 max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-thin bg-white/98 dark:bg-gray-900/95 backdrop-blur-2xl border border-slate-200 dark:border-white/15 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.8)] p-4 text-slate-800 dark:text-white space-y-4 transition-all duration-150 ${
         isOpen ? 'block z-50 animate-in fade-in slide-in-from-top-2' : 'hidden'
       }`}>
           {/* 1. Embedded Search Bar at Top */}
           <div>
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+            <div className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
               <span>Search Map</span>
-              <span className="text-[9px] text-blue-400">Barangays, Shelters &amp; Hazards</span>
+              <span className="text-[9px] text-blue-600 dark:text-blue-400">Barangays, Shelters &amp; Hazards</span>
             </div>
             <FloatingMapSearch
               shelters={shelters}
@@ -337,28 +337,28 @@ export function UnifiedMapFilterSearch({
           </div>
 
           {/* 2. Distress SOS Guarantee Alert */}
-          <div className="flex items-center justify-between bg-red-950/60 border border-red-500/40 rounded-xl px-3 py-2 text-xs">
+          <div className="flex items-center justify-between bg-rose-50 dark:bg-red-950/60 border border-rose-200 dark:border-red-500/40 rounded-xl px-3 py-2 text-xs">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
               </span>
-              <span className="font-extrabold text-red-200">SOS Distress Signals</span>
+              <span className="font-extrabold text-rose-700 dark:text-red-200">SOS Distress Signals</span>
             </div>
-            <span className="text-[10px] font-bold text-red-300 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-rose-600 dark:text-red-300 uppercase tracking-wider">
               {counts.sos > 0 ? `${counts.sos} Active Beacons` : 'Standby (Always Visible)'}
             </span>
           </div>
 
           {/* 3. Granular Filter Options */}
           <div>
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+            <div className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center justify-between">
               <span>Filter Map Entities</span>
               {activeFilter !== 'all' && (
                 <button
                   type="button"
                   onClick={() => onChangeFilter('all')}
-                  className="text-[10px] text-blue-400 hover:text-blue-300 font-bold cursor-pointer"
+                  className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline font-bold cursor-pointer"
                 >
                   Reset (All)
                 </button>
@@ -377,8 +377,8 @@ export function UnifiedMapFilterSearch({
                     }}
                     className={`flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
                       isActive
-                        ? 'bg-blue-600 text-white border-blue-400 shadow-lg shadow-blue-600/30'
-                        : 'bg-white/5 hover:bg-white/10 text-white/80 border-white/5'
+                        ? 'bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-600/25'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 dark:bg-white/5 dark:hover:bg-white/10 dark:text-white/80 dark:border-white/5'
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
@@ -387,7 +387,7 @@ export function UnifiedMapFilterSearch({
                     </div>
                     {typeof opt.count === 'number' && (
                       <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
-                        isActive ? 'bg-blue-800 text-white' : 'bg-black/30 text-white/50'
+                        isActive ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-600 dark:bg-black/30 dark:text-white/50'
                       }`}>
                         {opt.count}
                       </span>
@@ -399,11 +399,11 @@ export function UnifiedMapFilterSearch({
           </div>
 
           {/* 4. Base Map Overlays Toggle */}
-          <div className="border-t border-white/10 pt-3 space-y-2">
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Base GIS Overlays</div>
+          <div className="border-t border-slate-200 dark:border-white/10 pt-3 space-y-2">
+            <div className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Base GIS Overlays</div>
             <div className="space-y-1.5 text-xs">
-              <label className="flex items-center justify-between p-1.5 hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
-                <span className="flex items-center gap-2 text-white/80">
+              <label className="flex items-center justify-between p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
+                <span className="flex items-center gap-2 text-slate-700 dark:text-white/80">
                   <span className="w-2 h-2 rounded-full bg-cyan-400" />
                   Isolate Zamboanga (Spotlight)
                 </span>
@@ -411,13 +411,13 @@ export function UnifiedMapFilterSearch({
                   type="checkbox"
                   checked={isolateZamboanga}
                   onChange={e => onToggleIsolateZamboanga?.(e.target.checked)}
-                  className="rounded border-white/20 text-cyan-500 bg-white/10 focus:ring-0 cursor-pointer"
+                  className="rounded border-slate-300 dark:border-white/20 text-cyan-500 bg-white dark:bg-white/10 focus:ring-0 cursor-pointer"
                 />
               </label>
 
               {!isCSWDO && (
-                <label className="flex items-center justify-between p-1.5 hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
-                  <span className="flex items-center gap-2 text-white/80">
+                <label className="flex items-center justify-between p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
+                  <span className="flex items-center gap-2 text-slate-700 dark:text-white/80">
                     <span className="w-2 h-2 rounded-full bg-blue-400" />
                     Road Network Graph (GIS)
                   </span>
@@ -425,13 +425,13 @@ export function UnifiedMapFilterSearch({
                     type="checkbox"
                     checked={showRoadNetwork}
                     onChange={e => onToggleRoadNetwork(e.target.checked)}
-                    className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 cursor-pointer"
+                    className="rounded border-slate-300 dark:border-white/20 text-blue-600 bg-white dark:bg-white/10 focus:ring-0 cursor-pointer"
                   />
                 </label>
               )}
 
-              <label className="flex items-center justify-between p-1.5 hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
-                <span className="flex items-center gap-2 text-white/80">
+              <label className="flex items-center justify-between p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
+                <span className="flex items-center gap-2 text-slate-700 dark:text-white/80">
                   <span className="w-2 h-2 rounded-full bg-sky-400" />
                   Live Weather Radar (Doppler)
                 </span>
@@ -439,13 +439,13 @@ export function UnifiedMapFilterSearch({
                   type="checkbox"
                   checked={showWeather}
                   onChange={e => onToggleWeather(e.target.checked)}
-                  className="rounded border-white/20 text-blue-600 bg-white/10 focus:ring-0 cursor-pointer"
+                  className="rounded border-slate-300 dark:border-white/20 text-blue-600 bg-white dark:bg-white/10 focus:ring-0 cursor-pointer"
                 />
               </label>
 
               {!isCSWDO && (
-                <label className="flex items-center justify-between p-1.5 hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
-                  <span className="flex items-center gap-2 text-white/80">
+                <label className="flex items-center justify-between p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg cursor-pointer transition select-none">
+                  <span className="flex items-center gap-2 text-slate-700 dark:text-white/80">
                     <span className="w-2 h-2 rounded-full bg-amber-400" />
                     Demographics Heatmap
                   </span>
@@ -453,7 +453,7 @@ export function UnifiedMapFilterSearch({
                     type="checkbox"
                     checked={showHeatmap}
                     onChange={e => onToggleHeatmap(e.target.checked)}
-                    className="rounded border-white/20 text-amber-500 bg-white/10 focus:ring-0 cursor-pointer"
+                    className="rounded border-slate-300 dark:border-white/20 text-amber-500 bg-white dark:bg-white/10 focus:ring-0 cursor-pointer"
                   />
                 </label>
               )}
