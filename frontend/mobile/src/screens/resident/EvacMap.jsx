@@ -749,7 +749,7 @@ export default function EvacMap({ navigation, route }) {
     );
   }, [activeThreatsNearUser]);
 
-  // Earthquake Broadcast Warning Detector
+  // Earthquake Broadcast Warning Detector (Manual Hazards & Live USGS Feed)
   const activeEarthquakeHazard = (hazards && hazards.length > 0)
     ? hazards.find(h =>
         (h.is_active === true || h.is_active === 1 || h.is_active === '1' || h.is_active === undefined) &&
@@ -757,13 +757,53 @@ export default function EvacMap({ navigation, route }) {
       )
     : null;
 
+  // Live USGS Earthquake feed for seismic events near Zamboanga
+  const { data: earthquakeFeed } = useQuery({
+    queryKey: ['recent-earthquakes'],
+    queryFn: () => api.get('/earthquakes/recent').then(res => res.data),
+    refetchInterval: 60000,
+    staleTime: 45000,
+    retry: 1,
+  });
+
+  const recentQuakes = useMemo(() => earthquakeFeed?.data || [], [earthquakeFeed]);
+  const latestSignificantQuake = useMemo(() => {
+    if (!recentQuakes || recentQuakes.length === 0) return null;
+    return recentQuakes.find(q => q.magnitude >= 4.0) || null;
+  }, [recentQuakes]);
+
+  // Combined Earthquake Alert (either CDRRMO manual hazard or live USGS event)
+  const activeEarthquakeEvent = useMemo(() => {
+    if (activeEarthquakeHazard) {
+      return {
+        ...activeEarthquakeHazard,
+        source: 'CDRRMO Advisory Broadcast',
+      };
+    }
+    if (latestSignificantQuake) {
+      return {
+        id: latestSignificantQuake.id,
+        name: latestSignificantQuake.place,
+        latitude: latestSignificantQuake.coordinates?.latitude,
+        longitude: latestSignificantQuake.coordinates?.longitude,
+        depth_km: latestSignificantQuake.coordinates?.depth_km,
+        magnitude: latestSignificantQuake.magnitude,
+        severity: latestSignificantQuake.severity,
+        distance_km: latestSignificantQuake.distance_from_zamboanga_km,
+        time: latestSignificantQuake.time,
+        source: 'USGS Real-Time Seismic Network',
+      };
+    }
+    return null;
+  }, [activeEarthquakeHazard, latestSignificantQuake]);
+
   const [hasDismissedEarthquakeModal, setHasDismissedEarthquakeModal] = useState(false);
 
   useEffect(() => {
-    if (activeEarthquakeHazard && !hasDismissedEarthquakeModal) {
+    if (activeEarthquakeEvent && !hasDismissedEarthquakeModal) {
       Vibration.vibrate([0, 400, 200, 400, 200, 400]);
     }
-  }, [activeEarthquakeHazard, hasDismissedEarthquakeModal]);
+  }, [activeEarthquakeEvent, hasDismissedEarthquakeModal]);
 
   const activeAlertKey = activeSiegeThreat?.id || activeDisasterNearUser?.id || null;
   const [dismissedAlertKey, setDismissedAlertKey] = useState(null);
@@ -1275,6 +1315,50 @@ export default function EvacMap({ navigation, route }) {
             );
           })}
 
+        {/* USGS Earthquake Epicenter Markers */}
+        {recentQuakes && recentQuakes.slice(0, 5).map((quake) => {
+          const qLng = parseFloat(quake.coordinates?.longitude);
+          const qLat = parseFloat(quake.coordinates?.latitude);
+          if (isNaN(qLng) || isNaN(qLat)) return null;
+          const isHigh = quake.magnitude >= 5.0;
+          return (
+            <Mapbox.PointAnnotation
+              key={`quake-${quake.id}`}
+              id={`quake-${quake.id}`}
+              coordinate={[qLng, qLat]}
+              onSelected={() => {
+                triggerCasualHaptic(40);
+                Alert.alert(
+                  `Seismic Event: M ${quake.magnitude}`,
+                  `${quake.place}\n\n• Depth: ${quake.coordinates?.depth_km} km\n• Distance: ${quake.distance_from_zamboanga_km} km from Zamboanga City\n• Time: ${new Date(quake.time).toLocaleTimeString()}`
+                );
+              }}
+            >
+              <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                <View style={{
+                  backgroundColor: isHigh ? '#ef4444' : '#f59e0b',
+                  paddingHorizontal: 6,
+                  paddingVertical: 3,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: '#ffffff',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  elevation: 6,
+                  shadowColor: '#000000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.35,
+                  shadowRadius: 4,
+                }}>
+                  <Text style={{ color: '#ffffff', fontSize: 10, fontWeight: '900' }}>
+                    {quake.magnitude ? `M${Number(quake.magnitude).toFixed(1)}` : 'EQ'}
+                  </Text>
+                </View>
+              </View>
+            </Mapbox.PointAnnotation>
+          );
+        })}
+
         {/* Active Emergency Hazards: High-Visibility Road Hazard Line Corridor (Line instead of Circle) */}
         <Mapbox.ShapeSource id="hazardsSource" shape={activeHazardsGeoJSON}>
           {/* Outer Casing / High-Contrast Halo */}
@@ -1671,9 +1755,9 @@ export default function EvacMap({ navigation, route }) {
 
       {/* ─── Earthquake Warning Broadcast & Epicenter Modal ─── */}
       <EarthquakeWarningModal
-        visible={Boolean(activeEarthquakeHazard && !hasDismissedEarthquakeModal)}
+        visible={Boolean(activeEarthquakeEvent && !hasDismissedEarthquakeModal)}
         onDismiss={() => setHasDismissedEarthquakeModal(true)}
-        activeEarthquakeHazard={activeEarthquakeHazard}
+        activeEarthquakeHazard={activeEarthquakeEvent}
       />
 
       {/* ─── PIN LOCATION DETAILS MODAL (YOU & HOME) ─── */}

@@ -76,6 +76,9 @@ const MapViewer = React.memo(({
   focusLat = null,
   focusLng = null,
   incidentName = null,
+  selectedEarthquake = null,
+  setSelectedEarthquake = null,
+  recentEarthquakes = [],
 }) => {
   const containerRef = useRef(null);
   const { darkMode, setDarkMode } = useTheme();
@@ -958,6 +961,63 @@ const MapViewer = React.memo(({
                     />
                   )}
                   <p className="text-[9px] text-white/30 mt-1.5">Radius: {hazard.radius_meters}m · {isCSWDO ? 'Click to view details' : 'Click to resolve'}</p>
+                </div>
+              </div>
+            </Marker>
+          );
+        })}
+
+        {/* Live USGS Earthquake Epicenter Markers with Concentric Ripple Waves */}
+        {recentEarthquakes.map(eq => {
+          const isSelected = selectedEarthquake?.id === eq.id;
+          const isMajor = eq.magnitude >= 5.0;
+          return (
+            <Marker
+              key={`eq-epicenter-${eq.id}`}
+              longitude={parseFloat(eq.longitude)}
+              latitude={parseFloat(eq.latitude)}
+              anchor="center"
+            >
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedEarthquake && setSelectedEarthquake(eq);
+                  inspectLocation(parseFloat(eq.longitude), parseFloat(eq.latitude));
+                }}
+                className="relative flex items-center justify-center cursor-pointer group"
+                title={`M ${eq.magnitude.toFixed(1)} Earthquake - ${eq.place}`}
+              >
+                {/* Concentric Seismic Wave Pulse (Radar effect) */}
+                <span className={`absolute inline-flex h-16 w-16 rounded-full animate-ping opacity-75 ${isMajor ? 'bg-rose-500' : 'bg-amber-500'}`} />
+                <span className={`absolute inline-flex h-10 w-10 rounded-full animate-ping delay-150 opacity-50 ${isMajor ? 'bg-rose-400' : 'bg-amber-400'}`} />
+
+                {/* Epicenter Core Pin */}
+                <div className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center border-2 shadow-2xl font-black text-xs transition-transform group-hover:scale-125 ${
+                  isMajor
+                    ? 'bg-rose-600 border-white text-white shadow-rose-500/80 ring-4 ring-rose-500/30'
+                    : 'bg-amber-500 border-slate-950 text-slate-950 shadow-amber-500/80 ring-4 ring-amber-400/30'
+                } ${isSelected ? 'scale-125 ring-8 ring-amber-400' : ''}`}>
+                  <span>🌋</span>
+                </div>
+
+                {/* Magnitude Label Pill */}
+                <div className="absolute -bottom-6 px-2 py-0.5 rounded-full bg-slate-950/90 border border-white/20 text-white text-[10px] font-black shadow-lg whitespace-nowrap">
+                  M {eq.magnitude.toFixed(1)}
+                </div>
+
+                {/* Detailed Hover Card */}
+                <div className="absolute bottom-full mb-3 hidden group-hover:flex flex-col w-64 bg-slate-950/95 border border-amber-500/40 rounded-xl p-3 shadow-2xl z-50 pointer-events-none">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider">SEISMIC EPICENTER</span>
+                    <span className="text-[10px] font-bold text-white/50">{eq.distance_km} km away</span>
+                  </div>
+                  <p className="font-extrabold text-white text-xs mt-1">{eq.place}</p>
+                  <div className="mt-2 text-[10px] text-white/70 space-y-0.5 border-t border-white/10 pt-1.5">
+                    <p>• Magnitude: <strong className="text-amber-300">M {eq.magnitude.toFixed(1)}</strong></p>
+                    <p>• Depth: <strong className="text-white">{eq.depth_km} km</strong></p>
+                    <p>• Coordinates: <span className="font-mono">{eq.latitude.toFixed(4)}°N, {eq.longitude.toFixed(4)}°E</span></p>
+                    {eq.time_formatted && <p>• Recorded: {eq.time_formatted}</p>}
+                  </div>
                 </div>
               </div>
             </Marker>

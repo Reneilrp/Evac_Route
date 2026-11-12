@@ -25,6 +25,7 @@ import MapViewer, { MAP_STYLES } from '../../components/map/MapViewer';
 import MapTopNavigation, { ToolbarBtn } from '../../components/map/MapTopNavigation';
 import MapLegend from '../../components/map/MapLegend';
 import RiskAlertsDrawer from '../../components/map/RiskAlertsDrawer';
+import EarthquakeFeedDrawer from '../../components/map/EarthquakeFeedDrawer';
 import UnifiedMapFilterSearch, { FloatingMapSearch } from '../../components/map/UnifiedMapFilterSearch';
 export { FloatingMapSearch, UnifiedMapFilterSearch } from '../../components/map/UnifiedMapFilterSearch';
 export { BARANGAY_COORDS } from '../../utils/mapHelper';
@@ -347,6 +348,8 @@ export default function MapDashboard() {
   const [showRoadNetwork, setShowRoadNetwork] = useState(true);
   const [showRescueUnits, setShowRescueUnits] = useState(true);
   const [layersOpen, setLayersOpen] = useState(false);
+  const [isEarthquakeDrawerOpen, setIsEarthquakeDrawerOpen] = useState(false);
+  const [selectedEarthquake, setSelectedEarthquake] = useState(null);
   const [isolateZamboanga, setIsolateZamboanga] = useState(true);
   const [showBarangayBoundaries, setShowBarangayBoundaries] = useState(true);
 
@@ -374,6 +377,14 @@ export default function MapDashboard() {
     queryFn: () => api.get('/weather/live-status').then(r => r.data?.data),
     refetchInterval: 30000,
   });
+
+  // Live USGS Earthquake Telemetry near Zamboanga City (350km radius)
+  const { data: earthquakeResponse, isLoading: isLoadingEarthquakes } = useQuery({
+    queryKey: ['earthquakes-recent'],
+    queryFn: () => api.get('/earthquakes/recent?radius_km=350&min_magnitude=2.5&limit=25').then(r => r.data),
+    refetchInterval: 60000, // Refetch every 1 minute
+  });
+  const recentEarthquakes = earthquakeResponse?.data || [];
 
   // Asynchronously query Mapbox Directions API for active rescue mission corridors
   useEffect(() => {
@@ -849,6 +860,9 @@ export default function MapDashboard() {
         toggleDarkMode={toggleDarkMode}
         weatherTelemetry={weatherTelemetry}
         setIsWeatherModalOpen={setIsWeatherModalOpen}
+        isEarthquakeDrawerOpen={isEarthquakeDrawerOpen}
+        setIsEarthquakeDrawerOpen={setIsEarthquakeDrawerOpen}
+        recentEarthquakesCount={recentEarthquakes.length}
         pinMode={pinMode}
         setPinMode={setPinMode}
         handleCancelPin={handleCancelPin}
@@ -1062,6 +1076,32 @@ export default function MapDashboard() {
               </button>
             </div>
           )}
+
+          {/* 4. Live Seismic Alert / Recent Earthquake Banner (≥ M4.0 within 250km) */}
+          {recentEarthquakes.length > 0 && recentEarthquakes.some(eq => eq.magnitude >= 4.0 && eq.distance_km <= 250) && (
+            <div className="bg-amber-950/95 backdrop-blur-md border-2 border-amber-500 text-white rounded-2xl px-5 py-2.5 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <span className="flex h-3 w-3 relative shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+              </span>
+              <div className="text-xs">
+                <span className="font-black text-amber-300 uppercase tracking-wide">🌋 RECENT SEISMIC EVENT DETECTED:</span>{' '}
+                <span>
+                  <strong>M {recentEarthquakes[0].magnitude.toFixed(1)}</strong> — {recentEarthquakes[0].place} ({recentEarthquakes[0].distance_km} km from Zamboanga City, Depth {recentEarthquakes[0].depth_km} km).
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedEarthquake(recentEarthquakes[0]);
+                  inspectLocation(parseFloat(recentEarthquakes[0].longitude), parseFloat(recentEarthquakes[0].latitude));
+                  setIsEarthquakeDrawerOpen(true);
+                }}
+                className="ml-2 px-3 py-1 bg-amber-600 hover:bg-amber-500 text-slate-950 rounded-lg text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-md whitespace-nowrap shrink-0"
+              >
+                View Epicenter
+              </button>
+            </div>
+          )}
         </div>
         <LocalSimulationModal
           isOpen={showLocalSimulation && !isCSWDO}
@@ -1128,12 +1168,25 @@ export default function MapDashboard() {
           focusLat={focusLat}
           focusLng={focusLng}
           incidentName={incidentName}
+          selectedEarthquake={selectedEarthquake}
+          setSelectedEarthquake={setSelectedEarthquake}
+          recentEarthquakes={recentEarthquakes}
         />
         <RiskAlertsDrawer
           hazards={hazards}
           simulationMode={simulationMode}
           drawerOpen={drawerOpen}
           setDrawerOpen={setDrawerOpen}
+        />
+        <EarthquakeFeedDrawer
+          isOpen={isEarthquakeDrawerOpen}
+          onClose={() => setIsEarthquakeDrawerOpen(false)}
+          earthquakes={recentEarthquakes}
+          isLoading={isLoadingEarthquakes}
+          onSelectEarthquake={(eq) => {
+            setSelectedEarthquake(eq);
+            inspectLocation(parseFloat(eq.longitude), parseFloat(eq.latitude));
+          }}
         />
       </div>
       <ZamboangaWeatherModal

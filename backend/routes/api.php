@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\BroadcastAlertController;
 use App\Http\Controllers\Api\BundledApiController;
 use App\Http\Controllers\Api\CheckInController;
 use App\Http\Controllers\Api\DispatchOrderController;
+use App\Http\Controllers\Api\EarthquakeController;
 use App\Http\Controllers\Api\HazardController;
 use App\Http\Controllers\Api\IncidentController;
 use App\Http\Controllers\Api\InventoryController;
@@ -39,6 +40,8 @@ Route::get('/hazards/presets', [HazardController::class, 'getPresets']);
 Route::get('/weather/live-status', [WeatherController::class, 'liveStatus']);
 Route::get('/weather/forecast', [WeatherController::class, 'forecast']);
 Route::post('/weather/reset-rain', [WeatherController::class, 'resetRainState']);
+// Live Earthquakes (USGS Feed around Zamboanga City)
+Route::get('/earthquakes/recent', [EarthquakeController::class, 'index']);
 // Road Network (public — mobile can sync without auth)
 Route::get('/road-network', [RoadNetworkController::class, 'index']);
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  MapPin, AlertTriangle, X, Moon, SlidersHorizontal, Eye, Building2, ShieldAlert, CloudRain, Sun
+  MapPin, AlertTriangle, X, Moon, SlidersHorizontal, Eye, Building2, ShieldAlert, CloudRain, Sun, Activity
 } from 'lucide-react';
 import UnifiedMapFilterSearch from './UnifiedMapFilterSearch';
 import api from '../../services/api';
@@ -62,6 +62,9 @@ export default function MapTopNavigation({
   // CDRRMO-specific props
   weatherTelemetry,
   setIsWeatherModalOpen,
+  isEarthquakeDrawerOpen,
+  setIsEarthquakeDrawerOpen,
+  recentEarthquakesCount = 0,
   pinMode,
   setPinMode,
   handleCancelPin,
@@ -270,6 +273,35 @@ export default function MapTopNavigation({
                   ☀️ Clear {weatherTelemetry?.temp_c ? `(${weatherTelemetry.temp_c}°C)` : ''}
                 </span>
               </>
+            )}
+          </button>
+        </div>
+
+        <div className="w-px h-8 bg-slate-200 dark:bg-white/10 shrink-0" />
+
+        {/* Live Seismic USGS Feed Trigger */}
+        <div className="flex flex-col items-center justify-center shrink-0">
+          <span className="text-[9px] font-black uppercase tracking-widest mb-0.5 select-none whitespace-nowrap flex items-center gap-1 text-amber-600 dark:text-amber-400">
+            <Activity size={9} />
+            <span>Seismic</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsEarthquakeDrawerOpen && setIsEarthquakeDrawerOpen(o => !o)}
+            className={`flex items-center gap-1.5 px-2 xl:px-2.5 py-1 rounded-lg border text-xs font-bold transition shadow-xs cursor-pointer whitespace-nowrap ${
+              isEarthquakeDrawerOpen
+                ? 'bg-amber-600 text-slate-950 font-black border-amber-500 shadow-md'
+                : recentEarthquakesCount > 0
+                ? 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/80 dark:hover:bg-amber-900/80 border-amber-300 dark:border-amber-600/50 text-amber-800 dark:text-amber-300'
+                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700/90 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+            }`}
+            title="Open Live USGS Earthquake & Seismic Activity Feed (350km radius)"
+          >
+            <span>🌋 Quakes</span>
+            {recentEarthquakesCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-black bg-amber-500 text-slate-950">
+                {recentEarthquakesCount}
+              </span>
             )}
           </button>
         </div>
