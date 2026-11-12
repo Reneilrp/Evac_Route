@@ -339,6 +339,52 @@ const MapViewer = React.memo(({
     return false;
   }, [showHazards, activeMapFilter]);
 
+  const [hoveredBarangay, setHoveredBarangay] = useState(null);
+
+  const activeHazardBarangays = useMemo(() => {
+    const set = new Set();
+    if (!hazards || !Array.isArray(hazards)) return set;
+    hazards.forEach(h => {
+      if (h.is_active && h.barangay) {
+        set.add(h.barangay.trim().toLowerCase());
+      }
+    });
+    return set;
+  }, [hazards]);
+
+  const enrichedBarangaysGeoJSON = useMemo(() => {
+    if (!zamboangaBarangaysGeoJSON?.features) return zamboangaBarangaysGeoJSON;
+    return {
+      ...zamboangaBarangaysGeoJSON,
+      features: zamboangaBarangaysGeoJSON.features.map(f => {
+        const rawName = f.properties?.name || '';
+        const nameLower = rawName.trim().toLowerCase();
+
+        const hasHazard = activeHazardBarangays.has(nameLower) ||
+          Array.from(activeHazardBarangays).some(hb => nameLower.includes(hb) || hb.includes(nameLower));
+
+        const isHovered = hoveredBarangay === rawName;
+
+        let displayName = rawName;
+        if (hasHazard) {
+          displayName = `⚠️ ${rawName} [ALERT]`;
+        } else if (isHovered) {
+          displayName = `📍 ${rawName}`;
+        }
+
+        return {
+          ...f,
+          properties: {
+            ...f.properties,
+            hasHazard,
+            isHovered,
+            displayName
+          }
+        };
+      })
+    };
+  }, [activeHazardBarangays, hoveredBarangay]);
+
   const shouldRenderShelters = useMemo(() => {
     if (!showShelters) return false;
     if (['all', 'shelters'].includes(activeMapFilter)) return true;
@@ -436,9 +482,9 @@ const MapViewer = React.memo(({
           if (handleMapMouseMove) {
             handleMapMouseMove(e);
           }
-          if (simulationGeoJSON) {
-            const map = mapRef.current?.getMap();
-            if (map) {
+          const map = mapRef.current?.getMap();
+          if (map) {
+            if (simulationGeoJSON) {
               const features = map.queryRenderedFeatures(e.point, {
                 layers: [simOverlayMode === 'flow' ? 'local-sim-layer' : 'local-slope-layer']
               });
@@ -448,14 +494,29 @@ const MapViewer = React.memo(({
               } else {
                 setHoveredFeature(null);
               }
-            }
-          } else {
-            if (hoveredFeature) {
+            } else if (hoveredFeature) {
               setHoveredFeature(null);
+            }
+
+            if (showBarangayBoundaries) {
+              const bgyFeatures = map.queryRenderedFeatures(e.point, {
+                layers: ['barangay-fills']
+              });
+              if (bgyFeatures.length > 0) {
+                const bName = bgyFeatures[0].properties?.name;
+                if (bName !== hoveredBarangay) {
+                  setHoveredBarangay(bName);
+                }
+              } else if (hoveredBarangay) {
+                setHoveredBarangay(null);
+              }
             }
           }
         }}
-        onMouseLeave={() => setHoveredFeature(null)}
+        onMouseLeave={() => {
+          setHoveredFeature(null);
+          setHoveredBarangay(null);
+        }}
         mapStyle={MAP_STYLES[mapStyle].url}
         mapboxAccessToken={MAPBOX_TOKEN}
         style={{ width: '100%', height: '100%' }}
@@ -554,27 +615,57 @@ const MapViewer = React.memo(({
 
         {/* Zamboanga City 98 Barangay Boundaries & Labels */}
         {showBarangayBoundaries && (
-          <Source id="zamboanga-barangay-boundaries" type="geojson" data={zamboangaBarangaysGeoJSON}>
+          <Source id="zamboanga-barangay-boundaries" type="geojson" data={enrichedBarangaysGeoJSON}>
             <Layer
               id="barangay-fills"
               type="fill"
               paint={{
-                'fill-color': darkMode ? '#64748b' : '#475569',
-                'fill-opacity': 0.02,
+                'fill-color': [
+                  'case',
+                  ['boolean', ['get', 'hasHazard'], false],
+                  '#ef4444',
+                  ['boolean', ['get', 'isHovered'], false],
+                  darkMode ? '#38bdf8' : '#0284c7',
+                  darkMode ? '#64748b' : '#475569'
+                ],
+                'fill-opacity': [
+                  'case',
+                  ['boolean', ['get', 'hasHazard'], false],
+                  0.18,
+                  ['boolean', ['get', 'isHovered'], false],
+                  0.12,
+                  0.02
+                ],
               }}
             />
             <Layer
               id="barangay-borders"
               type="line"
               paint={{
-                'line-color': darkMode ? '#94a3b8' : '#475569',
-                'line-width': [
-                  'interpolate', ['linear'], ['zoom'],
-                  10, 1.2,
-                  13, 1.8,
-                  16, 2.6
+                'line-color': [
+                  'case',
+                  ['boolean', ['get', 'hasHazard'], false],
+                  '#ef4444',
+                  ['boolean', ['get', 'isHovered'], false],
+                  darkMode ? '#38bdf8' : '#2563eb',
+                  darkMode ? '#94a3b8' : '#475569'
                 ],
-                'line-opacity': darkMode ? 0.8 : 0.7,
+                'line-width': [
+                  'case',
+                  ['boolean', ['get', 'hasHazard'], false],
+                  2.6,
+                  ['boolean', ['get', 'isHovered'], false],
+                  2.2,
+                  ['interpolate', ['linear'], ['zoom'], 10, 1.2, 13, 1.8, 16, 2.6]
+                ],
+                'line-opacity': [
+                  'case',
+                  ['boolean', ['get', 'hasHazard'], false],
+                  0.95,
+                  ['boolean', ['get', 'isHovered'], false],
+                  0.9,
+                  darkMode ? 0.8 : 0.7
+                ],
                 'line-dasharray': [4, 2],
               }}
             />
@@ -583,24 +674,47 @@ const MapViewer = React.memo(({
               type="symbol"
               minzoom={11}
               layout={{
-                'text-field': ['get', 'name'],
+                'text-field': ['get', 'displayName'],
                 'text-size': [
-                  'interpolate', ['linear'], ['zoom'],
-                  11, 9.5,
-                  13, 11.5,
-                  15, 13.5
+                  'case',
+                  ['boolean', ['get', 'hasHazard'], false],
+                  13,
+                  ['boolean', ['get', 'isHovered'], false],
+                  12.5,
+                  ['interpolate', ['linear'], ['zoom'], 11, 9.5, 13, 11.5, 15, 13.5]
                 ],
                 'text-transform': 'uppercase',
                 'text-letter-spacing': 0.08,
                 'text-anchor': 'center',
-                'text-max-width': 8,
+                'text-max-width': 10,
               }}
               paint={{
-                'text-color': darkMode ? '#cbd5e1' : '#334155',
-                'text-halo-color': darkMode ? '#0f172a' : '#ffffff',
-                'text-halo-width': 2,
+                'text-color': [
+                  'case',
+                  ['boolean', ['get', 'hasHazard'], false],
+                  '#ef4444',
+                  ['boolean', ['get', 'isHovered'], false],
+                  darkMode ? '#38bdf8' : '#1d4ed8',
+                  darkMode ? '#cbd5e1' : '#334155'
+                ],
+                'text-halo-color': [
+                  'case',
+                  ['boolean', ['get', 'hasHazard'], false],
+                  '#ffffff',
+                  ['boolean', ['get', 'isHovered'], false],
+                  darkMode ? '#0f172a' : '#ffffff',
+                  darkMode ? '#0f172a' : '#ffffff'
+                ],
+                'text-halo-width': [
+                  'case',
+                  ['boolean', ['get', 'hasHazard'], false],
+                  3,
+                  ['boolean', ['get', 'isHovered'], false],
+                  2.5,
+                  2
+                ],
                 'text-halo-blur': 1,
-                'text-opacity': 0.9,
+                'text-opacity': 0.95,
               }}
             />
           </Source>
