@@ -9,6 +9,7 @@ import {
   clampToZamboanga,
   createHazardRoadCorridorLine,
   buildHazardGeoJSONFeature,
+  getHazardColor,
   getNearestBarangay,
 } from './zamboangaGeo.js';
 
@@ -111,6 +112,27 @@ const builtFeature = buildHazardGeoJSONFeature(sampleHazardObj);
 assert.strictEqual(builtFeature.geometry.type, 'LineString');
 assert.strictEqual(builtFeature.geometry.coordinates.length, 6, 'buildHazardGeoJSONFeature must parse and preserve road curvature points');
 assert.strictEqual(builtFeature.properties.severity, 'high', 'Severity must be normalized to lowercase');
+assert.strictEqual(builtFeature.properties.hazard_color, '#0284c7', 'Flood hazard should have blue line color');
+assert.strictEqual(builtFeature.properties.hazard_fill_color, 'rgba(2, 132, 199, 0.28)', 'Flood hazard should have translucent blue fill');
 console.log('✅ Road hazard corridor line correctly outputs GeoJSON LineString with multi-point curvature.\n');
+
+// 7. Testing Semantic Hazard Colors (Flood -> Blue, Fire -> Red, Landslide -> Brown)
+console.log('🎨 7. Testing semantic hazard color definitions...');
+assert.strictEqual(getHazardColor('flood'), '#0284c7', 'Flood should be blue');
+assert.strictEqual(getHazardColor('flash_flood'), '#0284c7', 'Flash flood should be blue');
+assert.strictEqual(getHazardColor('fire'), '#dc2626', 'Fire should be red');
+assert.strictEqual(getHazardColor('building_fire'), '#dc2626', 'Building fire should be red');
+assert.strictEqual(getHazardColor('landslide'), '#8B4513', 'Landslide should be brown');
+assert.strictEqual(getHazardColor('mudslide'), '#8B4513', 'Mudslide should be brown');
+
+// Test feature builder with Fire and Landslide
+const fireFeature = buildHazardGeoJSONFeature({ id: 91, latitude: 6.91, longitude: 122.07, radius_meters: 80, hazard_type: 'fire' });
+assert.strictEqual(fireFeature.properties.hazard_color, '#dc2626', 'Fire feature should have red color');
+assert.strictEqual(fireFeature.properties.hazard_fill_color, 'rgba(220, 38, 38, 0.28)', 'Fire feature should have red fill');
+
+const landslideFeature = buildHazardGeoJSONFeature({ id: 92, latitude: 6.92, longitude: 122.08, radius_meters: 60, hazard_type: 'landslide' });
+assert.strictEqual(landslideFeature.properties.hazard_color, '#8B4513', 'Landslide feature should have brown color');
+assert.strictEqual(landslideFeature.properties.hazard_fill_color, 'rgba(139, 69, 19, 0.28)', 'Landslide feature should have brown fill');
+console.log('✅ Hazard colors correctly mapped: Flood = Blue, Fire = Red, Landslide = Brown.\n');
 
 console.log('🎉 ALL ZAMBOANGA GEO & EMULATOR CLAMPING TESTS PASSED!');

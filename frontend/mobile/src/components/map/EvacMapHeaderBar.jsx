@@ -223,7 +223,7 @@ export default function EvacMapHeaderBar({
           right: 16,
           zIndex: 38,
           backgroundColor: selectedDisasterFilter === 'flood' ? 'rgba(2, 132, 199, 0.95)' :
-                           selectedDisasterFilter === 'fire' ? 'rgba(234, 88, 12, 0.95)' :
+                           selectedDisasterFilter === 'fire' ? 'rgba(220, 38, 38, 0.95)' :
                            selectedDisasterFilter === 'earthquake' ? 'rgba(217, 119, 6, 0.95)' :
                            selectedDisasterFilter === 'siege' ? 'rgba(79, 70, 229, 0.95)' : 'rgba(225, 29, 72, 0.95)',
           borderRadius: 14,

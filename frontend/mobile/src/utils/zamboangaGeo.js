@@ -238,6 +238,31 @@ export function createHazardRoadCorridorLine(center, radiusInMeters = 50, proper
 }
 
 /**
+ * Resolves semantic colors for disaster hazards according to type:
+ * - Flood hazard -> Blue (#0284c7, rgba(2, 132, 199, opacity))
+ * - Fire hazard -> Red (#dc2626, rgba(220, 38, 38, opacity))
+ * - Landslide hazard -> Brown (#8B4513, rgba(139, 69, 19, opacity))
+ * - Earthquake -> Purple (#9333ea, rgba(147, 51, 234, opacity))
+ * - Default / Alert -> Red/Orange alert
+ */
+export function getHazardColor(hazardType, opacity = 1) {
+  const type = (hazardType || '').toString().toLowerCase();
+  if (type.includes('flood') || type.includes('water') || type.includes('tsunami') || type.includes('surge')) {
+    return opacity < 1 ? `rgba(2, 132, 199, ${opacity})` : '#0284c7';
+  }
+  if (type.includes('fire') || type.includes('explosion') || type.includes('smoke') || type.includes('wildfire')) {
+    return opacity < 1 ? `rgba(220, 38, 38, ${opacity})` : '#dc2626';
+  }
+  if (type.includes('landslide') || type.includes('mudslide') || type.includes('rockfall') || type.includes('erosion')) {
+    return opacity < 1 ? `rgba(139, 69, 19, ${opacity})` : '#8B4513';
+  }
+  if (type.includes('earthquake') || type.includes('tremor') || type.includes('fault')) {
+    return opacity < 1 ? `rgba(147, 51, 234, ${opacity})` : '#9333ea';
+  }
+  return opacity < 1 ? `rgba(239, 68, 68, ${opacity})` : '#ef4444';
+}
+
+/**
  * Builds the appropriate 2-Mode GeoJSON Feature for a hazard:
  * - Mode 1 ('circle', default): Polygon circle radius
  * - Mode 2 ('road_corridor'): LineString snapped along the road/navigation path
@@ -261,13 +286,20 @@ export function buildHazardGeoJSONFeature(hazard, extraProperties = {}) {
     hazard.geometry_type === 'road_corridor' ||
     (Array.isArray(parsedCorridor) && parsedCorridor.length >= 2);
 
+  const hazardType = (hazard.hazard_type ?? 'hazard').toString().toLowerCase();
+  const lineColor = extraProperties.lineColor || getHazardColor(hazardType, 1);
+  const fillColor = extraProperties.fillColor || getHazardColor(hazardType, 0.28);
+
   const props = {
     id: hazard.id,
     name: hazard.name,
     radius,
-    hazard_type: (hazard.hazard_type ?? 'hazard').toString().toLowerCase(),
+    hazard_type: hazardType,
     severity: (hazard.severity_level ?? hazard.severity ?? 'medium').toString().toLowerCase(),
     geometry_type: isRoadCorridor ? 'road_corridor' : 'circle',
+    hazard_color: lineColor,
+    hazard_fill_color: fillColor,
+    lineColor,
     ...extraProperties,
   };
 

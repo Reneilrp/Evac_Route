@@ -63,6 +63,7 @@ import {
   ZAMBOANGA_SHELTER_DEFAULT,
   create20mGeofenceSquare,
   buildHazardGeoJSONFeature,
+  getHazardColor,
 } from '../../utils/zamboangaGeo';
 import {
   fetchTacticalRescueRoute,
@@ -426,16 +427,7 @@ export default function RescueMap({ navigation, route }) {
       if (isNaN(lat) || isNaN(lng)) return;
       const type = (h.hazard_type || 'hazard').toLowerCase();
 
-      let lineColor = '#ef4444';
-      if (type.includes('fire')) {
-        lineColor = '#ea580c';
-      } else if (type.includes('flood') || type.includes('water')) {
-        lineColor = '#0284c7';
-      } else if (type.includes('landslide')) {
-        lineColor = '#d97706';
-      } else if (type.includes('earthquake')) {
-        lineColor = '#9333ea';
-      }
+      let lineColor = getHazardColor(type, 1);
 
       const hazardFeature = buildHazardGeoJSONFeature(h, {
         id: h.id,
@@ -1533,12 +1525,12 @@ export default function RescueMap({ navigation, route }) {
           let borderColor = '#f87171';
           if (type.includes('fire')) {
             icon = '🔥';
-            bgColor = 'rgba(234, 88, 12, 0.95)';
-            borderColor = '#fdba74';
+            bgColor = 'rgba(220, 38, 38, 0.95)';
+            borderColor = '#fca5a5';
           } else if (type.includes('landslide')) {
             icon = '⛰️';
-            bgColor = 'rgba(180, 83, 9, 0.95)';
-            borderColor = '#fde047';
+            bgColor = 'rgba(139, 69, 19, 0.95)';
+            borderColor = '#d4a373';
           } else if (type.includes('flood') || type.includes('water')) {
             icon = '🌊';
             bgColor = 'rgba(2, 132, 199, 0.95)';
