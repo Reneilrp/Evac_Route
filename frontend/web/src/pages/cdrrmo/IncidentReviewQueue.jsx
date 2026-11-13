@@ -361,7 +361,7 @@ export default function IncidentReviewQueue() {
                     <button
                       onClick={() => {
                         const isRecurring = incident.description?.includes('RECURRING DRAINAGE HOTSPOT');
-                        const shouldRecommendFixed = evalData?.recommended_fixed_spot || isRecurring || incident.hazard_type === 'flood';
+                        const shouldRecommendFixed = Boolean(evalData?.recommended_fixed_spot || isRecurring);
                         setReviewModal({
                           id: incident.id,
                           action: 'approve',

@@ -358,6 +358,7 @@ class IncidentController extends Controller
         $validated = $request->validate([
             'note' => 'nullable|string',
             'is_fixed_flood_spot' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
             'radius_meters' => 'nullable|numeric|min:1|max:5000',
             'geometry_type' => 'nullable|in:circle,road_corridor',
             'corridor_coordinates' => 'nullable|array',
@@ -367,6 +368,10 @@ class IncidentController extends Controller
         ]);
 
         $isFixed = (bool) ($validated['is_fixed_flood_spot'] ?? false);
+        // An approved citizen incident report represents an active hazard on the ground
+        $isActive = array_key_exists('is_active', $validated)
+            ? (bool) $validated['is_active']
+            : true;
         $finalHazardType = $validated['hazard_type'] ?? $incident->hazard_type;
         $finalSeverity = $validated['severity_level'] ?? $incident->severity_level;
         $finalName = $validated['name'] ?? $incident->name;
@@ -389,7 +394,7 @@ class IncidentController extends Controller
             'severity_level' => $finalSeverity,
             'reported_by' => $incident->reported_by,
             'is_fixed_flood_spot' => $isFixed,
-            'is_active' => ! $isFixed,
+            'is_active' => $isActive,
             'origin_type' => $isFixed ? 'chronic_drainage' : 'resident_report',
             'barangay' => $barangay,
             'disaster_category' => in_array($finalHazardType, ['flood', 'landslide', 'earthquake', 'debris']) ? 'natural' : 'man_made',

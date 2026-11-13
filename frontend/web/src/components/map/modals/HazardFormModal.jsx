@@ -6,18 +6,23 @@ export default function HazardFormModal({
   initialRadius = 50,
   initialGeometryType = 'circle',
   initialCorridorCoords = null,
+  initialName = '',
+  initialHazardType = 'flood',
+  initialSeverityLevel = 'medium',
+  initialIsFixed = false,
+  incidentId = null,
   onConfirm,
   onCancel,
   isLoading,
 }) {
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initialName || '');
   const radius = (initialRadius || 50).toString();
   const geometryType = initialGeometryType || 'circle';
-  const [hazardType, setHazardType] = useState('flood');
-  const [severityLevel, setSeverityLevel] = useState('medium');
+  const [hazardType, setHazardType] = useState(initialHazardType || 'flood');
+  const [severityLevel, setSeverityLevel] = useState(initialSeverityLevel || 'medium');
   const [durationValue, setDurationValue] = useState('');
   const [durationUnit, setDurationUnit] = useState('hours');
-  const [isFixedFloodSpot, setIsFixedFloodSpot] = useState(false);
+  const [isFixedFloodSpot, setIsFixedFloodSpot] = useState(Boolean(initialIsFixed));
 
   const handleHazardTypeChange = (e) => {
     const type = e.target.value;
@@ -90,7 +95,7 @@ export default function HazardFormModal({
       <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg flex items-center gap-2">
-            <AlertTriangle size={20} className="text-red-500" /> Flag Hazard Zone
+            <AlertTriangle size={20} className="text-red-500" /> {incidentId ? 'Approve & Flag Hazard Zone' : 'Flag Hazard Zone'}
           </h3>
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 transition"><X size={22} /></button>
         </div>
@@ -244,9 +249,9 @@ export default function HazardFormModal({
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold text-sm transition disabled:opacity-60"
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold text-sm transition disabled:opacity-60 cursor-pointer"
             >
-              {isLoading ? 'Saving...' : 'Flag Hazard'}
+              {isLoading ? 'Saving...' : incidentId ? '✓ Approve & Flag Hazard' : 'Flag Hazard'}
             </button>
           </div>
         </form>

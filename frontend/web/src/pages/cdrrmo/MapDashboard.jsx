@@ -668,6 +668,23 @@ export default function MapDashboard() {
       showError(err.response?.data?.message || 'Failed to add hazard zone.');
     }
   });
+  const approveIncidentMutation = useMutation({
+    mutationFn: ({ incidentId, data }) => api.post(`/incidents/${incidentId}/approve`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['map-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+      setPinMode(null);
+      setPendingLocation(null);
+      setShowHazardForm(false);
+      setIsDrawingRadius(false);
+      setDrawingCorridorCoords(null);
+      handleCancelPin();
+      showSuccess('✓ Incident approved and hazard zone activated on live map!');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to approve incident.');
+    }
+  });
   const updateShelterMutation = useMutation({
     mutationFn: ({ id, data }) => api.put(`/shelters/${id}`, data),
     onSuccess: () => {
@@ -792,7 +809,27 @@ export default function MapDashboard() {
     }
   };
   const handleConfirmShelter = ({ name, max_capacity }) => addShelterMutation.mutate({ name, latitude: pendingLocation.latitude, longitude: pendingLocation.longitude, max_capacity });
-  const handleConfirmHazard = ({ name, radius_meters, geometry_type, corridor_coordinates, hazard_type, severity_level, estimated_duration_hours, is_fixed_flood_spot }) => addHazardMutation.mutate({ name, latitude: pendingLocation.latitude, longitude: pendingLocation.longitude, radius_meters, geometry_type, corridor_coordinates, hazard_type, severity_level, estimated_duration_hours, is_fixed_flood_spot });
+  const handleConfirmHazard = ({ name, radius_meters, geometry_type, corridor_coordinates, hazard_type, severity_level, estimated_duration_hours, is_fixed_flood_spot }) => {
+    if (incidentId) {
+      approveIncidentMutation.mutate({
+        incidentId,
+        data: {
+          name,
+          radius_meters,
+          geometry_type,
+          corridor_coordinates,
+          hazard_type,
+          severity_level,
+          estimated_duration_hours,
+          is_fixed_flood_spot,
+          is_active: true,
+          note: `Approved from Live Map with ${geometry_type === 'road_corridor' ? 'road corridor' : `${radius_meters}m radius circle`}.`,
+        }
+      });
+    } else {
+      addHazardMutation.mutate({ name, latitude: pendingLocation.latitude, longitude: pendingLocation.longitude, radius_meters, geometry_type, corridor_coordinates, hazard_type, severity_level, estimated_duration_hours, is_fixed_flood_spot });
+    }
+  };
   const handleUpdateShelter = (data) => updateShelterMutation.mutate({ id: selectedShelter.id, data });
   const handleDeleteShelter = () => setIsDeleteConfirmOpen(true);
   const handleConfirmDeleteShelter = () => {
@@ -809,6 +846,7 @@ export default function MapDashboard() {
     try {
       await api.post(`/incidents/${incidentId}/approve`, {
         is_fixed_flood_spot: asFixedSpot,
+        is_active: true,
         radius_meters: asFixedSpot ? 350 : 100,
         hazard_type: incidentHazardType,
         severity_level: incidentSeverity,
@@ -821,9 +859,8 @@ export default function MapDashboard() {
           ? '✓ Incident approved & promoted as Chronic Drainage Flood Spot!'
           : '✓ Incident approved & promoted to Active Hazard!'
       );
-      queryClient.invalidateQueries(['mapDashboard']);
-      queryClient.invalidateQueries(['hazards']);
-      queryClient.invalidateQueries(['incidents']);
+      queryClient.invalidateQueries({ queryKey: ['map-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
       handleCancelPin();
     } catch (err) {
       showError(err.response?.data?.message || 'Failed to approve incident');
@@ -860,9 +897,14 @@ export default function MapDashboard() {
           initialRadius={drawingRadiusMeters}
           initialGeometryType={hazardPinGeometryMode}
           initialCorridorCoords={drawingCorridorCoords}
+          initialName={incidentName || ''}
+          initialHazardType={incidentHazardType || 'flood'}
+          initialSeverityLevel={incidentSeverity || 'medium'}
+          initialIsFixed={isRecurringDrainage}
+          incidentId={incidentId}
           onConfirm={handleConfirmHazard} 
           onCancel={handleCancelPin} 
-          isLoading={addHazardMutation.isPending} 
+          isLoading={addHazardMutation.isPending || approveIncidentMutation.isPending} 
         />
       )}
       {selectedShelter && (
@@ -964,21 +1006,54 @@ export default function MapDashboard() {
                       <div className="flex items-center gap-1.5 ml-auto">
                         <button
                           type="button"
-                          disabled={approvingIncident}
-                          onClick={() => handleApproveIncidentOnMap(true)}
-                          className="px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
-                          title="Promote directly as Weather-Triggered Fixed Flood Spot"
+                          onClick={() => {
+                            setHazardPinGeometryMode('circle');
+                            setPinMode('hazard');
+                            setDrawingRadiusMeters(100);
+                            setIsDrawingRadius(true);
+                            setPendingLocation({
+                              longitude: parseFloat(focusLng),
+                              latitude: parseFloat(focusLat)
+                            });
+                            setDrawingEnd({
+                              longitude: parseFloat(focusLng),
+                              latitude: parseFloat(focusLat)
+                            });
+                          }}
+                          className="px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer"
+                          title="Draw a custom flood or hazard circle radius around this incident"
                         >
-                          ⚡ Pin Chronic Flood Spot
+                          ⭕ Draw Circle Radius
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHazardPinGeometryMode('road_corridor');
+                            setPinMode('hazard');
+                            setDrawingRadiusMeters(50);
+                            setIsDrawingRadius(true);
+                            const lng = parseFloat(focusLng);
+                            const lat = parseFloat(focusLat);
+                            const nearbyRoads = getNearbyRoadLineStrings(lng, lat);
+                            const snapped = snapPointToRoadLines([lng, lat], nearbyRoads, 350);
+                            const startLng = snapped ? snapped.snappedPoint[0] : lng;
+                            const startLat = snapped ? snapped.snappedPoint[1] : lat;
+                            setPendingLocation({ longitude: startLng, latitude: startLat });
+                            setDrawingEnd({ longitude: startLng, latitude: startLat });
+                          }}
+                          className="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer"
+                          title="Snap to road network and trace flooded road corridor"
+                        >
+                          🛣️ Trace Road Corridor
                         </button>
                         <button
                           type="button"
                           disabled={approvingIncident}
                           onClick={() => handleApproveIncidentOnMap(false)}
                           className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
-                          title="Promote directly as Active Hazard Zone"
+                          title="Quick approve as active hazard zone with default 100m radius"
                         >
-                          🚨 Pin Active Hazard
+                          ⚡ Quick Pin (100m)
                         </button>
                         <button
                           type="button"

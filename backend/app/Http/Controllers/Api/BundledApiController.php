@@ -26,8 +26,10 @@ class BundledApiController extends Controller
             $query->whereNull('checked_out_at')->orderBy('checked_in_at', 'desc');
         }])->orderBy('status')->orderBy('name')->get();
 
-        // 2. Active hazards
-        $hazards = Hazard::where('is_active', true)->get();
+        // 2. Active hazards and susceptible fixed flood spots
+        $hazards = Hazard::where('is_active', true)
+            ->orWhere('is_fixed_flood_spot', true)
+            ->get();
 
         // 3. Top 5 recent evacuation logs for live feed
         $recentLogs = EvacuationLog::with(['familyProfile.user', 'shelter'])
@@ -91,8 +93,10 @@ class BundledApiController extends Controller
             ->whereIn('status', ['open', 'full'])
             ->get();
 
-        // 2. Active hazards
-        $hazards = Hazard::where('is_active', true)->get();
+        // 2. Active hazards and susceptible fixed flood spots
+        $hazards = Hazard::where('is_active', true)
+            ->orWhere('is_fixed_flood_spot', true)
+            ->get();
 
         // 3. Active evacuee demographics by barangay (for GIS Heatmap)
         $demographics = EvacuationLog::whereNull('checked_out_at')
@@ -118,8 +122,9 @@ class BundledApiController extends Controller
         // 1. Fetch operational shelters (open or full/overflow state)
         $shelters = Shelter::whereIn('status', ['open', 'full'])->get();
 
-        // 2. Fetch active hazards (excluding reporter PII)
+        // 2. Fetch active hazards and fixed flood spots (excluding reporter PII)
         $hazards = Hazard::where('is_active', true)
+            ->orWhere('is_fixed_flood_spot', true)
             ->select('id', 'name', 'latitude', 'longitude', 'radius_meters', 'geometry_type', 'corridor_coordinates', 'hazard_type', 'severity_level', 'is_fixed_flood_spot', 'is_active', 'created_at')
             ->get();
 

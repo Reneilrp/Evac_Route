@@ -127,6 +127,7 @@ export default function IncidentReviewModal({
               action: reviewModal.action, 
               note,
               is_fixed_flood_spot: isFixedFloodSpot,
+              is_active: true,
               radius_meters: radiusMeters
             })}
             disabled={isPending}
