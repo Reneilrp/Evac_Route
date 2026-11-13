@@ -172,14 +172,14 @@ export default function StaffFormModal({
                   <div className="flex items-center gap-2">
                     <LifeBuoy size={16} className="text-rose-600 dark:text-rose-400" />
                     <label className="text-xs font-bold text-rose-900 dark:text-rose-300 uppercase tracking-wider">
-                      3. Rescuer Duty Role &amp; Vehicle Link
+                      3. Rescuer Duty Specialty &amp; Fleet Assignment
                     </label>
                   </div>
 
                   {/* Rescuer Role Selection */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
-                      Crew Member Duty Specialty
+                      Rescue Role / Specialty
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {RESCUE_ROLES.map(role => (
@@ -200,116 +200,28 @@ export default function StaffFormModal({
                     </div>
                   </div>
 
-                  {/* Vehicle Assignment Options */}
-                  <div className="space-y-2 pt-2 border-t border-rose-100 dark:border-rose-900/30">
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                      Fleet Vehicle Assignment
+                  {/* Direct Fleet Vehicle Assignment Dropdown */}
+                  <div className="space-y-1.5 pt-2 border-t border-rose-100 dark:border-rose-900/30">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300">
+                      Assigned Fleet Vehicle (Optional)
                     </label>
-                    <div className="flex items-center gap-2 mb-2">
-                      <button
-                        type="button"
-                        onClick={() => setRescueMode('existing')}
-                        className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition ${
-                          rescueMode === 'existing'
-                            ? 'bg-rose-600 text-white shadow-xs'
-                            : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-700'
-                        }`}
+                    <div>
+                      <select
+                        value={existingRescueUnitId}
+                        onChange={(e) => setExistingRescueUnitId(e.target.value)}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg text-xs text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500"
                       >
-                        Assign to Existing Unit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRescueMode('new')}
-                        className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition ${
-                          rescueMode === 'new'
-                            ? 'bg-rose-600 text-white shadow-xs'
-                            : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-700'
-                        }`}
-                      >
-                        Register New Fleet Vehicle
-                      </button>
+                        <option value="">-- Standby Pool / Floating Rescuer (No Vehicle Assigned) --</option>
+                        {rescueUnits.map(unit => (
+                          <option key={unit.id} value={unit.id}>
+                            {unit.unit_type === 'water_rescue' ? '🚤' : unit.unit_type === 'medical_ambulance' ? '🚑' : '🛻'} {unit.name} ({unit.call_sign}) — Cap: {unit.capacity_persons} pax
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1 leading-tight">
+                        Links this rescuer to an active craft or vehicle. To register new fleet vehicles, please use the dedicated <strong className="text-slate-700 dark:text-slate-300">Rescue Vehicles</strong> fleet manager.
+                      </p>
                     </div>
-
-                    {rescueMode === 'existing' ? (
-                      <div>
-                        <select
-                          value={existingRescueUnitId}
-                          onChange={(e) => setExistingRescueUnitId(e.target.value)}
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg text-xs text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500"
-                        >
-                          <option value="">-- Unassigned (Standby Pool / Reserve) --</option>
-                          {rescueUnits.map(unit => (
-                            <option key={unit.id} value={unit.id}>
-                              {unit.unit_type === 'water_rescue' ? '🚤' : unit.unit_type === 'medical_ambulance' ? '🚑' : '🛻'} {unit.name} ({unit.call_sign}) — Cap: {unit.capacity_persons}
-                            </option>
-                          ))}
-                        </select>
-                        <p className="text-[10px] text-gray-500 dark:text-slate-400 mt-1">
-                          The mobile rescuer will receive missions and duty notifications assigned to this vessel / vehicle.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3 pt-2 bg-white dark:bg-slate-900 p-3 rounded-xl border border-rose-200 dark:border-rose-900/50">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Call Sign / Plate</label>
-                            <input
-                              type="text"
-                              value={rescueCallSign}
-                              onChange={(e) => setRescueCallSign(e.target.value)}
-                              placeholder="e.g. RESCUE-BOAT-05"
-                              className="w-full px-3 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs text-gray-900 dark:text-white font-mono uppercase"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Vehicle Unit Name</label>
-                            <input
-                              type="text"
-                              value={rescueUnitName}
-                              onChange={(e) => setRescueUnitName(e.target.value)}
-                              placeholder="e.g. Zamboanga Delta Rubber Boat"
-                              className="w-full px-3 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs text-gray-900 dark:text-white"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Vehicle Type</label>
-                            <select
-                              value={rescueUnitType}
-                              onChange={(e) => setRescueUnitType(e.target.value)}
-                              className="w-full px-3 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs text-gray-900 dark:text-white"
-                            >
-                              <option value="water_rescue">🚤 Water Rescue Boat</option>
-                              <option value="medical_ambulance">🚑 Medical Ambulance</option>
-                              <option value="high_clearance_truck">🛻 4x4 Heavy Rescue Truck</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Evacuee Capacity</label>
-                            <input
-                              type="number"
-                              min="1"
-                              max="100"
-                              value={rescueCapacity}
-                              onChange={(e) => setRescueCapacity(e.target.value)}
-                              className="w-full px-3 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs text-gray-900 dark:text-white"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Radio / Hotline</label>
-                            <input
-                              type="text"
-                              value={rescueContact}
-                              onChange={(e) => setRescueContact(e.target.value)}
-                              placeholder="e.g. 0917-123-4567"
-                              className="w-full px-3 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs text-gray-900 dark:text-white font-mono"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}

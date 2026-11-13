@@ -242,14 +242,7 @@ export default function StaffManagement() {
 
     if (operatorType === 'rescue') {
       payload.rescue_role = rescueRole;
-      if (rescueMode === 'new' && rescueCallSign) {
-        payload.create_rescue_unit = true;
-        payload.rescue_unit_name = rescueUnitName || `${name}'s Rescue Unit`;
-        payload.rescue_call_sign = rescueCallSign;
-        payload.rescue_unit_type = rescueUnitType;
-        payload.rescue_capacity = parseInt(rescueCapacity, 10) || 8;
-        payload.rescue_contact = rescueContact || null;
-      } else if (existingRescueUnitId) {
+      if (existingRescueUnitId) {
         payload.assigned_rescue_unit_id = parseInt(existingRescueUnitId, 10);
         payload.existing_rescue_unit_id = parseInt(existingRescueUnitId, 10);
       } else {
