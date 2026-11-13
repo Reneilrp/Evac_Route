@@ -64,6 +64,11 @@ Route::get('/public-stats', function () {
     ]);
 });
 
+// Official CSWDO Disaster Relief Printable Reports (Blade Views - supports query token or session)
+Route::get('/reports/stock-print', [\App\Http\Controllers\ReportPrintController::class, 'printStockReport']);
+Route::get('/reports/shelter-capacity-print', [\App\Http\Controllers\ReportPrintController::class, 'printShelterCapacityReport']);
+Route::get('/reports/shelter-ration-print/{id}', [\App\Http\Controllers\ReportPrintController::class, 'printShelterRationReport']);
+
 // --- PROTECTED ROUTES (Sanctum + Active Status) ---
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/user', function (Request $request) {

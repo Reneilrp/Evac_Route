@@ -1,6 +1,6 @@
 import { useRef, useMemo, useState, useEffect } from 'react';
 import { Printer, X, Shield, Package, Users, MapPin, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { printElement } from '../../utils/printHelper';
+import { openBladePrintReport } from '../../utils/printHelper';
 
 export default function PrintShelterRationOverviewModal({
   shelter,
@@ -37,10 +37,10 @@ export default function PrintShelterRationOverviewModal({
   if (!shelter) return null;
 
   const handlePrint = () => {
-    const shelterSlug = (shelter?.name || 'Shelter').replace(/[^a-zA-Z0-9]/g, '_');
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const title = `CSWDO_Ration_Overview_${shelterSlug}_${dateStr}`;
-    printElement(printableRef.current, title);
+    openBladePrintReport(`/reports/shelter-ration-print/${shelter.id}`, {
+      mode: sizingMode,
+      buffer: bufferPercent,
+    });
   };
 
   const isOccupancyBase = sizingMode === 'occupancy';
