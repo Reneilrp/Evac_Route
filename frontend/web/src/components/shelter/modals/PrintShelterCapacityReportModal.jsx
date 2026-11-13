@@ -1,5 +1,6 @@
 import { useRef, useMemo, useState, useEffect } from 'react';
 import { Printer, X, Shield, Package, Users, MapPin, CheckCircle, TrendingUp, AlertTriangle } from 'lucide-react';
+import { printElement } from '../../../utils/printHelper';
 
 export default function PrintShelterCapacityReportModal({
   shelters = [],
@@ -24,13 +25,9 @@ export default function PrintShelterCapacityReportModal({
   const currentDate = useMemo(() => new Date(), []);
 
   const handlePrint = () => {
-    const originalTitle = document.title;
     const dateStr = new Date().toISOString().slice(0, 10);
-    document.title = `CSWDO_Shelter_Capacities_Report_${dateStr}`;
-    window.print();
-    setTimeout(() => {
-      document.title = originalTitle;
-    }, 1000);
+    const title = `CSWDO_Shelter_Capacities_Report_${dateStr}`;
+    printElement(printableRef.current, title);
   };
 
   const formattedDate = currentDate.toLocaleDateString('en-PH', {

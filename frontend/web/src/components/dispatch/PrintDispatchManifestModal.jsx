@@ -1,5 +1,6 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { Printer, X, Shield, Truck } from 'lucide-react';
+import { printElement } from '../../utils/printHelper';
 
 export default function PrintDispatchManifestModal({ order, shelterDetails, onCancel }) {
   const printableRef = useRef(null);
@@ -20,14 +21,10 @@ export default function PrintDispatchManifestModal({ order, shelterDetails, onCa
   if (!order) return null;
 
   const handlePrint = () => {
-    const originalTitle = document.title;
     const trackingCode = (order?.tracking_code || 'Voucher').replace(/[^a-zA-Z0-9]/g, '_');
     const dateStr = new Date().toISOString().slice(0, 10);
-    document.title = `CSWDO_Dispatch_Manifest_${trackingCode}_${dateStr}`;
-    window.print();
-    setTimeout(() => {
-      document.title = originalTitle;
-    }, 1000);
+    const title = `CSWDO_Dispatch_Manifest_${trackingCode}_${dateStr}`;
+    printElement(printableRef.current, title);
   };
 
   const shelter = shelterDetails || order.shelter || {};

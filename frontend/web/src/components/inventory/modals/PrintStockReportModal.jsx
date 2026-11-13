@@ -1,5 +1,6 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { Printer, X, Package, Shield, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { printElement } from '../../../utils/printHelper';
 
 export default function PrintStockReportModal({ items = [], onCancel }) {
   const printableRef = useRef(null);
@@ -17,13 +18,9 @@ export default function PrintStockReportModal({ items = [], onCancel }) {
   const currentDate = useMemo(() => new Date(), []);
 
   const handlePrint = () => {
-    const originalTitle = document.title;
     const dateStr = new Date().toISOString().slice(0, 10);
-    document.title = `CSWDO_Relief_Stock_Report_${dateStr}`;
-    window.print();
-    setTimeout(() => {
-      document.title = originalTitle;
-    }, 1000);
+    const title = `CSWDO_Relief_Stock_Report_${dateStr}`;
+    printElement(printableRef.current, title);
   };
 
   const formattedDate = currentDate.toLocaleDateString('en-PH', {
