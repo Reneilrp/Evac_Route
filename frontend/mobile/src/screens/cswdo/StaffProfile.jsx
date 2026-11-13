@@ -25,7 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme, useThemedStyles } from '../../context/ThemeContext';
 import ConfirmationModal from '../../components/common/ConfirmationModal';
 import { spacing, radii, typography, shadows } from '../../styles/theme';
-import { APP_FULL_VERSION } from '../../config/version';
+import { APP_VERSION, APP_FULL_VERSION } from '../../config/version';
 
 export default function StaffProfile({ navigation }) {
   const { user, logout } = useAuth();
@@ -228,7 +228,7 @@ export default function StaffProfile({ navigation }) {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.menuTitle}>What's New &amp; Updates</Text>
-              <Text style={styles.menuSubtitle}>v1.3.0 Release Notes, Dynamic SOS &amp; OTA updates</Text>
+              <Text style={styles.menuSubtitle}>v{APP_VERSION} Release Notes, Dynamic SOS &amp; OTA updates</Text>
             </View>
             <ChevronRight size={18} color={colors.textMuted} />
           </TouchableOpacity>

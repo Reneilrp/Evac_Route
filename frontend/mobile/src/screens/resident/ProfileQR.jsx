@@ -17,7 +17,7 @@ import * as Location from 'expo-location';
 import { clampToZamboanga, ZAMBOANGA_WMSU, getNearestBarangay } from '../../utils/zamboangaGeo';
 import { getStyles } from '../../styles/ProfileQR.styles';
 import * as Crypto from 'expo-crypto';
-import { APP_FULL_VERSION } from '../../config/version';
+import { APP_VERSION, APP_FULL_VERSION } from '../../config/version';
 
 const TRANSPORTATION_OPTIONS = [
   {
@@ -485,7 +485,7 @@ export default function ProfileQR({ navigation }) {
             },
             {
               title: "What's New & Updates",
-              subtitle: `v1.3.0 Release Notes, dynamic SOS & patch history`,
+              subtitle: `v${APP_VERSION} Release Notes, dynamic SOS & patch history`,
               icon: <Sparkles size={20} color="#f59e0b" />,
               iconBg: 'rgba(245, 158, 11, 0.15)',
               onPress: () => navigation.navigate('PatchNotes'),

@@ -4,11 +4,27 @@
  */
 export const PATCH_NOTES_HISTORY = [
   {
+    version: '1.3.1',
+    date: 'November 2026',
+    title: 'Disaster Hazard Semantic Color Mapping & Fleet Operations Polish',
+    badge: 'LATEST RELEASE',
+    badgeVariant: 'success',
+    highlights: [
+      '🌊 Standardized Disaster Hazard Color Semantics: Flood hazards rendered in Blue (#0284c7), Fire in Red (#dc2626), and Landslides in Earth Brown (#8B4513) across resident evacuation and CDRRMO tactical rescue maps.',
+      '🚑 Multi-Crew Fleet Details Modal: Full crew inspection displaying assigned Captain, lead medics, drivers, and rescue swimmers with real-time operational status.',
+      '📱 Enhanced Fleet Readiness Controls: In-place Standby and Off-Duty toggle with instant map marker synchronization.',
+    ],
+    fixes: [
+      'Resolved container clipping and added responsive vertical scrolling on CDRRMO Fleet Management Console.',
+      'Updated resident hazard layers to use semantic hazard color tokens with Mapbox match fallbacks.',
+    ],
+  },
+  {
     version: '1.3.0',
     date: 'November 2026',
     title: 'Dynamic SOS Dispatch Simulation & Tactical Staging',
-    badge: 'LATEST RELEASE',
-    badgeVariant: 'success',
+    badge: 'STABLE',
+    badgeVariant: 'secondary',
     highlights: [
       '⚡ Dynamic SOS Rescuer Simulator: Directly binds tactical routing to actual resident SOS distress calls dispatched from CDRRMO Web.',
       '🌊 Shoreline Staging Handover: Boat Alpha can stage evacuees at designated shoreline safe points and immediately return to flood zones.',

@@ -42,6 +42,7 @@ const paths = {
   rootVersion: path.join(rootDir, 'version.json'),
   mobileAppJson: path.join(rootDir, 'frontend', 'mobile', 'app.json'),
   mobilePkgJson: path.join(rootDir, 'frontend', 'mobile', 'package.json'),
+  mobileVersionJs: path.join(rootDir, 'frontend', 'mobile', 'src', 'config', 'version.js'),
   webReleaseConfig: path.join(rootDir, 'frontend', 'web', 'src', 'config', 'mobileRelease.js'),
 };
 
@@ -68,6 +69,15 @@ if (fs.existsSync(paths.mobilePkgJson)) {
   pkgJson.version = newVersion;
   fs.writeFileSync(paths.mobilePkgJson, JSON.stringify(pkgJson, null, 2) + '\n', 'utf8');
   console.log(`  ✅ \x1b[32mfrontend/mobile/package.json\x1b[0m (version: ${newVersion})`);
+}
+
+// 2b. Update mobile version.js fallback
+if (fs.existsSync(paths.mobileVersionJs)) {
+  let vJs = fs.readFileSync(paths.mobileVersionJs, 'utf8');
+  vJs = vJs.replace(/appConfig\.expo\?\.version \|\| '[^']+'/, `appConfig.expo?.version || '${newVersion}'`);
+  vJs = vJs.replace(/appConfig\.expo\?\.android\?\.versionCode \|\| \d+/, `appConfig.expo?.android?.versionCode || ${currentVersionCode}`);
+  fs.writeFileSync(paths.mobileVersionJs, vJs, 'utf8');
+  console.log(`  ✅ \x1b[32mfrontend/mobile/src/config/version.js\x1b[0m (fallback version: ${newVersion}, build: ${currentVersionCode})`);
 }
 
 // 3. Read & Update Root version.json
