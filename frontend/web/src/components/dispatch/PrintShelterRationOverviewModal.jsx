@@ -36,7 +36,14 @@ export default function PrintShelterRationOverviewModal({
   if (!shelter) return null;
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    const shelterSlug = (shelter?.name || 'Shelter').replace(/[^a-zA-Z0-9]/g, '_');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    document.title = `CSWDO_Ration_Overview_${shelterSlug}_${dateStr}`;
     window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
   };
 
   const isOccupancyBase = sizingMode === 'occupancy';
@@ -63,33 +70,83 @@ export default function PrintShelterRationOverviewModal({
   return (
     <div
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
-      className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-[120] flex items-center justify-center p-3 sm:p-6 print:p-0 print:bg-white print:static print:block"
+      className="print-modal-overlay fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-[120] flex items-center justify-center p-3 sm:p-6 print:p-0 print:bg-white print:static print:block"
     >
       <style>{`
+        @page {
+          size: A4 portrait;
+          margin: 12mm;
+        }
         @media print {
+          html, body {
+            background: white !important;
+            color: black !important;
+            height: auto !important;
+            overflow: visible !important;
+          }
           body * {
             visibility: hidden;
           }
-          #printable-shelter-overview, #printable-shelter-overview * {
+          .print-modal-overlay,
+          .print-modal-overlay * {
             visibility: visible;
           }
-          #printable-shelter-overview {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 24px;
+          .print-modal-overlay {
+            position: static !important;
+            display: block !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: white !important;
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+            width: 100% !important;
+          }
+          .print-modal-card {
+            position: static !important;
+            display: block !important;
+            border: none !important;
+            box-shadow: none !important;
+            max-width: none !important;
+            max-height: none !important;
+            height: auto !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+          }
+          .print-modal-content {
+            position: static !important;
+            display: block !important;
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
             background: white !important;
             color: black !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .no-print {
             display: none !important;
           }
+          tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          thead {
+            display: table-header-group !important;
+          }
+          .print-avoid-break {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
         }
       `}</style>
 
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden border border-gray-200 print:border-none print:shadow-none print:max-w-none print:max-h-none print:overflow-visible">
+      <div className="print-modal-card bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden border border-gray-200 print:border-none print:shadow-none print:max-w-none print:max-h-none print:overflow-visible">
         {/* Modal Action Bar (Hidden on Print, pinned sticky at top) */}
         <div className="no-print shrink-0 bg-slate-900 text-white px-5 sm:px-6 py-3.5 sm:py-4 flex justify-between items-center border-b border-slate-800 z-10 shadow-sm">
           <div className="flex items-center gap-3">
@@ -149,7 +206,7 @@ export default function PrintShelterRationOverviewModal({
         </div>
 
         {/* Printable Content */}
-        <div id="printable-shelter-overview" ref={printableRef} className="overflow-y-auto flex-1 p-6 sm:p-8 font-sans text-gray-900 bg-white print:overflow-visible print:p-0 print:static">
+        <div id="printable-shelter-overview" ref={printableRef} className="print-modal-content overflow-y-auto flex-1 p-6 sm:p-8 font-sans text-gray-900 bg-white print:overflow-visible print:p-0 print:static">
           {/* Official Letterhead */}
           <div className="text-center border-b-2 border-gray-900 pb-4 mb-6">
             <div className="flex justify-center items-center gap-2 text-xs uppercase tracking-widest text-gray-600 font-semibold mb-1">
@@ -336,7 +393,7 @@ export default function PrintShelterRationOverviewModal({
           </div>
 
           {/* Official Signatures Block */}
-          <div className="grid grid-cols-3 gap-6 pt-4 border-t-2 border-gray-900 text-xs text-center">
+          <div className="print-avoid-break grid grid-cols-3 gap-6 pt-4 border-t-2 border-gray-900 text-xs text-center">
             <div>
               <p className="text-[10px] font-bold text-gray-500 uppercase mb-8">Prepared &amp; Requisitioned By:</p>
               <div className="border-b border-gray-400 pb-1 mb-1">

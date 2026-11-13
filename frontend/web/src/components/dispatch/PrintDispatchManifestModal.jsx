@@ -20,7 +20,14 @@ export default function PrintDispatchManifestModal({ order, shelterDetails, onCa
   if (!order) return null;
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    const trackingCode = (order?.tracking_code || 'Voucher').replace(/[^a-zA-Z0-9]/g, '_');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    document.title = `CSWDO_Dispatch_Manifest_${trackingCode}_${dateStr}`;
     window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
   };
 
   const shelter = shelterDetails || order.shelter || {};
@@ -37,33 +44,83 @@ export default function PrintDispatchManifestModal({ order, shelterDetails, onCa
   return (
     <div 
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
-      className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:static"
+      className="print-modal-overlay fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-[100] flex items-center justify-center p-3 sm:p-6 print:p-0 print:bg-white print:static print:block"
     >
       <style>{`
+        @page {
+          size: A4 portrait;
+          margin: 12mm;
+        }
         @media print {
+          html, body {
+            background: white !important;
+            color: black !important;
+            height: auto !important;
+            overflow: visible !important;
+          }
           body * {
             visibility: hidden;
           }
-          #printable-manifest, #printable-manifest * {
+          .print-modal-overlay,
+          .print-modal-overlay * {
             visibility: visible;
           }
-          #printable-manifest {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 24px;
+          .print-modal-overlay {
+            position: static !important;
+            display: block !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: white !important;
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+            width: 100% !important;
+          }
+          .print-modal-card {
+            position: static !important;
+            display: block !important;
+            border: none !important;
+            box-shadow: none !important;
+            max-width: none !important;
+            max-height: none !important;
+            height: auto !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+          }
+          .print-modal-content {
+            position: static !important;
+            display: block !important;
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
             background: white !important;
             color: black !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .no-print {
             display: none !important;
           }
+          tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          thead {
+            display: table-header-group !important;
+          }
+          .print-avoid-break {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
         }
       `}</style>
 
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl my-8 overflow-hidden border border-gray-200 print:border-none print:shadow-none print:my-0 print:max-w-none">
+      <div className="print-modal-card bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[94vh] flex flex-col overflow-hidden border border-gray-200 print:border-none print:shadow-none print:max-w-none print:max-h-none print:overflow-visible">
         {/* Modal Action Bar (Hidden on Print) */}
         <div className="no-print bg-slate-900 text-white px-6 py-4 flex justify-between items-center border-b border-slate-800">
           <div className="flex items-center gap-3">
@@ -94,7 +151,7 @@ export default function PrintDispatchManifestModal({ order, shelterDetails, onCa
         </div>
 
         {/* Printable Voucher Content */}
-        <div id="printable-manifest" ref={printableRef} className="p-8 font-sans text-gray-900 bg-white">
+        <div id="printable-manifest" ref={printableRef} className="print-modal-content overflow-y-auto flex-1 p-6 sm:p-8 font-sans text-gray-900 bg-white print:overflow-visible print:p-0 print:static">
           {/* Official Letterhead */}
           <div className="text-center border-b-2 border-gray-900 pb-4 mb-6">
             <div className="flex justify-center items-center gap-2 text-xs uppercase tracking-widest text-gray-600 font-semibold mb-1">
@@ -221,7 +278,7 @@ export default function PrintDispatchManifestModal({ order, shelterDetails, onCa
           </div>
 
           {/* Official Signatures & COA Compliance Block */}
-          <div className="pt-2">
+          <div className="print-avoid-break pt-2">
             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-4 text-center">
               Official Certifications &amp; Custody Turnover Sign-off
             </p>
