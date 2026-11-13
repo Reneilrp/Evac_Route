@@ -44,7 +44,7 @@ export default function PrintStockReportModal({ items = [], onCancel }) {
   return (
     <div
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
-      className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-[110] flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:static"
+      className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-[120] flex items-center justify-center p-3 sm:p-6 print:p-0 print:bg-white print:static print:block"
     >
       <style>{`
         @media print {
@@ -70,38 +70,39 @@ export default function PrintStockReportModal({ items = [], onCancel }) {
         }
       `}</style>
 
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl my-8 overflow-hidden border border-gray-200 print:border-none print:shadow-none print:my-0 print:max-w-none">
-        {/* Modal Action Bar (Hidden on Print) */}
-        <div className="no-print bg-slate-900 text-white px-6 py-4 flex justify-between items-center border-b border-slate-800">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden border border-gray-200 print:border-none print:shadow-none print:max-w-none print:max-h-none print:overflow-visible">
+        {/* Fixed Top Action Bar (Always Visible at Top of Modal, Hidden on Print) */}
+        <div className="no-print shrink-0 bg-slate-900 text-white px-5 sm:px-6 py-3.5 sm:py-4 flex justify-between items-center border-b border-slate-800 z-10 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="bg-blue-600/30 p-2 rounded-lg text-blue-400">
               <Printer size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-base">Relief Stock Monitoring Report</h3>
+              <h3 className="font-bold text-base text-white">Relief Stock Monitoring Report</h3>
               <p className="text-xs text-slate-400">Official CSWDO Central Warehouse Stock Audit</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={handlePrint}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase px-4 py-2 rounded-lg flex items-center gap-2 shadow transition cursor-pointer"
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase px-4 py-2 rounded-lg flex items-center gap-2 shadow-md transition cursor-pointer"
             >
               <Printer size={15} /> Print / Save PDF
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="text-slate-400 hover:text-white p-1 rounded-lg transition cursor-pointer"
+              className="text-slate-400 hover:text-white p-1.5 rounded-lg transition cursor-pointer hover:bg-slate-800"
+              title="Close modal"
             >
               <X size={22} />
             </button>
           </div>
         </div>
 
-        {/* Printable Content */}
-        <div id="printable-stock-report" ref={printableRef} className="p-8 font-sans text-gray-900 bg-white">
+        {/* Scrollable Printable Content */}
+        <div id="printable-stock-report" ref={printableRef} className="overflow-y-auto flex-1 p-6 sm:p-8 font-sans text-gray-900 bg-white print:overflow-visible print:p-0 print:static">
           {/* Official Letterhead */}
           <div className="text-center border-b-2 border-gray-900 pb-4 mb-6">
             <div className="flex justify-center items-center gap-2 text-xs uppercase tracking-widest text-gray-600 font-semibold mb-1">
@@ -247,7 +248,7 @@ export default function PrintStockReportModal({ items = [], onCancel }) {
             <div>
               <p className="text-[10px] font-bold text-gray-500 uppercase mb-8">Verified &amp; Approved By:</p>
               <div className="border-b border-gray-400 pb-1 mb-1">
-                <span className="font-bold text-gray-900 uppercase">CSWDO Department Head / DRRM Chief</span>
+                <span className="font-bold text-gray-900 uppercase">CSWDO Department Head</span>
               </div>
               <p className="text-[10px] text-gray-500">City Government of Zamboanga</p>
             </div>
