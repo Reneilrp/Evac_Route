@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { showSuccess, showError } from '../../utils/toast';
 import PrintDispatchManifestModal from '../../components/dispatch/PrintDispatchManifestModal';
 import PrintStockReportModal from '../../components/inventory/modals/PrintStockReportModal';
+import DispatchActionModal from '../../components/dispatch/modals/DispatchActionModal';
 
 import AddStockModal from '../../components/inventory/modals/AddStockModal';
 import RationTemplateForm from '../../components/inventory/modals/RationTemplateFormModal';
@@ -27,6 +28,7 @@ export default function InventoryManager() {
   const [printingOrder, setPrintingOrder] = useState(null);
   const [showPrintStockModal, setShowPrintStockModal] = useState(false);
   const [dispatchArchiveFilter, setDispatchArchiveFilter] = useState('active');
+  const [actionOrderModal, setActionOrderModal] = useState({ isOpen: false, type: null, order: null });
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -37,6 +39,7 @@ export default function InventoryManager() {
         if (showDispatchModal) setShowDispatchModal(false);
         if (printingOrder) setPrintingOrder(null);
         if (showPrintStockModal) setShowPrintStockModal(false);
+        if (actionOrderModal.isOpen) setActionOrderModal({ isOpen: false, type: null, order: null });
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -155,6 +158,7 @@ export default function InventoryManager() {
   const departDispatchMutation = useMutation({
     mutationFn: (id) => api.post(`/dispatch-orders/${id}/depart`),
     onSuccess: () => {
+      setActionOrderModal({ isOpen: false, type: null, order: null });
       queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
@@ -166,6 +170,7 @@ export default function InventoryManager() {
   const deliverDispatchMutation = useMutation({
     mutationFn: (id) => api.post(`/dispatch-orders/${id}/deliver`),
     onSuccess: () => {
+      setActionOrderModal({ isOpen: false, type: null, order: null });
       queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
@@ -177,6 +182,7 @@ export default function InventoryManager() {
   const cancelDispatchMutation = useMutation({
     mutationFn: (id) => api.post(`/dispatch-orders/${id}/cancel`),
     onSuccess: () => {
+      setActionOrderModal({ isOpen: false, type: null, order: null });
       queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
@@ -776,11 +782,7 @@ export default function InventoryManager() {
                               </button>
                               {isCSWDO && order.status === 'pending' && (
                                 <button
-                                  onClick={() => {
-                                    if (window.confirm(`Mark Order #${order.id} as loaded and departing now (In Transit)?`)) {
-                                      departDispatchMutation.mutate(order.id);
-                                    }
-                                  }}
+                                  onClick={() => setActionOrderModal({ isOpen: true, type: 'depart', order })}
                                   disabled={departDispatchMutation.isPending}
                                   className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:hover:bg-amber-900/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800/80 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer"
                                   title="Mark loaded and departing from warehouse"
@@ -790,11 +792,7 @@ export default function InventoryManager() {
                               )}
                               {isCSWDO && order.status === 'in_transit' && (
                                 <button
-                                  onClick={() => {
-                                    if (window.confirm(`Confirm Order #${order.id} delivered and received at shelter? This will officially deduct physical stock from central warehouse.`)) {
-                                      deliverDispatchMutation.mutate(order.id);
-                                    }
-                                  }}
+                                  onClick={() => setActionOrderModal({ isOpen: true, type: 'deliver', order })}
                                   disabled={deliverDispatchMutation.isPending}
                                   className="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/80 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer"
                                   title="Confirm delivery at shelter & deduct warehouse stock"
@@ -804,7 +802,8 @@ export default function InventoryManager() {
                               )}
                               {isCSWDO && ['pending', 'in_transit'].includes(order.status) && (
                                 <button
-                                  onClick={() => { if (window.confirm(`Cancel order #${order.id} and release reserved stock?`)) cancelDispatchMutation.mutate(order.id); }}
+                                  onClick={() => setActionOrderModal({ isOpen: true, type: 'cancel', order })}
+                                  disabled={cancelDispatchMutation.isPending}
                                   className="text-xs text-red-500 hover:text-red-700 font-semibold flex items-center gap-1 transition p-1 cursor-pointer"
                                   title="Cancel Order & Release Stock"
                                 >
@@ -859,6 +858,23 @@ export default function InventoryManager() {
           onCancel={() => setShowPrintStockModal(false)}
         />
       )}
+
+      <DispatchActionModal
+        isOpen={actionOrderModal.isOpen}
+        type={actionOrderModal.type}
+        order={actionOrderModal.order}
+        isSubmitting={departDispatchMutation.isPending || deliverDispatchMutation.isPending || cancelDispatchMutation.isPending}
+        onClose={() => setActionOrderModal({ isOpen: false, type: null, order: null })}
+        onConfirm={(orderId) => {
+          if (actionOrderModal.type === 'depart') {
+            departDispatchMutation.mutate(orderId);
+          } else if (actionOrderModal.type === 'deliver') {
+            deliverDispatchMutation.mutate(orderId);
+          } else if (actionOrderModal.type === 'cancel') {
+            cancelDispatchMutation.mutate(orderId);
+          }
+        }}
+      />
     </div>
   );
 }
