@@ -5,6 +5,7 @@ import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { showSuccess, showError } from '../../utils/toast';
 import PrintDispatchManifestModal from '../../components/dispatch/PrintDispatchManifestModal';
+import PrintStockReportModal from '../../components/inventory/modals/PrintStockReportModal';
 
 import AddStockModal from '../../components/inventory/modals/AddStockModal';
 import RationTemplateForm from '../../components/inventory/modals/RationTemplateFormModal';
@@ -24,6 +25,7 @@ export default function InventoryManager() {
   const [adjustingItem, setAdjustingItem] = useState(null);
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [printingOrder, setPrintingOrder] = useState(null);
+  const [showPrintStockModal, setShowPrintStockModal] = useState(false);
   const [dispatchArchiveFilter, setDispatchArchiveFilter] = useState('active');
 
   useEffect(() => {
@@ -34,11 +36,12 @@ export default function InventoryManager() {
         if (adjustingItem) setAdjustingItem(null);
         if (showDispatchModal) setShowDispatchModal(false);
         if (printingOrder) setPrintingOrder(null);
+        if (showPrintStockModal) setShowPrintStockModal(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showAddStockModal, showTemplateForm, adjustingItem, showDispatchModal, printingOrder]);
+  }, [showAddStockModal, showTemplateForm, adjustingItem, showDispatchModal, printingOrder, showPrintStockModal]);
 
   // Fetch consolidated inventory and ration templates
   const { data: inventoryDashboardData, isLoading } = useQuery({
@@ -265,20 +268,31 @@ export default function InventoryManager() {
       {/* Tab 1: Warehouse Stock */}
       {activeTab === 'stock' && (
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-950/40">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3 bg-gray-50/50 dark:bg-slate-950/40">
             <h3 className="font-semibold text-gray-700 dark:text-slate-200">Current Stock Levels</h3>
-            {isCSWDO ? (
-              <button 
-                onClick={() => setShowAddStockModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm cursor-pointer"
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPrintStockModal(true)}
+                className="bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 px-3.5 py-2 rounded-lg font-bold flex items-center gap-1.5 transition text-xs shadow-2xs cursor-pointer"
+                title="Export central warehouse stock report as official printable PDF"
               >
-                <Plus size={16} /> Receive Delivery
+                <Printer size={15} className="text-blue-600 dark:text-blue-400" />
+                <span>Export Stock Report (PDF)</span>
               </button>
-            ) : (
-              <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900/60 px-3 py-1.5 rounded-lg font-semibold select-none flex items-center gap-1.5">
-                <ShieldAlert size={14} className="text-blue-500" /> Managed by CSWDO Logistics
-              </span>
-            )}
+              {isCSWDO ? (
+                <button 
+                  onClick={() => setShowAddStockModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm cursor-pointer"
+                >
+                  <Plus size={16} /> Receive Delivery
+                </button>
+              ) : (
+                <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900/60 px-3 py-1.5 rounded-lg font-semibold select-none flex items-center gap-1.5">
+                  <ShieldAlert size={14} className="text-blue-500" /> Managed by CSWDO Logistics
+                </span>
+              )}
+            </div>
           </div>
 
           {items.some(item => (item.available_stock ?? Math.max(0, item.total_stock - (item.reserved_quantity || 0))) < 200) && (
@@ -786,6 +800,13 @@ export default function InventoryManager() {
           order={printingOrder}
           shelterDetails={shelterOptions.find(s => s.id === printingOrder.shelter_id) || printingOrder.shelter}
           onCancel={() => setPrintingOrder(null)}
+        />
+      )}
+
+      {showPrintStockModal && (
+        <PrintStockReportModal
+          items={items}
+          onCancel={() => setShowPrintStockModal(false)}
         />
       )}
     </div>

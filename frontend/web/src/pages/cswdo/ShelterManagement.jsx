@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { QrCode, Search, MapPin, ClipboardList, FileSpreadsheet, AlertTriangle, CheckCircle, TrendingUp, X, Truck } from 'lucide-react';
+import { QrCode, Search, MapPin, ClipboardList, FileSpreadsheet, AlertTriangle, CheckCircle, TrendingUp, X, Truck, Printer } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import QRScannerModal from '../../components/common/QRScannerModal';
 import PrePopulatedDispatchModal from '../../components/dispatch/PrePopulatedDispatchModal';
 import QuickDispatchModal from '../../components/dispatch/QuickDispatchModal';
+import PrintShelterRationOverviewModal from '../../components/dispatch/PrintShelterRationOverviewModal';
 import api from '../../services/api';
 import BarangayReliefCalculatorWidget from '../../components/shelter/BarangayReliefCalculatorWidget';
 import ShelterDetailsModal from '../../components/shelter/modals/ShelterDetailsModal';
@@ -38,6 +39,7 @@ export default function ShelterManagement() {
   const [selectedShelterForDetails, setSelectedShelterForDetails] = useState(null);
   const [dispatchModalConfig, setDispatchModalConfig] = useState(null);
   const [quickDispatchShelter, setQuickDispatchShelter] = useState(null);
+  const [printingShelterOverview, setPrintingShelterOverview] = useState(null);
   const [search, setSearch] = useState(location.state?.search || '');
   const [activeTab, setActiveTab] = useState('capacities'); // 'capacities' or 'ration-planning'
   const [planningMode, setPlanningMode] = useState('surge'); // 'surge' (+20% of occupants) vs 'pre-staging' (100% full capacity)
@@ -49,11 +51,12 @@ export default function ShelterManagement() {
         if (selectedShelterForDetails) setSelectedShelterForDetails(null);
         if (quickDispatchShelter) setQuickDispatchShelter(null);
         if (dispatchModalConfig) setDispatchModalConfig(null);
+        if (printingShelterOverview) setPrintingShelterOverview(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isScannerOpen, selectedShelterForDetails, quickDispatchShelter, dispatchModalConfig]);
+  }, [isScannerOpen, selectedShelterForDetails, quickDispatchShelter, dispatchModalConfig, printingShelterOverview]);
 
   // Consolidated query fetching shelters, templates, and central inventory
   const { data: dashboardData, isLoading } = useQuery({
@@ -401,10 +404,20 @@ export default function ShelterManagement() {
                               {isCSWDO && activeTemplate && (
                                 <button
                                   onClick={() => setQuickDispatchShelter(shelter)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition shadow-sm"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition shadow-sm cursor-pointer"
                                   title="Quick Dispatch Smart Presets"
                                 >
                                   <Truck size={13} /> Quick Dispatch
+                                </button>
+                              )}
+                              {activeTemplate && (
+                                <button
+                                  onClick={() => setPrintingShelterOverview(shelter)}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-slate-700 rounded-lg font-bold text-xs uppercase tracking-wider transition shadow-2xs cursor-pointer"
+                                  title="Export or print official CSWDO ration allocation overview PDF"
+                                >
+                                  <Printer size={13} className="text-blue-600 dark:text-blue-400" />
+                                  <span>PDF Overview</span>
                                 </button>
                               )}
                               <button
@@ -564,12 +577,22 @@ export default function ShelterManagement() {
                         : 'Full max capacity logistics for pre-storm prepositioning.'}
                     </p>
                   </div>
-                  <button 
-                    onClick={handleExportRationNeeds}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition text-sm shadow-sm self-start cursor-pointer"
-                  >
-                    <FileSpreadsheet size={16} /> Download Planning Sheet (CSV)
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button 
+                      onClick={() => setPrintingShelterOverview(filteredShelters[0] || shelters[0])}
+                      disabled={!filteredShelters.length && !shelters.length}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg font-semibold flex items-center gap-2 transition text-sm shadow-sm self-start cursor-pointer disabled:opacity-50"
+                      title="Print or export official CSWDO shelter ration overview PDF"
+                    >
+                      <Printer size={16} /> Print Overview (PDF)
+                    </button>
+                    <button 
+                      onClick={handleExportRationNeeds}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg font-semibold flex items-center gap-2 transition text-sm shadow-sm self-start cursor-pointer"
+                    >
+                      <FileSpreadsheet size={16} /> Planning Sheet (CSV)
+                    </button>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -799,6 +822,17 @@ export default function ShelterManagement() {
             queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
             showSuccess('Dispatch order generated and warehouse stock reserved!');
           }}
+        />
+      )}
+      {/* Printable Shelter Allocation & Ration Overview Modal */}
+      {printingShelterOverview && (
+        <PrintShelterRationOverviewModal
+          shelter={printingShelterOverview}
+          activeTemplate={activeTemplate}
+          inventoryItems={inventoryItems}
+          baseType={(printingShelterOverview.current_occupancy || 0) > 0 ? 'occupancy' : 'capacity'}
+          bufferPercent={20}
+          onCancel={() => setPrintingShelterOverview(null)}
         />
       )}
     </div>

@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Printer } from 'lucide-react';
 import api from '../../services/api';
+import PrintShelterRationOverviewModal from '../dispatch/PrintShelterRationOverviewModal';
 
 function BarangayReliefCalculatorWidget({ isCSWDO, onDispatchManifest }) {
   const [selectedBarangay, setSelectedBarangay] = useState('Tumaga');
   const [customInput, setCustomInput] = useState('');
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   const { data: summaryData, isLoading } = useQuery({
     queryKey: ['barangay-relief-summary', selectedBarangay],
@@ -107,20 +110,29 @@ function BarangayReliefCalculatorWidget({ isCSWDO, onDispatchManifest }) {
             </p>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center">
-            <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block">Pre-Staging Dispatch</span>
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center gap-2">
+            <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block">Pre-Staging Actions</span>
             {isCSWDO ? (
               <button
                 onClick={() => onDispatchManifest && onDispatchManifest(summary)}
-                className="mt-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               >
                 🚚 Dispatch {summary.recommended_total_headcount} Pax Manifest
               </button>
             ) : (
-              <span className="mt-2 block text-[10px] text-gray-400 dark:text-slate-500 font-semibold italic text-center">
+              <span className="block text-[10px] text-gray-400 dark:text-slate-500 font-semibold italic text-center">
                 Dispatches managed by CSWDO
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => setShowPrintModal(true)}
+              className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-bold py-2 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+              title="Print or export official CSWDO barangay relief allocation overview PDF"
+            >
+              <Printer size={14} className="text-blue-600 dark:text-blue-400" />
+              <span>Print Overview (PDF)</span>
+            </button>
           </div>
 
           {/* Supply Breakdown Table */}
@@ -161,6 +173,37 @@ function BarangayReliefCalculatorWidget({ isCSWDO, onDispatchManifest }) {
           </div>
         </div>
       ) : null}
+
+      {showPrintModal && summary && (
+        <PrintShelterRationOverviewModal
+          shelter={{
+            id: `brgy-${summary.barangay}`,
+            name: `Brgy. ${summary.barangay} Community Evacuee Allocation`,
+            barangay: summary.barangay,
+            current_occupancy: summary.total_affected_headcount,
+            max_capacity: summary.total_affected_headcount,
+          }}
+          activeTemplate={{
+            name: summary.active_ration_template || 'CSWDO Standard Disaster Relief Pack',
+            items: (summary.estimated_supplies_needed || []).map((it) => ({
+              inventory_item_id: it.inventory_item_id,
+              quantity_per_head: it.quantity_per_head || 1,
+              allocation_type: it.allocation_type || 'per_head',
+            })),
+          }}
+          inventoryItems={(summary.estimated_supplies_needed || []).map((it) => ({
+            id: it.inventory_item_id,
+            item_name: it.item_name,
+            unit_type: it.unit_type,
+            category: 'Relief Supply',
+            available_stock: it.recommended_total_amount * 2,
+          }))}
+          baseType="occupancy"
+          bufferPercent={summary.contingency_buffer_percentage || 20}
+          manualBundleCount={summary.recommended_total_headcount}
+          onCancel={() => setShowPrintModal(false)}
+        />
+      )}
     </div>
   );
 }

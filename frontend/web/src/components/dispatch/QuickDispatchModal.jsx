@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Truck, X, Plus, Minus, Package, Layers, AlertTriangle, Sparkles, RefreshCw, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { Truck, X, Plus, Minus, Package, Layers, AlertTriangle, Sparkles, RefreshCw, ChevronDown, ChevronUp, CheckCircle2, Printer, Users } from 'lucide-react';
 import api from '../../services/api';
+import PrintShelterRationOverviewModal from './PrintShelterRationOverviewModal';
 
 export default function QuickDispatchModal(props) {
   if (!props.shelter || !props.activeTemplate) return null;
@@ -17,12 +18,20 @@ function QuickDispatchModalContent({
   // Dispatch Mode: 'bundle' (Full Relief Pack) vs 'single' (Single Supply Top-Up)
   const [dispatchMode, setDispatchMode] = useState('bundle');
 
-  // Base sizing choice: defaults to shelter capacity (e.g. 20)
-  const [baseType, setBaseType] = useState('capacity'); // 'capacity' or 'occupancy'
-  const basePax = baseType === 'capacity' ? (shelter.max_capacity || 20) : (shelter.current_occupancy || 0);
+  // Actual occupancy vs max capacity evaluation
+  const actualOccupancy = parseInt(shelter.current_occupancy || 0, 10);
+  const maxCapacity = parseInt(shelter.max_capacity || 20, 10);
+  const hasOccupants = actualOccupancy > 0;
+
+  // Base sizing choice: defaults to actual live occupants if present, otherwise capacity
+  const [baseType, setBaseType] = useState(hasOccupants ? 'occupancy' : 'capacity'); // 'occupancy' or 'capacity'
+  const basePax = baseType === 'occupancy' ? actualOccupancy : maxCapacity;
 
   // Suggested contingency buffer: 20% by default
   const [bufferPercent, setBufferPercent] = useState(20);
+
+  // Print/Export Overview Modal State
+  const [showPrintOverview, setShowPrintOverview] = useState(false);
 
   // --- BUNDLE MODE STATE ---
   const [extraPacks, setExtraPacks] = useState(0);
@@ -314,25 +323,31 @@ function QuickDispatchModalContent({
               <div className="flex bg-gray-200 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-bold">
                 <button
                   type="button"
-                  onClick={() => handleSelectBase('capacity')}
-                  className={`px-2.5 py-1 rounded-md transition ${
-                    baseType === 'capacity'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-gray-600 dark:text-slate-400 hover:text-gray-900'
+                  onClick={() => handleSelectBase('occupancy')}
+                  className={`px-3 py-1 rounded-md transition flex items-center gap-1 ${
+                    baseType === 'occupancy'
+                      ? 'bg-blue-600 text-white shadow-xs font-black'
+                      : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 font-semibold'
                   }`}
+                  title="Size based on actual checked-in evacuees currently inside this shelter"
                 >
-                  Capacity ({shelter.max_capacity} Pax)
+                  <Users size={12} />
+                  <span>
+                    Actual Occupants ({actualOccupancy} Pax)
+                    {actualOccupancy === 0 && ' • Standby'}
+                  </span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSelectBase('occupancy')}
-                  className={`px-2.5 py-1 rounded-md transition ${
-                    baseType === 'occupancy'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-gray-600 dark:text-slate-400 hover:text-gray-900'
+                  onClick={() => handleSelectBase('capacity')}
+                  className={`px-3 py-1 rounded-md transition ${
+                    baseType === 'capacity'
+                      ? 'bg-blue-600 text-white shadow-xs font-black'
+                      : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 font-semibold'
                   }`}
+                  title="Size based on total building capacity"
                 >
-                  Occupants ({shelter.current_occupancy} Pax)
+                  Full Capacity ({maxCapacity} Pax)
                 </button>
               </div>
             </div>
@@ -631,21 +646,32 @@ function QuickDispatchModalContent({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-2.5 rounded-xl font-bold text-xs transition"
+              className="px-4 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer"
             >
               Cancel
             </button>
+
+            <button
+              type="button"
+              onClick={() => setShowPrintOverview(true)}
+              className="px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 py-2.5 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+              title="Preview and print official CSWDO relief manifest overview PDF"
+            >
+              <Printer size={15} className="text-blue-600 dark:text-blue-400" />
+              <span>Overview PDF</span>
+            </button>
+
             <button
               type="submit"
               disabled={
                 isSubmitting ||
                 (dispatchMode === 'bundle' ? hasBundleShortage || bundleCount < 1 : hasSingleShortage || singleQty < 1)
               }
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-bold text-xs transition disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-bold text-xs transition disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
             >
               <Truck size={15} />
               {isSubmitting
@@ -657,6 +683,20 @@ function QuickDispatchModalContent({
           </div>
         </form>
       </div>
+
+      {/* Printable Shelter Allocation & Ration Overview Modal */}
+      {showPrintOverview && (
+        <PrintShelterRationOverviewModal
+          shelter={shelter}
+          activeTemplate={activeTemplate}
+          inventoryItems={inventoryItems}
+          baseType={baseType}
+          bufferPercent={bufferPercent}
+          extraPacks={extraPacks}
+          manualBundleCount={manualBundleCount}
+          onCancel={() => setShowPrintOverview(false)}
+        />
+      )}
     </div>
   );
 }
