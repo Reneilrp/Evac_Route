@@ -26,10 +26,11 @@ export default ({ config }) => {
   const buildPropertiesConfig = isPhysicalOnlyBuild
     ? {
         android: {
-          buildArchs: ['armeabi-v7a', 'arm64-v8a', 'x86_64'],
+          buildArchs: ['armeabi-v7a', 'arm64-v8a'],
           packagingOptions: {
             exclude: [
               '/lib/x86/**',
+              '/lib/x86_64/**',
             ],
           },
         },

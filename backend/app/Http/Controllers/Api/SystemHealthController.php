@@ -80,7 +80,7 @@ class SystemHealthController extends Controller
         $altApkPath = public_path('downloads/Evac_Route.apk');
         $hasApk = file_exists($apkPath) || file_exists($altApkPath);
         $targetApk = file_exists($apkPath) ? $apkPath : (file_exists($altApkPath) ? $altApkPath : null);
-        $apkSizeMb = $targetApk ? round(filesize($targetApk) / 1024 / 1024, 2) : 151.0;
+        $apkSizeMb = $targetApk ? round(filesize($targetApk) / 1024 / 1024, 2) : 101.0;
 
         // Dynamically parse mobile app metadata from app.json
         $mobileAppJsonPath = base_path('../frontend/mobile/app.json');
