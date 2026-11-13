@@ -16,7 +16,7 @@ export { AddStockModal, DISASTER_RELIEF_ITEMS, INVENTORY_CATEGORIES, UNIT_TYPES 
 // --- Add Stock Modal ---
 export default function InventoryManager() {
   const { user } = useAuth();
-  const isCSWDO = user?.email?.toLowerCase().includes('logistics') || user?.email?.toLowerCase().includes('cswdo');
+  const isCSWDO = user?.role === 'admin' || user?.operator_type === 'logistics' || user?.email?.toLowerCase().includes('logistics') || user?.email?.toLowerCase().includes('cswdo');
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('stock');
   const [showTemplateForm, setShowTemplateForm] = useState(false);
@@ -151,6 +151,28 @@ export default function InventoryManager() {
     queryFn: () => api.get('/shelters').then(r => r.data),
   });
   const shelterOptions = sheltersData?.data ?? [];
+
+  const departDispatchMutation = useMutation({
+    mutationFn: (id) => api.post(`/dispatch-orders/${id}/depart`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+      showSuccess('Dispatch order marked as In Transit (Departed).');
+    },
+    onError: (err) => showError(err?.response?.data?.message || 'Could not mark order as departed.'),
+  });
+
+  const deliverDispatchMutation = useMutation({
+    mutationFn: (id) => api.post(`/dispatch-orders/${id}/deliver`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dispatch-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+      showSuccess('Delivery confirmed! Warehouse stock officially updated.');
+    },
+    onError: (err) => showError(err?.response?.data?.message || 'Could not confirm delivery.'),
+  });
 
   const cancelDispatchMutation = useMutation({
     mutationFn: (id) => api.post(`/dispatch-orders/${id}/cancel`),
@@ -752,6 +774,34 @@ export default function InventoryManager() {
                               >
                                 <Printer size={13} /> Manifest
                               </button>
+                              {isCSWDO && order.status === 'pending' && (
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`Mark Order #${order.id} as loaded and departing now (In Transit)?`)) {
+                                      departDispatchMutation.mutate(order.id);
+                                    }
+                                  }}
+                                  disabled={departDispatchMutation.isPending}
+                                  className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:hover:bg-amber-900/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800/80 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                                  title="Mark loaded and departing from warehouse"
+                                >
+                                  <Truck size={13} /> Depart
+                                </button>
+                              )}
+                              {isCSWDO && order.status === 'in_transit' && (
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`Confirm Order #${order.id} delivered and received at shelter? This will officially deduct physical stock from central warehouse.`)) {
+                                      deliverDispatchMutation.mutate(order.id);
+                                    }
+                                  }}
+                                  disabled={deliverDispatchMutation.isPending}
+                                  className="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/80 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                                  title="Confirm delivery at shelter & deduct warehouse stock"
+                                >
+                                  <CheckCircle2 size={13} /> Delivered
+                                </button>
+                              )}
                               {isCSWDO && ['pending', 'in_transit'].includes(order.status) && (
                                 <button
                                   onClick={() => { if (window.confirm(`Cancel order #${order.id} and release reserved stock?`)) cancelDispatchMutation.mutate(order.id); }}
