@@ -120,7 +120,7 @@ export default function RescueVehicles() {
   const offDutyCount = units.filter(u => u.status === 'off_duty').length;
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto bg-slate-50 dark:bg-slate-950 p-6 min-h-full">
+    <div className="p-6 pb-20 h-full overflow-y-auto bg-slate-50 dark:bg-slate-950 flex flex-col">
       {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-5 shrink-0">
         <div className="flex items-center gap-2">
@@ -319,7 +319,7 @@ export default function RescueVehicles() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12">
           {filteredUnits.map((unit) => {
             const typeConfig = UNIT_TYPE_CONFIG[unit.unit_type] || {
               label: unit.unit_type || 'Rescue Vehicle',

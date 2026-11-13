@@ -576,7 +576,7 @@ export default function RescueDispatch() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-12">
           {units.map(u => {
             const statusCfg = STATUS_BADGES[u.status] || STATUS_BADGES.standby;
             return (
