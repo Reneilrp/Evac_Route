@@ -67,7 +67,7 @@ import AuditLogs from '../admin/AuditLogs';
 import ResidentRegistry from '../admin/ResidentRegistry';
 import MapDashboard, { FloatingMapSearch, UnifiedMapFilterSearch } from '../cdrrmo/MapDashboard';
 import RescueDispatch, { DispatchUnitModal } from '../cdrrmo/RescueDispatch';
-import RescueVehicles, { VehicleModal } from '../cdrrmo/RescueVehicles';
+import RescueVehicles, { VehicleModal, FleetDetailsModal } from '../cdrrmo/RescueVehicles';
 import EmergencyAlerts from '../cdrrmo/EmergencyAlerts';
 import InventoryManager, { AddStockModal } from '../cswdo/InventoryManager';
 import IncidentReviewQueue from '../cdrrmo/IncidentReviewQueue';
@@ -246,6 +246,72 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
       expect(html).toContain('Officer Juan Dela Cruz');
       expect(html).toContain('Captain Maria Santos');
       expect(html).toContain('Update Vehicle');
+    }).not.toThrow();
+  });
+
+  it('renders FleetDetailsModal showing the Captain and other fleet members inside that unit', () => {
+    const mockUnitWithCrew = {
+      id: 1,
+      name: 'Zamboanga Rescue Boat Alpha',
+      call_sign: 'BOAT-ALPHA',
+      unit_type: 'water_rescue',
+      status: 'standby',
+      capacity_persons: 8,
+      contact_number: '0917-RESCUE-01',
+      current_latitude: 6.9155,
+      current_longitude: 122.0790,
+      missions_count: 5,
+      assigned_personnel: {
+        id: 101,
+        name: 'Capt. Arnaldo Ramos',
+        email: 'arnaldo.ramos@cdrrmo.zamboanga.gov.ph',
+        rescue_role: 'boat_pilot',
+        status: 'active',
+      },
+      crew_members: [
+        {
+          id: 101,
+          name: 'Capt. Arnaldo Ramos',
+          email: 'arnaldo.ramos@cdrrmo.zamboanga.gov.ph',
+          rescue_role: 'boat_pilot',
+          status: 'active',
+        },
+        {
+          id: 102,
+          name: 'Sgt. Mateo Cruz',
+          email: 'mateo.cruz@cdrrmo.zamboanga.gov.ph',
+          rescue_role: 'rescue_swimmer',
+          status: 'active',
+        },
+        {
+          id: 103,
+          name: 'Officer Liza Santos',
+          email: 'liza.santos@cdrrmo.zamboanga.gov.ph',
+          rescue_role: 'crew',
+          status: 'active',
+        },
+      ],
+    };
+
+    expect(() => {
+      const html = renderWithProviders(
+        <FleetDetailsModal
+          unit={mockUnitWithCrew}
+          onClose={jest.fn()}
+          onEdit={jest.fn()}
+          onToggleStatus={jest.fn()}
+          onLocate={jest.fn()}
+          onManageStaff={jest.fn()}
+        />
+      );
+      expect(html).toContain('Zamboanga Rescue Boat Alpha');
+      expect(html).toContain('BOAT-ALPHA');
+      expect(html).toContain('Capt. Arnaldo Ramos');
+      expect(html).toContain('Designated Commander');
+      expect(html).toContain('Sgt. Mateo Cruz');
+      expect(html).toContain('Officer Liza Santos');
+      expect(html).toContain('Assigned Fleet Crew Members');
+      expect(html).toContain('0917-RESCUE-01');
     }).not.toThrow();
   });
 

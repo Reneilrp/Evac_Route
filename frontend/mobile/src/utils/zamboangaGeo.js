@@ -176,8 +176,20 @@ export function createCirclePolygon(center, radiusInMeters, points = 32, propert
  * @param {Array<[number, number]>|string|null} corridorCoordinates - optional road-snapped coordinates
  * @returns {object|null} GeoJSON Feature (LineString)
  */
-export function createHazardRoadCorridorLine(center, radiusInMeters = 50, properties = {}, corridorCoordinates = null) {
-  let parsedCoords = corridorCoordinates;
+export function createHazardRoadCorridorLine(center, radiusInMeters = 50, propertiesOrCorridor = {}, maybeCorridor = null) {
+  let properties = {};
+  let parsedCoords = null;
+
+  if (Array.isArray(propertiesOrCorridor) || typeof propertiesOrCorridor === 'string') {
+    parsedCoords = propertiesOrCorridor;
+    if (maybeCorridor && typeof maybeCorridor === 'object' && !Array.isArray(maybeCorridor)) {
+      properties = maybeCorridor;
+    }
+  } else {
+    properties = propertiesOrCorridor || {};
+    parsedCoords = maybeCorridor;
+  }
+
   if (typeof parsedCoords === 'string') {
     try {
       parsedCoords = JSON.parse(parsedCoords);
@@ -253,8 +265,8 @@ export function buildHazardGeoJSONFeature(hazard, extraProperties = {}) {
     id: hazard.id,
     name: hazard.name,
     radius,
-    hazard_type: hazard.hazard_type ?? 'hazard',
-    severity: hazard.severity_level ?? 'medium',
+    hazard_type: (hazard.hazard_type ?? 'hazard').toString().toLowerCase(),
+    severity: (hazard.severity_level ?? hazard.severity ?? 'medium').toString().toLowerCase(),
     geometry_type: isRoadCorridor ? 'road_corridor' : 'circle',
     ...extraProperties,
   };

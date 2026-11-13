@@ -121,6 +121,11 @@ export default function StaffDetailsModal({
                                 {assignedUnit.unit_type === 'water_rescue' ? '🚤' : assignedUnit.unit_type === 'medical_ambulance' ? '🚑' : '🛻'}
                               </span>
                               <span>{assignedUnit.name}</span>
+                              {(viewingStaff.rescue_units?.some(u => u.id === assignedUnit.id) || assignedUnit.assigned_personnel_id === viewingStaff.id) && (
+                                <span className="text-[10px] font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-800">
+                                  ⭐ Fleet Commander / Captain
+                                </span>
+                              )}
                             </div>
                             <div className="text-[11px] text-gray-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
                               <span className="font-mono font-bold text-rose-600 dark:text-rose-400">{assignedUnit.call_sign}</span>

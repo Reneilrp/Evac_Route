@@ -8,6 +8,7 @@ import {
   isValidZamboangaLocation,
   clampToZamboanga,
   createHazardRoadCorridorLine,
+  buildHazardGeoJSONFeature,
   getNearestBarangay,
 } from './zamboangaGeo.js';
 
@@ -79,6 +80,37 @@ assert.strictEqual(hazardLine.type, 'Feature', 'Must return GeoJSON Feature');
 assert.strictEqual(hazardLine.geometry.type, 'LineString', 'Must be LineString instead of Polygon');
 assert.strictEqual(hazardLine.geometry.coordinates.length, 2, 'LineString must have 2 corridor endpoints');
 assert(hazardLine.geometry.coordinates[0][0] < hazardLine.geometry.coordinates[1][0], 'Coordinates should span west-to-east along roadway');
-console.log('✅ Road hazard corridor line correctly outputs GeoJSON LineString.\n');
+
+// 6b. Testing Road Corridor with multi-point curvature coordinates (e.g. San Roque street curve)
+const sampleRoadCorridor = [
+  [122.055483, 6.927206],
+  [122.0562, 6.927263],
+  [122.056328, 6.927276],
+  [122.057651, 6.927391],
+  [122.057679, 6.926887],
+  [122.057696, 6.926653],
+];
+const curvedHazardLine = createHazardRoadCorridorLine([122.056, 6.927], 50, { severity: 'high' }, sampleRoadCorridor);
+assert.strictEqual(curvedHazardLine.geometry.type, 'LineString');
+assert.strictEqual(curvedHazardLine.geometry.coordinates.length, 6, 'Should retain all 6 road curvature coordinates');
+assert.strictEqual(curvedHazardLine.properties.severity, 'high');
+
+// 6c. Testing buildHazardGeoJSONFeature with stringified corridor_coordinates
+const sampleHazardObj = {
+  id: 46,
+  name: 'Baha',
+  latitude: 6.9272,
+  longitude: 122.0562,
+  radius_meters: 50,
+  hazard_type: 'flood',
+  severity_level: 'High',
+  geometry_type: 'road_corridor',
+  corridor_coordinates: JSON.stringify(sampleRoadCorridor),
+};
+const builtFeature = buildHazardGeoJSONFeature(sampleHazardObj);
+assert.strictEqual(builtFeature.geometry.type, 'LineString');
+assert.strictEqual(builtFeature.geometry.coordinates.length, 6, 'buildHazardGeoJSONFeature must parse and preserve road curvature points');
+assert.strictEqual(builtFeature.properties.severity, 'high', 'Severity must be normalized to lowercase');
+console.log('✅ Road hazard corridor line correctly outputs GeoJSON LineString with multi-point curvature.\n');
 
 console.log('🎉 ALL ZAMBOANGA GEO & EMULATOR CLAMPING TESTS PASSED!');

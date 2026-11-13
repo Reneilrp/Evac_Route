@@ -14,6 +14,7 @@ import { getHaversineDistance, resolveBarangayFromCoords, ZAMBOANGA_BARANGAYS } 
 import DispatchUnitModal from '../../components/dispatch/modals/DispatchUnitModal';
 import StagingHandoverModal from '../../components/dispatch/modals/StagingHandoverModal';
 import RegisterRescueUnitModal from '../../components/dispatch/modals/RegisterRescueUnitModal';
+import FleetDetailsModal from '../../components/rescue/modals/FleetDetailsModal';
 export { DispatchUnitModal } from '../../components/dispatch/modals/DispatchUnitModal';
 export { resolveBarangayFromCoords, ZAMBOANGA_BARANGAYS };
 
@@ -42,6 +43,7 @@ export default function RescueDispatch() {
   const [stagingHandoverMission, setStagingHandoverMission] = useState(null); // Mission undergoing radio shoreline handover
   const [isAddUnitOpen, setIsAddUnitOpen] = useState(false); // Modal to register new rescue vehicle/unit
   const [isHotlineModalOpen, setIsHotlineModalOpen] = useState(false); // Modal for 911 / VHF radio distress intake
+  const [inspectingFleetUnit, setInspectingFleetUnit] = useState(null);
 
   // Escape key handler to close active modals
   useEffect(() => {
@@ -51,11 +53,12 @@ export default function RescueDispatch() {
         if (stagingHandoverMission) setStagingHandoverMission(null);
         if (isAddUnitOpen) setIsAddUnitOpen(false);
         if (isHotlineModalOpen) setIsHotlineModalOpen(false);
+        if (inspectingFleetUnit) setInspectingFleetUnit(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [dispatchModalData, stagingHandoverMission, isAddUnitOpen, isHotlineModalOpen]);
+  }, [dispatchModalData, stagingHandoverMission, isAddUnitOpen, isHotlineModalOpen, inspectingFleetUnit]);
 
   // 1. Fetch rescue fleet units
   const { data: unitsData, refetch: refetchUnits } = useQuery({
@@ -577,89 +580,106 @@ export default function RescueDispatch() {
           {units.map(u => {
             const statusCfg = STATUS_BADGES[u.status] || STATUS_BADGES.standby;
             return (
-              <div key={u.id} className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-gray-200 dark:border-slate-800 shadow-sm space-y-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">
-                      {u.unit_type === 'water_rescue' ? '🚤' : u.unit_type === 'medical_ambulance' ? '🚑' : '🛻'}
-                    </span>
-                    <div>
-                      <h3 className="font-bold text-gray-900 dark:text-slate-100 text-sm">{u.name}</h3>
-                      <p className="text-[10px] font-mono text-gray-400 dark:text-slate-500 uppercase">{u.call_sign} • Cap: {u.capacity_persons}p</p>
-                    </div>
-                  </div>
-                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${statusCfg.cls}`}>
-                    {statusCfg.label}
-                  </span>
-                </div>
-
-                <div className="text-xs text-gray-500 dark:text-slate-400 space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                  <div className="flex justify-between items-center">
-                    <span>Direct Hotline:</span>
-                    <span className="font-mono text-gray-800 dark:text-slate-200">{u.contact_number || '0917-RESCUE'}</span>
-                  </div>
-
-                  {/* Assigned Crew Members */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <Users size={11} className="text-blue-500" />
-                        Assigned Rescuers ({u.crew_members?.length || (u.assigned_personnel ? 1 : 0)})
+              <div key={u.id} className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-gray-200 dark:border-slate-800 shadow-sm space-y-3 flex flex-col justify-between">
+                <div>
+                  <div 
+                    onClick={() => setInspectingFleetUnit(u)}
+                    className="flex justify-between items-start cursor-pointer group"
+                    title="Click to inspect Captain & crew roster"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">
+                        {u.unit_type === 'water_rescue' ? '🚤' : u.unit_type === 'medical_ambulance' ? '🚑' : '🛻'}
                       </span>
+                      <div>
+                        <h3 className="font-bold text-gray-900 dark:text-slate-100 text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                          {u.name}
+                        </h3>
+                        <p className="text-[10px] font-mono text-gray-400 dark:text-slate-500 uppercase">{u.call_sign} • Cap: {u.capacity_persons}p</p>
+                      </div>
+                    </div>
+                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${statusCfg.cls}`}>
+                      {statusCfg.label}
+                    </span>
+                  </div>
+
+                  <div className="text-xs text-gray-500 dark:text-slate-400 space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800 mt-2">
+                    <div className="flex justify-between items-center">
+                      <span>Direct Hotline:</span>
+                      <span className="font-mono text-gray-800 dark:text-slate-200">{u.contact_number || '0917-RESCUE'}</span>
                     </div>
 
-                    {u.crew_members && u.crew_members.length > 0 ? (
-                      <div className="space-y-1">
-                        {u.crew_members.map(member => {
-                          const roleLabels = {
-                            boat_pilot: '🚤 Boat Pilot',
-                            lead_medic: '🚑 Lead Medic',
-                            heavy_driver: '🛻 Heavy Driver',
-                            rescue_swimmer: '🦺 Swimmer',
-                            crew: '📋 Radio Crew',
-                          };
-                          const roleTag = roleLabels[member.rescue_role] || '🦺 Rescuer';
-                          return (
-                            <div key={member.id} className="flex items-center justify-between bg-gray-50 dark:bg-slate-800/80 px-2 py-1 rounded text-[11px]">
-                              <span className="font-semibold text-gray-900 dark:text-slate-100">{member.name}</span>
-                              <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">
-                                {roleTag}
-                              </span>
-                            </div>
-                          );
-                        })}
+                    {/* Assigned Crew Members */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <Users size={11} className="text-blue-500" />
+                          Assigned Rescuers ({u.crew_members?.length || (u.assigned_personnel ? 1 : 0)})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setInspectingFleetUnit(u)}
+                          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-bold normal-case text-[10px] cursor-pointer"
+                        >
+                          View Roster →
+                        </button>
                       </div>
-                    ) : u.assigned_personnel ? (
-                      <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-800/80 px-2 py-1 rounded text-[11px]">
-                        <span className="font-semibold text-gray-900 dark:text-slate-100">{u.assigned_personnel.name}</span>
-                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">Lead Operator</span>
-                      </div>
-                    ) : (
-                      <div className="text-[10px] text-gray-400 dark:text-slate-500 italic">
-                        No rescuers currently assigned
+
+                      {u.crew_members && u.crew_members.length > 0 ? (
+                        <div className="space-y-1">
+                          {u.crew_members.map(member => {
+                            const roleLabels = {
+                              boat_pilot: '🚤 Boat Pilot',
+                              lead_medic: '🚑 Lead Medic',
+                              heavy_driver: '🛻 Heavy Driver',
+                              rescue_swimmer: '🦺 Swimmer',
+                              crew: '📋 Radio Crew',
+                            };
+                            const roleTag = roleLabels[member.rescue_role] || '🦺 Rescuer';
+                            return (
+                              <div key={member.id} className="flex items-center justify-between bg-gray-50 dark:bg-slate-800/80 px-2 py-1 rounded text-[11px]">
+                                <span className="font-semibold text-gray-900 dark:text-slate-100">{member.name}</span>
+                                <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                                  {roleTag}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : u.assigned_personnel ? (
+                        <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-800/80 px-2 py-1 rounded text-[11px]">
+                          <span className="font-semibold text-gray-900 dark:text-slate-100">{u.assigned_personnel.name}</span>
+                          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">Lead Operator</span>
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-gray-400 dark:text-slate-500 italic">
+                          No rescuers currently assigned
+                        </div>
+                      )}
+                    </div>
+
+                    {u.active_mission && (
+                      <div className="mt-2 bg-blue-50 dark:bg-blue-950/50 border border-blue-100 dark:border-blue-900/40 p-2 rounded text-[11px] text-blue-900 dark:text-blue-300">
+                        <strong>Active Duty:</strong> {u.active_mission.control_no} ({u.active_mission.victim_name})
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {u.active_mission && (
-                    <div className="mt-2 bg-blue-50 dark:bg-blue-950/50 border border-blue-100 dark:border-blue-900/40 p-2 rounded text-[11px] text-blue-900 dark:text-blue-300">
-                      <strong>Active Duty:</strong> {u.active_mission.control_no} ({u.active_mission.victim_name})
+                <div className="pt-2">
+                  {u.status === 'standby' ? (
+                    <button
+                      onClick={() => setDispatchModalData({ rescue_unit_id: u.id })}
+                      className="w-full mt-2 py-2 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-bold border border-blue-200 dark:border-blue-800 transition flex items-center justify-center gap-1.5"
+                    >
+                      <Send size={13} /> Dispatch This Unit
+                    </button>
+                  ) : (
+                    <div className="w-full py-2 bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-500 rounded-lg text-xs text-center font-bold">
+                      Unit Deployed
                     </div>
                   )}
                 </div>
-
-                {u.status === 'standby' ? (
-                  <button
-                    onClick={() => setDispatchModalData({ rescue_unit_id: u.id })}
-                    className="w-full mt-2 py-2 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-bold border border-blue-200 dark:border-blue-800 transition flex items-center justify-center gap-1.5"
-                  >
-                    <Send size={13} /> Dispatch This Unit
-                  </button>
-                ) : (
-                  <div className="w-full py-2 bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-500 rounded-lg text-xs text-center font-bold">
-                    Unit Deployed
-                  </div>
-                )}
               </div>
             );
           })}
@@ -842,6 +862,16 @@ export default function RescueDispatch() {
         rescueUnits={units}
         shelters={shelters}
       />
+
+      {/* Fleet Unit Details Modal for Dispatcher */}
+      {inspectingFleetUnit && (
+        <FleetDetailsModal
+          unit={units.find(u => u.id === inspectingFleetUnit.id) || inspectingFleetUnit}
+          onClose={() => setInspectingFleetUnit(null)}
+          onLocate={(unit) => navigate(`/admin/map?focusLat=${unit.current_latitude}&focusLng=${unit.current_longitude}&unitName=${encodeURIComponent(unit.name)}`)}
+          onManageStaff={() => navigate('/admin/staff')}
+        />
+      )}
     </div>
   );
 }

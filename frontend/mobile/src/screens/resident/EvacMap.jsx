@@ -40,7 +40,14 @@ import {
   getDistanceMeters,
 } from '../../services/offlineDb';
 import { calculateOfflineRoute, fetchMapboxDirectionsRoute, determineTargetFacility } from '../../utils/astarRouter';
-import { MAPBOX_PUBLIC_TOKEN, clampToZamboanga, ZAMBOANGA_WMSU } from '../../utils/zamboangaGeo';
+import {
+  MAPBOX_PUBLIC_TOKEN,
+  clampToZamboanga,
+  ZAMBOANGA_WMSU,
+  buildHazardGeoJSONFeature,
+  createCirclePolygon,
+  createHazardRoadCorridorLine,
+} from '../../utils/zamboangaGeo';
 import NavigationPuck from '../../components/rescue/NavigationPuck';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -53,45 +60,6 @@ function getETAMinutes(distanceMeters, mode) {
   if (minutes < 1) return '< 1 min';
   if (minutes >= 60) return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
   return `${minutes} min`;
-}
-
-
-
-// ─── Circle Polygon Generator (mirrors web mapHelper.js) ───
-function createCirclePolygon(center, radiusInMeters, points = 64) {
-  const [lng, lat] = center;
-  const distanceX = radiusInMeters / (111320 * Math.cos((lat * Math.PI) / 180));
-  const distanceY = radiusInMeters / 110540;
-  const coords = [];
-  for (let i = 0; i < points; i++) {
-    const theta = (i / points) * (2 * Math.PI);
-    coords.push([lng + distanceX * Math.cos(theta), lat + distanceY * Math.sin(theta)]);
-  }
-  coords.push(coords[0]); // close ring
-  return {
-    type: 'Feature',
-    geometry: { type: 'Polygon', coordinates: [coords] },
-  };
-}
-
-// ─── Road Hazard Corridor Line Generator (used only for road_corridor geometry type) ───
-function createHazardRoadCorridorLine(center, radiusInMeters = 50) {
-  const [lng, lat] = center;
-  const radius = Math.max(30, radiusInMeters);
-  const distanceX = radius / (111320 * Math.cos((lat * Math.PI) / 180));
-  const distanceY = radius / 110540;
-
-  // Street corridor line segment extending along roadway orientation
-  return {
-    type: 'Feature',
-    geometry: {
-      type: 'LineString',
-      coordinates: [
-        [lng - distanceX * 0.9, lat - distanceY * 0.45],
-        [lng + distanceX * 0.9, lat + distanceY * 0.45],
-      ],
-    },
-  };
 }
 
 // ─── Dynamic Render Radius based on Height Bar / Map Scale (Zoom Level) ───
@@ -1128,49 +1096,25 @@ export default function EvacMap({ navigation, route }) {
     } : null;
   }, [cachedRoute]);
 
-  // ─── Build hazard feature: circle → Polygon, road_corridor → LineString ───
+  // ─── Build hazard feature: circle → Polygon, road_corridor → LineString (with full road curvature) ───
   const buildHazardFeature = useCallback((hazard) => {
-    const lng = parseFloat(hazard.longitude);
-    const lat = parseFloat(hazard.latitude);
-    const rad = parseFloat(hazard.radius_meters || 50);
-
-    let parsedCorridor = hazard.corridor_coordinates;
-    if (typeof parsedCorridor === 'string') {
-      try { parsedCorridor = JSON.parse(parsedCorridor); } catch { parsedCorridor = null; }
-    }
-    const isRoadCorridor =
-      hazard.geometry_type === 'road_corridor' ||
-      (Array.isArray(parsedCorridor) && parsedCorridor.length >= 2);
-
-    const geomFeat = isRoadCorridor
-      ? createHazardRoadCorridorLine([lng, lat], rad)
-      : createCirclePolygon([lng, lat], rad);
-
-    return {
-      ...geomFeat,
-      properties: {
-        id: hazard.id,
-        name: hazard.name,
-        radius: rad,
-        hazard_type: hazard.hazard_type ?? 'hazard',
-        severity: hazard.severity_level ?? 'medium',
-        geometry_type: isRoadCorridor ? 'road_corridor' : 'circle',
-      },
-    };
+    return buildHazardGeoJSONFeature(hazard);
   }, []);
 
   const activeHazardsGeoJSON = useMemo(() => ({
     type: 'FeatureCollection',
     features: (visibleHazards || [])
       .filter(h => h.is_active && !h.is_fixed_flood_spot)
-      .map(buildHazardFeature),
+      .map(buildHazardFeature)
+      .filter(Boolean),
   }), [visibleHazards, buildHazardFeature]);
 
   const susceptibleGeoJSON = useMemo(() => ({
     type: 'FeatureCollection',
     features: (visibleHazards || [])
       .filter(h => h.is_fixed_flood_spot && !h.is_active)
-      .map(buildHazardFeature),
+      .map(buildHazardFeature)
+      .filter(Boolean),
   }), [visibleHazards, buildHazardFeature]);
 
   if (!location || (isLoadingShelters && offlineShelters.length === 0)) {

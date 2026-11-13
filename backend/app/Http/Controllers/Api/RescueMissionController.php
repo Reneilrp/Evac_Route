@@ -27,16 +27,39 @@ class RescueMissionController extends Controller
     public function units(Request $request)
     {
         $units = RescueUnit::with([
-            'assignedPersonnel:id,name,email',
-            'crewMembers:id,name,email,rescue_role,status,assigned_rescue_unit_id',
+            'assignedPersonnel:id,name,email,rescue_role,status,operator_type',
+            'crewMembers:id,name,email,rescue_role,status,operator_type,assigned_rescue_unit_id',
             'activeMission.targetShelter:id,name,latitude,longitude',
         ])
+            ->withCount('missions')
             ->orderByRaw("CASE status WHEN 'standby' THEN 1 WHEN 'on_scene' THEN 2 WHEN 'en_route' THEN 3 WHEN 'transporting' THEN 4 ELSE 5 END")
             ->get();
 
         return response()->json([
             'status' => 'success',
             'data' => $units,
+        ]);
+    }
+
+    /**
+     * Show detailed profile and roster for a specific rescue unit.
+     */
+    public function showUnit($id)
+    {
+        $unit = RescueUnit::with([
+            'assignedPersonnel:id,name,email,rescue_role,status,operator_type',
+            'crewMembers:id,name,email,rescue_role,status,operator_type,assigned_rescue_unit_id',
+            'activeMission.targetShelter:id,name,latitude,longitude',
+            'missions' => function ($q) {
+                $q->latest()->limit(5)->with('targetShelter:id,name,latitude,longitude');
+            },
+        ])
+            ->withCount('missions')
+            ->findOrFail($id);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $unit,
         ]);
     }
 

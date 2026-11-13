@@ -417,7 +417,7 @@ export default function StaffManagement() {
                             
                             {/* Rescuer Role & Vehicle Display */}
                             {user.operator_type === 'rescue' && (
-                              <div className="flex items-center gap-1.5 text-[11px] text-gray-600 dark:text-slate-400 font-medium">
+                              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-gray-600 dark:text-slate-400 font-medium">
                                 <span className="font-bold text-rose-700 dark:text-rose-400">
                                   {RESCUE_ROLES.find(r => r.id === user.rescue_role)?.icon || '🦺'}{' '}
                                   {RESCUE_ROLES.find(r => r.id === user.rescue_role)?.label || 'Rescuer'}
@@ -429,6 +429,11 @@ export default function StaffManagement() {
                                       {(user.assigned_rescue_unit || user.rescue_units?.[0])?.call_sign}
                                     </span>
                                   </>
+                                )}
+                                {(user.rescue_units?.length > 0 || user.rescue_units?.[0]?.assigned_personnel_id === user.id) && (
+                                  <span className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                                    ⭐ Fleet Captain
+                                  </span>
                                 )}
                               </div>
                             )}

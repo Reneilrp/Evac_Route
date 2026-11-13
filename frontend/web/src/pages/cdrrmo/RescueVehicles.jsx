@@ -3,13 +3,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { 
   Truck, Radio, ShieldAlert, Plus, Search, Filter, Phone, Users, 
-  MapPin, CheckCircle2, AlertTriangle, Edit3, Trash2, X, RefreshCw, Power
+  MapPin, CheckCircle2, AlertTriangle, Edit3, Trash2, X, RefreshCw, Power,
+  Eye, Shield
 } from 'lucide-react';
 import api from '../../services/api';
 import ConfirmationModal from '../../components/common/ConfirmationModal';
 import { showSuccess, showError } from '../../utils/toast';
 import VehicleModal from '../../components/rescue/modals/VehicleModal';
+import FleetDetailsModal from '../../components/rescue/modals/FleetDetailsModal';
 export { VehicleModal } from '../../components/rescue/modals/VehicleModal';
+export { FleetDetailsModal } from '../../components/rescue/modals/FleetDetailsModal';
 
 const UNIT_TYPE_CONFIG = {
   water_rescue: {
@@ -39,6 +42,7 @@ export default function RescueVehicles() {
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState(null);
   const [deletingUnitId, setDeletingUnitId] = useState(null);
+  const [viewingFleetUnit, setViewingFleetUnit] = useState(null);
 
   // 1. Fetch Rescue Fleet Units
   const { data: unitsData, isLoading, refetch } = useQuery({
@@ -47,6 +51,11 @@ export default function RescueVehicles() {
     refetchInterval: 10000,
   });
   const units = Array.isArray(unitsData) ? unitsData : [];
+
+  const currentViewingUnit = useMemo(() => {
+    if (!viewingFleetUnit) return null;
+    return units.find(u => u.id === viewingFleetUnit.id) || viewingFleetUnit;
+  }, [viewingFleetUnit, units]);
 
   // 2. Fetch Staff for operator assignment (CDRRMO rescue field units)
   const { data: staffData } = useQuery({
@@ -320,11 +329,24 @@ export default function RescueVehicles() {
             const isStandby = unit.status === 'standby';
             const isOnMission = ['dispatched', 'en_route', 'on_scene', 'transporting'].includes(unit.status);
             const isOffDuty = unit.status === 'off_duty';
+            const captain = unit.assigned_personnel;
+            const crewMembers = Array.isArray(unit.crew_members) ? unit.crew_members : [];
+            const otherCrew = crewMembers.filter(m => !captain || m.id !== captain.id);
+            const totalCrewCount = (captain ? 1 : 0) + otherCrew.length;
 
             return (
               <div
                 key={unit.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between"
+                onClick={() => setViewingFleetUnit(unit)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setViewingFleetUnit(unit);
+                  }
+                }}
+                className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 transition-all cursor-pointer flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-blue-500 text-left"
               >
                 <div>
                   {/* Card Header: Type Badge & Status */}
@@ -357,7 +379,7 @@ export default function RescueVehicles() {
 
                   {/* Vehicle Title & Radio Call Sign */}
                   <div className="mb-3">
-                    <h3 className="font-extrabold text-base text-gray-900 dark:text-slate-100 leading-snug">
+                    <h3 className="font-extrabold text-base text-gray-900 dark:text-slate-100 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {unit.name}
                     </h3>
                     <div className="flex items-center gap-2 mt-1">
@@ -371,13 +393,27 @@ export default function RescueVehicles() {
                     </div>
                   </div>
 
-                  {/* Operational Details */}
+                  {/* Operational Details & Crew Roster Snapshot */}
                   <div className="space-y-2 text-xs bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800/80 mb-3">
-                    {/* Operator in-charge */}
+                    {/* Operator in-charge / Captain */}
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-500 dark:text-slate-400 font-medium">Assigned Driver:</span>
+                      <span className="text-gray-500 dark:text-slate-400 font-medium flex items-center gap-1">
+                        <Shield size={12} className="text-amber-500 shrink-0" />
+                        <span>Captain / Lead:</span>
+                      </span>
                       <span className="font-bold text-gray-800 dark:text-slate-200 text-right truncate max-w-[170px]">
-                        {unit.assigned_personnel?.name || 'On-Duty Dispatch Pool'}
+                        {captain?.name || 'On-Duty Dispatch Pool'}
+                      </span>
+                    </div>
+
+                    {/* Crew count */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500 dark:text-slate-400 font-medium flex items-center gap-1">
+                        <Users size={12} className="text-blue-500 shrink-0" />
+                        <span>Fleet Crew:</span>
+                      </span>
+                      <span className="font-bold text-blue-600 dark:text-blue-400">
+                        {totalCrewCount > 0 ? `${totalCrewCount} personnel` : 'Unassigned (Reserve)'}
                       </span>
                     </div>
 
@@ -385,7 +421,7 @@ export default function RescueVehicles() {
                     {unit.contact_number && (
                       <div className="flex items-center justify-between">
                         <span className="text-gray-500 dark:text-slate-400 font-medium">Direct Hotline:</span>
-                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                        <span className="font-mono font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                           <Phone size={11} /> {unit.contact_number}
                         </span>
                       </div>
@@ -419,15 +455,29 @@ export default function RescueVehicles() {
                       )}
                     </div>
                   )}
+
+                  {/* Interactive Details Affordance */}
+                  <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
+                    <span className="flex items-center gap-1">
+                      <Eye size={12} /> View Full Fleet &amp; Crew Details
+                    </span>
+                    <span>→</span>
+                  </div>
                 </div>
 
                 {/* Card Actions */}
-                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1.5">
+                <div 
+                  className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="flex items-center gap-1.5">
                     {/* Locate on Map Button */}
                     {unit.current_latitude && unit.current_longitude && (
                       <button
-                        onClick={() => navigate(`/admin/map?focusLat=${unit.current_latitude}&focusLng=${unit.current_longitude}&unitName=${encodeURIComponent(unit.name)}`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/admin/map?focusLat=${unit.current_latitude}&focusLng=${unit.current_longitude}&unitName=${encodeURIComponent(unit.name)}`);
+                        }}
                         className="p-1.5 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 bg-gray-50 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
                         title="Locate Vehicle on Map"
                         aria-label="Locate Vehicle on Map"
@@ -438,7 +488,10 @@ export default function RescueVehicles() {
 
                     {/* Edit Vehicle specs */}
                     <button
-                      onClick={() => setEditingUnit(unit)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingUnit(unit);
+                      }}
                       className="p-1.5 text-gray-500 hover:text-gray-900 dark:hover:text-white bg-gray-50 hover:bg-gray-100 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
                       title="Edit Vehicle Details"
                       aria-label="Edit Vehicle Details"
@@ -449,7 +502,10 @@ export default function RescueVehicles() {
                     {/* Delete Vehicle */}
                     {!isOnMission && (
                       <button
-                        onClick={() => setDeletingUnitId(unit.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingUnitId(unit.id);
+                        }}
                         className="p-1.5 text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
                         title="Remove Vehicle from Fleet"
                         aria-label="Remove Vehicle from Fleet"
@@ -462,7 +518,10 @@ export default function RescueVehicles() {
                   {/* Toggle Readiness (Standby vs Off-Duty) */}
                   {!isOnMission && (
                     <button
-                      onClick={() => toggleStatusMutation.mutate({ id: unit.id, currentStatus: unit.status })}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleStatusMutation.mutate({ id: unit.id, currentStatus: unit.status });
+                      }}
                       disabled={toggleStatusMutation.isPending}
                       className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer border ${
                         isStandby
@@ -508,6 +567,18 @@ export default function RescueVehicles() {
             queryClient.invalidateQueries({ queryKey: ['rescue-units'] });
             showSuccess('Rescue vehicle details updated successfully.');
           }}
+        />
+      )}
+
+      {/* Fleet Details & Crew Roster Modal */}
+      {currentViewingUnit && (
+        <FleetDetailsModal
+          unit={currentViewingUnit}
+          onClose={() => setViewingFleetUnit(null)}
+          onEdit={(u) => setEditingUnit(u)}
+          onToggleStatus={(u) => toggleStatusMutation.mutate({ id: u.id, currentStatus: u.status })}
+          onLocate={(u) => navigate(`/admin/map?focusLat=${u.current_latitude}&focusLng=${u.current_longitude}&unitName=${encodeURIComponent(u.name)}`)}
+          onManageStaff={() => navigate('/admin/staff')}
         />
       )}
 

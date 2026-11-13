@@ -368,10 +368,10 @@ class IncidentController extends Controller
         ]);
 
         $isFixed = (bool) ($validated['is_fixed_flood_spot'] ?? false);
-        // An approved citizen incident report represents an active hazard on the ground
+        // Fixed flood spots start inactive until rain triggers them; regular approved citizen reports start active
         $isActive = array_key_exists('is_active', $validated)
             ? (bool) $validated['is_active']
-            : true;
+            : ! $isFixed;
         $finalHazardType = $validated['hazard_type'] ?? $incident->hazard_type;
         $finalSeverity = $validated['severity_level'] ?? $incident->severity_level;
         $finalName = $validated['name'] ?? $incident->name;

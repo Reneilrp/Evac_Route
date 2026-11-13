@@ -179,6 +179,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
         // 12. DRRM Rescue Unit & Responder Dispatch
         Route::get('/rescue/units', [RescueMissionController::class, 'units']);
+        Route::get('/rescue/units/{id}', [RescueMissionController::class, 'showUnit']);
         Route::post('/rescue/units', [RescueMissionController::class, 'storeUnit']);
         Route::put('/rescue/units/{id}', [RescueMissionController::class, 'updateUnit']);
         Route::delete('/rescue/units/{id}', [RescueMissionController::class, 'destroyUnit']);

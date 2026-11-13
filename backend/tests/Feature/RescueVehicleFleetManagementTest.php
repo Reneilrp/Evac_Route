@@ -191,4 +191,78 @@ class RescueVehicleFleetManagementTest extends TestCase
         $this->officerA->refresh();
         $this->assertNull($this->officerA->assigned_rescue_unit_id);
     }
+
+    public function test_can_fetch_single_vehicle_with_captain_and_crew_details(): void
+    {
+        Sanctum::actingAs($this->adminUser);
+
+        $unit = RescueUnit::create([
+            'name' => 'Flagship Rescue Boat Alpha',
+            'call_sign' => 'BOAT-ALPHA-01',
+            'unit_type' => 'water_rescue',
+            'status' => 'standby',
+            'capacity_persons' => 8,
+            'contact_number' => '0917-HOTLINE-1',
+            'assigned_personnel_id' => $this->officerA->id,
+        ]);
+        $this->officerA->update([
+            'assigned_rescue_unit_id' => $unit->id,
+            'rescue_role' => 'boat_pilot',
+            'status' => 'active',
+        ]);
+
+        // Add additional crew member
+        $crewMember = User::factory()->create([
+            'name' => 'Swimmer Pedro Gomez',
+            'email' => 'pedro.gomez@zamboanga.gov.ph',
+            'role' => 'lgu_staff',
+            'operator_type' => 'rescue',
+            'rescue_role' => 'rescue_swimmer',
+            'assigned_rescue_unit_id' => $unit->id,
+            'status' => 'active',
+        ]);
+
+        $response = $this->getJson("/api/rescue/units/{$unit->id}");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('data.id', $unit->id)
+            ->assertJsonPath('data.assigned_personnel.id', $this->officerA->id)
+            ->assertJsonPath('data.assigned_personnel.name', $this->officerA->name)
+            ->assertJsonPath('data.assigned_personnel.rescue_role', 'boat_pilot');
+
+        $crewData = $response->json('data.crew_members');
+        $this->assertIsArray($crewData);
+        $this->assertCount(2, $crewData); // Both officerA and crewMember have assigned_rescue_unit_id = unit->id
+    }
+
+    public function test_units_index_includes_crew_and_missions_count(): void
+    {
+        Sanctum::actingAs($this->adminUser);
+
+        $unit = RescueUnit::create([
+            'name' => 'Fast Craft Charlie',
+            'call_sign' => 'BOAT-CHARLIE',
+            'unit_type' => 'water_rescue',
+            'status' => 'standby',
+            'capacity_persons' => 6,
+            'assigned_personnel_id' => $this->officerB->id,
+        ]);
+        $this->officerB->update([
+            'assigned_rescue_unit_id' => $unit->id,
+            'rescue_role' => 'boat_pilot',
+        ]);
+
+        $response = $this->getJson('/api/rescue/units');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('status', 'success');
+
+        $unitData = collect($response->json('data'))->firstWhere('id', $unit->id);
+        $this->assertNotNull($unitData);
+        $this->assertEquals($this->officerB->id, $unitData['assigned_personnel']['id']);
+        $this->assertEquals('boat_pilot', $unitData['assigned_personnel']['rescue_role']);
+        $this->assertArrayHasKey('missions_count', $unitData);
+        $this->assertArrayHasKey('crew_members', $unitData);
+    }
 }
