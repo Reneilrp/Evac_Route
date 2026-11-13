@@ -46,6 +46,7 @@ const VARIANT_CONFIGS = {
 export default function ConfirmationModal({
   visible = false,
   onClose,
+  onCancel,
   onConfirm,
   title = 'Are you sure?',
   message = '',
@@ -115,19 +116,29 @@ export default function ConfirmationModal({
 
               {/* Action Buttons */}
               <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={onClose}
-                  disabled={loading}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.cancelButtonText}>{cancelText}</Text>
-                </TouchableOpacity>
+                {Boolean(cancelText) && (
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => {
+                      if (loading) return;
+                      if (onCancel) {
+                        onCancel();
+                      } else if (onClose) {
+                        onClose();
+                      }
+                    }}
+                    disabled={loading}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.cancelButtonText}>{cancelText}</Text>
+                  </TouchableOpacity>
+                )}
 
                 <TouchableOpacity
                   style={[
                     styles.confirmButton,
                     { backgroundColor: config.buttonBg },
+                    !cancelText && { flex: 1 },
                     loading && { opacity: 0.75 },
                   ]}
                   onPress={handleConfirm}

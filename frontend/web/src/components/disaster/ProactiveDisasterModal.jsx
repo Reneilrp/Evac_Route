@@ -94,10 +94,11 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
     },
     onSuccess: (data) => {
       showSuccess(data.message || 'Preset status updated successfully.');
-      queryClient.invalidateQueries(['hazards/presets']);
-      queryClient.invalidateQueries(['mapDashboard']);
-      queryClient.invalidateQueries(['hazards']);
-      queryClient.invalidateQueries(['weather/live-status']);
+      queryClient.invalidateQueries({ queryKey: ['hazards/presets'] });
+      queryClient.invalidateQueries({ queryKey: ['map-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['mapDashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['hazards'] });
+      queryClient.invalidateQueries({ queryKey: ['weather/live-status'] });
     },
     onError: (err) => {
       showError(err.response?.data?.message || 'Failed to toggle geohazard preset.');
@@ -112,10 +113,11 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
     },
     onSuccess: (data) => {
       showSuccess(data.message || 'Disaster hazard zone officially declared.');
-      queryClient.invalidateQueries(['mapDashboard']);
-      queryClient.invalidateQueries(['hazards']);
-      queryClient.invalidateQueries(['alerts']);
-      queryClient.invalidateQueries(['hazards/presets']);
+      queryClient.invalidateQueries({ queryKey: ['map-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['mapDashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['hazards'] });
+      queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['hazards/presets'] });
       onClose();
     },
     onError: (err) => {
@@ -443,7 +445,6 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
                       <option value="flood">🌊 Flash Flood / Swelling</option>
                       <option value="debris">⛰️ Landslide / Rock Debris</option>
                       <option value="fire">🚒 Structural / Forest Fire</option>
-                      <option value="earthquake">🌋 Earthquake Tremors</option>
                       <option value="chemical_spill">🧪 Chemical / Hazmat Spill</option>
                     </select>
                   </div>

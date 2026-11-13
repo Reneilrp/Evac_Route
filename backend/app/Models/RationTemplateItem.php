@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['ration_template_id', 'inventory_item_id', 'quantity_per_head'])]
+#[Fillable(['ration_template_id', 'inventory_item_id', 'quantity_per_head', 'allocation_type'])]
 class RationTemplateItem extends Model
 {
     public function template()

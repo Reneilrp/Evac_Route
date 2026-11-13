@@ -170,6 +170,7 @@ export default function ReportIncident({ navigation, route }) {
     icon: null,
     loading: false,
     onConfirm: null,
+    onCancel: null,
   });
 
   const closeConfirmModal = () => {
@@ -305,14 +306,41 @@ export default function ReportIncident({ navigation, route }) {
 
   const showPhotoPicker = () => {
     if (photos.length >= 4) {
-      Alert.alert('Limit Reached', 'Maximum of 4 credibility photos reached.');
+      setConfirmModal({
+        visible: true,
+        title: 'Photo Limit Reached',
+        message: 'You can attach up to 4 credibility photos per incident report.',
+        detail: null,
+        confirmText: 'Understood',
+        cancelText: '',
+        variant: 'warning',
+        icon: AlertTriangle,
+        loading: false,
+        onConfirm: closeConfirmModal,
+        onCancel: closeConfirmModal,
+      });
       return;
     }
-    Alert.alert('Add Credibility Photo', `Photo ${photos.length + 1} of 4 — Choose source`, [
-      { text: 'Take Photo', onPress: () => handlePickPhoto(true) },
-      { text: 'Choose from Gallery', onPress: () => handlePickPhoto(false) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+
+    setConfirmModal({
+      visible: true,
+      title: `Attach Photo (${photos.length + 1} of 4)`,
+      message: 'Choose how you would like to provide photographic evidence of this emergency.',
+      detail: 'Live camera photos provide immediate scene and watermark verification.',
+      confirmText: 'Take Photo',
+      cancelText: 'From Gallery',
+      variant: 'primary',
+      icon: Camera,
+      loading: false,
+      onConfirm: () => {
+        closeConfirmModal();
+        setTimeout(() => handlePickPhoto(true), 150);
+      },
+      onCancel: () => {
+        closeConfirmModal();
+        setTimeout(() => handlePickPhoto(false), 150);
+      },
+    });
   };
 
   const handleRemovePhoto = (index) => {
@@ -334,28 +362,62 @@ export default function ReportIncident({ navigation, route }) {
   // --- Submit report ---
   const handleSubmit = async () => {
     if (!name.trim()) {
-      Alert.alert('Missing Info', 'Please provide a name for this incident.');
+      setConfirmModal({
+        visible: true,
+        title: 'Missing Incident Name',
+        message: 'Please provide a descriptive name for this incident before submitting.',
+        detail: 'Example: "Waist-deep flood near bridge" or "Fallen tree blocking lane"',
+        confirmText: 'Understood',
+        cancelText: '',
+        variant: 'warning',
+        icon: AlertTriangle,
+        loading: false,
+        onConfirm: closeConfirmModal,
+        onCancel: closeConfirmModal,
+      });
       return;
     }
 
     if (!coords || (coords.latitude === 0 && coords.longitude === 0)) {
-      Alert.alert(
-        '📍 Acquiring GPS Location...',
-        'Valid GPS coordinates are required before transmitting your emergency report. Please tap "Pin My Location" first.',
-        [{ text: 'Acquire Location', onPress: () => handleGetLocation() }]
-      );
+      setConfirmModal({
+        visible: true,
+        title: 'GPS Location Required',
+        message: 'Valid GPS coordinates are required before transmitting your emergency report so rescue units can locate the incident.',
+        detail: 'Please tap "Acquire Location" to fetch your current GPS position.',
+        confirmText: 'Acquire Location',
+        cancelText: 'Cancel',
+        variant: 'warning',
+        icon: MapPin,
+        loading: false,
+        onConfirm: () => {
+          closeConfirmModal();
+          handleGetLocation();
+        },
+        onCancel: closeConfirmModal,
+      });
       return;
     }
 
     if (photos.length === 0) {
-      Alert.alert(
-        'Add Photo?',
-        'Providing photos of the incident helps the LGU verify and approve it immediately. Would you like to add photos now?',
-        [
-          { text: 'Add Photo', onPress: () => showPhotoPicker() },
-          { text: 'Submit Anyway', onPress: () => sendReportToServer() }
-        ]
-      );
+      setConfirmModal({
+        visible: true,
+        title: 'Submit Without Photo?',
+        message: 'Providing photos of the incident helps the CDRRMO / LGU verify and approve it immediately. Would you like to add photos now?',
+        detail: 'Clear photos with depth indicators and landmarks expedite response times.',
+        confirmText: 'Add Photo',
+        cancelText: 'Submit Anyway',
+        variant: 'warning',
+        icon: Camera,
+        loading: false,
+        onConfirm: () => {
+          closeConfirmModal();
+          setTimeout(() => showPhotoPicker(), 150);
+        },
+        onCancel: () => {
+          closeConfirmModal();
+          sendReportToServer();
+        },
+      });
     } else {
       sendReportToServer();
     }
@@ -409,13 +471,34 @@ export default function ReportIncident({ navigation, route }) {
       resetForm();
       setShowCreateModal(false);
 
-      Alert.alert(
-        '✓ Report Submitted',
-        'Your incident report has been sent to LGU for review. Thank you for helping keep your community safe.'
-      );
+      setConfirmModal({
+        visible: true,
+        title: 'Report Transmitted',
+        message: 'Your incident report has been securely sent to the CDRRMO / LGU for immediate review.',
+        detail: 'Thank you for helping keep your community safe.',
+        confirmText: 'Understood',
+        cancelText: '',
+        variant: 'success',
+        icon: CheckCircle2,
+        loading: false,
+        onConfirm: closeConfirmModal,
+        onCancel: closeConfirmModal,
+      });
     } catch (error) {
       const msg = error?.response?.data?.message || 'Failed to submit report. Please try again.';
-      Alert.alert('Submission Failed', msg);
+      setConfirmModal({
+        visible: true,
+        title: 'Submission Failed',
+        message: msg,
+        detail: null,
+        confirmText: 'Dismiss',
+        cancelText: '',
+        variant: 'danger',
+        icon: AlertTriangle,
+        loading: false,
+        onConfirm: closeConfirmModal,
+        onCancel: closeConfirmModal,
+      });
     } finally {
       isSubmittingRef.current = false;
       setSubmitting(false);
@@ -825,6 +908,7 @@ export default function ReportIncident({ navigation, route }) {
         icon={confirmModal.icon}
         loading={confirmModal.loading}
         onConfirm={confirmModal.onConfirm}
+        onCancel={confirmModal.onCancel}
         onClose={closeConfirmModal}
       />
 

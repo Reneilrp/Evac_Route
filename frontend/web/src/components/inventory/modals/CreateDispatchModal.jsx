@@ -25,8 +25,10 @@ function CreateDispatchModal({ inventoryItems, shelters, activeTemplate, onCance
     if (activeTemplate && Array.isArray(activeTemplate.items) && activeTemplate.items.length > 0) {
       const generatedRows = activeTemplate.items.map(tItem => {
         const matchingInv = inventoryItems.find(it => String(it.id) === String(tItem.inventory_item_id || tItem.inventoryItem?.id));
+        const isFam = tItem.allocation_type === 'per_family';
+        const targetUnits = isFam ? Math.max(1, Math.ceil(bufferCount / 5)) : bufferCount;
         const perHead = Number(tItem.quantity_per_head) || 1;
-        const totalNeeded = Math.ceil(perHead * bufferCount);
+        const totalNeeded = Math.ceil(perHead * targetUnits);
         const avail = matchingInv?.available_stock ?? matchingInv?.total_stock ?? totalNeeded;
         return {
           inventory_item_id: matchingInv ? String(matchingInv.id) : (inventoryItems[0]?.id ? String(inventoryItems[0].id) : ''),

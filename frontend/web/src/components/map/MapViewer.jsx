@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/mapbox';
 import {
-  MapPin, Zap, Moon, Satellite, Mountain, TriangleAlert, Waves
+  MapPin, Zap, Moon, Satellite, Mountain, TriangleAlert, Waves, Flame
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import MapLegend from './MapLegend';
@@ -346,16 +346,40 @@ const MapViewer = React.memo(({
 
   const [hoveredBarangay, setHoveredBarangay] = useState(null);
 
-  const activeHazardBarangays = useMemo(() => {
-    const set = new Set();
-    if (!hazards || !Array.isArray(hazards)) return set;
+  const normalizeBarangayName = useCallback((s) => (s || '')
+    .toLowerCase()
+    .replace(/^(barangay|bgy\.?)\s+/i, '')
+    .replace(/\(poblacion\)/gi, '')
+    .replace(/\bsta\b\.?/gi, 'santa')
+    .replace(/[^a-z0-9]/g, ''), []);
+
+  const activeHazardBarangaysMap = useMemo(() => {
+    const map = {};
+    if (!hazards || !Array.isArray(hazards)) return map;
     hazards.forEach(h => {
       if (h.is_active && h.barangay) {
-        set.add(h.barangay.trim().toLowerCase());
+        const norm = normalizeBarangayName(h.barangay);
+        if (norm) {
+          const existing = map[norm];
+          const isDeclared = h.origin_type === 'official_declaration' || existing?.isDeclared;
+          const isCritical = h.severity_level === 'critical' || existing?.isCritical;
+          map[norm] = {
+            originalName: h.barangay,
+            hazardName: h.name,
+            hazardType: h.hazard_type,
+            severityLevel: h.severity_level,
+            isDeclared,
+            isCritical,
+          };
+        }
       }
     });
-    return set;
-  }, [hazards]);
+    return map;
+  }, [hazards, normalizeBarangayName]);
+
+  const hasActiveHazardBarangays = useMemo(() => {
+    return Object.keys(activeHazardBarangaysMap).length > 0;
+  }, [activeHazardBarangaysMap]);
 
   const enrichedBarangaysGeoJSON = useMemo(() => {
     if (!zamboangaBarangaysGeoJSON?.features) return zamboangaBarangaysGeoJSON;
@@ -363,16 +387,20 @@ const MapViewer = React.memo(({
       ...zamboangaBarangaysGeoJSON,
       features: zamboangaBarangaysGeoJSON.features.map(f => {
         const rawName = f.properties?.name || '';
-        const nameLower = rawName.trim().toLowerCase();
+        const norm = normalizeBarangayName(rawName);
 
-        const hasHazard = activeHazardBarangays.has(nameLower) ||
-          Array.from(activeHazardBarangays).some(hb => nameLower.includes(hb) || hb.includes(nameLower));
-
+        const hazardInfo = activeHazardBarangaysMap[norm];
+        const hasHazard = !!hazardInfo;
+        const isDeclared = !!hazardInfo?.isDeclared;
+        const isCritical = !!hazardInfo?.isCritical;
         const isHovered = hoveredBarangay === rawName;
 
         let displayName = rawName;
-        if (hasHazard) {
-          displayName = `⚠️ ${rawName} [ALERT]`;
+        if (isDeclared) {
+          const typeLabel = (hazardInfo.hazardType || 'HAZARD').toUpperCase();
+          displayName = `🚨 HAZARD ZONE: ${rawName.toUpperCase()} [${typeLabel}]`;
+        } else if (hasHazard) {
+          displayName = `⚠️ ${rawName.toUpperCase()} [ALERT]`;
         } else if (isHovered) {
           displayName = `📍 ${rawName}`;
         }
@@ -382,13 +410,18 @@ const MapViewer = React.memo(({
           properties: {
             ...f.properties,
             hasHazard,
+            isDeclared,
+            isCritical,
+            hazardType: hazardInfo?.hazardType || null,
+            severityLevel: hazardInfo?.severityLevel || null,
+            hazardName: hazardInfo?.hazardName || null,
             isHovered,
             displayName
           }
         };
       })
     };
-  }, [activeHazardBarangays, hoveredBarangay]);
+  }, [activeHazardBarangaysMap, hoveredBarangay, normalizeBarangayName]);
 
   const shouldRenderShelters = useMemo(() => {
     if (!showShelters) return false;
@@ -503,7 +536,7 @@ const MapViewer = React.memo(({
               setHoveredFeature(null);
             }
 
-            if (showBarangayBoundaries) {
+            if (showBarangayBoundaries || hasActiveHazardBarangays) {
               const bgyFeatures = map.queryRenderedFeatures(e.point, {
                 layers: ['barangay-fills']
               });
@@ -618,15 +651,18 @@ const MapViewer = React.memo(({
           />
         )}
 
-        {/* Zamboanga City 98 Barangay Boundaries & Labels */}
-        {showBarangayBoundaries && (
+        {/* Zamboanga City 98 Barangay Boundaries & Declared Hazard Zones */}
+        {(showBarangayBoundaries || hasActiveHazardBarangays) && (
           <Source id="zamboanga-barangay-boundaries" type="geojson" data={enrichedBarangaysGeoJSON}>
+            {/* 1. Base Polygon Fill: Red for Active/Declared Hazards, Subtle for standard */}
             <Layer
               id="barangay-fills"
               type="fill"
               paint={{
                 'fill-color': [
                   'case',
+                  ['boolean', ['get', 'isDeclared'], false],
+                  '#dc2626',
                   ['boolean', ['get', 'hasHazard'], false],
                   '#ef4444',
                   ['boolean', ['get', 'isHovered'], false],
@@ -635,77 +671,104 @@ const MapViewer = React.memo(({
                 ],
                 'fill-opacity': [
                   'case',
+                  ['boolean', ['get', 'isDeclared'], false],
+                  0.38,
                   ['boolean', ['get', 'hasHazard'], false],
-                  0.18,
+                  0.28,
                   ['boolean', ['get', 'isHovered'], false],
-                  0.12,
-                  0.02
+                  (showBarangayBoundaries ? 0.14 : 0),
+                  (showBarangayBoundaries ? 0.03 : 0)
                 ],
               }}
             />
+
+            {/* 2. Normal Administrative Borders (dashed, shown when toggle ON) */}
             <Layer
-              id="barangay-borders"
+              id="barangay-normal-borders"
               type="line"
+              filter={['!=', ['get', 'hasHazard'], true]}
               paint={{
                 'line-color': [
                   'case',
-                  ['boolean', ['get', 'hasHazard'], false],
-                  '#ef4444',
                   ['boolean', ['get', 'isHovered'], false],
                   darkMode ? '#38bdf8' : '#2563eb',
                   darkMode ? '#94a3b8' : '#475569'
                 ],
                 'line-width': [
                   'case',
-                  ['boolean', ['get', 'hasHazard'], false],
-                  2.6,
                   ['boolean', ['get', 'isHovered'], false],
                   2.2,
                   ['interpolate', ['linear'], ['zoom'], 10, 1.2, 13, 1.8, 16, 2.6]
                 ],
                 'line-opacity': [
                   'case',
-                  ['boolean', ['get', 'hasHazard'], false],
-                  0.95,
                   ['boolean', ['get', 'isHovered'], false],
-                  0.9,
-                  darkMode ? 0.8 : 0.7
+                  (showBarangayBoundaries ? 0.9 : 0),
+                  (showBarangayBoundaries ? (darkMode ? 0.75 : 0.65) : 0)
                 ],
                 'line-dasharray': [4, 2],
               }}
             />
+
+            {/* 3. Emergency Hazard Borders (Solid Bold Red, high opacity, always visible) */}
+            <Layer
+              id="barangay-hazard-borders"
+              type="line"
+              filter={['==', ['get', 'hasHazard'], true]}
+              paint={{
+                'line-color': [
+                  'case',
+                  ['boolean', ['get', 'isDeclared'], false],
+                  '#b91c1c',
+                  '#dc2626'
+                ],
+                'line-width': [
+                  'case',
+                  ['boolean', ['get', 'isDeclared'], false],
+                  3.8,
+                  3.0
+                ],
+                'line-opacity': 1.0,
+              }}
+            />
+
+            {/* 4. Barangay Labels */}
             <Layer
               id="barangay-labels"
               type="symbol"
-              minzoom={11}
+              minzoom={10}
               layout={{
                 'text-field': ['get', 'displayName'],
                 'text-size': [
                   'case',
+                  ['boolean', ['get', 'isDeclared'], false],
+                  13.5,
                   ['boolean', ['get', 'hasHazard'], false],
-                  13,
-                  ['boolean', ['get', 'isHovered'], false],
                   12.5,
-                  ['interpolate', ['linear'], ['zoom'], 11, 9.5, 13, 11.5, 15, 13.5]
+                  ['boolean', ['get', 'isHovered'], false],
+                  12,
+                  ['interpolate', ['linear'], ['zoom'], 10, 9, 13, 11, 15, 13]
                 ],
                 'text-transform': 'uppercase',
                 'text-letter-spacing': 0.08,
                 'text-anchor': 'center',
-                'text-max-width': 10,
+                'text-max-width': 12,
               }}
               paint={{
                 'text-color': [
                   'case',
                   ['boolean', ['get', 'hasHazard'], false],
-                  '#ef4444',
+                  '#ffffff',
                   ['boolean', ['get', 'isHovered'], false],
                   darkMode ? '#38bdf8' : '#1d4ed8',
                   darkMode ? '#cbd5e1' : '#334155'
                 ],
                 'text-halo-color': [
                   'case',
+                  ['boolean', ['get', 'isDeclared'], false],
+                  '#7f1d1d',
                   ['boolean', ['get', 'hasHazard'], false],
-                  '#ffffff',
+                  '#991b1b',
                   ['boolean', ['get', 'isHovered'], false],
                   darkMode ? '#0f172a' : '#ffffff',
                   darkMode ? '#0f172a' : '#ffffff'
@@ -713,13 +776,18 @@ const MapViewer = React.memo(({
                 'text-halo-width': [
                   'case',
                   ['boolean', ['get', 'hasHazard'], false],
-                  3,
+                  4,
                   ['boolean', ['get', 'isHovered'], false],
                   2.5,
                   2
                 ],
                 'text-halo-blur': 1,
-                'text-opacity': 0.95,
+                'text-opacity': [
+                  'case',
+                  ['boolean', ['get', 'hasHazard'], false],
+                  1.0,
+                  (showBarangayBoundaries ? 0.95 : 0)
+                ],
               }}
             />
           </Source>
@@ -751,13 +819,15 @@ const MapViewer = React.memo(({
                 'fill-color': [
                   'match',
                   ['get', 'hazard_type'],
-                  'flood', ['match', ['get', 'severity_level'], 'low', '#60a5fa', 'medium', '#3b82f6', 'high', '#ef4444', '#3b82f6'],
-                  'landslide', ['match', ['get', 'severity_level'], 'low', '#d97706', 'medium', '#b45309', 'high', '#78350f', '#b45309'],
-                  'building_fire', ['match', ['get', 'severity_level'], 'low', '#f97316', 'medium', '#ea580c', 'high', '#dc2626', '#ea580c'],
+                  'flood', ['match', ['get', 'severity_level'], 'low', '#60a5fa', 'medium', '#3b82f6', 'high', '#ef4444', 'critical', '#dc2626', '#3b82f6'],
+                  'landslide', ['match', ['get', 'severity_level'], 'low', '#d97706', 'medium', '#b45309', 'high', '#78350f', 'critical', '#dc2626', '#b45309'],
+                  'debris', ['match', ['get', 'severity_level'], 'low', '#d97706', 'medium', '#b45309', 'high', '#78350f', 'critical', '#dc2626', '#b45309'],
+                  'building_fire', ['match', ['get', 'severity_level'], 'low', '#f97316', 'medium', '#ea580c', 'high', '#dc2626', 'critical', '#991b1b', '#ea580c'],
+                  'fire', ['match', ['get', 'severity_level'], 'low', '#f97316', 'medium', '#ea580c', 'high', '#dc2626', 'critical', '#991b1b', '#ea580c'],
                   'earthquake', '#ef4444',
                   '#ef4444'
                 ],
-                'fill-opacity': 0.22,
+                'fill-opacity': 0.28,
               }}
             />
             {/* Mode 1: Circle Radius Perimeter Ring */}
@@ -769,9 +839,11 @@ const MapViewer = React.memo(({
                 'line-color': [
                   'match',
                   ['get', 'hazard_type'],
-                  'flood', ['match', ['get', 'severity_level'], 'low', '#60a5fa', 'medium', '#3b82f6', 'high', '#ef4444', '#3b82f6'],
-                  'landslide', ['match', ['get', 'severity_level'], 'low', '#d97706', 'medium', '#b45309', 'high', '#78350f', '#b45309'],
-                  'building_fire', ['match', ['get', 'severity_level'], 'low', '#f97316', 'medium', '#ea580c', 'high', '#dc2626', '#ea580c'],
+                  'flood', ['match', ['get', 'severity_level'], 'low', '#60a5fa', 'medium', '#3b82f6', 'high', '#ef4444', 'critical', '#dc2626', '#3b82f6'],
+                  'landslide', ['match', ['get', 'severity_level'], 'low', '#d97706', 'medium', '#b45309', 'high', '#78350f', 'critical', '#dc2626', '#b45309'],
+                  'debris', ['match', ['get', 'severity_level'], 'low', '#d97706', 'medium', '#b45309', 'high', '#78350f', 'critical', '#dc2626', '#b45309'],
+                  'building_fire', ['match', ['get', 'severity_level'], 'low', '#f97316', 'medium', '#ea580c', 'high', '#dc2626', 'critical', '#991b1b', '#ea580c'],
+                  'fire', ['match', ['get', 'severity_level'], 'low', '#f97316', 'medium', '#ea580c', 'high', '#dc2626', 'critical', '#991b1b', '#ea580c'],
                   'earthquake', '#ef4444',
                   '#ef4444'
                 ],
@@ -936,11 +1008,16 @@ const MapViewer = React.memo(({
         {shouldRenderHazards && displayHazards.map(hazard => {
           const getHazardIcon = (type) => {
             if (type === 'flood') return <Waves size={18} className="text-white animate-pulse" />;
+            if (type === 'fire' || type === 'building_fire') return <Flame size={18} className="text-white animate-pulse" />;
             if (type === 'earthquake') return <TriangleAlert size={18} className="text-white animate-bounce" />;
             return <Zap size={18} className="text-white animate-pulse" />;
           };
-          const getHazardStyle = (type) => {
+          const getHazardStyle = (type, severity, originType) => {
+            if (originType === 'official_declaration' || severity === 'critical') {
+              return 'border-red-300 bg-red-600 shadow-[0_0_20px_rgba(220,38,38,0.9)] ring-4 ring-red-500/40 animate-pulse';
+            }
             if (type === 'flood') return 'border-blue-300 bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.75)]';
+            if (type === 'fire' || type === 'building_fire') return 'border-orange-300 bg-orange-600 shadow-[0_0_15px_rgba(234,88,12,0.75)]';
             if (type === 'earthquake') return 'border-red-300 bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.75)]';
             return 'border-amber-300 bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.75)]';
           };
@@ -948,7 +1025,7 @@ const MapViewer = React.memo(({
             <Marker key={`h-click-${hazard.id}`} longitude={parseFloat(hazard.longitude)} latitude={parseFloat(hazard.latitude)} anchor="center">
               <div 
                 onClick={e => { e.stopPropagation(); setSelectedHazard(hazard); inspectLocation(parseFloat(hazard.longitude), parseFloat(hazard.latitude)); }} 
-                className={`w-10 h-10 border-2 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-transform group relative ${getHazardStyle(hazard.hazard_type)}`}
+                className={`w-10 h-10 border-2 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-transform group relative ${getHazardStyle(hazard.hazard_type, hazard.severity_level, hazard.origin_type)}`}
               >
                 {getHazardIcon(hazard.hazard_type)}
                 {/* Hazard hover details */}

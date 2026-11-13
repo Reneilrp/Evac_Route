@@ -196,10 +196,14 @@ function QuickDispatchModalContent({
         );
         return;
       }
-      itemsPayload = activeTemplate.items.map(item => ({
-        inventory_item_id: parseInt(item.inventory_item_id, 10),
-        quantity: bundleCount * (item.quantity_per_head || 1),
-      }));
+      itemsPayload = activeTemplate.items.map(item => {
+        const isFam = item.allocation_type === 'per_family';
+        const targetMultiplier = isFam ? Math.max(1, Math.ceil(bundleCount / 5)) : bundleCount;
+        return {
+          inventory_item_id: parseInt(item.inventory_item_id, 10),
+          quantity: targetMultiplier * (item.quantity_per_head || 1),
+        };
+      });
     } else {
       if (!selectedItemId) {
         setError('Please select an item to dispatch.');

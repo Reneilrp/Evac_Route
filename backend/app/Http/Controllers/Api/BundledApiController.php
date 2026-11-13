@@ -198,14 +198,20 @@ class BundledApiController extends Controller
         $requiredSupplies = [];
         if ($activeTemplate) {
             foreach ($activeTemplate->items as $item) {
-                $baseQty = $item->quantity_per_head * $totalHeadcount;
-                $bufferQty = $item->quantity_per_head * $bufferHeadcount;
-                $recommendedTotalQty = $item->quantity_per_head * $recommendedTotalHeadcount;
+                $isFamily = ($item->allocation_type === 'per_family');
+                $targetCount = $isFamily ? $totalFamilies : $totalHeadcount;
+                $targetBuffer = $isFamily ? (int) ceil($totalFamilies * ($bufferPercentage / 100)) : $bufferHeadcount;
+                $recommendedTarget = $targetCount + $targetBuffer;
+
+                $baseQty = $item->quantity_per_head * $targetCount;
+                $bufferQty = $item->quantity_per_head * $targetBuffer;
+                $recommendedTotalQty = $item->quantity_per_head * $recommendedTarget;
 
                 $requiredSupplies[] = [
                     'inventory_item_id' => $item->inventory_item_id,
                     'item_name' => $item->inventoryItem?->item_name ?? 'Unknown Item',
                     'quantity_per_head' => $item->quantity_per_head,
+                    'allocation_type' => $item->allocation_type ?? 'per_head',
                     'base_required' => $baseQty,
                     'safety_buffer_amount' => $bufferQty,
                     'recommended_total_amount' => $recommendedTotalQty,

@@ -42,6 +42,9 @@ Route::get('/weather/forecast', [WeatherController::class, 'forecast']);
 Route::post('/weather/reset-rain', [WeatherController::class, 'resetRainState']);
 // Live Earthquakes (USGS Feed around Zamboanga City)
 Route::get('/earthquakes/recent', [EarthquakeController::class, 'index']);
+// Acknowledged IDs must come before the {usgsId} wildcard to avoid routing conflicts
+Route::get('/earthquakes/acknowledged-ids', [EarthquakeController::class, 'acknowledgedIds']);
+Route::post('/earthquakes/{usgsId}/acknowledge', [EarthquakeController::class, 'acknowledge'])->middleware('auth:sanctum');
 // Road Network (public — mobile can sync without auth)
 Route::get('/road-network', [RoadNetworkController::class, 'index']);
 
@@ -144,6 +147,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::put('/inventory/{id}/adjust', [InventoryController::class, 'adjustStock']);
         Route::get('/rations/templates', [InventoryController::class, 'getTemplates']);
         Route::post('/rations/template', [InventoryController::class, 'storeTemplate']);
+        Route::put('/rations/templates/{id}', [InventoryController::class, 'updateTemplate']);
+        Route::delete('/rations/templates/{id}', [InventoryController::class, 'destroyTemplate']);
         Route::put('/rations/templates/{id}/active', [InventoryController::class, 'activateTemplate']);
 
         // 7. Phase 2 Relief Claim (QR scan at distribution point)

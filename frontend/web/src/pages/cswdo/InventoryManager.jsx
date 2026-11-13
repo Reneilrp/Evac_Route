@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, ClipboardList, Plus, AlertCircle, X, Trash2, Truck, CheckCircle, Clock, MapPin, Printer, ShieldAlert, Sparkles, Archive, ArchiveRestore } from 'lucide-react';
+import { Package, ClipboardList, Plus, AlertCircle, X, Trash2, Truck, CheckCircle, Clock, MapPin, Printer, ShieldAlert, Sparkles, Archive, ArchiveRestore, Edit2, Copy, Users, User, CheckCircle2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -19,6 +19,7 @@ export default function InventoryManager() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('stock');
   const [showTemplateForm, setShowTemplateForm] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
   const [showAddStockModal, setShowAddStockModal] = useState(false);
   const [adjustingItem, setAdjustingItem] = useState(null);
   const [showDispatchModal, setShowDispatchModal] = useState(false);
@@ -29,7 +30,7 @@ export default function InventoryManager() {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         if (showAddStockModal) setShowAddStockModal(false);
-        if (showTemplateForm) setShowTemplateForm(false);
+        if (showTemplateForm) { setShowTemplateForm(false); setEditingTemplate(null); }
         if (adjustingItem) setAdjustingItem(null);
         if (showDispatchModal) setShowDispatchModal(false);
         if (printingOrder) setPrintingOrder(null);
@@ -79,10 +80,37 @@ export default function InventoryManager() {
       queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
       setShowTemplateForm(false);
+      setEditingTemplate(null);
       showSuccess('Ration template created successfully.');
     },
     onError: (err) => {
       showError(err.response?.data?.message || 'Failed to create ration template.');
+    }
+  });
+
+  const updateTemplateMutation = useMutation({
+    mutationFn: ({ id, data }) => api.put(`/rations/templates/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+      setShowTemplateForm(false);
+      setEditingTemplate(null);
+      showSuccess('Ration template updated successfully.');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to update ration template.');
+    }
+  });
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: (id) => api.delete(`/rations/templates/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory-dashboard-group'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+      showSuccess('Ration template deleted successfully.');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to delete template.');
     }
   });
 
@@ -177,8 +205,10 @@ export default function InventoryManager() {
       {showTemplateForm && (
         <RationTemplateForm
           items={items}
-          onCancel={() => setShowTemplateForm(false)}
+          initialTemplate={editingTemplate}
+          onCancel={() => { setShowTemplateForm(false); setEditingTemplate(null); }}
           onCreate={(data) => createTemplateMutation.mutateAsync(data)}
+          onUpdate={(id, data) => updateTemplateMutation.mutateAsync({ id, data })}
         />
       )}
 
@@ -280,10 +310,19 @@ export default function InventoryManager() {
                 <thead>
                   <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wider">
                     <th className="py-3 px-6 font-semibold">Item Name</th>
-                    <th className="py-3 px-6 font-semibold">Available to Dispatch (ATP)</th>
-                    <th className="py-3 px-6 font-semibold">Reserved (In Dispatches)</th>
-                    <th className="py-3 px-6 font-semibold">Physical Total</th>
-                    <th className="py-3 px-6 font-semibold">Unit Type</th>
+                    <th className="py-3 px-6 font-semibold">
+                      <span>Free Available Stock</span>
+                      <span className="block text-[10px] font-normal normal-case text-gray-400">Ready to dispatch</span>
+                    </th>
+                    <th className="py-3 px-6 font-semibold">
+                      <span>Reserved in Transit</span>
+                      <span className="block text-[10px] font-normal normal-case text-gray-400">Committed to orders</span>
+                    </th>
+                    <th className="py-3 px-6 font-semibold">
+                      <span>Warehouse Total</span>
+                      <span className="block text-[10px] font-normal normal-case text-gray-400">Physical count</span>
+                    </th>
+                    <th className="py-3 px-6 font-semibold">Stock Health</th>
                     <th className="py-3 px-6 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
@@ -298,51 +337,78 @@ export default function InventoryManager() {
                     items.map(item => {
                       const avail = item.available_stock ?? Math.max(0, item.total_stock - (item.reserved_quantity || 0));
                       const reserved = item.reserved_quantity || 0;
+                      const total = item.total_stock || 0;
+                      const freePercent = total > 0 ? Math.round((avail / total) * 100) : 0;
+
+                      // Dynamic emergency severity badge
+                      let healthBadge = {
+                        label: 'Adequate',
+                        cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60',
+                        barCls: 'bg-emerald-500',
+                      };
+                      if (avail === 0) {
+                        healthBadge = {
+                          label: 'Depleted',
+                          cls: 'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800/60 font-black',
+                          barCls: 'bg-rose-600',
+                        };
+                      } else if (avail < 50) {
+                        healthBadge = {
+                          label: 'Critical',
+                          cls: 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300 border-red-200 dark:border-red-800/60 font-bold',
+                          barCls: 'bg-red-500',
+                        };
+                      } else if (avail < 200) {
+                        healthBadge = {
+                          label: 'Low Reserve',
+                          cls: 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800/60 font-semibold',
+                          barCls: 'bg-amber-500',
+                        };
+                      }
+
                       return (
                         <tr key={item.id} className="hover:bg-blue-50/30 dark:hover:bg-slate-800/40 transition">
-                          <td className="py-4 px-6 font-medium text-gray-800 dark:text-slate-200">{item.item_name}</td>
+                          <td className="py-4 px-6 font-semibold text-gray-900 dark:text-slate-100">{item.item_name}</td>
                           <td className="py-4 px-6">
                             <div className="flex items-center gap-3">
-                              <span className={`py-1 px-3 rounded-full text-xs font-bold w-16 text-center inline-block ${
-                                avail < 200 ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' :
-                                avail < 500 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' :
-                                'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400'
-                              }`}>
-                                {avail}
+                              <span className="font-extrabold text-gray-900 dark:text-slate-100 text-sm">
+                                {avail.toLocaleString()} <span className="text-xs font-normal text-gray-500">{item.unit_type}</span>
                               </span>
-                              <div className="w-24 bg-gray-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden flex-shrink-0">
+                              <div className="w-20 bg-gray-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden flex-shrink-0">
                                 <div 
-                                  className={`h-full rounded-full transition-all duration-500 ${
-                                    avail < 200 ? 'bg-red-500' :
-                                    avail < 500 ? 'bg-amber-500' :
-                                    'bg-green-500'
-                                  }`} 
-                                  style={{ width: `${Math.min(100, Math.max(5, (avail / 1000) * 100))}%` }}
+                                  className={`h-full rounded-full transition-all duration-500 ${healthBadge.barCls}`} 
+                                  style={{ width: `${Math.min(100, Math.max(freePercent > 0 ? 5 : 0, freePercent))}%` }}
                                 />
                               </div>
-                              <span className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase select-none">
-                                {Math.min(100, Math.round((avail / 1000) * 100))}%
+                              <span className="text-[10px] text-gray-400 dark:text-slate-500 font-bold">
+                                {freePercent}% Free
                               </span>
                             </div>
                           </td>
                           <td className="py-4 px-6 text-sm">
                             {reserved > 0 ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60">
-                                {reserved} {item.unit_type}
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60">
+                                {reserved.toLocaleString()} {item.unit_type}
                               </span>
                             ) : (
-                              <span className="text-gray-400 dark:text-slate-500 text-xs">0</span>
+                              <span className="text-gray-400 dark:text-slate-500 text-xs">0 {item.unit_type}</span>
                             )}
                           </td>
-                          <td className="py-4 px-6 font-semibold text-gray-700 dark:text-slate-300 text-sm">{item.total_stock}</td>
-                          <td className="py-4 px-6 text-gray-600 dark:text-slate-400 text-sm">{item.unit_type}</td>
+                          <td className="py-4 px-6 font-semibold text-gray-800 dark:text-slate-200 text-sm">
+                            {total.toLocaleString()} {item.unit_type}
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs border ${healthBadge.cls}`}>
+                              {healthBadge.label}
+                            </span>
+                          </td>
                           <td className="py-4 px-6 text-right">
                             {isCSWDO ? (
                               <button 
                                 onClick={() => setAdjustingItem(item)}
-                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-semibold text-sm transition cursor-pointer"
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-semibold text-xs uppercase tracking-wider transition cursor-pointer"
                               >
-                                Edit
+                                Adjust Stock
                               </button>
                             ) : (
                               <span className="text-gray-400 dark:text-slate-500 text-xs italic">View Only</span>
@@ -365,10 +431,20 @@ export default function InventoryManager() {
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-                <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-lg">Active Configuration</h3>
-                <span className="flex items-center gap-1 bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300 px-3 py-1 rounded-full text-xs font-bold uppercase border border-green-200 dark:border-green-800">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> Live
-                </span>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-lg">Active Configuration</h3>
+                  <span className="flex items-center gap-1 bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border border-green-200 dark:border-green-800">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Live
+                  </span>
+                </div>
+                {isCSWDO && activeTemplate && (
+                  <button
+                    onClick={() => { setEditingTemplate(activeTemplate); setShowTemplateForm(true); }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:hover:bg-blue-900/80 dark:text-blue-300 text-xs font-bold rounded-lg border border-blue-200 dark:border-blue-800 transition cursor-pointer"
+                  >
+                    <Edit2 size={13} /> Edit Active
+                  </button>
+                )}
               </div>
               
               {isLoadingTemplates ? (
@@ -377,17 +453,35 @@ export default function InventoryManager() {
                 </div>
               ) : activeTemplate ? (
                 <div className="mb-6">
-                  <h4 className="font-bold text-gray-900 dark:text-slate-100 text-xl mb-1">{activeTemplate.name}</h4>
-                  <p className="text-sm text-gray-500 dark:text-slate-400 mb-4 flex items-center gap-1">
-                    <AlertCircle size={14} /> Deducted per 1 headcount checked into the shelter.
-                  </p>
-                  <div className="bg-gray-50 dark:bg-slate-800/60 rounded-lg p-4 border border-gray-200 dark:border-slate-700 divide-y divide-gray-200/50 dark:divide-slate-700/50">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-extrabold text-gray-900 dark:text-slate-100 text-xl leading-snug">{activeTemplate.name}</h4>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                        Standardized relief distribution profile applied upon resident check-in.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 bg-gray-50 dark:bg-slate-800/60 rounded-xl p-4 border border-gray-200 dark:border-slate-700 divide-y divide-gray-200/50 dark:divide-slate-700/50 space-y-1">
                     {activeTemplate.items?.map((item, idx) => {
                       const actualItem = item.inventory_item || item.inventoryItem;
+                      const isFam = item.allocation_type === 'per_family';
                       return (
-                        <div key={idx} className="flex justify-between py-2 text-sm text-gray-700 dark:text-slate-300 first:pt-0 last:pb-0">
-                          <span className="font-medium">{actualItem?.item_name || 'Item'}</span>
-                          <span className="font-bold text-blue-600 dark:text-blue-400">{item.quantity_per_head} {actualItem?.unit_type}</span>
+                        <div key={idx} className="flex justify-between items-center py-2.5 text-sm text-gray-700 dark:text-slate-300 first:pt-0 last:pb-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-900 dark:text-slate-100">{actualItem?.item_name || 'Item'}</span>
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              isFam 
+                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                                : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                            }`}>
+                              {isFam ? <Users size={10} /> : <User size={10} />}
+                              {isFam ? 'Per Family' : 'Per Person'}
+                            </span>
+                          </div>
+                          <span className="font-extrabold text-blue-600 dark:text-blue-400">
+                            {item.quantity_per_head} {actualItem?.unit_type}
+                          </span>
                         </div>
                       );
                     })}
@@ -402,27 +496,70 @@ export default function InventoryManager() {
 
             {/* Saved Templates List */}
             <div className="border-t border-slate-200 dark:border-slate-800 pt-6 mt-6">
-              <h4 className="font-bold text-gray-800 dark:text-slate-200 text-sm mb-4">Saved Ration Templates</h4>
-              <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+              <h4 className="font-bold text-gray-800 dark:text-slate-200 text-sm mb-4">Saved Ration Profiles</h4>
+              <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1">
                 {templates.filter(t => !t.is_active).map(t => (
-                  <div key={t.id} className="bg-white dark:bg-slate-800/80 rounded-lg p-3 border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center hover:border-blue-300 dark:hover:border-blue-500 transition">
-                    <div className="flex-1 mr-3 min-w-0">
-                      <p className="font-semibold text-gray-800 dark:text-slate-200 text-sm truncate">{t.name}</p>
-                      <p className="text-xs text-gray-400 dark:text-slate-400 mt-0.5 truncate">
-                        {t.items?.map(i => {
+                  <div key={t.id} className="bg-white dark:bg-slate-800/80 rounded-xl p-3.5 border border-gray-200 dark:border-slate-700 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:border-blue-300 dark:hover:border-blue-500 transition">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-900 dark:text-slate-100 text-sm truncate">{t.name}</p>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {t.items?.map((i, iIdx) => {
                           const actualItem = i.inventory_item || i.inventoryItem;
-                          return `${actualItem?.item_name || 'Item'} (${i.quantity_per_head})`;
-                        }).join(', ')}
-                      </p>
+                          const isFam = i.allocation_type === 'per_family';
+                          return (
+                            <span key={iIdx} className="text-[10px] font-semibold bg-gray-100 dark:bg-slate-700/60 text-gray-700 dark:text-slate-300 px-2 py-0.5 rounded-md">
+                              {actualItem?.item_name || 'Item'} × {i.quantity_per_head} {isFam ? '(Fam)' : '(Pax)'}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </div>
                     {isCSWDO ? (
-                      <button 
-                        onClick={() => activateTemplateMutation.mutate(t.id)}
-                        disabled={activateTemplateMutation.isPending}
-                        className="bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-600 dark:bg-blue-950/50 dark:text-blue-300 dark:border dark:border-blue-800/80 dark:hover:bg-blue-600 dark:hover:text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-blue-200 transition disabled:opacity-50 cursor-pointer"
-                      >
-                        Activate
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                        <button 
+                          onClick={() => activateTemplateMutation.mutate(t.id)}
+                          disabled={activateTemplateMutation.isPending}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition disabled:opacity-50 cursor-pointer shadow-2xs"
+                        >
+                          Activate
+                        </button>
+                        <button 
+                          onClick={() => { setEditingTemplate(t); setShowTemplateForm(true); }}
+                          className="p-1.5 rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300 transition cursor-pointer"
+                          title="Edit Template"
+                          aria-label="Edit Template"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setEditingTemplate({
+                              ...t,
+                              id: undefined,
+                              name: `${t.name} (Copy)`,
+                              is_active: false,
+                            });
+                            setShowTemplateForm(true);
+                          }}
+                          className="p-1.5 rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300 transition cursor-pointer"
+                          title="Clone as New Template"
+                          aria-label="Clone as New Template"
+                        >
+                          <Copy size={13} />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (window.confirm(`Delete ration template "${t.name}"?`)) {
+                              deleteTemplateMutation.mutate(t.id);
+                            }
+                          }}
+                          className="p-1.5 rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
+                          title="Delete Template"
+                          aria-label="Delete Template"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     ) : (
                       <span className="text-xs text-gray-400 dark:text-slate-500 font-semibold bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-2.5 py-1 rounded select-none">
                         CSWDO Managed
@@ -443,20 +580,20 @@ export default function InventoryManager() {
             </div>
             <h3 className="font-bold text-gray-800 dark:text-slate-100 mb-2">Build New Template</h3>
             <p className="text-sm text-gray-500 dark:text-slate-400 mb-6 max-w-sm">
-              Create a new relief allocation strategy. Define exactly what each person receives upon shelter check-in.
+              Create a standardized disaster relief profile. Specify items allocated per family household vs. per individual evacuee.
             </p>
             {isCSWDO ? (
               <button 
-                onClick={() => setShowTemplateForm(true)}
+                onClick={() => { setEditingTemplate(null); setShowTemplateForm(true); }}
                 disabled={items.length === 0}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition w-full max-w-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl transition w-full max-w-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm text-sm"
               >
                 {items.length === 0 ? 'Add Stock Items First' : 'Create New Template'}
               </button>
             ) : (
               <button 
                 disabled
-                className="bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 font-bold py-2 px-6 rounded-lg w-full max-w-xs border border-gray-200 dark:border-slate-700 cursor-not-allowed"
+                className="bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 font-bold py-2.5 px-6 rounded-xl w-full max-w-xs border border-gray-200 dark:border-slate-700 cursor-not-allowed text-sm"
               >
                 CSWDO Managed Profiles
               </button>

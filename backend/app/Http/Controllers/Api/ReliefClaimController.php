@@ -68,7 +68,8 @@ class ReliefClaimController extends Controller
                     $shortageItems = [];
 
                     foreach ($activeRation->items as $rationItem) {
-                        $requestedQty = $rationItem->quantity_per_head * $family->headcount;
+                        $multiplier = ($rationItem->allocation_type === 'per_family') ? 1 : max(1, (int) $family->headcount);
+                        $requestedQty = $rationItem->quantity_per_head * $multiplier;
                         $inventory = $inventoryItems->get($rationItem->inventory_item_id);
 
                         if ($inventory) {

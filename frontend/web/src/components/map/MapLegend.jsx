@@ -26,6 +26,7 @@ export default function MapLegend({ simulationMode }) {
           </div>
           <p className="text-[10px] font-black text-slate-400 dark:text-white/40 uppercase tracking-widest mb-3">Hazard Zones</p>
           <div className="space-y-2 mb-3">
+            <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-red-600/70 border-2 border-red-700 shadow-sm" /><span className="text-xs text-slate-700 dark:text-white/80 font-bold">Declared Hazard Zone</span></div>
             <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-blue-600/50 border border-blue-400" /><span className="text-xs text-slate-700 dark:text-white/80">Flood — Low</span></div>
             <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-blue-800/60 border border-amber-400" /><span className="text-xs text-slate-700 dark:text-white/80">Flood — Medium</span></div>
             <div className="flex items-center gap-2.5"><div className="w-3 h-3 rounded bg-red-700/60 border border-white/30" /><span className="text-xs text-slate-700 dark:text-white/80">Flood — High</span></div>

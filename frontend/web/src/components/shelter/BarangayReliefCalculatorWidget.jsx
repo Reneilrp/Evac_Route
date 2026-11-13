@@ -135,18 +135,28 @@ function BarangayReliefCalculatorWidget({ isCSWDO, onDispatchManifest }) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {summary.estimated_supplies_needed?.map((item, idx) => (
-                <div key={idx} className="bg-gray-50 dark:bg-slate-950 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
-                  <span className="block text-xs font-bold text-gray-700 dark:text-slate-300">{item.item_name}</span>
-                  <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                    {item.recommended_total_amount} <span className="text-xs font-semibold text-gray-500">{item.unit_type}</span>
+              {summary.estimated_supplies_needed?.map((item, idx) => {
+                const isFam = item.allocation_type === 'per_family';
+                return (
+                  <div key={idx} className="bg-gray-50 dark:bg-slate-950 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
+                    <div className="flex justify-between items-start gap-1">
+                      <span className="block text-xs font-bold text-gray-700 dark:text-slate-300">{item.item_name}</span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                        isFam ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+                      }`}>
+                        {isFam ? 'Per Family' : 'Per Person'}
+                      </span>
+                    </div>
+                    <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                      {item.recommended_total_amount} <span className="text-xs font-semibold text-gray-500">{item.unit_type}</span>
+                    </div>
+                    <div className="mt-2 text-[11px] text-gray-500 space-y-0.5 border-t border-gray-200 dark:border-slate-800 pt-1.5">
+                      <p>• Base Need ({isFam ? `${summary.total_registered_families} fam` : `${summary.total_affected_headcount} pax`}): <strong>{item.base_required} {item.unit_type}</strong></p>
+                      <p className="text-emerald-600 dark:text-emerald-400 font-semibold">• Safety Buffer (+{summary.contingency_buffer_percentage}%): <strong>+{item.safety_buffer_amount} {item.unit_type}</strong></p>
+                    </div>
                   </div>
-                  <div className="mt-2 text-[11px] text-gray-500 space-y-0.5 border-t border-gray-200 dark:border-slate-800 pt-1.5">
-                    <p>• Base Need ({summary.total_affected_headcount} pax): <strong>{item.base_required} {item.unit_type}</strong></p>
-                    <p className="text-emerald-600 dark:text-emerald-400 font-semibold">• Safety Buffer (+{summary.safety_buffer_headcount} pax): <strong>+{item.safety_buffer_amount} {item.unit_type}</strong></p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

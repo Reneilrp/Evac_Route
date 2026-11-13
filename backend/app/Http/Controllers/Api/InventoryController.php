@@ -67,6 +67,7 @@ class InventoryController extends Controller
             'items' => 'required|array',
             'items.*.inventory_item_id' => 'required|exists:inventory_items,id',
             'items.*.quantity_per_head' => 'required|integer|min:1',
+            'items.*.allocation_type' => 'nullable|in:per_head,per_family',
         ]);
 
         try {
@@ -86,6 +87,7 @@ class InventoryController extends Controller
                         'ration_template_id' => $template->id,
                         'inventory_item_id' => $item['inventory_item_id'],
                         'quantity_per_head' => $item['quantity_per_head'],
+                        'allocation_type' => $item['allocation_type'] ?? 'per_head',
                     ]);
                 }
 
@@ -169,6 +171,114 @@ class InventoryController extends Controller
             'status' => 'success',
             'data' => $templates,
         ], 200);
+    }
+
+    /**
+     * Update an existing ration template.
+     * Route: PUT /api/rations/templates/{id}
+     */
+    public function updateTemplate(Request $request, $id)
+    {
+        $template = RationTemplate::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'is_active' => 'boolean',
+            'items' => 'required|array|min:1',
+            'items.*.inventory_item_id' => 'required|exists:inventory_items,id',
+            'items.*.quantity_per_head' => 'required|integer|min:1',
+            'items.*.allocation_type' => 'nullable|in:per_head,per_family',
+        ]);
+
+        try {
+            $updated = DB::transaction(function () use ($template, $validated) {
+                if ($validated['is_active'] ?? false) {
+                    RationTemplate::where('id', '!=', $template->id)->update(['is_active' => false]);
+                }
+
+                $template->update([
+                    'name' => $validated['name'],
+                    'is_active' => $validated['is_active'] ?? $template->is_active,
+                ]);
+
+                // Replace items cleanly
+                $template->items()->delete();
+                foreach ($validated['items'] as $item) {
+                    RationTemplateItem::create([
+                        'ration_template_id' => $template->id,
+                        'inventory_item_id' => $item['inventory_item_id'],
+                        'quantity_per_head' => $item['quantity_per_head'],
+                        'allocation_type' => $item['allocation_type'] ?? 'per_head',
+                    ]);
+                }
+
+                return $template->load('items.inventoryItem');
+            });
+
+            AuditLog::create([
+                'user_id' => auth()->id(),
+                'action' => 'ration_template_update',
+                'ip_address' => $request->ip(),
+                'old_values' => null,
+                'new_values' => $updated->toArray(),
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Ration template updated successfully.',
+                'data' => $updated,
+            ], 200);
+        } catch (\Exception $e) {
+            \Log::error('Template update failed: '.$e->getMessage());
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update template. Please try again.',
+            ], 400);
+        }
+    }
+
+    /**
+     * Delete a ration template.
+     * Route: DELETE /api/rations/templates/{id}
+     */
+    public function destroyTemplate(Request $request, $id)
+    {
+        $template = RationTemplate::findOrFail($id);
+
+        if ($template->is_active && RationTemplate::count() > 1) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot delete the currently active template. Please activate another template first.',
+            ], 422);
+        }
+
+        try {
+            DB::transaction(function () use ($template) {
+                $template->items()->delete();
+                $template->delete();
+            });
+
+            AuditLog::create([
+                'user_id' => auth()->id(),
+                'action' => 'ration_template_delete',
+                'ip_address' => $request->ip(),
+                'old_values' => ['id' => $template->id, 'name' => $template->name],
+                'new_values' => null,
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Ration template deleted.',
+            ], 200);
+        } catch (\Exception $e) {
+            \Log::error('Template deletion failed: '.$e->getMessage());
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete template. Please try again.',
+            ], 400);
+        }
     }
 
     /**

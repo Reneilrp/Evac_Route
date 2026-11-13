@@ -112,7 +112,8 @@ class CheckInController extends Controller
                             $claimedItems = [];
 
                             foreach ($activeRation->items as $rationItem) {
-                                $totalDeduction = $rationItem->quantity_per_head * $family->headcount;
+                                $multiplier = ($rationItem->allocation_type === 'per_family') ? 1 : max(1, (int) $family->headcount);
+                                $totalDeduction = $rationItem->quantity_per_head * $multiplier;
                                 $inventory = $inventoryItems->get($rationItem->inventory_item_id);
 
                                 if ($inventory && $inventory->total_stock >= $totalDeduction) {
@@ -199,8 +200,9 @@ class CheckInController extends Controller
                     $claimedItems = [];
 
                     foreach ($activeRation->items as $rationItem) {
-                        // Math: Quantity per person * Family Headcount
-                        $totalDeduction = $rationItem->quantity_per_head * $family->headcount;
+                        // Math: Quantity per person * Family Headcount (or 1 if per-family pack)
+                        $multiplier = ($rationItem->allocation_type === 'per_family') ? 1 : max(1, (int) $family->headcount);
+                        $totalDeduction = $rationItem->quantity_per_head * $multiplier;
 
                         // Deduct from main CSWDO inventory
                         $inventory = $inventoryItems->get($rationItem->inventory_item_id);
@@ -320,7 +322,8 @@ class CheckInController extends Controller
                     $claimedItems = [];
 
                     foreach ($activeRation->items as $rationItem) {
-                        $totalDeduction = $rationItem->quantity_per_head * $family->headcount;
+                        $multiplier = ($rationItem->allocation_type === 'per_family') ? 1 : max(1, (int) $family->headcount);
+                        $totalDeduction = $rationItem->quantity_per_head * $multiplier;
                         $inventory = $inventoryItems->get($rationItem->inventory_item_id);
 
                         if ($inventory && $inventory->total_stock >= $totalDeduction) {

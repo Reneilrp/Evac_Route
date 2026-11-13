@@ -154,4 +154,96 @@ class InventoryApiTest extends TestCase
             'total_stock' => 100,
         ]);
     }
+
+    public function test_can_update_and_delete_ration_template()
+    {
+        $user = User::factory()->create(['role' => 'lgu_staff']);
+        $item1 = InventoryItem::create(['item_name' => 'Family Food Pack', 'total_stock' => 100, 'unit_type' => 'boxes']);
+        $item2 = InventoryItem::create(['item_name' => 'Water Bottle', 'total_stock' => 500, 'unit_type' => 'bottles']);
+
+        // Create
+        $createRes = $this->actingAs($user, 'sanctum')->postJson('/api/rations/template', [
+            'name' => 'Initial Template',
+            'is_active' => false,
+            'items' => [
+                ['inventory_item_id' => $item1->id, 'quantity_per_head' => 1, 'allocation_type' => 'per_family'],
+            ],
+        ]);
+        $createRes->assertStatus(201);
+        $templateId = $createRes->json('data.id');
+
+        // Update
+        $updateRes = $this->actingAs($user, 'sanctum')->putJson("/api/rations/templates/{$templateId}", [
+            'name' => 'Updated DSWD Standard Kit',
+            'is_active' => false,
+            'items' => [
+                ['inventory_item_id' => $item1->id, 'quantity_per_head' => 1, 'allocation_type' => 'per_family'],
+                ['inventory_item_id' => $item2->id, 'quantity_per_head' => 2, 'allocation_type' => 'per_head'],
+            ],
+        ]);
+        $updateRes->assertStatus(200);
+        $this->assertDatabaseHas('ration_templates', ['id' => $templateId, 'name' => 'Updated DSWD Standard Kit']);
+        $this->assertDatabaseHas('ration_template_items', [
+            'ration_template_id' => $templateId,
+            'inventory_item_id' => $item1->id,
+            'allocation_type' => 'per_family',
+        ]);
+
+        // Delete
+        $deleteRes = $this->actingAs($user, 'sanctum')->deleteJson("/api/rations/templates/{$templateId}");
+        $deleteRes->assertStatus(200);
+        $this->assertDatabaseMissing('ration_templates', ['id' => $templateId]);
+    }
+
+    public function test_per_family_vs_per_head_checkin_deduction()
+    {
+        $user = User::factory()->create(['role' => 'lgu_staff']);
+        $family = FamilyProfile::create([
+            'user_id' => $user->id,
+            'headcount' => 5, // 5 family members
+            'contact_number' => '1234567890',
+            'barangay' => 'Tumaga',
+            'qr_code_hash' => 'hash_family_5',
+        ]);
+
+        $shelter = Shelter::create([
+            'name' => 'Tumaga Gym',
+            'latitude' => 6.91,
+            'longitude' => 122.05,
+            'max_capacity' => 100,
+            'current_occupancy' => 0,
+            'status' => 'open',
+            'pinned_by' => $user->id,
+        ]);
+
+        $boxItem = InventoryItem::create(['item_name' => 'Family Food Pack', 'total_stock' => 50, 'unit_type' => 'boxes']);
+        $waterItem = InventoryItem::create(['item_name' => 'Water 1L', 'total_stock' => 100, 'unit_type' => 'bottles']);
+
+        // Template has: 1 box per family, 2 bottles per head
+        $this->actingAs($user, 'sanctum')->postJson('/api/rations/template', [
+            'name' => 'DSWD Mixed Standard',
+            'is_active' => true,
+            'items' => [
+                ['inventory_item_id' => $boxItem->id, 'quantity_per_head' => 1, 'allocation_type' => 'per_family'],
+                ['inventory_item_id' => $waterItem->id, 'quantity_per_head' => 2, 'allocation_type' => 'per_head'],
+            ],
+        ]);
+
+        $response = $this->postJson("/api/shelters/{$shelter->id}/check-in", [
+            'qr_code_hash' => 'hash_family_5',
+        ]);
+        $response->assertStatus(200);
+
+        // Family Box should be deducted by 1 (NOT 5!) -> 50 - 1 = 49
+        $this->assertDatabaseHas('inventory_items', [
+            'id' => $boxItem->id,
+            'total_stock' => 49,
+        ]);
+
+        // Water should be deducted by 5 * 2 = 10 -> 100 - 10 = 90
+        $this->assertDatabaseHas('inventory_items', [
+            'id' => $waterItem->id,
+            'total_stock' => 90,
+        ]);
+    }
 }

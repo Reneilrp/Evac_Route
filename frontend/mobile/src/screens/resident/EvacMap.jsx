@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Mapbox from '@rnmapbox/maps';
 import { triggerCasualHaptic } from '../../utils/haptics';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import api from '../../services/api';
@@ -56,7 +57,24 @@ function getETAMinutes(distanceMeters, mode) {
 
 
 
-// ─── Road Hazard Corridor Line Generator (High-Visibility Road Line instead of Circle) ───
+// ─── Circle Polygon Generator (mirrors web mapHelper.js) ───
+function createCirclePolygon(center, radiusInMeters, points = 64) {
+  const [lng, lat] = center;
+  const distanceX = radiusInMeters / (111320 * Math.cos((lat * Math.PI) / 180));
+  const distanceY = radiusInMeters / 110540;
+  const coords = [];
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * (2 * Math.PI);
+    coords.push([lng + distanceX * Math.cos(theta), lat + distanceY * Math.sin(theta)]);
+  }
+  coords.push(coords[0]); // close ring
+  return {
+    type: 'Feature',
+    geometry: { type: 'Polygon', coordinates: [coords] },
+  };
+}
+
+// ─── Road Hazard Corridor Line Generator (used only for road_corridor geometry type) ───
 function createHazardRoadCorridorLine(center, radiusInMeters = 50) {
   const [lng, lat] = center;
   const radius = Math.max(30, radiusInMeters);
@@ -766,11 +784,23 @@ export default function EvacMap({ navigation, route }) {
     retry: 1,
   });
 
+  const { data: serverAcknowledgedData } = useQuery({
+    queryKey: ['earthquake-acknowledged-ids'],
+    queryFn: () => api.get('/earthquakes/acknowledged-ids').then(r => r.data?.data || []),
+    refetchInterval: 60000,  // poll every 60s — same cadence as the earthquake feed
+    staleTime: 45000,
+    retry: 1,
+  });
+  const serverAcknowledgedIds = useMemo(() => serverAcknowledgedData || [], [serverAcknowledgedData]);
+
   const recentQuakes = useMemo(() => earthquakeFeed?.data || [], [earthquakeFeed]);
   const latestSignificantQuake = useMemo(() => {
     if (!recentQuakes || recentQuakes.length === 0) return null;
-    return recentQuakes.find(q => q.magnitude >= 4.0) || null;
-  }, [recentQuakes]);
+    return recentQuakes.find(q =>
+      q.magnitude >= 4.0 &&
+      !serverAcknowledgedIds.includes(q.id)
+    ) || null;
+  }, [recentQuakes, serverAcknowledgedIds]);
 
   // Combined Earthquake Alert (either CDRRMO manual hazard or live USGS event)
   const activeEarthquakeEvent = useMemo(() => {
@@ -797,13 +827,30 @@ export default function EvacMap({ navigation, route }) {
     return null;
   }, [activeEarthquakeHazard, latestSignificantQuake]);
 
-  const [hasDismissedEarthquakeModal, setHasDismissedEarthquakeModal] = useState(false);
+  const [dismissedEarthquakeIds, setDismissedEarthquakeIds] = useState([]);
+
+  // Load persisted dismissed IDs from AsyncStorage on mount
+  useEffect(() => {
+    AsyncStorage.getItem('evac_dismissed_earthquake_ids').then(stored => {
+      if (stored) {
+        try { setDismissedEarthquakeIds(JSON.parse(stored)); } catch {}
+      }
+    });
+  }, []);
+
+  const hasDismissedEarthquakeModal = useMemo(() => {
+    if (!activeEarthquakeEvent?.id) return false;
+    return (
+      dismissedEarthquakeIds.includes(String(activeEarthquakeEvent.id)) ||
+      serverAcknowledgedIds.includes(String(activeEarthquakeEvent.id))
+    );
+  }, [activeEarthquakeEvent, dismissedEarthquakeIds, serverAcknowledgedIds]);
 
   useEffect(() => {
     if (activeEarthquakeEvent && !hasDismissedEarthquakeModal) {
       Vibration.vibrate([0, 400, 200, 400, 200, 400]);
     }
-  }, [activeEarthquakeEvent, hasDismissedEarthquakeModal]);
+  }, [activeEarthquakeEvent?.id, hasDismissedEarthquakeModal]);
 
   const activeAlertKey = activeSiegeThreat?.id || activeDisasterNearUser?.id || null;
   const [dismissedAlertKey, setDismissedAlertKey] = useState(null);
@@ -1081,49 +1128,50 @@ export default function EvacMap({ navigation, route }) {
     } : null;
   }, [cachedRoute]);
 
-  const activeHazardsGeoJSON = useMemo(() => {
-    return {
-      type: 'FeatureCollection',
-      features: (visibleHazards || []).filter(h => h.is_active && !h.is_fixed_flood_spot).map(hazard => {
-        const line = createHazardRoadCorridorLine(
-          [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
-          parseFloat(hazard.radius_meters || 50)
-        );
-        return {
-          ...line,
-          properties: {
-            id: hazard.id,
-            name: hazard.name,
-            radius: parseFloat(hazard.radius_meters ?? 0),
-            hazard_type: hazard.hazard_type ?? 'hazard',
-            severity: hazard.severity_level ?? 'medium',
-          },
-        };
-      })
-    };
-  }, [visibleHazards]);
+  // ─── Build hazard feature: circle → Polygon, road_corridor → LineString ───
+  const buildHazardFeature = useCallback((hazard) => {
+    const lng = parseFloat(hazard.longitude);
+    const lat = parseFloat(hazard.latitude);
+    const rad = parseFloat(hazard.radius_meters || 50);
 
-  const susceptibleGeoJSON = useMemo(() => {
+    let parsedCorridor = hazard.corridor_coordinates;
+    if (typeof parsedCorridor === 'string') {
+      try { parsedCorridor = JSON.parse(parsedCorridor); } catch { parsedCorridor = null; }
+    }
+    const isRoadCorridor =
+      hazard.geometry_type === 'road_corridor' ||
+      (Array.isArray(parsedCorridor) && parsedCorridor.length >= 2);
+
+    const geomFeat = isRoadCorridor
+      ? createHazardRoadCorridorLine([lng, lat], rad)
+      : createCirclePolygon([lng, lat], rad);
+
     return {
-      type: 'FeatureCollection',
-      features: (visibleHazards || []).filter(h => h.is_fixed_flood_spot && !h.is_active).map(hazard => {
-        const line = createHazardRoadCorridorLine(
-          [parseFloat(hazard.longitude), parseFloat(hazard.latitude)],
-          parseFloat(hazard.radius_meters || 50)
-        );
-        return {
-          ...line,
-          properties: {
-            id: hazard.id,
-            name: hazard.name,
-            radius: parseFloat(hazard.radius_meters ?? 0),
-            hazard_type: hazard.hazard_type ?? 'hazard',
-            severity: hazard.severity_level ?? 'medium',
-          },
-        };
-      })
+      ...geomFeat,
+      properties: {
+        id: hazard.id,
+        name: hazard.name,
+        radius: rad,
+        hazard_type: hazard.hazard_type ?? 'hazard',
+        severity: hazard.severity_level ?? 'medium',
+        geometry_type: isRoadCorridor ? 'road_corridor' : 'circle',
+      },
     };
-  }, [visibleHazards]);
+  }, []);
+
+  const activeHazardsGeoJSON = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: (visibleHazards || [])
+      .filter(h => h.is_active && !h.is_fixed_flood_spot)
+      .map(buildHazardFeature),
+  }), [visibleHazards, buildHazardFeature]);
+
+  const susceptibleGeoJSON = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: (visibleHazards || [])
+      .filter(h => h.is_fixed_flood_spot && !h.is_active)
+      .map(buildHazardFeature),
+  }), [visibleHazards, buildHazardFeature]);
 
   if (!location || (isLoadingShelters && offlineShelters.length === 0)) {
     return (
@@ -1359,11 +1407,46 @@ export default function EvacMap({ navigation, route }) {
           );
         })}
 
-        {/* Active Emergency Hazards: High-Visibility Road Hazard Line Corridor (Line instead of Circle) */}
+        {/* Active Emergency Hazards: Circle fill for radius hazards, Road corridor line for road_corridor type */}
         <Mapbox.ShapeSource id="hazardsSource" shape={activeHazardsGeoJSON}>
-          {/* Outer Casing / High-Contrast Halo */}
+          {/* ── Circle / Radius hazards: filled polygon ── */}
+          <Mapbox.FillLayer
+            id="hazardsCircleFill"
+            filter={['==', ['geometry-type'], 'Polygon']}
+            style={{
+              fillColor: [
+                'match', ['get', 'severity'],
+                'high', 'rgba(239,68,68,0.25)',
+                'medium', 'rgba(249,115,22,0.20)',
+                'rgba(234,179,8,0.18)',
+              ],
+              fillOutlineColor: [
+                'match', ['get', 'severity'],
+                'high', '#ef4444',
+                'medium', '#f97316',
+                '#eab308',
+              ],
+            }}
+          />
+          {/* ── Circle outline stroke (dashed border ring) ── */}
+          <Mapbox.LineLayer
+            id="hazardsCircleOutline"
+            filter={['==', ['geometry-type'], 'Polygon']}
+            style={{
+              lineColor: [
+                'match', ['get', 'severity'],
+                'high', '#ef4444',
+                'medium', '#f97316',
+                '#eab308',
+              ],
+              lineWidth: isHighContrast ? 3 : 2,
+              lineDasharray: [4, 2],
+            }}
+          />
+          {/* ── Road corridor: outer black casing ── */}
           <Mapbox.LineLayer
             id="hazardsLineCasing"
+            filter={['==', ['geometry-type'], 'LineString']}
             style={{
               lineColor: '#000000',
               lineWidth: isHighContrast ? 11 : 9,
@@ -1371,22 +1454,23 @@ export default function EvacMap({ navigation, route }) {
               lineJoin: 'round',
             }}
           />
-          {/* Core Road Hazard Line Corridor */}
+          {/* ── Road corridor: coloured core ── */}
           <Mapbox.LineLayer
             id="hazardsLineCore"
+            filter={['==', ['geometry-type'], 'LineString']}
             style={{
               lineColor: [
                 'match', ['get', 'severity'],
                 'high', '#ef4444',
                 'medium', '#f97316',
-                '#eab308'
+                '#eab308',
               ],
               lineWidth: isHighContrast ? 7 : 5,
               lineCap: 'round',
               lineJoin: 'round',
             }}
           />
-          {/* Hazard type label above each road line corridor */}
+          {/* ── Label (both geometry types) ── */}
           <Mapbox.SymbolLayer
             id="hazardLabels"
             style={{
@@ -1402,10 +1486,21 @@ export default function EvacMap({ navigation, route }) {
           />
         </Mapbox.ShapeSource>
 
-        {/* Flood Susceptibility Road Corridors: Dashed Light Blue */}
+        {/* Flood Susceptibility Zones: circle fill for radius spots, dashed line for road corridors */}
         <Mapbox.ShapeSource id="susceptibleSource" shape={susceptibleGeoJSON}>
+          {/* Circle fill */}
+          <Mapbox.FillLayer
+            id="susceptibleCircleFill"
+            filter={['==', ['geometry-type'], 'Polygon']}
+            style={{
+              fillColor: 'rgba(56,189,248,0.15)',
+              fillOutlineColor: '#38bdf8',
+            }}
+          />
+          {/* Road corridor dashed line */}
           <Mapbox.LineLayer
             id="susceptibleOutlineLayer"
+            filter={['==', ['geometry-type'], 'LineString']}
             style={{
               lineColor: '#38bdf8',
               lineWidth: 4,
@@ -1760,7 +1855,13 @@ export default function EvacMap({ navigation, route }) {
       {/* ─── Earthquake Warning Broadcast & Epicenter Modal ─── */}
       <EarthquakeWarningModal
         visible={Boolean(activeEarthquakeEvent && !hasDismissedEarthquakeModal)}
-        onDismiss={() => setHasDismissedEarthquakeModal(true)}
+        onDismiss={() => {
+          if (activeEarthquakeEvent?.id) {
+            const newIds = Array.from(new Set([...dismissedEarthquakeIds, String(activeEarthquakeEvent.id)]));
+            setDismissedEarthquakeIds(newIds);
+            AsyncStorage.setItem('evac_dismissed_earthquake_ids', JSON.stringify(newIds)).catch(() => {});
+          }
+        }}
         activeEarthquakeHazard={activeEarthquakeEvent}
       />
 

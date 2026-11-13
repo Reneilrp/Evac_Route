@@ -40,6 +40,7 @@ export default function ShelterManagement() {
   const [quickDispatchShelter, setQuickDispatchShelter] = useState(null);
   const [search, setSearch] = useState(location.state?.search || '');
   const [activeTab, setActiveTab] = useState('capacities'); // 'capacities' or 'ration-planning'
+  const [planningMode, setPlanningMode] = useState('surge'); // 'surge' (+20% of occupants) vs 'pre-staging' (100% full capacity)
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -65,17 +66,21 @@ export default function ShelterManagement() {
   const activeTemplate = dashboardData?.templates?.find(t => t.is_active);
   const inventoryItems = dashboardData?.inventory || [];
 
-  const handleOpenDispatchForShelter = (shelter, bufferPax) => {
+  const handleOpenDispatchForShelter = (shelter, targetPax, modeLabel) => {
     if (!activeTemplate?.items) return;
-    const initialManifest = activeTemplate.items.map(item => ({
-      inventory_item_id: item.inventory_item_id,
-      quantity: Math.max(1, bufferPax * item.quantity_per_head),
-    }));
+    const initialManifest = activeTemplate.items.map(item => {
+      const isFam = item.allocation_type === 'per_family';
+      const targetCount = isFam ? Math.max(1, Math.ceil(targetPax / 5)) : targetPax;
+      return {
+        inventory_item_id: item.inventory_item_id,
+        quantity: Math.max(1, targetCount * item.quantity_per_head),
+      };
+    });
 
     setDispatchModalConfig({
       initialShelterId: shelter.id,
       initialManifest,
-      initialNotes: `Automated safety buffer stocking for ${shelter.name} (+${bufferPax} capacity slots) based on "${activeTemplate.name}".`,
+      initialNotes: `${modeLabel || 'Replenishment'} for ${shelter.name} (${targetPax} target evacuees) based on "${activeTemplate.name}".`,
     });
   };
 
@@ -314,39 +319,54 @@ export default function ShelterManagement() {
 
                             {activeTemplate && (
                               <div className="mt-2.5 flex items-center justify-between text-[11px] bg-gray-50/70 dark:bg-slate-950/40 p-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                                <span className="text-gray-500 dark:text-slate-400 font-medium truncate max-w-[170px]" title="Remaining buffer slots">
-                                  Buffer ({Math.max(0, shelter.max_capacity - shelter.current_occupancy)}):{' '}
-                                  <strong className="text-gray-700 dark:text-slate-200">
-                                    {activeTemplate.items.map(i => `${Math.max(0, shelter.max_capacity - shelter.current_occupancy) * i.quantity_per_head} ${i.inventory_item?.unit_type || ''}`).join(', ')}
-                                  </strong>
-                                </span>
                                 {(() => {
-                                  const bufferPax = Math.max(0, shelter.max_capacity - shelter.current_occupancy);
+                                  const occ = shelter.current_occupancy || 0;
+                                  if (occ === 0) {
+                                    return (
+                                      <span className="text-gray-400 dark:text-slate-500 font-medium text-[10px]">
+                                        Standby Ready (No current occupants)
+                                      </span>
+                                    );
+                                  }
+
+                                  const surgePax = Math.ceil(occ * 0.20);
+                                  const targetSurgePax = occ + surgePax;
                                   let isShortage = false;
-                                  let isPartial = false;
+
                                   for (const item of activeTemplate.items) {
-                                    const needed = bufferPax * item.quantity_per_head;
+                                    const isFam = item.allocation_type === 'per_family';
+                                    const count = isFam ? Math.max(1, Math.ceil(targetSurgePax / 5)) : targetSurgePax;
+                                    const needed = count * item.quantity_per_head;
                                     const inv = inventoryItems.find(it => it.id === item.inventory_item_id);
                                     const avail = inv?.available_stock ?? Math.max(0, (inv?.total_stock || 0) - (inv?.reserved_quantity || 0));
                                     if (avail < needed) {
                                       isShortage = true;
-                                      if (avail > 0) isPartial = true;
+                                      break;
                                     }
                                   }
-                                  if (bufferPax === 0) {
-                                    return <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">Full Cap</span>;
-                                  }
-                                  if (isShortage) {
-                                    return (
-                                      <span className="text-amber-700 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/50 text-[10px] flex items-center gap-1">
-                                        <AlertTriangle size={10} /> {isPartial ? 'Partial ATP' : 'Low Stock'}
-                                      </span>
-                                    );
-                                  }
+
                                   return (
-                                    <span className="text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/50 text-[10px] flex items-center gap-1">
-                                      <CheckCircle size={10} /> Stock Ready
-                                    </span>
+                                    <>
+                                      <span className="text-gray-500 dark:text-slate-400 font-medium truncate max-w-[170px]" title="Active demand + 20% surge contingency">
+                                        Surge Need ({occ} + {surgePax}):{' '}
+                                        <strong className="text-gray-700 dark:text-slate-200">
+                                          {activeTemplate.items.map(i => {
+                                            const isFam = i.allocation_type === 'per_family';
+                                            const c = isFam ? Math.max(1, Math.ceil(targetSurgePax / 5)) : targetSurgePax;
+                                            return `${c * i.quantity_per_head} ${i.inventory_item?.unit_type || ''}`;
+                                          }).join(', ')}
+                                        </strong>
+                                      </span>
+                                      {isShortage ? (
+                                        <span className="text-amber-700 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/50 text-[10px] flex items-center gap-1">
+                                          <AlertTriangle size={10} /> Central Shortage
+                                        </span>
+                                      ) : (
+                                        <span className="text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/50 text-[10px] flex items-center gap-1">
+                                          <CheckCircle size={10} /> Stock Ready
+                                        </span>
+                                      )}
+                                    </>
                                   );
                                 })()}
                               </div>
@@ -421,6 +441,50 @@ export default function ShelterManagement() {
             </div>
           ) : (
             <>
+              {/* Planning Mode Selector & Summary */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-800 dark:text-slate-200 flex items-center gap-2">
+                    <span>Relief Buffer Strategy:</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-extrabold">
+                      {planningMode === 'surge' ? 'Active Evacuee Surge (+20% Contingency)' : 'Pre-Landfall Staging (100% Shelter Capacity)'}
+                    </span>
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                    {planningMode === 'surge'
+                      ? 'Recommends supplies to support currently verified occupants + 20% walk-in surge.'
+                      : 'Pre-emptive prepositioning to stock remaining empty slots up to 100% full capacity before disaster impact.'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-slate-800 p-1 rounded-xl border border-gray-200 dark:border-slate-700 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setPlanningMode('surge')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      planningMode === 'surge'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <TrendingUp size={13} />
+                    <span>Active Surge (+20%)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPlanningMode('pre-staging')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      planningMode === 'pre-staging'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Truck size={13} />
+                    <span>Pre-Landfall (100% Cap)</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
@@ -431,7 +495,9 @@ export default function ShelterManagement() {
                       <span className="font-black text-gray-800 dark:text-slate-100 text-lg leading-tight">{activeTemplate.name}</span>
                     </div>
                   </div>
-                  <p className="mt-4 text-xs text-gray-500 dark:text-slate-400">All predictions are dynamically computed using this profile's quotas.</p>
+                  <p className="mt-4 text-xs text-gray-500 dark:text-slate-400">
+                    Dual household (Family) &amp; individual (Pax) quotas applied dynamically.
+                  </p>
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -441,10 +507,14 @@ export default function ShelterManagement() {
                   </div>
                   <div className="mt-3 text-xs text-gray-500 flex flex-wrap gap-x-2 gap-y-1.5">
                     {activeTemplate.items.map(item => {
-                      const totalNeeded = shelters.reduce((acc, s) => acc + (s.current_occupancy * item.quantity_per_head), 0);
+                      const totalNeeded = shelters.reduce((acc, s) => {
+                        const isFam = item.allocation_type === 'per_family';
+                        const units = isFam ? Math.ceil(s.current_occupancy / 5) : s.current_occupancy;
+                        return acc + (units * item.quantity_per_head);
+                      }, 0);
                       return (
                         <span key={item.id} className="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded font-bold border border-blue-100 dark:border-blue-900/50">
-                          {item.inventory_item.item_name.split(' (')[0]}: {totalNeeded} {item.inventory_item.unit_type}
+                          {item.inventory_item?.item_name?.split(' (')[0] || 'Item'}: {totalNeeded} {item.inventory_item?.unit_type}
                         </span>
                       );
                     })}
@@ -452,16 +522,30 @@ export default function ShelterManagement() {
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Recommended Stock (Full Max Capacity)</span>
-                  <div className="text-2xl font-black text-green-600 dark:text-green-400 mt-1">
-                    {shelters.reduce((acc, s) => acc + s.max_capacity, 0)} <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Max potential capacity</span>
+                  <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mb-1">
+                    {planningMode === 'surge' ? 'Target Stock (Occupants + 20% Surge)' : 'Pre-Landfall Stock (100% Capacity)'}
+                  </span>
+                  <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                    {planningMode === 'surge'
+                      ? shelters.reduce((acc, s) => acc + Math.ceil(s.current_occupancy * 1.20), 0)
+                      : shelters.reduce((acc, s) => acc + s.max_capacity, 0)}{' '}
+                    <span className="text-sm font-medium text-gray-500 dark:text-slate-400">
+                      {planningMode === 'surge' ? 'Pax surge target' : 'Max potential capacity'}
+                    </span>
                   </div>
                   <div className="mt-3 text-xs text-gray-500 flex flex-wrap gap-x-2 gap-y-1.5">
                     {activeTemplate.items.map(item => {
-                      const totalMax = shelters.reduce((acc, s) => acc + (s.max_capacity * item.quantity_per_head), 0);
+                      const totalTarget = shelters.reduce((acc, s) => {
+                        const isFam = item.allocation_type === 'per_family';
+                        const targetPax = planningMode === 'surge' 
+                          ? Math.ceil(s.current_occupancy * 1.20)
+                          : s.max_capacity;
+                        const units = isFam ? Math.ceil(targetPax / 5) : targetPax;
+                        return acc + (units * item.quantity_per_head);
+                      }, 0);
                       return (
-                        <span key={item.id} className="bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 px-2.5 py-1 rounded font-bold border border-green-100 dark:border-green-900/50">
-                          {item.inventory_item.item_name.split(' (')[0]}: {totalMax} {item.inventory_item.unit_type}
+                        <span key={item.id} className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 rounded font-bold border border-emerald-100 dark:border-emerald-900/50">
+                          {item.inventory_item?.item_name?.split(' (')[0] || 'Item'}: {totalTarget} {item.inventory_item?.unit_type}
                         </span>
                       );
                     })}
@@ -473,12 +557,16 @@ export default function ShelterManagement() {
               <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                 <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-gray-50/50 dark:bg-slate-950/50">
                   <div>
-                    <h3 className="font-bold text-gray-700 dark:text-slate-200">Shelter Logistical Projections</h3>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Calculated requirements and safety stock recommendations based on max capacity slots.</p>
+                    <h3 className="font-bold text-gray-800 dark:text-slate-100">Shelter Logistical Projections</h3>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                      {planningMode === 'surge'
+                        ? 'Operational demand based on checked-in families + 20% immediate walk-in surge.'
+                        : 'Full max capacity logistics for pre-storm prepositioning.'}
+                    </p>
                   </div>
                   <button 
                     onClick={handleExportRationNeeds}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition text-sm shadow-sm self-start"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition text-sm shadow-sm self-start cursor-pointer"
                   >
                     <FileSpreadsheet size={16} /> Download Planning Sheet (CSV)
                   </button>
@@ -491,7 +579,9 @@ export default function ShelterManagement() {
                         <th className="py-3 px-6 font-semibold">Shelter Details</th>
                         <th className="py-3 px-6 font-semibold">Occupancy Load</th>
                         <th className="py-3 px-6 font-semibold">Calculated Demands</th>
-                        <th className="py-3 px-6 font-semibold">Safety Buffer Recommendation</th>
+                        <th className="py-3 px-6 font-semibold">
+                          {planningMode === 'surge' ? 'Surge Contingency Recommendation' : 'Pre-Landfall Staging Recommendation'}
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
@@ -503,12 +593,19 @@ export default function ShelterManagement() {
                         </tr>
                       ) : (
                         filteredShelters.map(shelter => {
-                          const bufferPax = shelter.max_capacity - shelter.current_occupancy;
+                          const occ = shelter.current_occupancy || 0;
+                          const surgeBuffer = Math.ceil(occ * 0.20);
+                          const targetSurge = occ + surgeBuffer;
+                          const remainingSlots = Math.max(0, shelter.max_capacity - occ);
+
+                          const targetPax = planningMode === 'surge' ? targetSurge : shelter.max_capacity;
+                          const bufferPax = planningMode === 'surge' ? surgeBuffer : remainingSlots;
+
                           return (
                             <tr key={shelter.id} className="hover:bg-blue-50/10 dark:hover:bg-slate-800/10 transition">
                               <td className="py-4 px-6">
                                 <div className="font-semibold text-gray-800 dark:text-slate-200 flex items-center gap-2">
-                                  <MapPin size={16} className="text-gray-400 dark:text-slate-500 animate-pulse" />
+                                  <MapPin size={16} className="text-blue-500 animate-pulse" />
                                   {shelter.name}
                                 </div>
                                 <div className="text-xs text-gray-400 dark:text-slate-500 mt-0.5 pl-6">
@@ -516,27 +613,39 @@ export default function ShelterManagement() {
                                 </div>
                               </td>
                               <td className="py-4 px-6">
-                                <div className="text-sm font-bold text-gray-700 dark:text-slate-300">
-                                  {shelter.current_occupancy} <span className="text-xs font-normal text-gray-400 dark:text-slate-500">/ {shelter.max_capacity} Pax</span>
+                                <div className="text-sm font-bold text-gray-800 dark:text-slate-200">
+                                  {occ} <span className="text-xs font-normal text-gray-400 dark:text-slate-500">/ {shelter.max_capacity} Pax</span>
                                 </div>
                                 <div className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                                  {bufferPax} remaining slots
+                                  {remainingSlots} remaining capacity slots
                                 </div>
                               </td>
                               <td className="py-4 px-6">
                                 <div className="space-y-2">
                                   {activeTemplate.items.map(item => {
-                                    const currentNeed = shelter.current_occupancy * item.quantity_per_head;
-                                    const maxNeed = shelter.max_capacity * item.quantity_per_head;
+                                    const isFam = item.allocation_type === 'per_family';
+                                    const currCount = isFam ? Math.ceil(occ / 5) : occ;
+                                    const maxCount = isFam ? Math.ceil(shelter.max_capacity / 5) : shelter.max_capacity;
+
+                                    const currentNeed = currCount * item.quantity_per_head;
+                                    const maxNeed = maxCount * item.quantity_per_head;
+                                    const itemName = item.inventory_item?.item_name?.split(' (')[0] || 'Item';
+                                    const unit = item.inventory_item?.unit_type || '';
+
                                     return (
                                       <div key={item.id} className="text-xs">
-                                        <span className="font-extrabold text-gray-700 dark:text-slate-200">
-                                          {item.inventory_item.item_name.split(' (')[0]}
-                                        </span>
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="font-extrabold text-gray-800 dark:text-slate-200">
+                                            {itemName}
+                                          </span>
+                                          <span className="text-[10px] text-gray-400 dark:text-slate-500 font-medium">
+                                            ({isFam ? 'Per Family' : 'Per Person'})
+                                          </span>
+                                        </div>
                                         <div className="flex gap-3 text-gray-500 dark:text-slate-400 mt-0.5">
-                                          <span>Need: <strong>{currentNeed}</strong> {item.inventory_item.unit_type}</span>
+                                          <span>Current: <strong>{currentNeed}</strong> {unit}</span>
                                           <span className="text-gray-300 dark:text-slate-700">|</span>
-                                          <span className="text-blue-600 dark:text-blue-400 font-bold">Max Cap: {maxNeed}</span>
+                                          <span className="text-blue-600 dark:text-blue-400 font-bold">Full Cap: {maxNeed} {unit}</span>
                                         </div>
                                       </div>
                                     );
@@ -544,46 +653,94 @@ export default function ShelterManagement() {
                                 </div>
                               </td>
                               <td className="py-4 px-6 w-1/3">
-                                {bufferPax > 0 ? (
-                                  <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-xl p-3.5 text-xs text-blue-800 dark:text-blue-300">
-                                    <div className="font-bold flex items-center justify-between">
-                                      <span className="flex items-center gap-1.5">
-                                        <TrendingUp size={14} className="text-blue-600 dark:text-blue-400" />
-                                        Pre-emptive Stocking Recommendation
-                                      </span>
-                                      <span className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 font-extrabold px-2 py-0.5 rounded-full">
-                                        +{bufferPax} Slots
+                                {planningMode === 'surge' ? (
+                                  occ > 0 ? (
+                                    <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-xl p-3.5 text-xs text-blue-800 dark:text-blue-300">
+                                      <div className="font-bold flex items-center justify-between">
+                                        <span className="flex items-center gap-1.5">
+                                          <TrendingUp size={14} className="text-blue-600 dark:text-blue-400" />
+                                          Surge Contingency (+20%)
+                                        </span>
+                                        <span className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 font-extrabold px-2 py-0.5 rounded-full">
+                                          +{surgeBuffer} Surge Pax
+                                        </span>
+                                      </div>
+                                      <p className="mt-1.5 text-blue-700 dark:text-blue-400 leading-relaxed">
+                                        Target for <strong>{targetSurge} Pax</strong> ({occ} active evacuees + {surgeBuffer} reserve):{' '}
+                                        <strong className="text-blue-900 dark:text-blue-200">
+                                          {activeTemplate.items.map(i => {
+                                            const isFam = i.allocation_type === 'per_family';
+                                            const c = isFam ? Math.max(1, Math.ceil(targetSurge / 5)) : targetSurge;
+                                            return `${c * i.quantity_per_head} ${i.inventory_item?.unit_type || ''} ${i.inventory_item?.item_name?.split(' (')[0] || ''}`;
+                                          }).join(', ')}
+                                        </strong>.
+                                      </p>
+
+                                      {isCSWDO ? (
+                                        <button
+                                          onClick={() => handleOpenDispatchForShelter(shelter, targetSurge, 'Surge Contingency (+20%)')}
+                                          className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                                        >
+                                          <Truck size={14} /> Dispatch Surge Manifest ({targetSurge} Pax)
+                                        </button>
+                                      ) : (
+                                        <span className="mt-2 block text-[10px] text-gray-400 dark:text-slate-500 font-semibold italic text-center">
+                                          Dispatches managed by CSWDO Logistics
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="bg-gray-50 dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700 rounded-xl p-3 text-xs text-gray-600 dark:text-slate-400 flex items-start gap-2">
+                                      <CheckCircle size={15} className="text-emerald-500 shrink-0 mt-0.5" />
+                                      <span>
+                                        <strong>Shelter is currently empty</strong>. Switch to <em>Pre-Landfall (100% Cap)</em> mode above if you wish to preposition goods before arrivals.
                                       </span>
                                     </div>
-                                    <p className="mt-1.5 text-blue-700 dark:text-blue-400 leading-relaxed">
-                                      Recommend dispatching an additional{' '}
-                                      <strong>
-                                        {activeTemplate.items.map(i => `${bufferPax * i.quantity_per_head} ${i.inventory_item.unit_type} of ${i.inventory_item.item_name.split(' (')[0]}`).join(', ')}
-                                      </strong>{' '}
-                                      to establish a 100% capacity safety buffer.
-                                    </p>
-
-                                    {isCSWDO ? (
-                                      <button
-                                        onClick={() => handleOpenDispatchForShelter(shelter, bufferPax)}
-                                        className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-xs"
-                                        title="Auto-populate dispatch order from this buffer recommendation"
-                                      >
-                                        <Truck size={14} /> Generate Dispatch Order ({bufferPax} Pax Buffer)
-                                      </button>
-                                    ) : (
-                                      <span className="mt-2 block text-[10px] text-gray-400 dark:text-slate-500 font-semibold italic text-center">
-                                        Dispatches managed by CSWDO Logistics
-                                      </span>
-                                    )}
-                                  </div>
+                                  )
                                 ) : (
-                                  <div className="bg-green-50 dark:bg-green-950/20 border border-green-100 dark:border-green-900/30 rounded-xl p-3 text-xs text-green-800 dark:text-green-305 flex items-start gap-2">
-                                    <CheckCircle size={15} className="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                                    <span>
-                                      <strong>Shelter at Full Capacity</strong>. Ration supply is fully allocated. No additional pre-emptive stocking buffer required.
-                                    </span>
-                                  </div>
+                                  remainingSlots > 0 ? (
+                                    <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl p-3.5 text-xs text-amber-900 dark:text-amber-200">
+                                      <div className="font-bold flex items-center justify-between">
+                                        <span className="flex items-center gap-1.5">
+                                          <Truck size={14} className="text-amber-600 dark:text-amber-400" />
+                                          Pre-Landfall Staging
+                                        </span>
+                                        <span className="text-[10px] bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-extrabold px-2 py-0.5 rounded-full">
+                                          +{remainingSlots} Slots
+                                        </span>
+                                      </div>
+                                      <p className="mt-1.5 text-amber-800 dark:text-amber-300 leading-relaxed">
+                                        Stocking remaining slots up to 100% capacity ({shelter.max_capacity} Pax total):{' '}
+                                        <strong className="text-amber-950 dark:text-amber-100">
+                                          {activeTemplate.items.map(i => {
+                                            const isFam = i.allocation_type === 'per_family';
+                                            const c = isFam ? Math.max(1, Math.ceil(remainingSlots / 5)) : remainingSlots;
+                                            return `${c * i.quantity_per_head} ${i.inventory_item?.unit_type || ''} ${i.inventory_item?.item_name?.split(' (')[0] || ''}`;
+                                          }).join(', ')}
+                                        </strong>.
+                                      </p>
+
+                                      {isCSWDO ? (
+                                        <button
+                                          onClick={() => handleOpenDispatchForShelter(shelter, remainingSlots, 'Pre-Landfall 100% Staging')}
+                                          className="mt-3 w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                                        >
+                                          <Truck size={14} /> Dispatch Full Capacity Stocking ({remainingSlots} Slots)
+                                        </button>
+                                      ) : (
+                                        <span className="mt-2 block text-[10px] text-gray-400 dark:text-slate-500 font-semibold italic text-center">
+                                          Dispatches managed by CSWDO Logistics
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 rounded-xl p-3 text-xs text-emerald-800 dark:text-emerald-300 flex items-start gap-2">
+                                      <CheckCircle size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                                      <span>
+                                        <strong>Shelter is at 100% capacity</strong>. No additional capacity buffer needed.
+                                      </span>
+                                    </div>
+                                  )
                                 )}
                               </td>
                             </tr>

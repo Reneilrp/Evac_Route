@@ -359,6 +359,13 @@ export default function MapDashboard() {
     }
   });
 
+  const acknowledgeEarthquakeMutation = useMutation({
+    mutationFn: (usgsId) => api.post(`/earthquakes/${usgsId}/acknowledge`),
+    onError: (err) => {
+      console.warn('[Earthquake] Acknowledge API failed (local-only fallback):', err?.message);
+    },
+  });
+
   const handleDismissEarthquake = useCallback((eqId) => {
     setDismissedEarthquakeIds(prev => {
       const updated = Array.from(new Set([...prev, eqId]));
@@ -369,7 +376,9 @@ export default function MapDashboard() {
       }
       return updated;
     });
-  }, []);
+    // Persist acknowledgement to backend so mobile clients sync
+    acknowledgeEarthquakeMutation.mutate(eqId);
+  }, [acknowledgeEarthquakeMutation]);
 
   const handleRestoreEarthquake = useCallback((eqId) => {
     setDismissedEarthquakeIds(prev => {
@@ -382,6 +391,26 @@ export default function MapDashboard() {
       return updated;
     });
   }, []);
+
+  // Seed dismissed IDs from backend so web reflects server state on refresh
+  const { data: serverAcknowledgedIds } = useQuery({
+    queryKey: ['earthquake-acknowledged-ids'],
+    queryFn: () => api.get('/earthquakes/acknowledged-ids').then(r => r.data?.data || []),
+    staleTime: 30000,
+  });
+
+  useEffect(() => {
+    if (serverAcknowledgedIds && serverAcknowledgedIds.length > 0) {
+      setDismissedEarthquakeIds(prev => {
+        const merged = Array.from(new Set([...prev, ...serverAcknowledgedIds]));
+        try {
+          localStorage.setItem('evac_dismissed_earthquake_ids', JSON.stringify(merged));
+        } catch {}
+        return merged;
+      });
+    }
+  }, [serverAcknowledgedIds]);
+
   const [isolateZamboanga, setIsolateZamboanga] = useState(true);
   const [showBarangayBoundaries, setShowBarangayBoundaries] = useState(true);
 
