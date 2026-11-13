@@ -89,8 +89,8 @@ class SystemHealthController extends Controller
             : [];
 
         $mobileName = $mobileConfig['name'] ?? 'Evac_RouteMobile';
-        $mobileVersion = $mobileConfig['version'] ?? '1.3.0';
-        $mobileVersionCode = $mobileConfig['android']['versionCode'] ?? 13;
+        $mobileVersion = $mobileConfig['version'] ?? '1.3.1';
+        $mobileVersionCode = $mobileConfig['android']['versionCode'] ?? 14;
         $mobilePackage = $mobileConfig['android']['package'] ?? 'com.pheinz.evacroutemobile';
         $mobileIosBundle = $mobileConfig['ios']['bundleIdentifier'] ?? 'com.pheinz.evacroutemobile';
 
