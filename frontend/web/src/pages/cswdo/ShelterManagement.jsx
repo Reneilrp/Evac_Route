@@ -7,6 +7,7 @@ import QRScannerModal from '../../components/common/QRScannerModal';
 import PrePopulatedDispatchModal from '../../components/dispatch/PrePopulatedDispatchModal';
 import QuickDispatchModal from '../../components/dispatch/QuickDispatchModal';
 import PrintShelterRationOverviewModal from '../../components/dispatch/PrintShelterRationOverviewModal';
+import PrintShelterCapacityReportModal from '../../components/shelter/modals/PrintShelterCapacityReportModal';
 import api from '../../services/api';
 import BarangayReliefCalculatorWidget from '../../components/shelter/BarangayReliefCalculatorWidget';
 import ShelterDetailsModal from '../../components/shelter/modals/ShelterDetailsModal';
@@ -40,6 +41,7 @@ export default function ShelterManagement() {
   const [dispatchModalConfig, setDispatchModalConfig] = useState(null);
   const [quickDispatchShelter, setQuickDispatchShelter] = useState(null);
   const [printingShelterOverview, setPrintingShelterOverview] = useState(null);
+  const [showCapacityReport, setShowCapacityReport] = useState(false);
   const [search, setSearch] = useState(location.state?.search || '');
   const [activeTab, setActiveTab] = useState('capacities'); // 'capacities' or 'ration-planning'
   const [planningMode, setPlanningMode] = useState('surge'); // 'surge' (+20% of occupants) vs 'pre-staging' (100% full capacity)
@@ -52,11 +54,12 @@ export default function ShelterManagement() {
         if (quickDispatchShelter) setQuickDispatchShelter(null);
         if (dispatchModalConfig) setDispatchModalConfig(null);
         if (printingShelterOverview) setPrintingShelterOverview(null);
+        if (showCapacityReport) setShowCapacityReport(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isScannerOpen, selectedShelterForDetails, quickDispatchShelter, dispatchModalConfig, printingShelterOverview]);
+  }, [isScannerOpen, selectedShelterForDetails, quickDispatchShelter, dispatchModalConfig, printingShelterOverview, showCapacityReport]);
 
   // Consolidated query fetching shelters, templates, and central inventory
   const { data: dashboardData, isLoading } = useQuery({
@@ -66,7 +69,7 @@ export default function ShelterManagement() {
   });
 
   const shelters = dashboardData?.shelters || [];
-  const activeTemplate = dashboardData?.templates?.find(t => t.is_active);
+  const activeTemplate = dashboardData?.templates?.find(t => t.is_active === true || t.is_active === 1 || t.is_active === '1') || dashboardData?.templates?.[0];
   const inventoryItems = dashboardData?.inventory || [];
 
   const handleOpenDispatchForShelter = (shelter, targetPax, modeLabel) => {
@@ -579,10 +582,10 @@ export default function ShelterManagement() {
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <button 
-                      onClick={() => setPrintingShelterOverview(filteredShelters[0] || shelters[0])}
+                      onClick={() => setShowCapacityReport(true)}
                       disabled={!filteredShelters.length && !shelters.length}
                       className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg font-semibold flex items-center gap-2 transition text-sm shadow-sm self-start cursor-pointer disabled:opacity-50"
-                      title="Print or export official CSWDO shelter ration overview PDF"
+                      title="Print or export official CSWDO citywide shelter capacities and demands overview PDF"
                     >
                       <Printer size={16} /> Print Overview (PDF)
                     </button>
@@ -824,7 +827,7 @@ export default function ShelterManagement() {
           }}
         />
       )}
-      {/* Printable Shelter Allocation & Ration Overview Modal */}
+      {/* Printable Individual Shelter Allocation & Ration Overview Modal */}
       {printingShelterOverview && (
         <PrintShelterRationOverviewModal
           shelter={printingShelterOverview}
@@ -833,6 +836,17 @@ export default function ShelterManagement() {
           baseType={(printingShelterOverview.current_occupancy || 0) > 0 ? 'occupancy' : 'capacity'}
           bufferPercent={20}
           onCancel={() => setPrintingShelterOverview(null)}
+        />
+      )}
+
+      {/* Printable Citywide Shelter Capacities & Logistical Audit Report Modal */}
+      {showCapacityReport && (
+        <PrintShelterCapacityReportModal
+          shelters={shelters}
+          activeTemplate={activeTemplate}
+          inventoryItems={inventoryItems}
+          initialPlanningMode={planningMode}
+          onCancel={() => setShowCapacityReport(false)}
         />
       )}
     </div>

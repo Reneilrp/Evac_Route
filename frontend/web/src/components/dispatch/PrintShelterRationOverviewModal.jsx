@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect } from 'react';
+import { useRef, useMemo, useState, useEffect } from 'react';
 import { Printer, X, Shield, Package, Users, MapPin, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export default function PrintShelterRationOverviewModal({
@@ -12,6 +12,15 @@ export default function PrintShelterRationOverviewModal({
   onCancel,
 }) {
   const printableRef = useRef(null);
+
+  const actualOccupancy = parseInt(shelter?.current_occupancy || 0, 10);
+  const maxCapacity = parseInt(shelter?.max_capacity || 0, 10);
+
+  // Allow live interactive switching between Live Occupancy vs Shelter Full Capacity inside modal
+  const [sizingMode, setSizingMode] = useState(() => {
+    if (baseType) return baseType;
+    return actualOccupancy > 0 ? 'occupancy' : 'capacity';
+  });
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -30,11 +39,9 @@ export default function PrintShelterRationOverviewModal({
     window.print();
   };
 
-  const actualOccupancy = parseInt(shelter.current_occupancy || 0, 10);
-  const maxCapacity = parseInt(shelter.max_capacity || 0, 10);
-  const isOccupancyBase = baseType === 'occupancy';
-  const effectivePax = isOccupancyBase ? actualOccupancy : maxCapacity;
-  const estimatedFamilies = Math.max(1, Math.ceil((effectivePax || 1) / 5));
+  const isOccupancyBase = sizingMode === 'occupancy';
+  const effectivePax = isOccupancyBase ? (actualOccupancy > 0 ? actualOccupancy : 1) : maxCapacity;
+  const estimatedFamilies = Math.max(1, Math.ceil(effectivePax / 5));
 
   const calculatedBufferPax = Math.ceil(effectivePax * (bufferPercent / 100));
   const recommendedPackCount = manualBundleCount !== null
@@ -95,6 +102,34 @@ export default function PrintShelterRationOverviewModal({
             </div>
           </div>
           <div className="flex items-center gap-2.5">
+            {/* Live Occupancy vs Full Capacity Sizing Basis Switcher */}
+            <div className="hidden sm:flex items-center bg-slate-800 p-0.5 rounded-lg border border-slate-700 text-xs">
+              <button
+                type="button"
+                onClick={() => setSizingMode('occupancy')}
+                className={`px-2.5 py-1 rounded font-bold transition cursor-pointer ${
+                  sizingMode === 'occupancy'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+                title="Calculate demands based on active checked-in evacuees"
+              >
+                Live Occupancy ({actualOccupancy} Pax)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSizingMode('capacity')}
+                className={`px-2.5 py-1 rounded font-bold transition cursor-pointer ${
+                  sizingMode === 'capacity'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+                title="Calculate demands based on 100% full shelter capacity"
+              >
+                Max Capacity ({maxCapacity} Pax)
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={handlePrint}
@@ -242,12 +277,16 @@ export default function PrintShelterRationOverviewModal({
                   const unit = invItem?.unit_type || 'units';
 
                   const baseMultiplier = isFam ? Math.max(1, Math.ceil(effectivePax / 5)) : effectivePax;
-                  const bufferMultiplier = isFam ? Math.ceil(calculatedBufferPax / 5) : calculatedBufferPax;
-                  const totalMultiplier = isFam ? Math.max(1, Math.ceil(recommendedPackCount / 5)) : recommendedPackCount;
+                  const totalMultiplier = manualBundleCount !== null
+                    ? (isFam ? Math.max(1, Math.ceil(manualBundleCount / 5)) : manualBundleCount)
+                    : (isFam
+                        ? Math.max(baseMultiplier, Math.ceil((effectivePax + calculatedBufferPax + extraPacks) / 5))
+                        : Math.max(1, effectivePax + calculatedBufferPax + extraPacks));
+                  const bufferMultiplier = Math.max(0, totalMultiplier - baseMultiplier);
 
                   const baseQty = baseMultiplier * quota;
                   const bufferQty = bufferMultiplier * quota;
-                  const totalQty = totalMultiplier * quota;
+                  const totalQty = baseQty + bufferQty;
 
                   const avail = invItem
                     ? (invItem.available_stock ?? Math.max(0, invItem.total_stock - (invItem.reserved_quantity || 0)))

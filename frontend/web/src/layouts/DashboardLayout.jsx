@@ -78,6 +78,8 @@ function DashboardLayout({ children }) {
   const isSystemAdmin = (user?.email?.toLowerCase() === 'admin@lgu.gov.ph') || (user?.role === 'admin' && user?.operator_type === 'admin' && !user?.email?.toLowerCase().includes('drrm'));
   const isCswdoUser = !isSystemAdmin && (user?.operator_type === 'logistics' || user?.operator_type === 'scanner' || (user?.email?.toLowerCase().includes('logistics') || user?.email?.toLowerCase().includes('cswdo')));
   const activeAgency = isSystemAdmin ? 'admin' : (isCswdoUser ? 'cswdo' : 'cdrmo');
+  const isCswdoRoute = ['/admin/shelters', '/admin/inventory', '/admin/reports'].includes(location.pathname);
+  const showCswdoHeader = isCswdoUser || isCswdoRoute;
 
   useEffect(() => {
     api.get('/settings').then(res => {
@@ -774,7 +776,16 @@ function DashboardLayout({ children }) {
         {!isMapRoute && (
         <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 h-14 flex items-center justify-between px-6 shadow-sm z-30 relative transition-colors duration-200">
            <div className="flex items-center gap-3">
-              {isEmergencyActive ? (
+              {showCswdoHeader ? (
+                <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs font-bold px-3 py-1 rounded-full border border-amber-200 dark:border-amber-900/50 shadow-2xs">
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  </span>
+                  <Package size={14} className="text-amber-600 dark:text-amber-400" />
+                  <span>CSWDO RELIEF &amp; CAMP DESK</span>
+                </div>
+              ) : isEmergencyActive ? (
                 <div className="flex items-center gap-2 bg-red-600 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow-sm animate-pulse">
                   <ShieldAlert size={14} />
                   <span>🔴 EMERGENCY CRISIS MODE ACTIVATED</span>
