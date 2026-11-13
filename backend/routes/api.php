@@ -68,6 +68,7 @@ Route::get('/public-stats', function () {
 Route::get('/reports/stock-print', [\App\Http\Controllers\ReportPrintController::class, 'printStockReport']);
 Route::get('/reports/shelter-capacity-print', [\App\Http\Controllers\ReportPrintController::class, 'printShelterCapacityReport']);
 Route::get('/reports/shelter-ration-print/{id}', [\App\Http\Controllers\ReportPrintController::class, 'printShelterRationReport']);
+Route::get('/reports/dispatch-manifest-print/{id}', [\App\Http\Controllers\ReportPrintController::class, 'printDispatchManifestReport']);
 
 // --- PROTECTED ROUTES (Sanctum + Active Status) ---
 Route::middleware(['auth:sanctum', 'active'])->group(function () {

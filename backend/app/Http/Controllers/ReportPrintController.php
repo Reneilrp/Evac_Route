@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DispatchOrder;
 use App\Models\InventoryItem;
 use App\Models\RationTemplate;
 use App\Models\Shelter;
@@ -136,6 +137,28 @@ class ReportPrintController extends Controller
             'isOccupancyBase',
             'effectivePax',
             'calculatedBufferPax',
+            'generatedAt'
+        ));
+    }
+
+    /**
+     * Official CSWDO Disaster Relief Requisition & Dispatch Manifest Report (Blade).
+     */
+    public function printDispatchManifestReport(Request $request, $id)
+    {
+        $this->authenticateReportUser($request);
+
+        $order = DispatchOrder::with([
+            'items.inventoryItem',
+            'shelter',
+            'creator',
+            'assignee',
+        ])->findOrFail($id);
+
+        $generatedAt = now();
+
+        return view('reports.dispatch_manifest_report', compact(
+            'order',
             'generatedAt'
         ));
     }

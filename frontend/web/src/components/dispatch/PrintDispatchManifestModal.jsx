@@ -1,6 +1,6 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { Printer, X, Shield, Truck } from 'lucide-react';
-import { printElement } from '../../utils/printHelper';
+import { openBladePrintReport } from '../../utils/printHelper';
 
 export default function PrintDispatchManifestModal({ order, shelterDetails, onCancel }) {
   const printableRef = useRef(null);
@@ -21,10 +21,9 @@ export default function PrintDispatchManifestModal({ order, shelterDetails, onCa
   if (!order) return null;
 
   const handlePrint = () => {
-    const trackingCode = (order?.tracking_code || 'Voucher').replace(/[^a-zA-Z0-9]/g, '_');
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const title = `CSWDO_Dispatch_Manifest_${trackingCode}_${dateStr}`;
-    printElement(printableRef.current, title);
+    if (order?.id) {
+      openBladePrintReport(`/reports/dispatch-manifest-print/${order.id}`);
+    }
   };
 
   const shelter = shelterDetails || order.shelter || {};
@@ -157,10 +156,10 @@ export default function PrintDispatchManifestModal({ order, shelterDetails, onCa
               <span>City Government of Zamboanga</span>
             </div>
             <h1 className="text-lg font-black tracking-tight text-gray-900 uppercase">
-              City Disaster Risk Reduction &amp; Management Office (CDRRMO)
+              City Social Welfare &amp; Development Office (CSWDO)
             </h1>
             <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mt-0.5">
-              In Coordination with City Social Welfare &amp; Development Office (CSWDO)
+              In Coordination with City Disaster Risk Reduction &amp; Management Office (CDRRMO)
             </h2>
             <div className="mt-2 inline-block bg-gray-100 border border-gray-300 px-4 py-1 rounded text-xs font-mono font-bold tracking-wider uppercase">
               Emergency Operations Center (EOC) — Relief Logistics Voucher
