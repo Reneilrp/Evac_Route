@@ -9,8 +9,15 @@ export function openBladePrintReport(endpoint, params = {}) {
   if (typeof window === 'undefined') return;
 
   const token = sessionStorage.getItem('auth_token') || '';
-  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
-  const baseUrl = apiBase.replace(/\/api\/?$/, '');
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://evacroute.app/api').replace(/\/+$/, '');
+
+  // Ensure path always goes through /api/... so Nginx routes to PHP-FPM / Laravel
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const apiPath = cleanEndpoint.startsWith('/api/')
+    ? cleanEndpoint
+    : `/api${cleanEndpoint}`;
+
+  const rootUrl = apiBase.replace(/\/api$/, '');
 
   const queryParams = new URLSearchParams();
   if (token) queryParams.set('token', token);
@@ -21,7 +28,7 @@ export function openBladePrintReport(endpoint, params = {}) {
   });
 
   const queryString = queryParams.toString();
-  const url = `${baseUrl}${endpoint}${queryString ? '?' + queryString : ''}`;
+  const url = `${rootUrl}${apiPath}${queryString ? '?' + queryString : ''}`;
 
   const printWindow = window.open(url, '_blank');
   if (printWindow) {
