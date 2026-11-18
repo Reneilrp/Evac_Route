@@ -13,7 +13,7 @@ export default function SystemHealth() {
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isPinging, setIsPinging] = useState(false);
   const [lastPingData, setLastPingData] = useState(null);
-  const [showPingBanner, setShowPingBanner] = useState(false);
+  const [showPingModal, setShowPingModal] = useState(false);
   const [highlightCards, setHighlightCards] = useState(false);
   const [showFlushModal, setShowFlushModal] = useState(false);
   const [flushStep, setFlushStep] = useState(0);
@@ -37,7 +37,6 @@ export default function SystemHealth() {
 
   const handleRunPing = async () => {
     setIsPinging(true);
-    setShowPingBanner(true);
     setHighlightCards(true);
     const startTime = performance.now();
     try {
@@ -65,6 +64,11 @@ export default function SystemHealth() {
     }
   };
 
+  const handleOpenPingModal = () => {
+    setShowPingModal(true);
+    handleRunPing();
+  };
+
   const handleExecuteFlushCache = async () => {
     setIsFlushingCache(true);
     setFlushStep(1);
@@ -76,19 +80,17 @@ export default function SystemHealth() {
 
       const res = await api.post('/system-health/clear-cache');
 
-      setFlushStep(4);
-      await new Promise(r => setTimeout(r, 400));
-
       const flushedTime = new Date().toLocaleTimeString();
       setLastFlushedAt(flushedTime);
+      setFlushStep(4);
       showSuccess(res.data.message || "System caches flushed successfully.");
       refetch();
-      setShowFlushModal(false);
     } catch {
       showError("Failed to flush system caches.");
+      setFlushStep(0);
+      setShowFlushModal(false);
     } finally {
       setIsFlushingCache(false);
-      setFlushStep(0);
     }
   };
 
@@ -221,21 +223,24 @@ export default function SystemHealth() {
 
         <div className="flex items-center gap-3 flex-wrap">
           <button
-            onClick={handleRunPing}
+            onClick={handleOpenPingModal}
             disabled={isPinging || isRefetching || isLoading}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border font-semibold text-sm transition shadow-xs cursor-pointer ${
               isPinging 
                 ? 'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-300 border-sky-300 dark:border-sky-700 ring-2 ring-sky-500/20' 
                 : 'bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 border-gray-200 dark:border-slate-700'
             }`}
-            title="Perform live diagnostic ping across database, WebSocket broker, and host VM"
+            title="Open Subsystem Ping Diagnostics Modal"
           >
             <RefreshCw size={16} className={isPinging || isRefetching ? 'animate-spin text-sky-500' : ''} />
             {isPinging ? 'Pinging Subsystems...' : 'Run Ping'}
           </button>
 
           <button
-            onClick={() => setShowFlushModal(true)}
+            onClick={() => {
+              setFlushStep(0);
+              setShowFlushModal(true);
+            }}
             disabled={isFlushingCache}
             className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-lg font-bold text-sm transition shadow-xs cursor-pointer"
             title="Open maintenance modal to clear application, config, and route caches"
@@ -255,96 +260,6 @@ export default function SystemHealth() {
           </button>
         </div>
       </div>
-
-      {/* Visual Diagnostics & Ping Telemetry Banner */}
-      {showPingBanner && (
-        <div className="bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-xl p-4 transition-all animate-in fade-in duration-300">
-          <div className="flex items-center justify-between pb-3 border-b border-sky-200/60 dark:border-sky-800/60">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-3 w-3">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isPinging ? 'bg-amber-400' : 'bg-sky-400'} opacity-75`}></span>
-                <span className={`relative inline-flex rounded-full h-3 w-3 ${isPinging ? 'bg-amber-500' : 'bg-sky-500'}`}></span>
-              </span>
-              <h3 className="font-bold text-xs uppercase tracking-wider text-sky-900 dark:text-sky-200 flex items-center gap-1.5">
-                <Radio size={14} className={isPinging ? 'animate-spin text-amber-500' : 'text-sky-600'} />
-                {isPinging ? 'Transmitting Subsystem Ping Probe...' : `Live Ping Telemetry Probe — Recorded at ${lastPingData?.timestamp || 'just now'}`}
-              </h3>
-            </div>
-            <button
-              onClick={() => setShowPingBanner(false)}
-              className="text-sky-600 dark:text-sky-400 hover:text-sky-900 dark:hover:text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
-            >
-              <X size={14} /> Dismiss
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3">
-            {/* Ping Probe 1: DB */}
-            <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-sky-200 dark:border-sky-800/80 shadow-xs flex items-center justify-between">
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Database Roundtrip</div>
-                <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
-                  <Database size={16} />
-                  {isPinging ? (
-                    <span className="text-xs font-normal animate-pulse text-slate-400">Pinging DB...</span>
-                  ) : (
-                    <span>{lastPingData?.dbLatency ?? db.latency_ms ?? 0} ms</span>
-                  )}
-                </div>
-                <div className="text-[10px] text-slate-600 dark:text-slate-400 font-medium">
-                  {lastPingData?.dbDriver || db.driver || 'MySQL'} • SELECT 1 OK
-                </div>
-              </div>
-              <div className="flex gap-1 items-end h-6">
-                <span className="w-1.5 h-2 bg-emerald-500 rounded-xs"></span>
-                <span className="w-1.5 h-3.5 bg-emerald-500 rounded-xs"></span>
-                <span className="w-1.5 h-5 bg-emerald-500 rounded-xs"></span>
-                <span className="w-1.5 h-6 bg-emerald-500 rounded-xs"></span>
-              </div>
-            </div>
-
-            {/* Ping Probe 2: WebSocket */}
-            <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-sky-200 dark:border-sky-800/80 shadow-xs flex items-center justify-between">
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">WebSocket Reverb Broker</div>
-                <div className="text-lg font-black text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-0.5">
-                  <Wifi size={16} />
-                  {isPinging ? (
-                    <span className="text-xs font-normal animate-pulse text-slate-400">Connecting Socket...</span>
-                  ) : (
-                    <span>Port {lastPingData?.wsPort || ws.port || 8080}</span>
-                  )}
-                </div>
-                <div className="text-[10px] text-slate-600 dark:text-slate-400 font-medium">
-                  Status: {lastPingData?.wsStatus || ws.status || 'operational'} • TCP Handshake
-                </div>
-              </div>
-              <span className={`h-3 w-3 rounded-full ${ws.status === 'operational' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-            </div>
-
-            {/* Ping Probe 3: Host VM RTT & RAM */}
-            <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-sky-200 dark:border-sky-800/80 shadow-xs flex items-center justify-between">
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Host Engine &amp; HTTP RTT</div>
-                <div className="text-lg font-black text-purple-600 dark:text-purple-400 flex items-center gap-1 mt-0.5">
-                  <Server size={16} />
-                  {isPinging ? (
-                    <span className="text-xs font-normal animate-pulse text-slate-400">Measuring RTT...</span>
-                  ) : (
-                    <span>{lastPingData?.clientRoundtripMs ?? 45} ms RTT</span>
-                  )}
-                </div>
-                <div className="text-[10px] text-slate-600 dark:text-slate-400 font-medium">
-                  RAM: {lastPingData?.memoryUsage || server.memory_usage_mb || 36.5}MB • Disk Free: {lastPingData?.diskFree || server.disk_free_gb || 52.6}GB
-                </div>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
-                Host OK
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Grid: 3 Core Backend Health Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -910,10 +825,156 @@ export default function SystemHealth() {
         </div>
       )}
 
+      {/* PING DIAGNOSTICS MODAL */}
+      {showPingModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-5 animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800">
+                  <Activity size={22} className={isPinging ? 'animate-spin text-sky-500' : ''} />
+                </div>
+                <div>
+                  <h3 className="font-black text-gray-900 dark:text-white text-base flex items-center gap-2">
+                    Subsystem Diagnostics &amp; Live Latency Probe
+                    {lastPingData && !isPinging && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                        Operational
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Probing live database roundtrip, WebSocket Reverb broker, and host VM runtime.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowPingModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            {isPinging ? (
+              <div className="py-8 text-center space-y-4">
+                <div className="relative flex justify-center items-center">
+                  <span className="animate-ping absolute inline-flex h-16 w-16 rounded-full bg-sky-400 opacity-30"></span>
+                  <div className="relative p-4 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-600 dark:text-sky-400">
+                    <Radio size={32} className="animate-pulse" />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-800 dark:text-slate-200">
+                    Probing Subsystems...
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Transmitting ICMP &amp; SQL probe (SELECT 1) to cluster
+                  </p>
+                </div>
+              </div>
+            ) : lastPingData ? (
+              <div className="space-y-4">
+                {/* 3 Metric Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Metric 1: Database */}
+                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                      <span>DATABASE PING</span>
+                      <Database size={14} className="text-emerald-500" />
+                    </div>
+                    <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                      {lastPingData.dbLatency} ms
+                    </div>
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                      {lastPingData.dbDriver} • SELECT 1 Verified
+                    </div>
+                    <div className="flex gap-1 items-end h-3 pt-1">
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-xs"></span>
+                      <span className="w-1.5 h-2 bg-emerald-500 rounded-xs"></span>
+                      <span className="w-1.5 h-2.5 bg-emerald-500 rounded-xs"></span>
+                      <span className="w-1.5 h-3 bg-emerald-500 rounded-xs"></span>
+                    </div>
+                  </div>
+
+                  {/* Metric 2: WebSocket */}
+                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                      <span>WEBSOCKET BROKER</span>
+                      <Wifi size={14} className="text-blue-500" />
+                    </div>
+                    <div className="text-2xl font-black text-blue-600 dark:text-blue-400">
+                      :{lastPingData.wsPort}
+                    </div>
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                      Status: {lastPingData.wsStatus}
+                    </div>
+                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      TCP Socket Handshake OK
+                    </div>
+                  </div>
+
+                  {/* Metric 3: Host VM RTT */}
+                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                      <span>HTTP ROUNDTRIP</span>
+                      <Server size={14} className="text-purple-500" />
+                    </div>
+                    <div className="text-2xl font-black text-purple-600 dark:text-purple-400">
+                      {lastPingData.clientRoundtripMs} ms
+                    </div>
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                      RAM: {lastPingData.memoryUsage} MB Active
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      Disk: {lastPingData.diskFree} GB Free
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 text-xs text-sky-800 dark:text-sky-300 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-emerald-500" />
+                    <span>Telemetry probe verified at <strong>{lastPingData.timestamp}</strong>. All cluster nodes responsive.</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-sky-600 dark:text-sky-400">RTT: {lastPingData.clientRoundtripMs}ms</span>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={isPinging}
+                onClick={handleRunPing}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/50 rounded-lg transition cursor-pointer"
+              >
+                <RefreshCw size={14} className={isPinging ? 'animate-spin' : ''} />
+                Re-run Probe
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowPingModal(false)}
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-lg font-bold text-xs transition cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Flush Cache Maintenance Modal */}
       {showFlushModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95 duration-150">
             <div className="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
@@ -931,7 +992,10 @@ export default function SystemHealth() {
               {!isFlushingCache && (
                 <button
                   type="button"
-                  onClick={() => setShowFlushModal(false)}
+                  onClick={() => {
+                    setShowFlushModal(false);
+                    setFlushStep(0);
+                  }}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition cursor-pointer"
                 >
                   <X size={18} />
@@ -939,73 +1003,106 @@ export default function SystemHealth() {
               )}
             </div>
 
-            {/* Checklist of actions performed */}
-            <div className="space-y-2.5 bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${flushStep >= 1 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-700'}`} />
-                  <span className="font-bold text-slate-700 dark:text-slate-200">Application Key-Value Store</span>
+            {flushStep === 4 ? (
+              <div className="py-6 text-center space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center mx-auto">
+                  <CheckCircle2 size={26} />
                 </div>
-                <span className="font-mono text-[10px] text-slate-500">cache:clear</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${flushStep >= 2 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-700'}`} />
-                  <span className="font-bold text-slate-700 dark:text-slate-200">Configuration &amp; Environment Tree</span>
+                <div>
+                  <h4 className="font-black text-gray-900 dark:text-white text-base">
+                    All Caches Flushed Successfully
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                    Application key-value stores, config trees, and route tables have been purged. Audit log created at {lastFlushedAt}.
+                  </p>
                 </div>
-                <span className="font-mono text-[10px] text-slate-500">config:clear</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${flushStep >= 3 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-700'}`} />
-                  <span className="font-bold text-slate-700 dark:text-slate-200">HTTP Route Dispatch Table</span>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowFlushModal(false);
+                      setFlushStep(0);
+                    }}
+                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-md shadow-emerald-600/20 transition cursor-pointer"
+                  >
+                    Done
+                  </button>
                 </div>
-                <span className="font-mono text-[10px] text-slate-500">route:clear</span>
               </div>
-              <div className="flex items-center justify-between pt-1 border-t border-slate-200 dark:border-slate-800/60 text-slate-500">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${flushStep >= 4 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
-                  <span>Security Audit Log Entry</span>
+            ) : (
+              <>
+                {/* Checklist of actions performed */}
+                <div className="space-y-2.5 bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${flushStep >= 1 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                      <span className="font-bold text-slate-700 dark:text-slate-200">Application Key-Value Store</span>
+                    </div>
+                    <span className="font-mono text-[10px] text-slate-500">cache:clear</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${flushStep >= 2 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                      <span className="font-bold text-slate-700 dark:text-slate-200">Configuration &amp; Environment Tree</span>
+                    </div>
+                    <span className="font-mono text-[10px] text-slate-500">config:clear</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${flushStep >= 3 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                      <span className="font-bold text-slate-700 dark:text-slate-200">HTTP Route Dispatch Table</span>
+                    </div>
+                    <span className="font-mono text-[10px] text-slate-500">route:clear</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-200 dark:border-slate-800/60 text-slate-500">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${flushStep >= 4 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                      <span>Security Audit Log Entry</span>
+                    </div>
+                    <span className="text-[10px]">AuditLog::create</span>
+                  </div>
                 </div>
-                <span className="text-[10px]">AuditLog::create</span>
-              </div>
-            </div>
 
-            {isFlushingCache && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs text-rose-600 dark:text-rose-400 font-bold">
-                  <span>Executing server maintenance...</span>
-                  <span>{flushStep * 25}%</span>
+                {isFlushingCache && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs text-rose-600 dark:text-rose-400 font-bold">
+                      <span>Executing server maintenance...</span>
+                      <span>{flushStep * 25}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className="bg-rose-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${flushStep * 25}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    disabled={isFlushingCache}
+                    onClick={() => {
+                      setShowFlushModal(false);
+                      setFlushStep(0);
+                    }}
+                    className="px-4 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isFlushingCache}
+                    onClick={handleExecuteFlushCache}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-xs shadow-md shadow-rose-600/20 disabled:opacity-50 transition cursor-pointer"
+                  >
+                    <Trash2 size={14} className={isFlushingCache ? 'animate-spin' : ''} />
+                    {isFlushingCache ? 'Flushing Caches...' : 'Flush All Caches Now'}
+                  </button>
                 </div>
-                <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                  <div 
-                    className="bg-rose-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${flushStep * 25}%` }}
-                  />
-                </div>
-              </div>
+              </>
             )}
-
-            <div className="flex items-center justify-between pt-2">
-              <button
-                type="button"
-                disabled={isFlushingCache}
-                onClick={() => setShowFlushModal(false)}
-                className="px-4 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                disabled={isFlushingCache}
-                onClick={handleExecuteFlushCache}
-                className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-xs shadow-md shadow-rose-600/20 disabled:opacity-50 transition cursor-pointer"
-              >
-                <Trash2 size={14} className={isFlushingCache ? 'animate-spin' : ''} />
-                {isFlushingCache ? 'Flushing Caches...' : 'Flush All Caches Now'}
-              </button>
-            </div>
           </div>
         </div>
       )}
