@@ -45,17 +45,18 @@ export default function SystemHealth() {
   const handleDownloadBackup = async () => {
     setIsBackingUp(true);
     try {
-      const res = await api.post('/settings/backup');
-      const blob = new Blob([res.data.data.sql_dump], { type: 'application/sql' });
+      const res = await api.post('/settings/backup', {}, { responseType: 'blob' });
+      const filename = `evac_route_backup_${new Date().toISOString().slice(0, 10)}.sql`;
+      const blob = new Blob([res.data], { type: 'application/sql' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = res.data.data.filename || `evac_route_backup_${new Date().toISOString().slice(0,10)}.sql`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      showSuccess(`Backup downloaded: ${res.data.data.filename}`);
+      showSuccess(`Backup downloaded: ${filename}`);
     } catch {
       showError("Failed to export database snapshot.");
     } finally {
