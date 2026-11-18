@@ -43,4 +43,8 @@ return [
         'key' => env('OPENWEATHER_API_KEY'),
     ],
 
+    'shelter_api' => [
+        'key' => env('SHELTER_API_KEY'),
+    ],
+
 ];

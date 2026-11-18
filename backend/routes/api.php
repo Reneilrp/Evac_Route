@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ApiKeyController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BroadcastAlertController;
@@ -31,7 +32,14 @@ Route::get('/ping', function () {
     return response()->json(['server_time' => round(microtime(true) * 1000)]);
 });
 
-// Capacity Matching
+// Shelters Directory & Geospatial API (Protected by API Key or Authenticated Session)
+Route::middleware('api_key')->group(function () {
+    Route::get('/shelters/map', [ShelterController::class, 'getGeoJsonMap']);
+    Route::get('/shelters', [ShelterController::class, 'index']);
+    Route::get('/shelters/{id}', [ShelterController::class, 'show'])->whereNumber('id');
+});
+
+// Operational shelters (Emergency routing fallback)
 Route::get('/shelters/active', [ShelterController::class, 'getActiveShelters']);
 // Hazard Avoidance & Geohazard Presets
 Route::get('/hazards', [HazardController::class, 'getActiveHazards']);
@@ -117,12 +125,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/lgu/barangay-relief-summary/{barangay}', [BundledApiController::class, 'getBarangayReliefSummary']);
         Route::get('/lgu/population-at-risk/{barangay}', [BundledApiController::class, 'getPopulationAtRisk']);
 
-        // 1. Shelter Management
-        Route::get('/shelters', [ShelterController::class, 'getAll']);
+        // 1. Shelter Management (Admin operations)
         Route::post('/shelters', [ShelterController::class, 'store']);
-        Route::put('/shelters/{id}', [ShelterController::class, 'update']);
-        Route::delete('/shelters/{id}', [ShelterController::class, 'destroy']);
-        Route::get('/shelters/{id}/details', [ShelterController::class, 'getDetails']);
+        Route::put('/shelters/{id}', [ShelterController::class, 'update'])->whereNumber('id');
+        Route::delete('/shelters/{id}', [ShelterController::class, 'destroy'])->whereNumber('id');
+        Route::get('/shelters/{id}/details', [ShelterController::class, 'getDetails'])->whereNumber('id');
 
         // 2. Check-in & Relief
         Route::post('/shelters/{shelter_id}/check-in', [CheckInController::class, 'processCheckIn']);
@@ -224,5 +231,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/reports/sitrep', [SitRepController::class, 'index']);
         Route::get('/system-health', [SystemHealthController::class, 'index']);
         Route::post('/system-health/clear-cache', [SystemHealthController::class, 'clearCache']);
+
+        // Partner API Key Management & Monitoring
+        Route::get('/admin/api-keys', [ApiKeyController::class, 'index']);
+        Route::get('/admin/api-keys/logs', [ApiKeyController::class, 'logs']);
+        Route::post('/admin/api-keys', [ApiKeyController::class, 'store']);
+        Route::patch('/admin/api-keys/{id}/toggle', [ApiKeyController::class, 'toggleStatus'])->whereNumber('id');
+        Route::delete('/admin/api-keys/{id}', [ApiKeyController::class, 'destroy'])->whereNumber('id');
     });
 });

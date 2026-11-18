@@ -33,6 +33,8 @@ class OfficialSheltersSeeder extends Seeder
                 Shelter::create([
                     'name' => $data['name'],
                     'barangay' => $data['location'],
+                    'district' => $data['district'] ?? null,
+                    'floor_area' => isset($data['floor_area']) && $data['floor_area'] !== '' ? (float) $data['floor_area'] : null,
                     'latitude' => $data['latitude'],
                     'longitude' => $data['longitude'],
                     'max_capacity' => $data['max_capacity'],
@@ -46,6 +48,8 @@ class OfficialSheltersSeeder extends Seeder
             } else {
                 $shelter->update([
                     'barangay' => $data['location'],
+                    'district' => $data['district'] ?? $shelter->district,
+                    'floor_area' => isset($data['floor_area']) && $data['floor_area'] !== '' ? (float) $data['floor_area'] : $shelter->floor_area,
                     'latitude' => $data['latitude'],
                     'longitude' => $data['longitude'],
                     'max_capacity' => $data['max_capacity'],

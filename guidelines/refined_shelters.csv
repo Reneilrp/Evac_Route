@@ -1,0 +1,113 @@
+name,location,latitude,longitude,max_capacity,type,district,floor_area
+Sta. Maria Cluster Evacuation Center,Pasonanca,6.951678,122.071942,175,primary,District I,1200.0
+Cabatangan Evacuation Center,Cabatangan,6.943964,122.054403,130,primary,District I,900.0
+Curuan Cluster Evacuation Center,Curuan,7.210011,122.231289,375,primary,District II,1500.0
+Vitali Cluster Evacuation Center,Vitali,7.377672,122.289306,175,primary,District II,1200.0
+Zamboanga West Central School Covered Court,Zone I,6.905185,122.07376,223,secondary,District I,781.0
+Joaquin F. Enriquez Memorial Sport Complex,Baliwasan,6.915911,122.05994,823,secondary,District I,2880.78
+Armor Village Covered Court,San Jose Gusu,6.919662,122.05315,194,secondary,District I,680.0
+Shanty Town Covered Court,Pasonanca,6.947056,122.072845,167,secondary,District I,585.6
+Covered Court at Regional Training Center (NAPOLCOM),Pasonanca,6.947056,122.072845,213,secondary,District I,748.0
+Covered Court at Upper Pasonanca Elementary School,Pasonanca,6.947056,122.072846,102,secondary,District I,360.0
+ZCHS (Main) Covered Court,Tetuan,6.919416,122.08404,213,secondary,District I,748.0
+Zamboanga City Coliseum,Tetuan,6.919416,122.08404,1107,secondary,District I,3876.0
+Covered Court at Guiwan,Guiwan,6.928919,122.09224,154,secondary,District II,539.0
+Covered Court at Mampang Elementary School,Mampang,6.915703,122.1339,128,secondary,District I,450.0
+Covered Court at Ayala,Ayala,6.959172,121.9498,342,secondary,District I,1200.0
+Covered Court at Baliwasan,Baliwasan,6.915911,122.05994,150,secondary,District I,525.0
+Covered Court at Baluno,Baluno,6.977542,121.99264,145,secondary,District I,510.0
+Covered Court at Cabatangan,Cabatangan,6.949923,122.063644,150,secondary,District I,525.0
+Covered Court at Flamingo,Calarian,6.924538,122.02464,137,secondary,District I,480.0
+Covered Court at Canelar,Canelar,6.916525,122.06961,145,secondary,District I,510.0
+Covered Court at Cawit,Cawit,6.955574,121.973885,154,secondary,District I,540.0
+Covered Court at Camino Nuevo,Camino Nuevo,6.912345,122.076182,150,secondary,District I,525.0
+Covered Court at Campo Islam,Campo Islam,6.914497,122.04616,150,secondary,District I,525.0
+Covered Court at Capisan,Capisan,6.980855,122.039825,128,secondary,District I,450.0
+Covered Court at Dulian -Pasonanca,Dulian-Pasonanca,6.947056,122.072846,166,secondary,District I,584.4
+Covered Court at Labuan,Labuan,7.091844,121.90273,51,secondary,District I,180.0
+Covered Court at La Paz,La Paz,7.024657,121.99153,145,secondary,District I,510.0
+Covered Court at Limpapa,Limpapa,7.126472,121.91059,145,secondary,District I,510.0
+Covered Court at Maasin,Maasin,6.953054,121.981804,182,secondary,District I,640.0
+Covered Court at Malagutay,Malagutay,6.931279,122.02772,192,secondary,District I,673.2
+Covered Court at Mariki,Mariki,6.89685,122.09105,150,secondary,District I,525.0
+Covered Court at Pamucutan,Pamucutan,6.997178,121.95071,145,secondary,District I,510.0
+Covered Court at Patalon,Patalon,7.052951,121.90964,107,secondary,District I,375.0
+Covered Court at Pasonanca,Pasonanca,6.947056,122.072846,150,secondary,District I,525.0
+Covered Court at Recodo,Recodo,6.954274,121.95979,213,secondary,District I,748.0
+Covered Court at Rio Hondo,Rio Hondo,6.898032,122.087234,150,secondary,District I,525.0
+Covered Court at San Jose Cawa-Cawa,San Jose Cawa-Cawa,6.912336,122.065378,150,secondary,District I,525.0
+Covered Court at San Jose Gusu,San Jose Gusu,6.920471,122.047907,150,secondary,District I,525.0
+Covered Court at San Roque,San Roque,6.933052,122.044534,128,secondary,District I,450.0
+Covered Court at Sta. Barabara,Sta. Barbara,6.904626,122.087456,150,secondary,District I,525.0
+Covered Court at Sta. Maria,Sta. Maria,6.939828,122.074905,23,secondary,District I,81.6
+Covered Court at Sto. Niño,Sto. Niño,6.908764,122.07048,68,secondary,District I,240.0
+Covered Court at Sinubong,Sinubong,7.022947,121.93075,154,secondary,District I,540.0
+Covered Court at Sinunuc,Sinunuc,6.93338,122.00333,34,secondary,District I,120.0
+Covered Court at Talisayan,Talisayan,6.988714,121.92944,154,secondary,District I,540.0
+Covered Court at Tulungatung,Tulungatung,6.973407,121.95912,213,secondary,District I,748.0
+Covered Court at Tumaga,Tumaga,6.939045,122.07833,166,secondary,District I,584.4
+Covered Court at Zone I,Zone I,6.905185,122.07376,150,secondary,District I,525.0
+Covered Court at Zone II,Zone II,6.910012,122.07329,150,secondary,District I,525.0
+Covered Court at Zone III,Zone III,6.902065,122.08006,150,secondary,District I,525.0
+Covered Court at Zone IV,Zone IV,6.908977,122.0775,150,secondary,District I,525.0
+Covered Court at Arena Blanco,Arena Blanco,6.918422,122.156845,57,secondary,District II,200.0
+Covered Court at Boalan,Boalan,6.948113,122.11185,102,secondary,District II,360.0
+Covered Court at Bolong,Bolong,7.09799,122.24039,145,secondary,District II,510.0
+Covered Court at Buenavista,Buenavista,7.240018,122.25967,213,secondary,District II,748.0
+Covered Court at Bunguiao,Bunguiao,7.103143,122.19545,150,secondary,District II,525.0
+Covered Court at Busay,Busay,6.984484,122.24071,90,secondary,District II,315.0
+Cabaluay National High School Gym,Cabaluay,6.996331,122.17842,182,secondary,District II,640.0
+Covered Court at Calabasa,Calabasa,7.245841,122.23264,213,secondary,District II,748.0
+Multi-Purpose Center at Cacao,Cacao,7.027845,122.14751,51,secondary,District II,180.0
+Covered Court at Culianan,Culianan,6.971443,122.14535,154,secondary,District II,540.0
+Curuan National High School Gym,Curuan,7.206165,122.22844,182,secondary,District II,640.0
+Covered Court at Dita,Dita,7.159024,122.2436,145,secondary,District II,510.0
+Covered Court at Divisoria,Divisoria,6.947332,122.10179,150,secondary,District II,525.0
+Covered Court at Dulina-Bunguiao,Dulian-Bunguiao,7.103143,122.19545,150,secondary,District II,525.0
+Covered Court at Guisao,Guisao,6.998975,122.15647,150,secondary,District II,525.0
+Covered Court at Kasanyangan,Kasanyangan,6.907711,122.09337,150,secondary,District II,525.0
+Covered Court at Lamisahan,Lamisahan,7.058145,122.1815,128,secondary,District II,450.0
+Covered Court at Landang Laum,Landang Laum,6.967529,122.239105,128,secondary,District II,450.0
+Covered Court at Landang Gua,Landang Gua,6.95676,122.255516,154,secondary,District II,540.0
+Covered Court at Lanzones,Lanzones,7.006883,122.135735,68,secondary,District II,240.0
+Covered Court at Lapakan,Lapakan,7.028402,122.159759,150,secondary,District II,525.0
+Covered Court at Latuan,Latuan,7.232568,122.205376,150,secondary,District II,525.0
+Covered Court at Licomo,Licomo,7.448399,122.335754,142,secondary,District II,499.62
+Covered Court at Limaong,Limaong,7.390876,122.334995,128,secondary,District II,450.0
+Covered Court at Lumayang,Lumayang,6.999752,122.10011,213,secondary,District II,748.0
+Covered Court at Lumbangan,Lumbangan,6.975783,122.109726,123,secondary,District II,431.0
+Covered Court at Lunzuran,Lunzuran,6.958824,122.09088,154,secondary,District II,540.0
+Covered Court at Lubigan,Lubigan,7.142303,122.233055,145,secondary,District II,510.0
+Covered Court at Mampang,Mampang,6.915703,122.1339,145,secondary,District II,510.0
+Covered Court at Manalipa,Manalipa,6.891706,122.27437,128,secondary,District II,450.0
+Manicahan Central School Covered Court,Manicahan,7.024251,122.188896,213,secondary,District II,748.0
+Covered Court at Mangusu,Mangusu,7.352819,122.28276,145,secondary,District II,510.0
+Covered Court at Mercedes,Mercedes,6.958653,122.147575,96,secondary,District II,336.0
+Covered Court at Muti,Muti,7.253198,122.27981,145,secondary,District II,510.0
+Covered Court at Pangapuyan,Pangapuyan,6.917353,122.181656,150,secondary,District II,525.0
+Covered Court at Panubigan,Panubigan,7.132959,122.25058,16,secondary,District II,56.6
+Covered Court at Pasilmanta,Pasilmanta,6.99212,122.27409,128,secondary,District II,450.0
+Covered Court at Pasobolong,Pasobolong,6.972859,122.12895,73,secondary,District II,255.69
+Putik Central School Covered Court,Putik,6.941377,122.09581,213,secondary,District II,748.0
+Putik Covered Court,Putik,6.941377,122.09581,154,secondary,District II,540.0
+Covered Court at Quiniput,Quiniput,7.177827,122.22114,154,secondary,District II,540.0
+Covered Court at Salaan,Salaan,6.98756,122.119644,145,secondary,District II,510.0
+Covered Court at Sangali,Sangali,7.070599,122.2038,128,secondary,District II,450.0
+Covered Court at Sta. Catalina,Sta. Catalina,6.909197,122.08672,150,secondary,District II,525.0
+Covered Court at Sibulao,Sibulao,7.32537,122.24057,128,secondary,District II,450.0
+Covered Court at Tagasilay,Tagasilay,7.303585,122.25322,213,secondary,District II,748.0
+Covered Court at Taguiti,Taguiti,7.306527,122.28361,128,secondary,District II,450.0
+Covered Court at Talabaan,Talabaan,6.951633,122.163689,213,secondary,District II,748.0
+Talon-Talon National High School Covered ourt,Talon-Talon,6.912921,122.120772,145,secondary,District II,510.0
+Covered Court at Taluksangay,Taluksangay,6.950702,122.18198,213,secondary,District II,748.0
+Covered Court at Tetuan,Tetuan,6.919416,122.08404,150,secondary,District II,525.0
+Covered Court at Tictapul,Tictapul,7.417686,122.32563,213,secondary,District II,748.0
+Covered Court at Tigbalabag,Tigbalabag,7.322478,122.272995,194,secondary,District II,680.0
+Covered Court at Tigtabon,Tigtabon,6.893865,122.168,96,secondary,District II,336.0
+Covered Court at Tolosa,Tolosa,7.032344,122.12779,145,secondary,District II,510.0
+Covered Court at Tugbungan,Tugbungan,6.918711,122.101871,150,secondary,District II,525.0
+Covered Court at Tumalutab,Tumalutab,6.982698,122.350128,90,secondary,District II,315.0
+Covered Court at Tumitus,Tumitus,7.3833,122.369053,150,secondary,District II,525.0
+La Virgen Del Pilar Church,Vitali,7.369333,122.28684,194,secondary,District II,680.0
+Covered Court at Victoria,Victoria,7.031287,122.198332,150,secondary,District II,525.0
+Covered Court at Zambowood,Zambowood,6.941667,122.133354,171,secondary,District II,600.0
