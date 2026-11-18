@@ -215,12 +215,19 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         });
     });
 
-    // Staff CRUD (Accessible by Admin and LGU Agency Staff)
+    // Staff CRUD & Partner API Keys (Accessible by Admin and LGU Agency Staff)
     Route::middleware(['role:admin,lgu_staff'])->group(function () {
         Route::get('/staff', [AuthController::class, 'getStaff']);
         Route::post('/staff', [AuthController::class, 'storeStaff']);
         Route::put('/staff/{id}', [AuthController::class, 'updateStaff']);
         Route::delete('/staff/{id}', [AuthController::class, 'deleteStaff']);
+
+        // Partner API Key Management & Monitoring
+        Route::get('/admin/api-keys', [ApiKeyController::class, 'index']);
+        Route::get('/admin/api-keys/logs', [ApiKeyController::class, 'logs']);
+        Route::post('/admin/api-keys', [ApiKeyController::class, 'store']);
+        Route::patch('/admin/api-keys/{id}/toggle', [ApiKeyController::class, 'toggleStatus'])->whereNumber('id');
+        Route::delete('/admin/api-keys/{id}', [ApiKeyController::class, 'destroy'])->whereNumber('id');
     });
 
     // Security, Audit, Telemetry & Official SitRep (Admin Only)
@@ -231,12 +238,5 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/reports/sitrep', [SitRepController::class, 'index']);
         Route::get('/system-health', [SystemHealthController::class, 'index']);
         Route::post('/system-health/clear-cache', [SystemHealthController::class, 'clearCache']);
-
-        // Partner API Key Management & Monitoring
-        Route::get('/admin/api-keys', [ApiKeyController::class, 'index']);
-        Route::get('/admin/api-keys/logs', [ApiKeyController::class, 'logs']);
-        Route::post('/admin/api-keys', [ApiKeyController::class, 'store']);
-        Route::patch('/admin/api-keys/{id}/toggle', [ApiKeyController::class, 'toggleStatus'])->whereNumber('id');
-        Route::delete('/admin/api-keys/{id}', [ApiKeyController::class, 'destroy'])->whereNumber('id');
     });
 });

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { QrCode, Search, MapPin, ClipboardList, FileSpreadsheet, AlertTriangle, CheckCircle, TrendingUp, X, Truck, Printer } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { QrCode, Search, MapPin, ClipboardList, FileSpreadsheet, AlertTriangle, CheckCircle, TrendingUp, X, Truck, Printer, Key } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import QRScannerModal from '../../components/common/QRScannerModal';
@@ -184,32 +184,43 @@ export default function ShelterManagement() {
         />
       )}
       
-      {/* Tabs Switcher */}
-      <div className="flex space-x-1 bg-gray-200 dark:bg-slate-900 p-1 rounded-lg w-fit mb-6">
-        <button
-          onClick={() => { setActiveTab('capacities'); setSearch(''); }}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
-            activeTab === 'capacities' ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
-          }`}
+      {/* Header Bar: Tabs Switcher & Partner API Shortcut */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex space-x-1 bg-gray-200 dark:bg-slate-900 p-1 rounded-lg w-fit">
+          <button
+            onClick={() => { setActiveTab('capacities'); setSearch(''); }}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+              activeTab === 'capacities' ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
+            }`}
+          >
+            <MapPin size={16} /> Shelters &amp; Capacities
+          </button>
+          <button
+            onClick={() => { setActiveTab('ration-planning'); setSearch(''); }}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+              activeTab === 'ration-planning' ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
+            }`}
+          >
+            <ClipboardList size={16} /> Ration Planning &amp; Buffers
+          </button>
+          <button
+            onClick={() => { setActiveTab('barangay-calculator'); setSearch(''); }}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+              activeTab === 'barangay-calculator' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
+            }`}
+          >
+            ⚡ Proactive Barangay Calculator
+          </button>
+        </div>
+
+        <Link
+          to="/admin/api-keys"
+          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800 shadow-xs transition"
+          title="Manage External Shelter API Keys &amp; Telemetry Logs"
         >
-          <MapPin size={16} /> Shelters &amp; Capacities
-        </button>
-        <button
-          onClick={() => { setActiveTab('ration-planning'); setSearch(''); }}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
-            activeTab === 'ration-planning' ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
-          }`}
-        >
-          <ClipboardList size={16} /> Ration Planning &amp; Buffers
-        </button>
-        <button
-          onClick={() => { setActiveTab('barangay-calculator'); setSearch(''); }}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
-            activeTab === 'barangay-calculator' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
-          }`}
-        >
-          ⚡ Proactive Barangay Calculator
-        </button>
+          <Key size={14} className="text-purple-600 dark:text-purple-400" />
+          <span>Partner API Keys &amp; Logs</span>
+        </Link>
       </div>
 
       {/* Filter / Search Bar */}

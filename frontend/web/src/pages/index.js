@@ -19,3 +19,4 @@ export { default as ResidentRegistry } from './admin/ResidentRegistry';
 export { default as SituationReport } from './admin/SituationReport';
 export { default as AuditLogs } from './admin/AuditLogs';
 export { default as SystemHealth } from './admin/SystemHealth';
+export { default as ApiKeyManager } from './admin/ApiKeyManager';

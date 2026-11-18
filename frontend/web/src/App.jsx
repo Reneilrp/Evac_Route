@@ -24,6 +24,7 @@ const ResidentRegistry = lazy(() => import('./pages/admin/ResidentRegistry'));
 const AuditLogs = lazy(() => import('./pages/admin/AuditLogs'));
 const SituationReport = lazy(() => import('./pages/admin/SituationReport'));
 const SystemHealth = lazy(() => import('./pages/admin/SystemHealth'));
+const ApiKeyManager = lazy(() => import('./pages/admin/ApiKeyManager'));
 const NotFound = lazy(() => import('./pages/public/NotFound'));
 
 const PageLoader = () => (
@@ -105,6 +106,7 @@ function App() {
               {/* Staff Operator Management (Accessible by both CDRRMO & CSWDO) */}
               <Route element={<ProtectedRoute allowedRoles={['admin', 'lgu_staff']} />}>
                 <Route path="/admin/staff" element={<DashboardLayout><StaffManagement /></DashboardLayout>} />
+                <Route path="/admin/api-keys" element={<DashboardLayout><ApiKeyManager /></DashboardLayout>} />
               </Route>
 
               {/* Admin-Only Security, SitRep & Telemetry */}

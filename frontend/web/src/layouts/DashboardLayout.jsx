@@ -5,7 +5,7 @@ import {
   Bell, ShieldAlert, CheckCircle, TrendingUp, AlertCircle, AlertTriangle,
   RefreshCw, LayoutDashboard, Map, Building2, Package, FileText, Flag,
   Users, LogOut, Sun, Moon, Contact, Settings, X, Megaphone, LifeBuoy,
-  Activity, Truck, FileSpreadsheet, Download
+  Activity, Truck, FileSpreadsheet, Download, Key
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -569,6 +569,16 @@ function DashboardLayout({ children }) {
               ) : (
                 <NavLink to="/admin/audit-logs">Security &amp; Audit Logs</NavLink>
               )}
+              {isMapRoute ? (
+                <IconNavLink to="/admin/api-keys" icon={<Key size={20} />} label="Partner API Keys" />
+              ) : (
+                <NavLink to="/admin/api-keys">
+                  <div className="flex items-center justify-between w-full">
+                    <span>Partner API Keys</span>
+                    <span className="text-[10px] font-mono bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 px-1.5 py-0.5 rounded font-bold">API</span>
+                  </div>
+                </NavLink>
+              )}
             </>
           ) : activeAgency === 'cswdo' ? (
             /* === CSWDO CAMP & RELIEF HUB === */
@@ -616,6 +626,18 @@ function DashboardLayout({ children }) {
                   <IconNavLink to="/admin/audit-logs" icon={<ShieldAlert size={20} />} label="Security & Audit Logs" />
                 ) : (
                   <NavLink to="/admin/audit-logs">Security &amp; Audit Logs</NavLink>
+                )}
+              </RoleGuard>
+              <RoleGuard allowedRoles={['admin', 'lgu_staff']}>
+                {isMapRoute ? (
+                  <IconNavLink to="/admin/api-keys" icon={<Key size={20} />} label="Partner API Keys" />
+                ) : (
+                  <NavLink to="/admin/api-keys">
+                    <div className="flex items-center justify-between w-full">
+                      <span>Partner API Keys</span>
+                      <span className="text-[10px] font-mono bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 px-1.5 py-0.5 rounded font-bold">API</span>
+                    </div>
+                  </NavLink>
                 )}
               </RoleGuard>
             </>
@@ -698,6 +720,18 @@ function DashboardLayout({ children }) {
                   <IconNavLink to="/admin/audit-logs" icon={<ShieldAlert size={20} />} label="Security & Audit Logs" />
                 ) : (
                   <NavLink to="/admin/audit-logs">Security &amp; Audit Logs</NavLink>
+                )}
+              </RoleGuard>
+              <RoleGuard allowedRoles={['admin', 'lgu_staff']}>
+                {isMapRoute ? (
+                  <IconNavLink to="/admin/api-keys" icon={<Key size={20} />} label="Partner API Keys" />
+                ) : (
+                  <NavLink to="/admin/api-keys">
+                    <div className="flex items-center justify-between w-full">
+                      <span>Partner API Keys</span>
+                      <span className="text-[10px] font-mono bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 px-1.5 py-0.5 rounded font-bold">API</span>
+                    </div>
+                  </NavLink>
                 )}
               </RoleGuard>
             </>
