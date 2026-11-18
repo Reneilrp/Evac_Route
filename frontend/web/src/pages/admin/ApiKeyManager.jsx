@@ -114,48 +114,6 @@ export default function ApiKeyManager() {
 
   return (
     <div className="p-6 h-full overflow-y-auto bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400">
-              <Key size={24} />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                Partner Shelters API Keys
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-                Issue API keys to external teams, enforce authentication, and monitor live telemetry
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => { refetchApiKeys(); refetchLogs(); }}
-            title="Refresh Data"
-            className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition shadow-sm"
-          >
-            <RefreshCw size={16} className={isRefetchingKeys || isRefetchingLogs ? "animate-spin" : ""} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setCreatedKeyData(null);
-              setShowKeyModal(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition rounded-lg shadow-sm"
-          >
-            <Plus size={16} />
-            Generate New API Key
-          </button>
-        </div>
-      </div>
-
       {/* Summary Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm flex items-center gap-4">
@@ -195,8 +153,8 @@ export default function ApiKeyManager() {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      {/* Navigation Tabs and Action Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-wrap">
         <div className="flex bg-slate-200 dark:bg-slate-900 p-1 rounded-lg">
           <button
             type="button"
@@ -225,18 +183,41 @@ export default function ApiKeyManager() {
           </button>
         </div>
 
-        {activeTab === 'keys' && (
-          <div className="relative w-full sm:w-64">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search keys by name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {activeTab === 'keys' && (
+            <div className="relative w-full sm:w-64">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search keys by name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => { refetchApiKeys(); refetchLogs(); }}
+            title="Refresh Data"
+            className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition shadow-xs cursor-pointer"
+          >
+            <RefreshCw size={14} className={isRefetchingKeys || isRefetchingLogs ? "animate-spin" : ""} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setCreatedKeyData(null);
+              setShowKeyModal(true);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition rounded-lg shadow-xs cursor-pointer"
+          >
+            <Plus size={14} />
+            New API key
+          </button>
+        </div>
       </div>
 
       {/* TAB 1: ISSUED API KEYS TABLE */}
@@ -265,7 +246,7 @@ export default function ApiKeyManager() {
                 ) : filteredKeys.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="p-8 text-center text-slate-400 italic">
-                      {searchTerm ? "No API keys match your search term." : "No API keys generated yet. Click 'Generate New API Key' above to grant access."}
+                      {searchTerm ? "No API keys match your search term." : "No API keys generated yet. Click 'New API key' above to grant access."}
                     </td>
                   </tr>
                 ) : (
