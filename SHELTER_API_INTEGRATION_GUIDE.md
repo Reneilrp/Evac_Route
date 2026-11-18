@@ -1,107 +1,70 @@
-# 🛡️ Evac_Route Shelter Partner API — Integration & Developer Guide
+# 🏫 Evac_Route Shelter API — Student & Developer Guide
 
-Welcome to the **Evac_Route Shelter Partner API**. This guide documents the end-to-end process for provisioning API keys, authenticating external applications, querying evacuation centers, and consuming real-time shelter data.
-
----
-
-## 📌 1. Overview & Capabilities
-
-The Shelter Partner API enables authorized third parties (e.g., Red Cross, OCD / NDRRMC, academic research teams, command center dashboards, or mobile GIS apps) to access verified emergency evacuation shelter data for **Zamboanga City**.
-
-### Key Data Attributes Exposed:
-* **Identification**: Shelter ID, Official Center Name, Center Type (`covered court` vs `dedicated evacuation center`).
-* **Location**: Barangay, District (`District I` vs `District II`), Street Address, Full Geo-Location description.
-* **Spatial & GIS**: Decimal WGS84 GPS Coordinates (`latitude`, `longitude`, `[lng, lat]` arrays), and native **RFC 7946 GeoJSON FeatureCollections**.
-* **Dimensions & Capacity**: Usable floor area in square meters (`floor_area_sqm`), verified maximum capacity, live headcount occupancy, available vacancy, and capacity utilization percentage.
-* **Operational State**: Live center readiness status (`open`, `standby`, `full`, `closed`).
+> ### 🔑 YOUR API CREDENTIALS
+> **API Key:** `PASTE_YOUR_GENERATED_API_KEY_HERE`  
+> **Base URL:** `https://evacroute.app/api`  
+> **Authentication Header:** `X-API-KEY: PASTE_YOUR_GENERATED_API_KEY_HERE`  
+> *(You can also use `?api_key=YOUR_KEY` in the URL if testing quickly in your browser).*
 
 ---
 
-## 🔑 2. How to Obtain an API Key
+## 👋 Welcome!
+Hey guys! This API allows your project to fetch real-time data for all **141 evacuation shelters** across Zamboanga City (covering both District I and District II).
 
-API keys are cryptographically generated 64-character tokens prefixed with `evac_live_`.
+### What data does this API give you?
+* **Shelter Name & Type** (e.g. Covered Courts, School Gyms, Dedicated Evacuation Centers)
+* **Barangay & District** (District I / West Coast vs District II / East Coast)
+* **GPS Coordinates** (Latitude, Longitude, and `[lng, lat]` array)
+* **Floor Area** (in square meters `sq.m.`)
+* **Capacity & Occupancy** (Max Capacity, Current Headcount, Available Vacancies, Occupancy Percentage)
+* **Status** (`open`, `standby`, `full`, `closed`)
+* **GeoJSON Map Feed** (Ready to drop directly into Leaflet, Mapbox, or Google Maps)
 
-### Option A: Via the Web Admin Console (Recommended)
-1. Log in to the [Evac_Route Admin Console](https://evacroute.app) as an **Admin** or **LGU Agency Staff**.
-2. From the left sidebar, click **Partner API Keys** (or navigate directly to [`/admin/api-keys`](https://evacroute.app/admin/api-keys)).
-3. Click the **`New API key`** button adjacent to the search bar.
-4. Enter the **Partner / Project Name** (e.g., `Philippine Red Cross - Zamboanga Chapter`).
-5. *(Optional)* Specify a **Validity Duration in Days** (e.g., `90`), or leave blank for a permanent key.
-6. Click **Generate Key**.
-7. **Copy the API key immediately**. For security, the raw secret is only displayed once upon creation.
+---
 
-### Option B: Via Backend Artisan CLI
-Admins with SSH access to the production server can generate keys from the terminal:
+## 🚀 Quick Start (Testing in 10 Seconds)
+
+### Option 1: In your Browser
+Simply paste this in your browser URL bar (replace with your actual key):
+```text
+https://evacroute.app/api/shelters?api_key=PASTE_YOUR_GENERATED_API_KEY_HERE
+```
+
+### Option 2: Using cURL in Terminal
 ```bash
-# Generate a permanent API key
-php artisan api-key:generate "WMSU Disaster Analytics Team"
-
-# Generate an API key that expires in 60 days
-php artisan api-key:generate "Ateneo DRRM Research" --days=60
-
-# List all active keys and usage stats
-php artisan api-key:list
+curl -X GET "https://evacroute.app/api/shelters" \
+     -H "X-API-KEY: PASTE_YOUR_GENERATED_API_KEY_HERE"
 ```
 
 ---
 
-## 🔐 3. Authentication Methods
+## 📡 API Endpoints
 
-Every external request must include an authorized API key. The Evac_Route API gateway supports three authentication mechanisms:
-
-### Method 1: Custom Header (Recommended)
-Send the key in the `X-API-KEY` HTTP header:
-```http
-GET /api/shelters HTTP/1.1
-Host: evacroute.app
-X-API-KEY: evac_live_a1b2c3d4e5f6...
-Accept: application/json
-```
-
-### Method 2: Standard Bearer Token
-Send the key in the `Authorization` header with the `Bearer` scheme:
-```http
-GET /api/shelters HTTP/1.1
-Host: evacroute.app
-Authorization: Bearer evac_live_a1b2c3d4e5f6...
-Accept: application/json
-```
-
-### Method 3: Query Parameter (For Quick Testing or GIS Tile Loaders)
-Append `?api_key=` to the endpoint URL:
-```
-https://evacroute.app/api/shelters/map?api_key=evac_live_a1b2c3d4e5f6...
-```
-*(Note: Use Header authentication for production backends to avoid leaking keys in browser history or web proxy logs).*
+All endpoints require your API key passed either as:
+* **Header (Recommended):** `X-API-KEY: YOUR_KEY` (or `Authorization: Bearer YOUR_KEY`)
+* **Query Parameter:** `?api_key=YOUR_KEY`
 
 ---
 
-## 🌐 4. API Endpoints Reference
+### 1. List All Shelters
+Fetch all 141 evacuation shelters.
 
-**Production Base URL:**
+* **URL:** `GET https://evacroute.app/api/shelters`
+* **Query Filters (combine any of these):**
+  * `?district=I` → Get District I shelters only (West Coast)
+  * `?district=II` → Get District II shelters only (East Coast)
+  * `?type=court` → Get barangay covered courts only
+  * `?type=ec` → Get dedicated evacuation centers only
+  * `?status=open` → Get currently open shelters only
+  * `?barangay=Tetuan` → Get shelters located in a specific barangay
+  * `?search=Grandstand` → Search by name, barangay, or street address
+
+#### Example Query:
+```text
+GET https://evacroute.app/api/shelters?district=I&status=open
 ```
-https://evacroute.app/api
-```
 
----
-
-### Endpoint 1: List All Shelters
-Returns an array of evacuation centers with live occupancy metrics and physical parameters.
-
-* **Method**: `GET`
-* **Route**: `/api/shelters`
-* **Headers**: `X-API-KEY: <your_key>`
-
-#### Supported Query Parameters:
-| Parameter | Type | Example | Description |
-| :--- | :--- | :--- | :--- |
-| `district` | string | `?district=I` or `?district=II` | Filters by congressional district (`District I` / West Coast vs `District II` / East Coast). |
-| `type` | string | `?type=court` or `?type=ec` | Filters by infrastructure type: `court` (Barangay Covered Courts) or `ec` (Dedicated Evacuation Centers / Schools). |
-| `status` | string | `?status=open` | Filters by center status (`open`, `standby`, `full`, `closed`). |
-| `barangay` | string | `?barangay=Tetuan` | Filters shelters situated within a specific barangay. |
-| `search` | string | `?search=Grandstand` | Fuzzy search across center name, barangay, and address. |
-
-#### Sample Response (`200 OK`):
+#### JSON Response Structure:
 ```json
 {
   "status": "success",
@@ -118,7 +81,6 @@ Returns an array of evacuation centers with live occupancy metrics and physical 
       "latitude": 6.91894,
       "longitude": 122.08621,
       "coordinates": [122.08621, 6.91894],
-      "floor_area": 850.0,
       "floor_area_sqm": 850.0,
       "capacity": 500,
       "max_capacity": 500,
@@ -126,9 +88,7 @@ Returns an array of evacuation centers with live occupancy metrics and physical 
       "available_capacity": 380,
       "occupancy_rate": 24.0,
       "status": "open",
-      "is_evacuation_center": true,
-      "created_at": "2026-10-15T08:30:00.000000Z",
-      "updated_at": "2026-11-18T16:30:00.000000Z"
+      "is_evacuation_center": true
     }
   ]
 }
@@ -136,20 +96,13 @@ Returns an array of evacuation centers with live occupancy metrics and physical 
 
 ---
 
-### Endpoint 2: Get Single Shelter by ID
-Retrieve full details and current capacity for a specific shelter.
+### 2. Get One Shelter by ID
+Fetch full details for a single specific shelter.
 
-* **Method**: `GET`
-* **Route**: `/api/shelters/{id}`
-* **Headers**: `X-API-KEY: <your_key>`
+* **URL:** `GET https://evacroute.app/api/shelters/:id`
+* **Example:** `GET https://evacroute.app/api/shelters/12`
 
-#### Sample Request:
-```bash
-curl -X GET "https://evacroute.app/api/shelters/12" \
-     -H "X-API-KEY: evac_live_your_api_key_here"
-```
-
-#### Sample Response (`200 OK`):
+#### JSON Response:
 ```json
 {
   "status": "success",
@@ -163,41 +116,31 @@ curl -X GET "https://evacroute.app/api/shelters/12" \
     "latitude": 6.91894,
     "longitude": 122.08621,
     "coordinates": [122.08621, 6.91894],
-    "floor_area": 850.0,
     "floor_area_sqm": 850.0,
     "capacity": 500,
     "max_capacity": 500,
     "current_occupancy": 120,
     "available_capacity": 380,
     "occupancy_rate": 24.0,
-    "status": "open",
-    "is_evacuation_center": true
+    "status": "open"
   }
 }
 ```
 
 ---
 
-### Endpoint 3: GeoJSON Map Feed
-Returns an RFC 7946 compliant GeoJSON `FeatureCollection` ready for direct ingestion into Mapbox, Leaflet, Google Maps, OpenLayers, QGIS, or ArcGIS.
+### 3. GeoJSON Map Layer (For Mapbox, Leaflet & Google Maps)
+Returns a standard **RFC 7946 GeoJSON FeatureCollection**. You can plug this URL directly into your frontend map libraries.
 
-* **Method**: `GET`
-* **Route**: `/api/shelters/map`
-* **Headers**: `X-API-KEY: <your_key>` *(or `?api_key=`)*
+* **URL:** `GET https://evacroute.app/api/shelters/map`
+* **Browser / Tile URL:** `https://evacroute.app/api/shelters/map?api_key=PASTE_YOUR_GENERATED_API_KEY_HERE`
 
-#### Sample Request:
-```bash
-curl -X GET "https://evacroute.app/api/shelters/map" \
-     -H "X-API-KEY: evac_live_your_api_key_here"
-```
-
-#### Sample Response (`200 OK`):
+#### JSON Response:
 ```json
 {
   "type": "FeatureCollection",
   "metadata": {
     "title": "Evac_Route Zamboanga City Emergency Shelters",
-    "generated_at": "2026-11-18T16:55:00.000000Z",
     "total_shelters": 141
   },
   "features": [
@@ -213,11 +156,8 @@ curl -X GET "https://evacroute.app/api/shelters/map" \
         "name": "Tetuan Central Covered Court",
         "district": "District II",
         "barangay": "Tetuan",
-        "address": "Cabato Road, Tetuan",
-        "location": "Tetuan, District II, Zamboanga City",
         "floor_area_sqm": 850.0,
         "capacity": 500,
-        "max_capacity": 500,
         "current_occupancy": 120,
         "available_capacity": 380,
         "occupancy_rate": 24.0,
@@ -231,50 +171,65 @@ curl -X GET "https://evacroute.app/api/shelters/map" \
 
 ---
 
-## 💻 5. Code Examples Across Stacks
+## 📊 Data Dictionary (What the fields mean)
 
-### cURL
-```bash
-# Query open shelters in District I
-curl -X GET "https://evacroute.app/api/shelters?district=I&status=open" \
-     -H "X-API-KEY: evac_live_your_key_here" \
-     -H "Accept: application/json"
-```
+| Field Name | Type | Description |
+| :--- | :--- | :--- |
+| `id` | number | Unique shelter database ID. |
+| `name` | string | Full official name of the evacuation center. |
+| `district` | string | `District I` (West Coast) or `District II` (East Coast). |
+| `barangay` | string | Name of the barangay where the center is located. |
+| `address` | string | Street address or landmark. |
+| `latitude` | float | Decimal GPS latitude (e.g. `6.91894`). |
+| `longitude` | float | Decimal GPS longitude (e.g. `122.08621`). |
+| `coordinates` | array | Standard GIS order `[longitude, latitude]` for mapping libraries. |
+| `floor_area_sqm` | float | Total usable shelter ground area in square meters. |
+| `capacity` | number | Maximum number of evacuees this center can safely hold. |
+| `current_occupancy`| number | Number of verified evacuees currently staying inside. |
+| `available_capacity`| number | Remaining available slots (`capacity - current_occupancy`). |
+| `occupancy_rate` | float | Percentage of occupancy (e.g. `24.0` for 24%). |
+| `status` | string | `open` (accepting evacuees), `full`, `standby`, or `closed`. |
+| `marker_color` | string | Recommended hex marker color (`#10B981` green, `#F59E0B` amber, `#EF4444` red). |
 
-### JavaScript / TypeScript (Fetch API)
+---
+
+## 💻 Copy & Paste Code Examples
+
+### 1. JavaScript / React (Fetch API)
 ```javascript
-const API_KEY = process.env.SHELTER_API_KEY || 'evac_live_your_key_here';
+const API_KEY = 'PASTE_YOUR_GENERATED_API_KEY_HERE';
 
-async function fetchOpenShelters() {
-  const url = new URL('https://evacroute.app/api/shelters');
-  url.searchParams.append('district', 'I');
-  url.searchParams.append('status', 'open');
+async function getShelters() {
+  try {
+    const res = await fetch('https://evacroute.app/api/shelters?district=I&status=open', {
+      headers: {
+        'X-API-KEY': API_KEY,
+        'Accept': 'application/json'
+      }
+    });
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'X-API-KEY': API_KEY,
-      'Accept': 'application/json',
-    },
-  });
+    if (!res.ok) {
+      throw new Error(`Error: ${res.status} - Key may be invalid or expired`);
+    }
 
-  if (!response.ok) {
-    throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+    const data = await res.json();
+    console.log(`Loaded ${data.total} shelters:`, data.data);
+    return data.data;
+  } catch (err) {
+    console.error("Failed to load shelters:", err);
   }
-
-  const result = await response.json();
-  console.log(`Found ${result.total} shelters:`, result.data);
-  return result.data;
 }
+
+// Call the function
+getShelters();
 ```
 
-### Python (Requests)
+### 2. Python (requests)
 ```python
-import os
 import requests
 
-API_KEY = os.getenv("SHELTER_API_KEY", "evac_live_your_key_here")
-BASE_URL = "https://evacroute.app/api/shelters"
+API_KEY = "PASTE_YOUR_GENERATED_API_KEY_HERE"
+url = "https://evacroute.app/api/shelters"
 
 headers = {
     "X-API-KEY": API_KEY,
@@ -282,100 +237,51 @@ headers = {
 }
 
 params = {
-    "type": "court",
-    "district": "II"
+    "district": "II",
+    "status": "open"
 }
 
-response = requests.get(BASE_URL, headers=headers, params=params)
+response = requests.get(url, headers=headers, params=params)
 
 if response.status_code == 200:
     data = response.json()
-    print(f"Total Shelters Found: {data['total']}")
-    for shelter in data['data']:
-        print(f"- {shelter['name']} (Occupancy: {shelter['current_occupancy']}/{shelter['capacity']})")
+    print(f"Total Shelters: {data['total']}")
+    for shelter in data["data"]:
+        print(f"• {shelter['name']} | Vacancies: {shelter['available_capacity']} / {shelter['capacity']}")
 else:
-    print(f"Failed with status: {response.status_code}", response.json())
+    print(f"Request failed ({response.status_code}):", response.text)
 ```
 
-### Mapbox GL JS (Direct GeoJSON Ingestion)
+### 3. Leaflet.js Map Example
 ```javascript
-map.on('load', () => {
-  // Add Evac_Route live GeoJSON feed directly as a Mapbox GeoJSON source
-  map.addSource('evac-shelters', {
-    type: 'geojson',
-    data: 'https://evacroute.app/api/shelters/map?api_key=evac_live_your_key_here'
-  });
+const map = L.map('map').setView([6.9214, 122.0790], 12); // Zamboanga City
 
-  map.addLayer({
-    id: 'shelter-markers',
-    type: 'circle',
-    source: 'evac-shelters',
-    paint: {
-      'circle-radius': 8,
-      'circle-color': ['get', 'marker_color'],
-      'circle-stroke-width': 2,
-      'circle-stroke-color': '#FFFFFF'
-    }
-  });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
 
-  // Display shelter occupancy on click
-  map.on('click', 'shelter-markers', (e) => {
-    const props = e.features[0].properties;
-    new mapboxgl.Popup()
-      .setLngLat(e.lngLat)
-      .setHTML(`
-        <h4 style="font-weight:bold; margin-bottom:4px;">${props.name}</h4>
-        <p style="margin:0; font-size:12px;">Barangay: ${props.barangay}</p>
-        <p style="margin:0; font-size:12px;">Available Slots: <strong>${props.available_capacity}</strong> / ${props.capacity}</p>
-      `)
-      .addTo(map);
+// Load live shelter GeoJSON from Evac_Route
+fetch('https://evacroute.app/api/shelters/map?api_key=PASTE_YOUR_GENERATED_API_KEY_HERE')
+  .then(res => res.json())
+  .then(geoJsonData => {
+    L.geoJSON(geoJsonData, {
+      onEachFeature: (feature, layer) => {
+        const p = feature.properties;
+        layer.bindPopup(`
+          <strong>${p.name}</strong><br/>
+          Barangay: ${p.barangay} (${p.district})<br/>
+          Capacity: ${p.current_occupancy} / ${p.capacity} evacuees<br/>
+          Available Slots: <b>${p.available_capacity}</b>
+        `);
+      }
+    }).addTo(map);
   });
-});
 ```
 
 ---
 
-## ⚠️ 6. Error Handling & HTTP Status Codes
+## ⚠️ Troubleshooting & Common Errors
 
-The API returns standard RFC HTTP status codes accompanied by a structured JSON error body:
-
-| HTTP Status | Code Meaning | Common Cause | Resolution |
-| :--- | :--- | :--- | :--- |
-| `200 OK` | Success | Request succeeded. | Process `data` payload. |
-| `401 Unauthorized` | Missing / Invalid Key | No API key header provided, or key does not match database. | Check header name (`X-API-KEY`) and verify key string. |
-| `403 Forbidden` | Inactive / Expired Key | Key was deactivated by an Admin or past its expiration date. | Contact LGU Administrator to reactivate or generate a new key. |
-| `404 Not Found` | Resource Not Found | Requested Shelter ID does not exist. | Verify Shelter ID with `GET /api/shelters`. |
-| `500 Server Error` | Internal Server Error | Transient database or cluster failure. | Retry with exponential backoff (1s, 2s, 4s). |
-
-#### Sample Error Response (`401 Unauthorized`):
-```json
-{
-  "status": "error",
-  "message": "Missing API Key. Provide key via X-API-KEY header, Authorization Bearer, or ?api_key= query parameter."
-}
-```
-
-#### Sample Error Response (`403 Forbidden`):
-```json
-{
-  "status": "error",
-  "message": "API key is deactivated. Please contact the administrator."
-}
-```
-
----
-
-## 🔒 7. Best Practices & Security Guidelines
-
-1. **Store Keys in Environment Variables**: Never hardcode API keys into frontend client repos or public repositories. Use `.env` variables (`SHELTER_API_KEY`).
-2. **Reverse Proxy for Web Clients**: If building public web frontends, route queries through your own backend proxy to prevent exposing your secret `evac_live_` token to end users.
-3. **Monitor Usage Logs**: Administrators can review real-time request latencies, client IPs, and endpoint hits at [`https://evacroute.app/admin/api-keys`](https://evacroute.app/admin/api-keys).
-4. **Key Rotation & Revocation**: If a token is suspected to be compromised, administrators can deactivate it immediately using the single-click power toggle in the Admin Console without needing to restart the server.
-
----
-
-## 📞 Support & Inquiries
-For API key requests, higher rate limits, or integration assistance, coordinate with:
-* **City Social Welfare and Development Office (CSWDO)**
-* **City Disaster Risk Reduction and Management Office (CDRRMO) - Zamboanga City**
-* **Admin Portal**: [https://evacroute.app/admin/api-keys](https://evacroute.app/admin/api-keys)
+* **`401 Unauthorized`**: You did not pass the key, or the key string has a typo. Make sure your header is `X-API-KEY: your_key` or append `?api_key=your_key` to the URL.
+* **`403 Forbidden`**: The key is deactivated or has expired. Ask the admin to toggle it back to active on the Admin Console.
+* **CORS**: CORS is enabled on all `/api/shelters*` endpoints, so you can call it directly from localhost (`http://localhost:3000`, `http://localhost:5173`, etc.) without browser blocks.
