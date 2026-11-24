@@ -1,0 +1,27 @@
+{
+  "format": "docx",
+  "file": "EVAC-ROUTE_Master_Manuscript_Final_v08-18-2025-v2.docx",
+  "typography": {
+    "primaryFont": "Arial",
+    "detectedFonts": [
+      "Arial",
+      "Times New Roman"
+    ],
+    "defaultBodyPt": 11.0,
+    "h1Pt": 18.0,
+    "h2Pt": 14.0
+  },
+  "geometry": {
+    "pageWidthInches": 8.5,
+    "pageHeightInches": 11.0,
+    "topMarginInches": 1.0,
+    "bottomMarginInches": 1.0,
+    "leftMarginInches": 1.5,
+    "rightMarginInches": 1.0
+  },
+  "palette": {
+    "baseCanvas": "#ffffff",
+    "surfaceSecondary": "#f8fafc",
+    "accentPrimary": "#0284c7"
+  }
+}
