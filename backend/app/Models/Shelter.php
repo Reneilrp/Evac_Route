@@ -24,6 +24,12 @@ use Illuminate\Database\Eloquent\Model;
     'barangay',
     'district',
     'floor_area',
+    'activation_status',
+    'activation_trigger',
+    'activated_at',
+    'cswd_mobilized',
+    'cswd_mobilized_at',
+    'cswd_mobilized_team',
 ])]
 class Shelter extends Model
 {
@@ -38,6 +44,9 @@ class Shelter extends Model
         'current_occupancy' => 'integer',
         'elevation_meters' => 'integer',
         'is_secured_facility' => 'boolean',
+        'cswd_mobilized' => 'boolean',
+        'activated_at' => 'datetime',
+        'cswd_mobilized_at' => 'datetime',
     ];
 
     /**
@@ -59,6 +68,11 @@ class Shelter extends Model
     public function evacuationLogs()
     {
         return $this->hasMany(EvacuationLog::class);
+    }
+
+    public function donations()
+    {
+        return $this->hasMany(ShelterDonation::class);
     }
 
     /**
@@ -141,6 +155,9 @@ class Shelter extends Model
                 'type' => $this->type,
                 'facility_type' => $this->facility_type,
                 'status' => $this->status,
+                'activation_status' => $this->activation_status ?? 'open',
+                'activation_trigger' => $this->activation_trigger,
+                'cswd_mobilized' => (bool) $this->cswd_mobilized,
                 'elevation_meters' => $this->elevation_meters !== null ? (int) $this->elevation_meters : null,
                 'is_secured_facility' => (bool) $this->is_secured_facility,
                 'emergency_contact' => $this->emergency_contact,

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Events\ShelterStatusUpdated;
 use App\Models\AuditLog;
 use App\Models\Shelter;
+use App\Models\ShelterDonation;
 use Illuminate\Http\Request;
 
 class ShelterController extends Controller
@@ -325,6 +327,10 @@ class ShelterController extends Controller
                     'family_name' => $log->familyProfile?->name ?? 'N/A',
                     'contact_number' => $log->familyProfile?->contact_number ?? 'N/A',
                     'headcount' => $log->recorded_headcount,
+                    'actual_headcount' => $log->actual_headcount ?? $log->recorded_headcount,
+                    'is_temporary_offsite' => (bool) $log->is_temporary_offsite,
+                    'walk_in_voucher' => $log->walk_in_voucher,
+                    'vulnerabilities' => $log->vulnerabilities ?? [],
                     'ration_claimed' => $log->ration_claimed,
                     'ration_claimed_at' => $log->ration_claimed_at?->toIso8601String(),
                     'checked_in_at' => $log->checked_in_at?->toIso8601String(),
@@ -339,5 +345,141 @@ class ShelterController extends Controller
                 'active_logs' => $activeLogs,
             ],
         ], 200);
+    }
+
+    /**
+     * Toggle or set shelter activation state (e.g. standby <-> open).
+     * Accessible by CDRRMO admin and local Barangay Staff.
+     * Route: POST /api/shelters/{id}/toggle-activation
+     */
+    public function toggleActivation(Request $request, $id)
+    {
+        $shelter = Shelter::findOrFail($id);
+
+        $validated = $request->validate([
+            'activation_status' => 'required|in:standby,open,full,closed',
+            'activation_trigger' => 'nullable|in:manual_cdrrmo,barangay_tanod,weather_auto,influx_auto',
+        ]);
+
+        $trigger = $validated['activation_trigger'] ?? ($request->user()?->role === 'admin' ? 'manual_cdrrmo' : 'barangay_tanod');
+
+        $shelter->update([
+            'activation_status' => $validated['activation_status'],
+            'activation_trigger' => $trigger,
+            'activated_at' => in_array($validated['activation_status'], ['open', 'full']) ? now() : null,
+            'status' => in_array($validated['activation_status'], ['open', 'full', 'closed']) ? $validated['activation_status'] : $shelter->status,
+        ]);
+
+        try {
+            event(new ShelterStatusUpdated($shelter));
+        } catch (\Throwable $e) {}
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'shelter_activation_updated',
+            'ip_address' => $request->ip(),
+            'old_values' => ['activation_status' => $shelter->getOriginal('activation_status')],
+            'new_values' => ['activation_status' => $shelter->activation_status, 'trigger' => $trigger],
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Shelter {$shelter->name} is now {$shelter->activation_status}.",
+            'data' => $shelter,
+        ]);
+    }
+
+    /**
+     * Mobilize CSWDO field intake team & trigger initial relief logistics manifest.
+     * Route: POST /api/shelters/{id}/mobilize-cswd
+     */
+    public function mobilizeCswd(Request $request, $id)
+    {
+        $shelter = Shelter::findOrFail($id);
+
+        $teamName = $request->input('team_name', 'CSWDO Sector Response Team 1');
+
+        $shelter->update([
+            'cswd_mobilized' => true,
+            'cswd_mobilized_at' => now(),
+            'cswd_mobilized_team' => $teamName,
+            'activation_status' => 'open',
+            'activated_at' => $shelter->activated_at ?: now(),
+        ]);
+
+        try {
+            event(new ShelterStatusUpdated($shelter));
+        } catch (\Throwable $e) {}
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'cswd_field_team_mobilized',
+            'ip_address' => $request->ip(),
+            'old_values' => null,
+            'new_values' => [
+                'shelter_id' => $shelter->id,
+                'team_name' => $teamName,
+                'occupancy_at_mobilization' => $shelter->current_occupancy,
+            ],
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "CSWD Field Team ({$teamName}) successfully mobilized to {$shelter->name}.",
+            'data' => $shelter,
+        ]);
+    }
+
+    /**
+     * Log on-site spontaneous citizen / NGO donation at the shelter gate.
+     * Route: POST /api/shelters/{id}/donations
+     */
+    public function logDonation(Request $request, $id)
+    {
+        $shelter = Shelter::findOrFail($id);
+
+        $validated = $request->validate([
+            'donor_name' => 'required|string|max:255',
+            'item_category' => 'required|string|in:hot_meals,bottled_water,bread_pastry,hygiene_kits,clothing,other',
+            'item_description' => 'nullable|string|max:500',
+            'quantity_servings' => 'required|integer|min:1',
+            'distribution_mode' => 'nullable|string|in:immediate_community_serving,warehouse_staged,per_family_distribution',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $donation = ShelterDonation::create([
+            'shelter_id' => $shelter->id,
+            'donor_name' => $validated['donor_name'],
+            'item_category' => $validated['item_category'],
+            'item_description' => $validated['item_description'] ?? null,
+            'quantity_servings' => $validated['quantity_servings'],
+            'distribution_mode' => $validated['distribution_mode'] ?? 'immediate_community_serving',
+            'recorded_by' => $request->user()?->id,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Donation from {$donation->donor_name} logged successfully.",
+            'data' => $donation,
+        ], 201);
+    }
+
+    /**
+     * Get donation log for a specific shelter.
+     * Route: GET /api/shelters/{id}/donations
+     */
+    public function getDonations($id)
+    {
+        $shelter = Shelter::findOrFail($id);
+        $donations = ShelterDonation::where('shelter_id', $id)
+            ->with('recordedBy:id,name,operator_type')
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $donations,
+        ]);
     }
 }

@@ -1,7 +1,7 @@
 # 🏫 Evac_Route Shelter API — Student & Developer Guide
 
 > ### 🔑 YOUR API CREDENTIALS
-> **API Key:** `PASTE_YOUR_GENERATED_API_KEY_HERE`  
+> **API Key:** `evac_live_7fawG315Vf6bnadJdVulSlecu4mLWiSByRj7Vue3`  
 > **Base URL:** `https://evacroute.app/api`  
 > **Authentication Header:** `X-API-KEY: PASTE_YOUR_GENERATED_API_KEY_HERE`  
 > *(You can also use `?api_key=YOUR_KEY` in the URL if testing quickly in your browser).*

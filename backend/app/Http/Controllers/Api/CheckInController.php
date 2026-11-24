@@ -174,8 +174,18 @@ class CheckInController extends Controller
                     $mergedWalkIn = true;
                 }
 
-                // Update Shelter Occupancy (Emergency Overflow Allowed - REV-04)
-                $shelter->current_occupancy += $family->headcount;
+                $actualInput = $request->input('actual_headcount');
+                $effectiveHeadcount = $actualInput !== null ? max(1, (int) $actualInput) : (int) $family->headcount;
+
+                // Self-healing activation (auto-activates standby facility on confirmed evacuee arrival)
+                if ($shelter->activation_status === 'standby') {
+                    $shelter->activation_status = 'open';
+                    $shelter->activation_trigger = 'influx_auto';
+                    $shelter->activated_at = now();
+                }
+
+                // Update Shelter Occupancy with effective headcount (Emergency Overflow Allowed - REV-04)
+                $shelter->current_occupancy += $effectiveHeadcount;
 
                 // Set status to full if capacity is met or exceeded
                 if ($shelter->current_occupancy >= $shelter->max_capacity) {
@@ -200,8 +210,8 @@ class CheckInController extends Controller
                     $claimedItems = [];
 
                     foreach ($activeRation->items as $rationItem) {
-                        // Math: Quantity per person * Family Headcount (or 1 if per-family pack)
-                        $multiplier = ($rationItem->allocation_type === 'per_family') ? 1 : max(1, (int) $family->headcount);
+                        // Math: Quantity per person * Actual Headcount (or 1 if per-family pack)
+                        $multiplier = ($rationItem->allocation_type === 'per_family') ? 1 : $effectiveHeadcount;
                         $totalDeduction = $rationItem->quantity_per_head * $multiplier;
 
                         // Deduct from main CSWDO inventory
@@ -226,6 +236,7 @@ class CheckInController extends Controller
                     'family_profile_id' => $family->id,
                     'shelter_id' => $shelter->id,
                     'recorded_headcount' => $family->headcount,
+                    'actual_headcount' => $effectiveHeadcount,
                     'ration_claimed' => $activeRation !== null, // Only true when a template was applied
                     'checked_in_at' => now(),
                     'claimed_ration_items' => $claimedItems,
@@ -271,6 +282,7 @@ class CheckInController extends Controller
             'headcount' => 'required|integer|min:1',
             'barangay' => 'required|string|max:255',
             'contact_number' => 'nullable|string|max:50',
+            'vulnerabilities' => 'nullable|array',
         ]);
 
         try {
@@ -298,6 +310,14 @@ class CheckInController extends Controller
 
                 // 2. Lock shelter and process occupancy increment + Emergency Overflow
                 $shelter = Shelter::lockForUpdate()->findOrFail($shelter_id);
+
+                // Self-healing activation (auto-activates standby facility on confirmed walk-in arrival)
+                if ($shelter->activation_status === 'standby') {
+                    $shelter->activation_status = 'open';
+                    $shelter->activation_trigger = 'influx_auto';
+                    $shelter->activated_at = now();
+                }
+
                 $shelter->current_occupancy += $family->headcount;
 
                 if ($shelter->current_occupancy >= $shelter->max_capacity) {
@@ -306,11 +326,16 @@ class CheckInController extends Controller
                 $shelter->save();
                 $this->safeBroadcast(new ShelterStatusUpdated($shelter));
 
+                // Generate temporary sequential voucher (e.g. VCH-TET-0042)
+                $initials = strtoupper(substr($shelter->barangay ?: $shelter->name, 0, 3));
+                $countToday = EvacuationLog::where('shelter_id', $shelter->id)->whereDate('created_at', today())->count() + 1;
+                $voucher = sprintf('VCH-%s-%04d', $initials, $countToday);
+
                 $isOverflow = $shelter->current_occupancy > $shelter->max_capacity;
                 $overflowCount = max(0, $shelter->current_occupancy - $shelter->max_capacity);
                 $msg = $isOverflow
-                    ? "Walk-in registered & checked in under EMERGENCY OVERFLOW (+{$overflowCount} occupants)."
-                    : 'Walk-in registered & checked in successfully.';
+                    ? "Walk-in registered & checked in under EMERGENCY OVERFLOW (+{$overflowCount} occupants). Voucher: {$voucher}."
+                    : "Walk-in registered & checked in successfully. Voucher: {$voucher}.";
 
                 // 3. Allocate Rations
                 $activeRation = RationTemplate::with('items.inventoryItem')->where('is_active', true)->first();
@@ -346,6 +371,10 @@ class CheckInController extends Controller
                     'family_profile_id' => $family->id,
                     'shelter_id' => $shelter->id,
                     'recorded_headcount' => $family->headcount,
+                    'actual_headcount' => $family->headcount,
+                    'checkin_method' => 'walk_in_manual',
+                    'walk_in_voucher' => $voucher,
+                    'vulnerabilities' => $request->vulnerabilities ?? [],
                     'ration_claimed' => $activeRation !== null,
                     'checked_in_at' => now(),
                     'claimed_ration_items' => $claimedItems,
@@ -356,6 +385,7 @@ class CheckInController extends Controller
                     'shelter' => $shelter,
                     'family' => $family,
                     'log' => $log,
+                    'voucher' => $voucher,
                     'ration_applied' => $activeRation ? $activeRation->name : 'No active ration template.',
                     'message' => $msg,
                     'generated_qr_hash' => $qrHash,
@@ -693,6 +723,91 @@ class CheckInController extends Controller
             'message' => "Archived {$count} checked-out evacuation records.",
             'data' => ['archived_count' => $count],
         ], 200);
+    }
+
+    /**
+     * Issue temporary day pass for evacuees checking flooded homes or clearing mud.
+     * Preserves shelter slot and family relief ration allocation.
+     * Route: POST /api/evacuation-logs/{id}/day-pass
+     */
+    public function issueDayPass(Request $request, $id)
+    {
+        $log = EvacuationLog::whereNull('checked_out_at')->findOrFail($id);
+        $log->update([
+            'is_temporary_offsite' => true,
+            'temporary_offsite_at' => now(),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Temporary day pass issued. Slot and family rations preserved.',
+            'data' => $log,
+        ]);
+    }
+
+    /**
+     * Check evacuee back into active presence upon return from home check.
+     * Route: POST /api/evacuation-logs/{id}/return-day-pass
+     */
+    public function returnFromDayPass(Request $request, $id)
+    {
+        $log = EvacuationLog::whereNull('checked_out_at')->findOrFail($id);
+        $log->update([
+            'is_temporary_offsite' => false,
+            'temporary_offsite_at' => null,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Resident returned to shelter. Active presence restored.',
+            'data' => $log,
+        ]);
+    }
+
+    /**
+     * Compute aggregated special needs & medical vulnerability summary for a shelter.
+     * Route: GET /api/shelters/{shelter_id}/vulnerability-summary
+     */
+    public function vulnerabilitySummary($shelter_id)
+    {
+        $shelter = Shelter::findOrFail($shelter_id);
+        $activeLogs = EvacuationLog::where('shelter_id', $shelter_id)
+            ->whereNull('checked_out_at')
+            ->with(['familyProfile.user'])
+            ->get();
+
+        $infants = 0;
+        $pregnant = 0;
+        $seniors = 0;
+        $pwds = 0;
+        $maintenanceMeds = 0;
+
+        foreach ($activeLogs as $log) {
+            $vulns = (array) ($log->vulnerabilities ?? []);
+            if (in_array('infant', $vulns)) $infants++;
+            if (in_array('pregnant', $vulns)) $pregnant++;
+            if (in_array('senior', $vulns)) $seniors++;
+            if (in_array('pwd', $vulns)) $pwds++;
+            if (in_array('medical_maintenance', $vulns)) $maintenanceMeds++;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'shelter_id' => $shelter->id,
+                'shelter_name' => $shelter->name,
+                'current_occupancy' => $shelter->current_occupancy,
+                'active_families' => $activeLogs->count(),
+                'vulnerabilities' => [
+                    'infants' => $infants,
+                    'pregnant' => $pregnant,
+                    'seniors' => $seniors,
+                    'pwds' => $pwds,
+                    'maintenance_meds' => $maintenanceMeds,
+                ],
+                'cho_medical_alert_recommended' => ($infants + $pregnant + $seniors + $pwds + $maintenanceMeds) >= 3,
+            ],
+        ]);
     }
 
     /**

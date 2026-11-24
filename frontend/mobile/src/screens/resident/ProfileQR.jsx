@@ -135,26 +135,38 @@ export default function ProfileQR({ navigation }) {
     setShowLogoutModal(true);
   };
 
-  // Dynamic TOTP Payload Generation
+  // Dynamic TOTP Payload Generation with 5-Second Anti-Replay Rotating Indicator
   const [totpPayload, setTotpPayload] = useState(null);
+  const [totpSecondsRemaining, setTotpSecondsRemaining] = useState(5.0);
+
   useEffect(() => {
     let isMounted = true;
-    
+    let nextRefreshTime = Date.now() + 5000;
+
     const generateTotp = async () => {
       const timestamp = Math.floor(Date.now() / 1000);
       const dataToSign = `${effectiveFamilyId}:${timestamp}${effectiveQrHash}`;
       const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, dataToSign);
       if (isMounted) {
         setTotpPayload(`${effectiveFamilyId}:${timestamp}:${hash}`);
+        nextRefreshTime = Date.now() + 5000;
+        setTotpSecondsRemaining(5.0);
       }
     };
 
     generateTotp();
-    const interval = setInterval(generateTotp, 5000); // Regenerate every 5 seconds
+    const refreshInterval = setInterval(generateTotp, 5000);
+
+    const timerInterval = setInterval(() => {
+      if (!isMounted) return;
+      const msLeft = Math.max(0, nextRefreshTime - Date.now());
+      setTotpSecondsRemaining(Math.round((msLeft / 1000) * 10) / 10);
+    }, 100);
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      clearInterval(refreshInterval);
+      clearInterval(timerInterval);
     };
   }, [effectiveFamilyId, effectiveQrHash]);
 
@@ -196,9 +208,38 @@ export default function ProfileQR({ navigation }) {
           shadowRadius: 10,
           elevation: 4,
         }}>
-          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '900', letterSpacing: 1.5, marginBottom: 14 }}>
+          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '900', letterSpacing: 1.5, marginBottom: 10 }}>
             FAMILY RELIEF QR CODE
           </Text>
+
+          {/* Dynamic TOTP 5-Second Rotating Security Ring / Countdown Bar */}
+          <View style={{ width: 208, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981' }} />
+                <Text style={{ fontSize: 10, fontWeight: '800', color: isDarkMode ? '#a7f3d0' : '#047857', letterSpacing: 0.5 }}>
+                  DYNAMIC TOTP PASS
+                </Text>
+              </View>
+              <Text style={{ fontSize: 10, fontWeight: '900', color: isDarkMode ? '#93c5fd' : '#1d4ed8', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                {totpSecondsRemaining.toFixed(1)}s
+              </Text>
+            </View>
+            {/* Live Progress Track */}
+            <View style={{ height: 4, width: '100%', backgroundColor: isDarkMode ? '#334155' : '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
+              <View
+                style={{
+                  height: '100%',
+                  width: `${Math.max(0, Math.min(100, (totpSecondsRemaining / 5) * 100))}%`,
+                  backgroundColor: totpSecondsRemaining > 1.5 ? '#10b981' : '#f59e0b',
+                  borderRadius: 2,
+                }}
+              />
+            </View>
+            <Text style={{ fontSize: 9, fontWeight: '600', color: colors.textSecondary, marginTop: 4, textAlign: 'center' }}>
+              SHA-256 Anti-Replay Guard • Refreshing Every 5s
+            </Text>
+          </View>
 
           {/* Barcode scanner target container: must ALWAYS remain white background */}
           <View style={{

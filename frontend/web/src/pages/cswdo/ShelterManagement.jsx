@@ -68,6 +68,35 @@ export default function ShelterManagement() {
     refetchInterval: 5000,
   });
 
+  const toggleActivationMutation = useMutation({
+    mutationFn: ({ shelterId, status, trigger }) =>
+      api.post(`/shelters/${shelterId}/toggle-activation`, {
+        activation_status: status,
+        activation_trigger: trigger || 'manual_cdrrmo',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shelters-dashboard'] });
+      showSuccess('Shelter activation state updated.');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to update shelter status.');
+    },
+  });
+
+  const mobilizeCswdMutation = useMutation({
+    mutationFn: (shelterId) =>
+      api.post(`/shelters/${shelterId}/mobilize-cswd`, {
+        team_name: 'CSWDO Central Logistics Unit',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shelters-dashboard'] });
+      showSuccess('CSWDO field response team mobilized!');
+    },
+    onError: (err) => {
+      showError(err.response?.data?.message || 'Failed to mobilize field team.');
+    },
+  });
+
   const shelters = dashboardData?.shelters || [];
   const activeTemplate = dashboardData?.templates?.find(t => t.is_active === true || t.is_active === 1 || t.is_active === '1') || dashboardData?.templates?.[0];
   const inventoryItems = dashboardData?.inventory || [];
@@ -181,67 +210,78 @@ export default function ShelterManagement() {
             setSelectedShelterForDetails(null);
             handleLaunchScanner(shelter);
           }}
+          onQuickDispatch={(shelter) => {
+            setSelectedShelterForDetails(null);
+            setQuickDispatchShelter(shelter);
+          }}
+          onPrintOverview={(shelter) => {
+            setPrintingShelterOverview(shelter);
+          }}
+          activeTemplate={activeTemplate}
+          isCSWDO={isCSWDO}
         />
       )}
       
-      {/* Header Bar: Tabs Switcher & Partner API Shortcut */}
+      {/* Header Bar: Tabs Switcher & Report Action */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div className="flex space-x-1 bg-gray-200 dark:bg-slate-900 p-1 rounded-lg w-fit">
+        <div className="flex space-x-1 bg-gray-200 dark:bg-slate-900 p-1 rounded-xl w-fit">
           <button
             onClick={() => { setActiveTab('capacities'); setSearch(''); }}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
-              activeTab === 'capacities' ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${
+              activeTab === 'capacities' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
             }`}
           >
             <MapPin size={16} /> Shelters &amp; Capacities
           </button>
           <button
             onClick={() => { setActiveTab('ration-planning'); setSearch(''); }}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
-              activeTab === 'ration-planning' ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${
+              activeTab === 'ration-planning' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
             }`}
           >
             <ClipboardList size={16} /> Ration Planning &amp; Buffers
           </button>
           <button
             onClick={() => { setActiveTab('barangay-calculator'); setSearch(''); }}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
-              activeTab === 'barangay-calculator' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${
+              activeTab === 'barangay-calculator' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
             }`}
           >
-            ⚡ Proactive Barangay Calculator
+            ⚡ Proactive Demand Calculator
           </button>
         </div>
 
-        <Link
-          to="/admin/api-keys"
-          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800 shadow-xs transition"
-          title="Manage External Shelter API Keys &amp; Telemetry Logs"
-        >
-          <Key size={14} className="text-purple-600 dark:text-purple-400" />
-          <span>Partner API Keys &amp; Logs</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowCapacityReport(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-2xs cursor-pointer border border-slate-200 dark:border-slate-700"
+            title="Generate City-Wide Shelter Capacity Report"
+          >
+            <Printer size={14} className="text-blue-600 dark:text-blue-400" />
+            <span>Capacity Report PDF</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter / Search Bar */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="relative w-64">
+        <div className="relative w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input 
             type="text" 
-            placeholder="Search shelters..." 
+            placeholder="Search shelters or barangays..." 
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
           />
         </div>
       </div>
 
       {/* Tab 1: Shelters & Capacities */}
       {activeTab === 'capacities' && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-950/50">
-            <h3 className="font-semibold text-gray-700 dark:text-slate-200">Evacuation Centers Status</h3>
+            <h3 className="font-extrabold text-sm text-gray-800 dark:text-slate-100 uppercase tracking-wider">City Evacuation Centers Directory</h3>
             {selectedShelterForScanner && (
               <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-bold px-3 py-1 rounded-full">
                 Scanner locked to shelter #{selectedShelterForScanner}
@@ -262,10 +302,9 @@ export default function ShelterManagement() {
               <table className="min-w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wider">
-                    <th className="py-3 px-6 font-semibold">Shelter Name</th>
-                    <th className="py-3 px-6 font-semibold">Capacity Status</th>
-                    <th className="py-3 px-6 font-semibold">State</th>
-                    <th className="py-3 px-6 font-semibold">Opened</th>
+                    <th className="py-3 px-6 font-semibold">Evacuation Shelter</th>
+                    <th className="py-3 px-6 font-semibold">Occupancy &amp; Load</th>
+                    <th className="py-3 px-6 font-semibold">Status &amp; Readiness</th>
                     <th className="py-3 px-6 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
@@ -280,50 +319,37 @@ export default function ShelterManagement() {
                     filteredShelters.map(shelter => {
                       const percentage = Math.round((shelter.current_occupancy / shelter.max_capacity) * 100);
                       const isSelected = selectedShelterForScanner === shelter.id;
+                      const remainingSlots = Math.max(0, shelter.max_capacity - shelter.current_occupancy);
+
                       return (
-                        <tr key={shelter.id} className={`hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition ${isSelected ? 'bg-blue-50 dark:bg-slate-800 ring-1 ring-inset ring-blue-200 dark:ring-blue-900' : ''}`}>
+                        <tr key={shelter.id} className={`hover:bg-blue-50/20 dark:hover:bg-slate-800/30 transition ${isSelected ? 'bg-blue-50 dark:bg-slate-800 ring-1 ring-inset ring-blue-200 dark:ring-blue-900' : ''}`}>
                           <td className="py-4 px-6">
-                            <div className="font-semibold text-gray-800 dark:text-slate-200 flex items-center gap-2 flex-wrap">
-                              <MapPin size={16} className="text-gray-400 dark:text-slate-500" />
+                            <div className="font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2 flex-wrap">
+                              <MapPin size={16} className="text-blue-500 shrink-0" />
                               {shelter.type === 'primary' ? (
-                                <span className="font-bold flex items-center gap-1">⭐ <span className="text-blue-600 dark:text-blue-400">{shelter.name}</span></span>
+                                <span className="flex items-center gap-1">⭐ <span className="text-blue-600 dark:text-blue-400">{shelter.name}</span></span>
                               ) : (
                                 <span>{shelter.name}</span>
                               )}
-                              {shelter.facility_type === 'police_station' && (
-                                <span className="text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                                  👮 Police HQ
-                                </span>
-                              )}
-                              {shelter.facility_type === 'military_base' && (
-                                <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                                  🪖 Military Outpost
-                                </span>
-                              )}
-                              {shelter.facility_type === 'hospital' && (
-                                <span className="text-[10px] bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                                  🏥 Hospital
-                                </span>
-                              )}
-                              {shelter.facility_type === 'fire_station' && (
-                                <span className="text-[10px] bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                                  🚒 Fire Station
-                                </span>
-                              )}
-                              {shelter.facility_type === 'safe_zone' && (
-                                <span className="text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                                  🛡️ Safe Zone
+                              {shelter.facility_type && (
+                                <span className="text-[10px] bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-bold px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                                  {shelter.facility_type}
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-gray-400 dark:text-slate-500 mt-0.5 pl-6">
-                              {shelter.current_occupancy}/{shelter.max_capacity} occupants
+                            <div className="text-xs text-gray-400 dark:text-slate-500 mt-1 pl-6">
+                              Brgy. {shelter.barangay || 'Zamboanga City'} · Elev. {shelter.elevation_meters || 10}m
                             </div>
                           </td>
+
+                          {/* Occupancy Bar & Load */}
                           <td className="py-4 px-6 w-1/3">
-                            <div className="flex justify-between text-xs mb-1">
-                              <span className="font-medium text-gray-700 dark:text-slate-300">{shelter.current_occupancy} / {shelter.max_capacity}</span>
-                              <span className={`font-bold ${shelter.current_occupancy > shelter.max_capacity ? 'text-red-500 animate-pulse' : 'text-gray-500 dark:text-slate-400'}`}>
+                            <div className="flex justify-between items-baseline text-xs mb-1.5">
+                              <div>
+                                <span className="font-extrabold text-sm text-gray-900 dark:text-slate-100">{shelter.current_occupancy}</span>
+                                <span className="text-gray-400"> / {shelter.max_capacity} Occupants</span>
+                              </div>
+                              <span className={`font-black ${shelter.current_occupancy > shelter.max_capacity ? 'text-red-500 animate-pulse' : 'text-gray-600 dark:text-slate-300'}`}>
                                 {percentage}% {shelter.current_occupancy > shelter.max_capacity ? '(OVERFLOW)' : ''}
                               </span>
                             </div>
@@ -333,114 +359,63 @@ export default function ShelterManagement() {
                                 style={{ width: `${Math.min(percentage, 100)}%` }}
                               ></div>
                             </div>
+                            <div className="text-[11px] text-gray-400 dark:text-slate-500 mt-1 flex justify-between">
+                              <span>{remainingSlots} slots available</span>
+                              <span>Opened {getDurationOpen(shelter.created_at)} ago</span>
+                            </div>
+                          </td>
 
-                            {activeTemplate && (
-                              <div className="mt-2.5 flex items-center justify-between text-[11px] bg-gray-50/70 dark:bg-slate-950/40 p-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                                {(() => {
-                                  const occ = shelter.current_occupancy || 0;
-                                  if (occ === 0) {
-                                    return (
-                                      <span className="text-gray-400 dark:text-slate-500 font-medium text-[10px]">
-                                        Standby Ready (No current occupants)
-                                      </span>
-                                    );
-                                  }
-
-                                  const surgePax = Math.ceil(occ * 0.20);
-                                  const targetSurgePax = occ + surgePax;
-                                  let isShortage = false;
-
-                                  for (const item of activeTemplate.items) {
-                                    const isFam = item.allocation_type === 'per_family';
-                                    const count = isFam ? Math.max(1, Math.ceil(targetSurgePax / 5)) : targetSurgePax;
-                                    const needed = count * item.quantity_per_head;
-                                    const inv = inventoryItems.find(it => it.id === item.inventory_item_id);
-                                    const avail = inv?.available_stock ?? Math.max(0, (inv?.total_stock || 0) - (inv?.reserved_quantity || 0));
-                                    if (avail < needed) {
-                                      isShortage = true;
-                                      break;
-                                    }
-                                  }
-
-                                  return (
-                                    <>
-                                      <span className="text-gray-500 dark:text-slate-400 font-medium truncate max-w-[170px]" title="Active demand + 20% surge contingency">
-                                        Surge Need ({occ} + {surgePax}):{' '}
-                                        <strong className="text-gray-700 dark:text-slate-200">
-                                          {activeTemplate.items.map(i => {
-                                            const isFam = i.allocation_type === 'per_family';
-                                            const c = isFam ? Math.max(1, Math.ceil(targetSurgePax / 5)) : targetSurgePax;
-                                            return `${c * i.quantity_per_head} ${i.inventory_item?.unit_type || ''}`;
-                                          }).join(', ')}
-                                        </strong>
-                                      </span>
-                                      {isShortage ? (
-                                        <span className="text-amber-700 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/50 text-[10px] flex items-center gap-1">
-                                          <AlertTriangle size={10} /> Central Shortage
-                                        </span>
-                                      ) : (
-                                        <span className="text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/50 text-[10px] flex items-center gap-1">
-                                          <CheckCircle size={10} /> Stock Ready
-                                        </span>
-                                      )}
-                                    </>
-                                  );
-                                })()}
+                          {/* Status & Readiness */}
+                          <td className="py-4 px-6">
+                            {shelter.current_occupancy > shelter.max_capacity ? (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-600 text-white shadow-xs animate-pulse flex items-center gap-1 w-fit">
+                                ⚠️ OVERFLOW (+{shelter.current_occupancy - shelter.max_capacity})
+                              </span>
+                            ) : shelter.activation_status === 'standby' ? (
+                              <div className="flex flex-col gap-1.5">
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1 w-fit">
+                                  🟡 Standby Court
+                                </span>
+                                <button
+                                  onClick={() => toggleActivationMutation.mutate({ shelterId: shelter.id, status: 'open' })}
+                                  disabled={toggleActivationMutation.isPending}
+                                  className="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded shadow-xs transition w-fit cursor-pointer flex items-center gap-1"
+                                  title="Activate covered court for evacuees"
+                                >
+                                  <Unlock size={10} /> Open Court
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col gap-1">
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase w-fit ${
+                                  shelter.status === 'open' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' : 
+                                  shelter.status === 'full' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' :
+                                  'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+                                }`}>
+                                  {shelter.status === 'open' ? '🟢 Open' : shelter.status === 'full' ? '🟡 Full' : '🔴 Closed'}
+                                </span>
+                                {shelter.cswd_mobilized && (
+                                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                                    🚚 Field Team Active
+                                  </span>
+                                )}
+                                {!shelter.cswd_mobilized && shelter.current_occupancy >= 15 && (
+                                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
+                                    ⚠️ Influx Alert ({shelter.current_occupancy} Pax)
+                                  </span>
+                                )}
                               </div>
                             )}
                           </td>
-                          <td className="py-4 px-6">
-                            {shelter.current_occupancy > shelter.max_capacity ? (
-                              <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-red-600 text-white shadow-sm shadow-red-500/50 animate-pulse flex items-center gap-1 w-fit">
-                                ⚠️ OVERFLOW (+{shelter.current_occupancy - shelter.max_capacity})
-                              </span>
-                            ) : (
-                              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                                shelter.status === 'open' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' : 
-                                shelter.status === 'full' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' :
-                                'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
-                              }`}>
-                                {shelter.status}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-4 px-6 text-gray-700 dark:text-slate-300 text-xs">
-                            <div className="font-semibold">
-                              {new Date(shelter.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}{' '}
-                              {new Date(shelter.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                            <div className="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">
-                              {getDurationOpen(shelter.created_at)} ago
-                            </div>
-                          </td>
+
+                          {/* Primary Single CTA Action */}
                           <td className="py-4 px-6 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {isCSWDO && activeTemplate && (
-                                <button
-                                  onClick={() => setQuickDispatchShelter(shelter)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition shadow-sm cursor-pointer"
-                                  title="Quick Dispatch Smart Presets"
-                                >
-                                  <Truck size={13} /> Quick Dispatch
-                                </button>
-                              )}
-                              {activeTemplate && (
-                                <button
-                                  onClick={() => setPrintingShelterOverview(shelter)}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-slate-700 rounded-lg font-bold text-xs uppercase tracking-wider transition shadow-2xs cursor-pointer"
-                                  title="Export or print official CSWDO ration allocation overview PDF"
-                                >
-                                  <Printer size={13} className="text-blue-600 dark:text-blue-400" />
-                                  <span>PDF Overview</span>
-                                </button>
-                              )}
-                              <button
-                                onClick={() => setSelectedShelterForDetails(shelter.id)}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-950/50 dark:hover:bg-blue-900/70 dark:text-blue-300 dark:border-blue-800/80 rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-2xs cursor-pointer"
-                              >
-                                View Details
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => setSelectedShelterForDetails(shelter.id)}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-xs cursor-pointer"
+                            >
+                              Manage Shelter
+                            </button>
                           </td>
                         </tr>
                       );
@@ -702,16 +677,22 @@ export default function ShelterManagement() {
                                           +{surgeBuffer} Surge Pax
                                         </span>
                                       </div>
-                                      <p className="mt-1.5 text-blue-700 dark:text-blue-400 leading-relaxed">
-                                        Target for <strong>{targetSurge} Pax</strong> ({occ} active evacuees + {surgeBuffer} reserve):{' '}
-                                        <strong className="text-blue-900 dark:text-blue-200">
-                                          {activeTemplate.items.map(i => {
-                                            const isFam = i.allocation_type === 'per_family';
-                                            const c = isFam ? Math.max(1, Math.ceil(targetSurge / 5)) : targetSurge;
-                                            return `${c * i.quantity_per_head} ${i.inventory_item?.unit_type || ''} ${i.inventory_item?.item_name?.split(' (')[0] || ''}`;
-                                          }).join(', ')}
-                                        </strong>.
-                                      </p>
+                                      <div className="mt-2 text-[11px] text-blue-700 dark:text-blue-300 font-semibold">
+                                        Target for <strong>{targetSurge} Pax</strong> ({occ} evacuees + {surgeBuffer} surge):
+                                      </div>
+                                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                        {activeTemplate.items.map(i => {
+                                          const isFam = i.allocation_type === 'per_family';
+                                          const c = isFam ? Math.max(1, Math.ceil(targetSurge / 5)) : targetSurge;
+                                          const qty = c * i.quantity_per_head;
+                                          const name = i.inventory_item?.item_name?.split(' (')[0] || '';
+                                          return (
+                                            <span key={i.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-900 dark:bg-blue-900/60 dark:text-blue-200 border border-blue-200 dark:border-blue-800">
+                                              {qty} {i.inventory_item?.unit_type || ''} {name}
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
 
                                       {isCSWDO ? (
                                         <button
@@ -746,16 +727,22 @@ export default function ShelterManagement() {
                                           +{remainingSlots} Slots
                                         </span>
                                       </div>
-                                      <p className="mt-1.5 text-amber-800 dark:text-amber-300 leading-relaxed">
-                                        Stocking remaining slots up to 100% capacity ({shelter.max_capacity} Pax total):{' '}
-                                        <strong className="text-amber-950 dark:text-amber-100">
-                                          {activeTemplate.items.map(i => {
-                                            const isFam = i.allocation_type === 'per_family';
-                                            const c = isFam ? Math.max(1, Math.ceil(remainingSlots / 5)) : remainingSlots;
-                                            return `${c * i.quantity_per_head} ${i.inventory_item?.unit_type || ''} ${i.inventory_item?.item_name?.split(' (')[0] || ''}`;
-                                          }).join(', ')}
-                                        </strong>.
-                                      </p>
+                                      <div className="mt-2 text-[11px] text-amber-900 dark:text-amber-200 font-semibold">
+                                        Stocking {remainingSlots} slots up to 100% capacity ({shelter.max_capacity} Pax):
+                                      </div>
+                                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                        {activeTemplate.items.map(i => {
+                                          const isFam = i.allocation_type === 'per_family';
+                                          const c = isFam ? Math.max(1, Math.ceil(remainingSlots / 5)) : remainingSlots;
+                                          const qty = c * i.quantity_per_head;
+                                          const name = i.inventory_item?.item_name?.split(' (')[0] || '';
+                                          return (
+                                            <span key={i.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-950 dark:bg-amber-900/60 dark:text-amber-100 border border-amber-200 dark:border-amber-800">
+                                              {qty} {i.inventory_item?.unit_type || ''} {name}
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
 
                                       {isCSWDO ? (
                                         <button

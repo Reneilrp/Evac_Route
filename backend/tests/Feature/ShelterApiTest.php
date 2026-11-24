@@ -563,3 +563,24 @@ test('artisan command api-key:logs outputs recent requests', function () {
         ->expectsOutputToContain('Partner Project Test')
         ->assertSuccessful();
 });
+
+test('non-admin staff are forbidden from accessing Partner API key management endpoints', function () {
+    $staff = User::factory()->create([
+        'role' => 'lgu_staff',
+        'operator_type' => 'rescue',
+        'status' => 'active',
+    ]);
+
+    // 1. GET /api/admin/api-keys
+    $this->actingAs($staff, 'sanctum')->getJson('/api/admin/api-keys')
+        ->assertForbidden();
+
+    // 2. GET /api/admin/api-keys/logs
+    $this->actingAs($staff, 'sanctum')->getJson('/api/admin/api-keys/logs')
+        ->assertForbidden();
+
+    // 3. POST /api/admin/api-keys
+    $this->actingAs($staff, 'sanctum')->postJson('/api/admin/api-keys', [
+        'name' => 'Unauthorized Partner Attempt',
+    ])->assertForbidden();
+});
