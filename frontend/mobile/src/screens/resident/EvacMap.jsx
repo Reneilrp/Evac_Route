@@ -1986,8 +1986,8 @@ export default function EvacMap({ navigation, route }) {
           }
         }}
         activeEarthquakeHazard={activeEarthquakeEvent}
-        userLocation={userLocation}
-        userBarangay={user?.barangay}
+        activeUserLocation={activeUserLocation}
+        userBarangay={user?.family_profile?.barangay || user?.barangay}
       />
 
       {/* ─── PIN LOCATION DETAILS MODAL (YOU & HOME) ─── */}

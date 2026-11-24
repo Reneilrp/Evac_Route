@@ -22,6 +22,7 @@ export default function EarthquakeWarningModal({
   visible,
   onDismiss,
   activeEarthquakeHazard,
+  activeUserLocation,
   userLocation,
   userBarangay,
   onRouteToHighGround,
@@ -39,13 +40,17 @@ export default function EarthquakeWarningModal({
       const normalized = String(userBarangay).toLowerCase().trim();
       if (COASTAL_BARANGAYS.some(b => normalized.includes(b))) return true;
     }
-    // Geospatial heuristic: Zamboanga City shoreline latitude threshold (< 6.915 near downtown coast)
-    if (userLocation?.latitude != null) {
-      return userLocation.latitude < 6.915;
+    // Handle both [lng, lat] coordinate array and { latitude, longitude } object
+    const lat = Array.isArray(activeUserLocation)
+      ? activeUserLocation[1]
+      : (activeUserLocation?.latitude ?? userLocation?.latitude);
+
+    if (lat != null && !isNaN(lat)) {
+      return lat < 6.915;
     }
     // Default safe fallback if location unavailable
     return false;
-  }, [userBarangay, userLocation]);
+  }, [userBarangay, activeUserLocation, userLocation]);
 
   const themeColor = isTsunami
     ? (isUserInCoastalZone ? '#ef4444' : '#0284c7')
