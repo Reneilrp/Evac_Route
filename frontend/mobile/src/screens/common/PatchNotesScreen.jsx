@@ -10,18 +10,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
-  Sparkles,
   RefreshCw,
   CheckCircle2,
-  AlertCircle,
-  Tag,
-  Calendar,
   Layers,
-  ExternalLink,
 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppUpdate } from '../../context/AppUpdateContext';
-import { APP_FULL_VERSION, APP_BUILD_NUMBER } from '../../config/version';
+import { APP_BUILD_NUMBER } from '../../config/version';
 
 export default function PatchNotesScreen({ navigation }) {
   const { colors, isDarkMode } = useTheme();
@@ -68,7 +63,7 @@ export default function PatchNotesScreen({ navigation }) {
               { color: isDarkMode ? '#ffffff' : colors.textPrimary },
             ]}
           >
-            What's New &amp; Updates
+            {"What's New & Updates"}
           </Text>
           <Text
             style={[

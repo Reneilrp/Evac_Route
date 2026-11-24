@@ -148,8 +148,10 @@ export default function ReportIncident({ navigation, route }) {
     if (route?.params?.openCreate) {
       const timer = setTimeout(() => {
         if (route?.params?.initialCoords) {
+          const rawLng = route.params.initialCoords.longitude ?? route.params.initialCoords.lng ?? (Array.isArray(route.params.initialCoords) ? route.params.initialCoords[0] : undefined);
+          const rawLat = route.params.initialCoords.latitude ?? route.params.initialCoords.lat ?? (Array.isArray(route.params.initialCoords) ? route.params.initialCoords[1] : undefined);
           const clamped = clampToZamboanga(
-            [Number(route.params.initialCoords.longitude), Number(route.params.initialCoords.latitude)],
+            [Number(rawLng ?? ZAMBOANGA_WMSU[0]), Number(rawLat ?? ZAMBOANGA_WMSU[1])],
             ZAMBOANGA_WMSU
           );
           const initCoords = {

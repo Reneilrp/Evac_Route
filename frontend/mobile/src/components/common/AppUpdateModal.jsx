@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { Sparkles, Download, CheckCircle2, X, RefreshCw } from 'lucide-react-native';
+import { Sparkles, Download, RefreshCw } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppUpdate } from '../../context/AppUpdateContext';
 
@@ -79,7 +79,7 @@ export default function AppUpdateModal() {
                 { backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc' },
               ]}
             >
-              <Text style={styles.highlightsHeader}>WHAT'S NEW IN THIS RELEASE:</Text>
+              <Text style={styles.highlightsHeader}>{"WHAT'S NEW IN THIS RELEASE:"}</Text>
               <ScrollView style={{ maxHeight: 160 }} showsVerticalScrollIndicator={false}>
                 {activePatchNotes.highlights.slice(0, 4).map((item, index) => (
                   <View key={index} style={styles.highlightItem}>

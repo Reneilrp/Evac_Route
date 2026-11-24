@@ -80,7 +80,13 @@ export default function EmergencySOSModal({ visible, onClose, initialCoords, onS
   const [headcount, setHeadcount] = useState(1);
   const [selectedModifiers, setSelectedModifiers] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [coords, setCoords] = useState(initialCoords || null);
+  const [coords, setCoords] = useState(() => {
+    if (!initialCoords) return null;
+    if (Array.isArray(initialCoords)) {
+      return { latitude: initialCoords[1], longitude: initialCoords[0] };
+    }
+    return initialCoords;
+  });
   const [addressLabel, setAddressLabel] = useState('Detecting current GPS location...');
 
   const triggerHaptic = (style = 'selection') => {
@@ -100,8 +106,8 @@ export default function EmergencySOSModal({ visible, onClose, initialCoords, onS
     let isMounted = true;
     async function resolveLocation() {
       try {
-        let lat = initialCoords?.latitude;
-        let lng = initialCoords?.longitude;
+        let lat = initialCoords?.latitude ?? (Array.isArray(initialCoords) ? initialCoords[1] : undefined);
+        let lng = initialCoords?.longitude ?? (Array.isArray(initialCoords) ? initialCoords[0] : undefined);
 
         if (!lat || !lng) {
           const { status } = await Location.requestForegroundPermissionsAsync();

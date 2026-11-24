@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import {
   CheckCircle,
@@ -33,20 +33,22 @@ export default function ScanResultCard({
   onReturnDayPass,
   dayPassLoading,
 }) {
-  const [actualHeadcount, setActualHeadcount] = useState(1);
+  const [prevScanResult, setPrevScanResult] = useState(scanResult);
+  const [actualHeadcount, setActualHeadcount] = useState(scanResult?.headcount || 1);
   const [selectedNfis, setSelectedNfis] = useState(['blanket', 'hygiene_kit']);
+
+  if (scanResult !== prevScanResult) {
+    setPrevScanResult(scanResult);
+    if (scanResult?.headcount) {
+      setActualHeadcount(scanResult.headcount);
+    }
+  }
 
   const toggleNfi = (id) => {
     setSelectedNfis((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
-
-  useEffect(() => {
-    if (scanResult?.headcount) {
-      setActualHeadcount(scanResult.headcount);
-    }
-  }, [scanResult]);
 
   return (
     <View style={styles.resultContainer}>

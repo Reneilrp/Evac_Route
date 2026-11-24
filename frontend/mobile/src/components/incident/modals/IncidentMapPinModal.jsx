@@ -15,7 +15,6 @@ import {
   ZAMBOANGA_WMSU,
   getNearestBarangay,
 } from '../../../utils/zamboangaGeo';
-import * as Location from 'expo-location';
 
 export default function IncidentMapPinModal({
   visible,
@@ -38,23 +37,23 @@ export default function IncidentMapPinModal({
 
   const [pinnedCoords, setPinnedCoords] = useState(initialCenter); // [lng, lat]
   const [nearestBarangay, setNearestBarangay] = useState(() => getNearestBarangay(initialCenter[0], initialCenter[1]));
+  const [prevVisible, setPrevVisible] = useState(visible);
+  const [prevInitialCoords, setPrevInitialCoords] = useState(initialCoords);
+
+  if (visible !== prevVisible || initialCoords !== prevInitialCoords) {
+    setPrevVisible(visible);
+    setPrevInitialCoords(initialCoords);
+    if (visible && initialCoords) {
+      setPinnedCoords(initialCenter);
+      setNearestBarangay(getNearestBarangay(initialCenter[0], initialCenter[1]));
+    }
+  }
 
   useEffect(() => {
     if (MAPBOX_PUBLIC_TOKEN) {
       Mapbox.setAccessToken(MAPBOX_PUBLIC_TOKEN);
     }
   }, []);
-
-  useEffect(() => {
-    if (visible && initialCoords) {
-      const c = clampToZamboanga([
-        initialCoords.longitude ?? initialCoords.lng ?? initialCoords[0] ?? ZAMBOANGA_WMSU[0],
-        initialCoords.latitude ?? initialCoords.lat ?? initialCoords[1] ?? ZAMBOANGA_WMSU[1],
-      ], ZAMBOANGA_WMSU);
-      setPinnedCoords(c);
-      setNearestBarangay(getNearestBarangay(c[0], c[1]));
-    }
-  }, [visible, initialCoords]);
 
   const updateLocationDetails = useCallback(async (lng, lat) => {
     const clamped = clampToZamboanga([lng, lat], ZAMBOANGA_WMSU);

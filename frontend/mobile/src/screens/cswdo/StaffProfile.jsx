@@ -227,7 +227,7 @@ export default function StaffProfile({ navigation }) {
               <Sparkles size={18} color="#f59e0b" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.menuTitle}>What's New &amp; Updates</Text>
+              <Text style={styles.menuTitle}>{"What's New & Updates"}</Text>
               <Text style={styles.menuSubtitle}>v{APP_VERSION} Release Notes, Dynamic SOS &amp; OTA updates</Text>
             </View>
             <ChevronRight size={18} color={colors.textMuted} />

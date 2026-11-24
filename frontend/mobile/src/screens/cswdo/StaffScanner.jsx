@@ -3,7 +3,6 @@ import {
   StyleSheet,
   Text,
   View,
-  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   Vibration,
@@ -19,14 +18,9 @@ import { useIsFocused } from '@react-navigation/native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import {
   QrCode,
-  CheckCircle,
-  XCircle,
   AlertTriangle,
   RefreshCw,
-  Send,
-  Users,
   Home,
-  Settings,
   Camera as CameraIcon,
   RotateCcw,
   UserPlus,
@@ -43,7 +37,7 @@ import {
   flushOfflineCheckinQueue,
 } from '../../services/offlineCheckinQueue';
 import { parseTotpPayload } from '../../utils/totpQr';
-import { spacing, radii, typography, shadows } from '../../styles/theme';
+import { spacing } from '../../styles/theme';
 
 import getStyles from '../../styles/StaffScanner.styles';
 import ScannerPermissionScreen from '../../components/cswdo/ScannerPermissionScreen';
@@ -101,8 +95,14 @@ export default function StaffScanner() {
   }, []);
 
   useEffect(() => {
-    refreshQueueCount();
-  }, [refreshQueueCount, isFocused]);
+    let active = true;
+    getOfflineCheckinCount().then((count) => {
+      if (active) setOfflineQueueCount(count);
+    });
+    return () => {
+      active = false;
+    };
+  }, [isFocused]);
 
   // Auto-sync offline check-in queue upon network reconnection
   useEffect(() => {

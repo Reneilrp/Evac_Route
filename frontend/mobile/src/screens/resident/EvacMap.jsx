@@ -2009,7 +2009,7 @@ export default function EvacMap({ navigation, route }) {
           }
         }}
         onNavigateToQR={() => {
-          navigation.navigate('Safe Check-in');
+          navigation.navigate('Profile');
         }}
         onRepinHomeAddress={() => {
           setIsPinningHomeMode(true);
