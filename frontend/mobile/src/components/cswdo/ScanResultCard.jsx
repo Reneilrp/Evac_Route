@@ -34,6 +34,13 @@ export default function ScanResultCard({
   dayPassLoading,
 }) {
   const [actualHeadcount, setActualHeadcount] = useState(1);
+  const [selectedNfis, setSelectedNfis] = useState(['blanket', 'hygiene_kit']);
+
+  const toggleNfi = (id) => {
+    setSelectedNfis((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
 
   useEffect(() => {
     if (scanResult?.headcount) {
@@ -168,6 +175,33 @@ export default function ScanResultCard({
 
           {/* Actions */}
           <View style={styles.actionBlock}>
+            {/* CDRRMO Anti-Duplication Warning Banner */}
+            {(scanResult.hasClaimed || scanResult.isDuplicateClaim || scanResult.duplicateWarning) && (
+              <View
+                style={{
+                  backgroundColor: '#fef3c7',
+                  borderColor: '#f59e0b',
+                  borderWidth: 1.5,
+                  borderRadius: 12,
+                  padding: 12,
+                  marginBottom: 12,
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                }}
+              >
+                <AlertTriangle size={24} color="#d97706" style={{ marginTop: 2 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#92400e' }}>
+                    ANTI-DUPLICATION ALERT
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#b45309', marginTop: 2, lineHeight: 16 }}>
+                    {scanResult.duplicateWarning || '⚠️ This IDP household has already claimed relief rations today. Verify household identity before re-allocating.'}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             {checkInSuccess && (
               <View style={styles.successBadge}>
                 <CheckCircle size={36} color={colors.success} />
@@ -249,13 +283,58 @@ export default function ScanResultCard({
                     ⚠️ Partial Intake: {scanResult.headcount - actualHeadcount} family member(s) will check in later.
                   </Text>
                 )}
+
+                {/* CSWDO Non-Food Items (NFIs) & Kits Checklist */}
+                <View style={{ marginTop: 14 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 }}>
+                    CSWDO Relief &amp; NFI Kit Checklist:
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    {[
+                      { id: 'blanket', label: 'Warm Blanket', icon: '🛏️' },
+                      { id: 'hygiene_kit', label: 'Hygiene Kit', icon: '🧼' },
+                      { id: 'dignity_kit', label: 'Dignity Kit', icon: '🌸' },
+                      { id: 'medicine', label: 'First Aid / Meds', icon: '💊' },
+                    ].map((item) => {
+                      const isSelected = selectedNfis.includes(item.id);
+                      return (
+                        <TouchableOpacity
+                          key={item.id}
+                          onPress={() => toggleNfi(item.id)}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 4,
+                            paddingHorizontal: 10,
+                            paddingVertical: 6,
+                            borderRadius: 8,
+                            backgroundColor: isSelected ? 'rgba(2, 132, 199, 0.15)' : colors.cardBorder || '#f1f5f9',
+                            borderColor: isSelected ? '#0284c7' : 'transparent',
+                            borderWidth: 1,
+                          }}
+                        >
+                          <Text style={{ fontSize: 12 }}>{item.icon}</Text>
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontWeight: isSelected ? '700' : '500',
+                              color: isSelected ? '#0284c7' : colors.textSecondary,
+                            }}
+                          >
+                            {item.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
               </View>
             )}
 
             {!scanResult.checkedIn && (
               <TouchableOpacity
                 style={styles.checkInBtn}
-                onPress={() => executeCheckIn(actualHeadcount)}
+                onPress={() => executeCheckIn(actualHeadcount, selectedNfis)}
                 disabled={checkInLoading}
               >
                 {checkInLoading ? (
@@ -293,7 +372,7 @@ export default function ScanResultCard({
                       </Text>
                     </View>
                     <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>
-                      Evacuee authorized for daytime mud-cleaning / livestock inspection.
+                      IDP authorized for daytime mud-cleaning / livestock inspection.
                     </Text>
                     <TouchableOpacity
                       onPress={() => onReturnDayPass && onReturnDayPass(scanResult.logId || scanResult.hash)}

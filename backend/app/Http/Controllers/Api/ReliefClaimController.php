@@ -68,7 +68,14 @@ class ReliefClaimController extends Controller
                     $shortageItems = [];
 
                     foreach ($activeRation->items as $rationItem) {
-                        $multiplier = ($rationItem->allocation_type === 'per_family') ? 1 : max(1, (int) $family->headcount);
+                        if ($rationItem->allocation_type === 'per_family') {
+                            $multiplier = 1;
+                        } elseif ($rationItem->allocation_type === 'per_female') {
+                            $femaleCount = (int) ($family->female_count ?? ceil((int) $family->headcount / 2));
+                            $multiplier = max(1, $femaleCount);
+                        } else {
+                            $multiplier = max(1, (int) $family->headcount);
+                        }
                         $requestedQty = $rationItem->quantity_per_head * $multiplier;
                         $inventory = $inventoryItems->get($rationItem->inventory_item_id);
 
@@ -186,23 +193,41 @@ class ReliefClaimController extends Controller
             ->with('shelter:id,name')
             ->first();
 
+        // Anti-duplication check: Check if household claimed rations today
+        $todayClaim = EvacuationLog::where('family_profile_id', $family->id)
+            ->whereDate('created_at', today())
+            ->where('ration_claimed', true)
+            ->with('shelter:id,name')
+            ->first();
+
+        $hasClaimed = ($todayClaim !== null);
+        $duplicateWarning = null;
+        if ($hasClaimed) {
+            $claimShelterName = $todayClaim->shelter?->name ?? 'Another Evacuation Facility';
+            $claimTime = $todayClaim->created_at ? $todayClaim->created_at->format('h:i A') : 'earlier today';
+            $duplicateWarning = "⚠️ DUPLICATE CLAIM WARNING: This IDP household has already claimed relief rations today at {$claimShelterName} ({$claimTime}).";
+        }
+
         return response()->json([
             'status' => 'success',
             'qr_code_hash' => $family->qr_code_hash,
             'family_id' => $family->id,
             'family_name' => $family->family_name,
-            'headcount' => $family->headcount,
+            'headcount' => $family->scanned_headcount ?? $family->headcount,
             'checked_in' => (bool) $activeLog,
             'log_id' => $activeLog?->id,
             'shelter_id' => $activeLog?->shelter_id,
-            'actual_headcount' => $activeLog?->actual_headcount ?? $family->headcount,
+            'actual_headcount' => $activeLog?->actual_headcount ?? $family->scanned_headcount ?? $family->headcount,
             'is_temporary_offsite' => (bool) ($activeLog?->is_temporary_offsite ?? false),
             'temporary_offsite_at' => $activeLog?->temporary_offsite_at?->toIso8601String(),
             'walk_in_voucher' => $activeLog?->walk_in_voucher,
             'vulnerabilities' => $activeLog?->vulnerabilities ?? [],
             'shelter' => $activeLog?->shelter?->name,
             'ration_claimed' => $activeLog?->ration_claimed ?? false,
-            'claimed_at' => $activeLog?->ration_claimed_at?->toIso8601String(),
+            'has_claimed' => $hasClaimed,
+            'is_duplicate_claim' => $hasClaimed,
+            'duplicate_warning' => $duplicateWarning,
+            'claimed_at' => $todayClaim ? $todayClaim->created_at?->toIso8601String() : $activeLog?->ration_claimed_at?->toIso8601String(),
         ]);
     }
 }

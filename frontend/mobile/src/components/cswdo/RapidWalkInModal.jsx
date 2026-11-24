@@ -114,7 +114,7 @@ export default function RapidWalkInModal({
               <CheckCircle size={48} color="#10b981" />
               <Text style={modalStyles.voucherSuccessTitle}>VOUCHER ISSUED</Text>
               <Text style={modalStyles.voucherNotice}>
-                Evacuee registered without smartphone. Assign this physical voucher code:
+                IDP registered without smartphone. Assign this physical voucher code:
               </Text>
 
               <View style={modalStyles.voucherCodeBadge}>
@@ -123,14 +123,14 @@ export default function RapidWalkInModal({
               </View>
 
               <Text style={modalStyles.voucherInstruction}>
-                Write &quot;{issuedVoucher}&quot; on the paper evacuee pass or wristband for meal &amp; dry ration claims.
+                Write &quot;{issuedVoucher}&quot; on the paper IDP pass or wristband for meal &amp; dry ration claims.
               </Text>
 
               <TouchableOpacity
                 style={modalStyles.nextEvacueeBtn}
                 onPress={handleReset}
               >
-                <Text style={modalStyles.nextEvacueeBtnText}>Intake Next Evacuee</Text>
+                <Text style={modalStyles.nextEvacueeBtnText}>Intake Next IDP</Text>
               </TouchableOpacity>
             </View>
           ) : (

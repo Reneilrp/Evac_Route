@@ -139,6 +139,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/shelters/{id}/vulnerability-summary', [CheckInController::class, 'vulnerabilitySummary'])->whereNumber('id');
 
         // 2. Check-in & Relief
+        Route::post('/shelters/{shelter_id}/verify-qr', [CheckInController::class, 'verifyQrToken']);
         Route::post('/shelters/{shelter_id}/check-in', [CheckInController::class, 'processCheckIn']);
         Route::post('/shelters/{shelter_id}/rapid-check-in', [CheckInController::class, 'rapidCheckIn']);
         Route::post('/shelters/{shelter_id}/check-out', [CheckInController::class, 'processCheckOut']);

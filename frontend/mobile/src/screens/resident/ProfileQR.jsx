@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, Modal, TextInput, Switch, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
-import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon, Edit3, Footprints, Bike, Car, Check, Vibrate, VibrateOff, Sparkles } from 'lucide-react-native';
+import { Phone, Bell, Users, LogOut, ShieldCheck, ChevronRight, MapPin, X, Sun, Moon, Edit3, Footprints, Bike, Car, Check, Vibrate, VibrateOff, Sparkles, Package, CheckCircle2, Clock } from 'lucide-react-native';
 import { useResidentStore } from '../../context/useResidentStore';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, useThemedStyles } from '../../context/ThemeContext';
@@ -16,7 +16,7 @@ import TransportProtocolModal from '../../components/resident/modals/TransportPr
 import * as Location from 'expo-location';
 import { clampToZamboanga, ZAMBOANGA_WMSU, getNearestBarangay } from '../../utils/zamboangaGeo';
 import { getStyles } from '../../styles/ProfileQR.styles';
-import * as Crypto from 'expo-crypto';
+import { generateTotpPayload } from '../../utils/totpQr';
 import { APP_VERSION, APP_FULL_VERSION } from '../../config/version';
 
 const TRANSPORTATION_OPTIONS = [
@@ -144,13 +144,19 @@ export default function ProfileQR({ navigation }) {
     let nextRefreshTime = Date.now() + 5000;
 
     const generateTotp = async () => {
-      const timestamp = Math.floor(Date.now() / 1000);
-      const dataToSign = `${effectiveFamilyId}:${timestamp}${effectiveQrHash}`;
-      const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, dataToSign);
-      if (isMounted) {
-        setTotpPayload(`${effectiveFamilyId}:${timestamp}:${hash}`);
-        nextRefreshTime = Date.now() + 5000;
-        setTotpSecondsRemaining(5.0);
+      try {
+        const result = await generateTotpPayload({
+          familyId: effectiveFamilyId,
+          headcount: effectiveHeadcount,
+          secret: effectiveQrHash,
+        });
+        if (isMounted) {
+          setTotpPayload(result.payload);
+          nextRefreshTime = Date.now() + 5000;
+          setTotpSecondsRemaining(5.0);
+        }
+      } catch (err) {
+        console.error('Failed to generate dynamic TOTP payload:', err);
       }
     };
 
@@ -168,7 +174,7 @@ export default function ProfileQR({ navigation }) {
       clearInterval(refreshInterval);
       clearInterval(timerInterval);
     };
-  }, [effectiveFamilyId, effectiveQrHash]);
+  }, [effectiveFamilyId, effectiveQrHash, effectiveHeadcount]);
 
   // Poll check-in status every 5 seconds
   const { data: statusUpdate } = useQuery({
@@ -287,11 +293,97 @@ export default function ProfileQR({ navigation }) {
             lineHeight: 16,
             fontWeight: '500'
           }}>
-            Present this QR code to LGU shelter staff upon arrival for immediate check-in and relief supply entry.
+            Present this QR code to CSWDO shelter staff upon arrival for immediate check-in and relief supply entry.
           </Text>
         </View>
 
-        {/* ─── 2. Compact Resident Profile Summary Card ─── */}
+        {/* ─── 2. CSWDO IDP Relief & Intake Status Card ─── */}
+        <View style={{
+          backgroundColor: statusUpdate?.relief_status === 'claimed' || statusUpdate?.ration_claimed || statusUpdate?.status === 'safe'
+            ? (isDarkMode ? '#064e3b' : '#ecfdf5')
+            : colors.card,
+          borderRadius: 20,
+          padding: 16,
+          marginBottom: 16,
+          borderWidth: 1.5,
+          borderColor: statusUpdate?.relief_status === 'claimed' || statusUpdate?.ration_claimed || statusUpdate?.status === 'safe'
+            ? '#10b981'
+            : colors.cardBorder,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 2,
+        }}>
+          {statusUpdate?.relief_status === 'claimed' || statusUpdate?.ration_claimed || statusUpdate?.status === 'safe' ? (
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <CheckCircle2 size={16} color="#10b981" />
+                  <Text style={{ fontSize: 11, fontWeight: '900', color: isDarkMode ? '#a7f3d0' : '#065f46', letterSpacing: 1 }}>
+                    RELIEF RATIONS ISSUED
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: isDarkMode ? '#6ee7b7' : '#047857' }}>
+                  CSWDO Verified
+                </Text>
+              </View>
+
+              <Text style={{ fontSize: 14, fontWeight: '900', color: isDarkMode ? '#f0fdf4' : '#064e3b', marginBottom: 4 }}>
+                {statusUpdate?.shelter_name || 'Designated Shelter Center'}
+              </Text>
+
+              <Text style={{ fontSize: 11, color: isDarkMode ? '#a7f3d0' : '#047857', marginBottom: 12 }}>
+                Verified Family Headcount: <Text style={{ fontWeight: '800' }}>{effectiveHeadcount} IDPs</Text>
+              </Text>
+
+              {/* Kit Allocation Tags */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {[
+                  { label: 'Food Pack (Family)', icon: '🍚' },
+                  { label: 'Blankets & Mats', icon: '🛏️' },
+                  { label: 'Hygiene Kit', icon: '🧼' },
+                  { label: 'Dignity Kit', icon: '🌸' },
+                  { label: 'First Aid Kit', icon: '💊' },
+                ].map((kit, idx) => (
+                  <View
+                    key={idx}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 8,
+                      backgroundColor: isDarkMode ? '#065f46' : '#d1fae5',
+                      borderWidth: 1,
+                      borderColor: isDarkMode ? '#047857' : '#a7f3d0',
+                    }}
+                  >
+                    <Text style={{ fontSize: 11 }}>{kit.icon}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: isDarkMode ? '#d1fae5' : '#065f46' }}>
+                      {kit.label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : (
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <Clock size={16} color="#f59e0b" />
+                <Text style={{ fontSize: 11, fontWeight: '900', color: '#f59e0b', letterSpacing: 1 }}>
+                  RELIEF STATUS: PENDING INTAKE
+                </Text>
+              </View>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
+                Present this QR code to the CSWDO Camp Manager at shelter gate intake to claim family food packs, hygiene kits, blankets, dignity kits, and medicine kits.
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* ─── 3. Compact Resident Profile Summary Card ─── */}
         <View style={{
           flexDirection: 'row',
           alignItems: 'center',

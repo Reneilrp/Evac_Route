@@ -17,6 +17,71 @@ use Illuminate\Support\Facades\DB;
 class CheckInController extends Controller
 {
     /**
+     * Inspect and verify IDP QR Code before completing intake (Anti-Duplication & Headcount check)
+     * Route: POST /api/shelters/{shelter_id}/verify-qr
+     */
+    public function verifyQrToken(Request $request, $shelter_id)
+    {
+        $request->validate([
+            'qr_code_hash' => 'required|string',
+        ]);
+
+        try {
+            $family = FamilyProfile::verifyTotpPayload($request->qr_code_hash, false);
+            $family->load('user');
+
+            $shelter = Shelter::findOrFail($shelter_id);
+
+            // Check if active log exists
+            $activeLog = EvacuationLog::where('family_profile_id', $family->id)
+                ->whereNull('checked_out_at')
+                ->with('shelter')
+                ->first();
+
+            // Anti-duplication check: Did this IDP family claim rations today?
+            $todayClaim = EvacuationLog::where('family_profile_id', $family->id)
+                ->whereDate('created_at', today())
+                ->where('ration_claimed', true)
+                ->with('shelter')
+                ->first();
+
+            $hasClaimed = ($todayClaim !== null);
+            $duplicateWarning = null;
+            if ($hasClaimed) {
+                $claimShelterName = $todayClaim->shelter?->name ?? 'Another Evacuation Facility';
+                $claimTime = $todayClaim->created_at ? $todayClaim->created_at->format('h:i A') : 'earlier today';
+                $duplicateWarning = "⚠️ DUPLICATE CLAIM WARNING: This IDP household has already claimed relief rations today at {$claimShelterName} ({$claimTime}). Verify before re-issuing!";
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'family_id' => $family->id,
+                    'family_name' => $family->family_name ?? $family->user?->name ?? 'IDP Family',
+                    'contact_number' => $family->contact_number ?? 'N/A',
+                    'barangay' => $family->barangay ?? 'N/A',
+                    'recorded_headcount' => (int) $family->headcount,
+                    'active_checked_in' => $activeLog !== null,
+                    'active_shelter' => $activeLog?->shelter?->name,
+                    'has_claimed' => $hasClaimed,
+                    'is_duplicate_claim' => $hasClaimed,
+                    'duplicate_warning' => $duplicateWarning,
+                    'previous_claim' => $todayClaim ? [
+                        'shelter' => $todayClaim->shelter?->name,
+                        'claimed_at' => $todayClaim->created_at?->toIso8601String(),
+                        'items' => $todayClaim->claimed_ration_items,
+                    ] : null,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
      * Handle resident arrival, capacity updates, and inventory deduction.
      * Route: POST /api/shelters/{shelter_id}/check-in
      */
@@ -112,7 +177,14 @@ class CheckInController extends Controller
                             $claimedItems = [];
 
                             foreach ($activeRation->items as $rationItem) {
-                                $multiplier = ($rationItem->allocation_type === 'per_family') ? 1 : max(1, (int) $family->headcount);
+                                if ($rationItem->allocation_type === 'per_family') {
+                                    $multiplier = 1;
+                                } elseif ($rationItem->allocation_type === 'per_female') {
+                                    $femaleCount = (int) ($family->female_count ?? ceil((int) $family->headcount / 2));
+                                    $multiplier = max(1, $femaleCount);
+                                } else {
+                                    $multiplier = max(1, (int) $family->headcount);
+                                }
                                 $totalDeduction = $rationItem->quantity_per_head * $multiplier;
                                 $inventory = $inventoryItems->get($rationItem->inventory_item_id);
 
@@ -140,12 +212,31 @@ class CheckInController extends Controller
                             'claimed_ration_items' => $claimedItems,
                         ]);
 
+                        $todayClaim = EvacuationLog::where('family_profile_id', $family->id)
+                            ->whereDate('created_at', today())
+                            ->where('ration_claimed', true)
+                            ->where('id', '!=', $newLog->id)
+                            ->with('shelter')
+                            ->first();
+
+                        $hasClaimed = ($todayClaim !== null);
+                        $duplicateWarning = null;
+                        if ($hasClaimed) {
+                            $claimShelterName = $todayClaim->shelter?->name ?? 'Previous Shelter';
+                            $claimTime = $todayClaim->created_at ? $todayClaim->created_at->format('h:i A') : 'earlier today';
+                            $duplicateWarning = "⚠️ DUPLICATE CLAIM WARNING: This IDP household already claimed rations today at {$claimShelterName} ({$claimTime}).";
+                        }
+
                         return [
                             'action' => 'transfer',
                             'shelter' => $shelter,
                             'log' => $newLog,
+                            'has_claimed' => $hasClaimed,
+                            'is_duplicate_claim' => $hasClaimed,
+                            'duplicate_warning' => $duplicateWarning,
+                            'idp_headcount' => (int) $family->headcount,
                             'ration_applied' => $activeRation ? $activeRation->name : 'No active ration template.',
-                            'message' => 'Resident transferred and checked in.',
+                            'message' => $duplicateWarning ? $duplicateWarning : 'Resident transferred and checked in.',
                         ];
                     }
                 }
@@ -210,8 +301,15 @@ class CheckInController extends Controller
                     $claimedItems = [];
 
                     foreach ($activeRation->items as $rationItem) {
-                        // Math: Quantity per person * Actual Headcount (or 1 if per-family pack)
-                        $multiplier = ($rationItem->allocation_type === 'per_family') ? 1 : $effectiveHeadcount;
+                        // Math: Quantity per person * Actual Headcount (or 1 if per-family pack, or female count)
+                        if ($rationItem->allocation_type === 'per_family') {
+                            $multiplier = 1;
+                        } elseif ($rationItem->allocation_type === 'per_female') {
+                            $femaleCount = (int) ($family->female_count ?? ceil($effectiveHeadcount / 2));
+                            $multiplier = max(1, $femaleCount);
+                        } else {
+                            $multiplier = $effectiveHeadcount;
+                        }
                         $totalDeduction = $rationItem->quantity_per_head * $multiplier;
 
                         // Deduct from main CSWDO inventory
@@ -231,6 +329,23 @@ class CheckInController extends Controller
                     }
                 }
 
+                // Anti-duplication check (CDRRMO Standard): Verify if household already claimed rations today
+                $todayClaim = EvacuationLog::where('family_profile_id', $family->id)
+                    ->whereDate('created_at', today())
+                    ->where('ration_claimed', true)
+                    ->with('shelter')
+                    ->first();
+
+                $hasClaimed = ($todayClaim !== null);
+                $duplicateWarning = null;
+                if ($hasClaimed) {
+                    $claimShelterName = $todayClaim->shelter?->name ?? 'Another Evacuation Facility';
+                    $claimTime = $todayClaim->created_at ? $todayClaim->created_at->format('h:i A') : 'earlier today';
+                    $duplicateWarning = "⚠️ DUPLICATE CLAIM WARNING: This IDP household has already claimed relief rations today at {$claimShelterName} ({$claimTime}).";
+                }
+
+                $claimedNfiItems = $request->input('claimed_nfi_items', $request->input('nfi_items', []));
+
                 // Create the Evacuation Log (Audit Trail)
                 $log = EvacuationLog::create([
                     'family_profile_id' => $family->id,
@@ -238,6 +353,8 @@ class CheckInController extends Controller
                     'recorded_headcount' => $family->headcount,
                     'actual_headcount' => $effectiveHeadcount,
                     'ration_claimed' => $activeRation !== null, // Only true when a template was applied
+                    'is_duplicate_claim_warning' => $hasClaimed,
+                    'nfi_items_claimed' => $claimedNfiItems,
                     'checked_in_at' => now(),
                     'claimed_ration_items' => $claimedItems,
                 ]);
@@ -246,8 +363,13 @@ class CheckInController extends Controller
                     'action' => 'checkin',
                     'shelter' => $shelter,
                     'log' => $log,
+                    'has_claimed' => $hasClaimed,
+                    'is_duplicate_claim' => $hasClaimed,
+                    'duplicate_warning' => $duplicateWarning,
+                    'idp_headcount' => $effectiveHeadcount,
+                    'nfi_items_claimed' => $claimedNfiItems,
                     'ration_applied' => $activeRation ? $activeRation->name : 'No active ration template.',
-                    'message' => $msg,
+                    'message' => $duplicateWarning ? $duplicateWarning : $msg,
                 ];
             }, 5);
 

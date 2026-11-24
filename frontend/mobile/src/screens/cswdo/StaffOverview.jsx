@@ -109,7 +109,7 @@ export default function StaffOverview() {
       await refetchShelters();
       Alert.alert(
         'Shelter State Updated',
-        `${shelter.name} is now ${targetStatus.toUpperCase()} for emergency evacuees.`
+        `${shelter.name} is now ${targetStatus.toUpperCase()} for emergency IDPs.`
       );
     } catch (err) {
       Alert.alert(
@@ -145,7 +145,7 @@ export default function StaffOverview() {
   const handleRequestChoSupport = (shelter) => {
     Alert.alert(
       'Medical Support Requested',
-      `City Health Office (CHO) medical team notified for ${shelter.name} to triage high-risk evacuees.`
+      `City Health Office (CHO) medical team notified for ${shelter.name} to triage high-risk IDPs.`
     );
   };
 
@@ -341,7 +341,7 @@ export default function StaffOverview() {
             <Text style={[styles.statValue, { color: colors.primary }]}>
               {shelters.reduce((sum, s) => sum + (Number(s?.current_occupancy) || 0), 0)}
             </Text>
-            <Text style={styles.statLabel}>Total Evacuees</Text>
+            <Text style={styles.statLabel}>Total IDPs</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={[styles.statValue, { color: colors.danger }]}>
@@ -478,7 +478,7 @@ export default function StaffOverview() {
                   >
                     <Unlock size={16} color="#fff" />
                     <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>
-                      🔓 Clear &amp; Open Court for Evacuees
+                      🔓 Clear &amp; Open Shelter for IDPs
                     </Text>
                   </TouchableOpacity>
                 ) : (
@@ -536,7 +536,7 @@ export default function StaffOverview() {
                     >
                       {selectedShelterModal?.cswd_mobilized
                         ? `Field Team Active: ${selectedShelterModal?.cswd_mobilized_team || 'CSWDO Delta'}`
-                        : `Influx Alert: ${selectedShelterModal?.current_occupancy} Evacuees Present`}
+                        : `Influx Alert: ${selectedShelterModal?.current_occupancy} IDPs Present`}
                     </Text>
                   </View>
 

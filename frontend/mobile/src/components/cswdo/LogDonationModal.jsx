@@ -258,7 +258,7 @@ export default function LogDonationModal({
               <Text style={[modalStyles.label, { marginTop: 12 }]}>Distribution Notes</Text>
               <TextInput
                 style={[modalStyles.input, { height: 60, textAlignVertical: 'top' }]}
-                placeholder="e.g. Arrived steaming hot, hand out to Quad A evacuees first"
+                placeholder="e.g. Arrived steaming hot, hand out to Quad A IDPs first"
                 placeholderTextColor="#94a3b8"
                 multiline={true}
                 value={notes}

@@ -42,6 +42,7 @@ import {
   getOfflineCheckinCount,
   flushOfflineCheckinQueue,
 } from '../../services/offlineCheckinQueue';
+import { parseTotpPayload } from '../../utils/totpQr';
 import { spacing, radii, typography, shadows } from '../../styles/theme';
 
 import getStyles from '../../styles/StaffScanner.styles';
@@ -177,6 +178,9 @@ export default function StaffScanner() {
         walkInVoucher: response.data.walk_in_voucher,
         vulnerabilities: response.data.vulnerabilities || [],
         rationClaimed: response.data.ration_claimed,
+        hasClaimed: response.data.has_claimed,
+        isDuplicateClaim: response.data.is_duplicate_claim,
+        duplicateWarning: response.data.duplicate_warning,
         claimedAt: response.data.claimed_at,
         isOfflineMode: false,
       });
@@ -184,19 +188,19 @@ export default function StaffScanner() {
       // If network unreachable / offline, fall back to offline verification
       const isNetworkErr = !err.response || err.message?.includes('Network') || err.message?.includes('timeout');
       if (isNetworkErr) {
-        let extractedFamilyId = 'Citizen';
-        if (typeof hash === 'string' && hash.includes(':')) {
-          extractedFamilyId = hash.split(':')[0];
-        }
+        const parsed = parseTotpPayload(hash);
+        const extractedFamilyId = parsed.familyId || 'Citizen';
+        const extractedHeadcount = parsed.headcount || 1;
         setScanResult({
           hash: hash,
-          familyName: `Household #${extractedFamilyId} (Offline Pass)`,
-          headcount: 4,
-          actualHeadcount: 4,
+          familyName: `IDP Household #${extractedFamilyId} (Offline Token)`,
+          headcount: extractedHeadcount,
+          actualHeadcount: extractedHeadcount,
           checkedIn: false,
           shelter: user?.assigned_shelter?.name || user?.assignedShelter?.name || 'Assigned Evacuation Shelter',
           shelterId: user?.assigned_shelter_id || user?.assigned_shelter?.id,
           vulnerabilities: ['Offline Queued Admission'],
+          hasClaimed: false,
           isOfflineMode: true,
         });
         Vibration.vibrate(100);
@@ -389,7 +393,7 @@ export default function StaffScanner() {
     }
   };
 
-  const executeCheckIn = async (actualHeadcount) => {
+  const executeCheckIn = async (actualHeadcount, selectedNfis = []) => {
     if (!scanResult || checkInLoading || isCheckingInRef.current) return;
 
     const targetShelterId = await getTargetShelterId();
@@ -408,6 +412,7 @@ export default function StaffScanner() {
       target_shelter_id: targetShelterId,
       shelter_id: targetShelterId,
       family_name: scanResult.familyName,
+      claimed_nfi_items: selectedNfis,
     };
 
     // If already in offline mode, queue directly
