@@ -1225,9 +1225,14 @@ export default function MapDashboard() {
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
                 </span>
                 <div className="text-xs">
-                  <span className="font-black text-amber-300 uppercase tracking-wide">🌋 RECENT SEISMIC EVENT DETECTED:</span>{' '}
+                  <span className="font-black text-amber-300 uppercase tracking-wide">
+                    {activeMajorQuake.guidance_tier === 'emergency' ? '🚨 CRITICAL EARTHQUAKE:' : '🌋 SEISMIC ADVISORY:'}
+                  </span>{' '}
                   <span>
-                    <strong>M {activeMajorQuake.magnitude.toFixed(1)}</strong> — {activeMajorQuake.place} ({activeMajorQuake.distance_km} km from Zamboanga City, Depth {activeMajorQuake.depth_km} km).
+                    <strong>M {activeMajorQuake.magnitude.toFixed(1)}</strong> — {activeMajorQuake.place} ({activeMajorQuake.distance_km} km from Zamboanga City, Depth {activeMajorQuake.depth_km} km).{' '}
+                    <span className="font-bold text-amber-200">
+                      [{activeMajorQuake.guidance_action || (activeMajorQuake.distance_km <= 40 ? 'Duck, Cover & Hold' : 'Expect Tremors')}]
+                    </span>
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 ml-2 shrink-0">

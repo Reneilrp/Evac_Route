@@ -65,11 +65,15 @@ class EarthquakeService
                         $lng
                     );
 
+                    $mag = (float) ($props['mag'] ?? 0);
+                    $estimatedIntensity = $this->calculateEstimatedIntensity($mag, $distKm, $depth);
+                    $guidance = $this->determineGuidance($mag, $distKm, $depth, $estimatedIntensity);
+
                     return [
                         'id' => $feature['id'] ?? uniqid('eq_'),
                         'title' => $props['title'] ?? 'Seismic Event',
                         'place' => $props['place'] ?? 'Unknown Location',
-                        'magnitude' => (float) ($props['mag'] ?? 0),
+                        'magnitude' => $mag,
                         'time' => $props['time'] ?? null,
                         'time_formatted' => isset($props['time']) ? date('Y-m-d H:i:s', (int) ($props['time'] / 1000)) : null,
                         'url' => $props['url'] ?? null,
@@ -79,7 +83,13 @@ class EarthquakeService
                         'depth_km' => $depth,
                         'distance_km' => round($distKm, 1),
                         'is_nearby_zamboanga' => $distKm <= 150,
-                        'severity' => $this->classifySeverity((float) ($props['mag'] ?? 0)),
+                        'severity' => $this->classifySeverity($mag),
+                        'estimated_intensity' => round($estimatedIntensity, 1),
+                        'peis_label' => $guidance['peis_label'],
+                        'guidance_tier' => $guidance['tier'], // 'emergency' | 'advisory' | 'informational'
+                        'guidance_title' => $guidance['title'],
+                        'guidance_action' => $guidance['action'],
+                        'safety_directive' => $guidance['directive'],
                     ];
                 }, $features);
             } catch (\Throwable $e) {
@@ -117,5 +127,82 @@ class EarthquakeService
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
 
         return $earthRadiusKm * $c;
+    }
+
+    /**
+     * Estimates ground shaking intensity (PEIS / Modified Mercalli equivalent)
+     * at target location using standard seismological attenuation.
+     *
+     * I_est = 1.5 * M - 3.5 * log10(sqrt(D^2 + h^2)) + 3.0
+     */
+    public function calculateEstimatedIntensity(float $mag, float $distKm, float $depthKm): float
+    {
+        $effDepth = max($depthKm, 10.0);
+        $hypocentralDist = sqrt(($distKm * $distKm) + ($effDepth * $effDepth));
+        $hypocentralDist = max($hypocentralDist, 5.0);
+
+        $intensity = (1.5 * $mag) - (3.5 * log10($hypocentralDist)) + 3.0;
+
+        return min(10.0, max(1.0, $intensity));
+    }
+
+    /**
+     * Determines life-safety guidance tier based on estimated shaking intensity and distance.
+     *
+     * Tiers:
+     * - emergency: Strong/critical shaking felt locally -> Duck, Cover & Hold
+     * - advisory: Distant epicenter -> Expect light tremors/swaying
+     * - informational: Negligible shaking at user location -> Logged only
+     */
+    public function determineGuidance(float $mag, float $distKm, float $depthKm, float $intensity): array
+    {
+        $peisLabel = match (true) {
+            $intensity >= 7.0 => 'PEIS VII-VIII: Destructive Shaking',
+            $intensity >= 5.0 => 'PEIS V-VI: Strong Shaking',
+            $intensity >= 3.5 => 'PEIS IV: Moderately Strong',
+            $intensity >= 2.5 => 'PEIS II-III: Weak / Light Swaying',
+            default => 'PEIS I: Scarcely Perceptible',
+        };
+
+        // Emergency Tier: Intense shaking expected at resident location
+        $isEmergency = ($intensity >= 4.5)
+            || ($mag >= 5.0 && $distKm <= 35.0)
+            || ($mag >= 6.5 && $distKm <= 90.0);
+
+        if ($isEmergency) {
+            return [
+                'tier' => 'emergency',
+                'title' => '🚨 STRONG EARTHQUAKE DETECTED',
+                'action' => 'Duck, Cover & Hold',
+                'peis_label' => $peisLabel,
+                'directive' => 'Duck, Cover & Hold under a sturdy desk or table. Keep away from falling hazards and glass, and evacuate to open areas after shaking stops.',
+            ];
+        }
+
+        // Advisory Tier: Distant epicenter, tremors/swaying possible
+        $isAdvisory = ($intensity >= 2.5)
+            || ($mag >= 4.2 && $distKm <= 200.0)
+            || ($mag >= 5.5 && $distKm <= 350.0);
+
+        if ($isAdvisory) {
+            $distRounded = round($distKm, 0);
+            return [
+                'tier' => 'advisory',
+                'title' => '🟡 SEISMIC ADVISORY: DISTANT QUAKE',
+                'action' => 'Expect Tremors',
+                'peis_label' => $peisLabel,
+                'directive' => "Expect light tremors or swaying. The epicenter is distant ({$distRounded} km away). Stay calm, check surroundings for loose objects, and monitor official DRRM advisories. Duck, Cover & Hold is not currently needed unless shaking intensifies.",
+            ];
+        }
+
+        // Informational Tier: Negligible shaking unfelt locally
+        $distRounded = round($distKm, 0);
+        return [
+            'tier' => 'informational',
+            'title' => 'ℹ️ DISTANT SEISMIC EVENT',
+            'action' => 'Monitor Only',
+            'peis_label' => $peisLabel,
+            'directive' => "Distant seismic event ({$distRounded} km away). No perceptible tremors expected at your location. Logged for DRRM situational awareness.",
+        ];
     }
 }

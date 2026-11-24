@@ -154,6 +154,24 @@ export default function EarthquakeFeedDrawer({
                     <span>&bull;</span>
                     <span>Depth: {eq.depth_km} km</span>
                   </div>
+                  {eq.guidance_action && (
+                    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${
+                        eq.guidance_tier === 'emergency'
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                          : eq.guidance_tier === 'advisory'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          : 'bg-slate-800 text-slate-400 border border-slate-700'
+                      }`}>
+                        {eq.guidance_action === 'Duck, Cover & Hold' ? '🚨 Duck, Cover & Hold' : (eq.guidance_action === 'Expect Tremors' ? '🟡 Expect Tremors' : 'ℹ️ Monitor Only')}
+                      </span>
+                      {eq.peis_label && (
+                        <span className="text-[9.5px] text-white/40 font-mono">
+                          {eq.peis_label.split(':')[0]}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {eq.time_formatted && (
                     <p className="text-[10px] text-white/30 mt-0.5">
                       {new Date(eq.time_formatted).toLocaleString()}

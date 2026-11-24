@@ -54,7 +54,7 @@ class WeatherService
                     $description = $weather['description'] ?? $mainCondition;
                     $tempC = (float) ($data['main']['temp'] ?? 29.0);
                     $humidity = (int) ($data['main']['humidity'] ?? 75);
-                    $rainMm = isset($data['rain']['1h']) ? (float) $data['rain']['1h'] : ($isGeneralRain ? 2.5 : 0.0);
+                    $rainMm = isset($data['rain']['1h']) ? (float) $data['rain']['1h'] : 0.0;
                     $source = 'openweathermap';
 
                     // DRRM threshold: rain under 1.0 mm/h is trace drizzle that does not accumulate on streets/canals.
@@ -64,6 +64,33 @@ class WeatherService
                         || in_array($conditionId, [200, 201, 202, 211, 212, 221, 230, 231, 232, 502, 503, 504, 522]);
 
                     $isTraceRain = ! $isSignificantRain && ($rainMm > 0 || $isGeneralRain);
+
+                    // Cross-validate with Open-Meteo in live environment to prevent phantom rain when satellite grids lag
+                    if (! app()->runningUnitTests() && ($isSignificantRain || $isTraceRain)) {
+                        try {
+                            $omRes = Http::timeout(3)->get('https://api.open-meteo.com/v1/forecast', [
+                                'latitude' => $this->lat,
+                                'longitude' => $this->lon,
+                                'current' => 'rain,showers,weather_code',
+                            ]);
+                            if ($omRes->successful()) {
+                                $omCurrent = $omRes->json('current') ?? [];
+                                $omRain = (float) ($omCurrent['rain'] ?? 0) + (float) ($omCurrent['showers'] ?? 0);
+                                $omCode = (int) ($omCurrent['weather_code'] ?? 0);
+                                $rainCodes = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99];
+                                if ($omRain == 0.0 && ! in_array($omCode, $rainCodes)) {
+                                    $isSignificantRain = false;
+                                    $isTraceRain = false;
+                                    $rainMm = 0.0;
+                                    $omMapped = $this->mapWmoCode($omCode);
+                                    $condition = $omMapped['condition'];
+                                    $description = $omMapped['description'];
+                                }
+                            }
+                        } catch (\Throwable $ex) {
+                            // Retain OpenWeatherMap on network timeout
+                        }
+                    }
 
                     return [
                         'is_raining' => $isSignificantRain,
@@ -161,16 +188,21 @@ class WeatherService
 
                         // If explicit 1h rain amount is provided by OpenWeather
                         if ($rain1h >= 0.0) {
-                            return $rain1h >= 1.0
+                            $isSignificantRain = $rain1h >= 1.0
                                 || in_array(strtolower($mainCondition), ['thunderstorm'])
                                 || in_array($conditionId, [200, 201, 202, 211, 212, 221, 230, 231, 232, 502, 503, 504, 522]);
+                        } else {
+                            // OpenWeatherMap condition IDs: 5xx is Rain, 3xx is Drizzle, 2xx is Thunderstorm
+                            // DRRM threshold: trace drizzle (500/3xx) is excluded from flood alarms
+                            $isSignificantRain = in_array(strtolower($mainCondition), ['thunderstorm'])
+                                || ($conditionId >= 200 && $conditionId < 300)
+                                || in_array($conditionId, [501, 502, 503, 504, 520, 521, 522]);
                         }
 
-                        // OpenWeatherMap condition IDs: 5xx is Rain, 3xx is Drizzle, 2xx is Thunderstorm
-                        // DRRM threshold: trace drizzle (500/3xx) is excluded from flood alarms
-                        $isSignificantRain = in_array(strtolower($mainCondition), ['thunderstorm'])
-                            || ($conditionId >= 200 && $conditionId < 300)
-                            || in_array($conditionId, [501, 502, 503, 504, 520, 521, 522]);
+                        // In live runtime, verify with Open-Meteo to prevent phantom alarms from stale satellite grids
+                        if ($isSignificantRain && ! app()->runningUnitTests()) {
+                            return $this->checkOpenMeteo();
+                        }
 
                         return $isSignificantRain;
                     }
@@ -292,6 +324,7 @@ class WeatherService
     {
         $nowManila = now($tz);
         $currentHourIsoPrefix = $nowManila->format('Y-m-d\TH:00');
+        $rainCodes = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99];
 
         $currentRaw = $payload['current'] ?? [];
         $currentCode = (int) ($currentRaw['weather_code'] ?? 1);

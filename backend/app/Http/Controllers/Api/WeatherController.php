@@ -32,6 +32,9 @@ class WeatherController extends Controller
         try {
             if (method_exists($this->weatherService, 'getLiveTelemetry')) {
                 $telemetry = $this->weatherService->getLiveTelemetry();
+                if (isset($telemetry['is_raining'])) {
+                    $isRaining = (bool) $telemetry['is_raining'];
+                }
             }
         } catch (\Throwable $e) {
             $telemetry = [];
