@@ -68,13 +68,45 @@ class WeatherController extends Controller
 
         $fixedFloodSpotsTriggered = (bool) Cache::get('fixed_flood_spots_triggered', false);
 
-        // Auto-activate chronic drainage flood spots if duration meets or exceeds threshold
-        if ($isRaining && $autoActivationEnabled && $durationMinutes >= $thresholdMinutes && ! $fixedFloodSpotsTriggered) {
-            Hazard::where('hazard_type', 'flood')
-                ->where('is_fixed_flood_spot', true)
-                ->update(['is_active' => true]);
-            Cache::forever('fixed_flood_spots_triggered', true);
-            $fixedFloodSpotsTriggered = true;
+        // Tiered activation along Tumaga River Corridor and chronic drainage spots based on rain duration
+        $activeTumagaTier = 'clear';
+        if ($isRaining && $autoActivationEnabled) {
+            if ($durationMinutes >= 45) {
+                $activeTumagaTier = 'high';
+                Hazard::where('hazard_type', 'flood')
+                    ->where(function ($q) {
+                        $q->where('is_fixed_flood_spot', true)
+                          ->orWhere('corridor_name', 'Tumaga River');
+                    })
+                    ->where(function ($q) {
+                        $q->whereNull('rainfall_trigger_minutes')
+                          ->orWhere('rainfall_trigger_minutes', '<=', 45);
+                    })
+                    ->update(['is_active' => true]);
+                Cache::forever('fixed_flood_spots_triggered', true);
+                $fixedFloodSpotsTriggered = true;
+            } elseif ($durationMinutes >= 30) {
+                $activeTumagaTier = 'medium';
+                Hazard::where('hazard_type', 'flood')
+                    ->where('corridor_name', 'Tumaga River')
+                    ->where('rainfall_trigger_minutes', '<=', 30)
+                    ->update(['is_active' => true]);
+            } elseif ($durationMinutes >= 15) {
+                $activeTumagaTier = 'low';
+                Hazard::where('hazard_type', 'flood')
+                    ->where('corridor_name', 'Tumaga River')
+                    ->where('rainfall_trigger_minutes', '<=', 15)
+                    ->update(['is_active' => true]);
+            }
+
+            // General chronic drainage threshold fallback
+            if ($durationMinutes >= $thresholdMinutes && ! $fixedFloodSpotsTriggered) {
+                Hazard::where('hazard_type', 'flood')
+                    ->where('is_fixed_flood_spot', true)
+                    ->update(['is_active' => true]);
+                Cache::forever('fixed_flood_spots_triggered', true);
+                $fixedFloodSpotsTriggered = true;
+            }
         }
 
         $activePresetsCount = Hazard::whereNotNull('preset_key')
@@ -108,6 +140,7 @@ class WeatherController extends Controller
                 'fixed_flood_spots_triggered' => $fixedFloodSpotsTriggered,
                 'active_presets_count' => $activePresetsCount,
                 'active_fixed_flood_spots_count' => $activeFixedFloodSpotsCount,
+                'tumaga_corridor_tier' => $activeTumagaTier,
                 'system_recommendation' => $isRaining
                     ? ($durationMinutes >= $thresholdMinutes
                         ? "High flood risk: Continuous rain duration ({$durationMinutes}m) reached configured {$thresholdMinutes}m threshold. Chronic drainage flood corridors active."

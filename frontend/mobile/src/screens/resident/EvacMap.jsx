@@ -799,6 +799,8 @@ export default function EvacMap({ navigation, route }) {
         severity: latestSignificantQuake.severity,
         distance_km: latestSignificantQuake.distance_km ?? latestSignificantQuake.distance_from_zamboanga_km,
         time: latestSignificantQuake.time,
+        tsunami: latestSignificantQuake.tsunami,
+        tsunami_threat: latestSignificantQuake.tsunami_threat || (latestSignificantQuake.tsunami === 1),
         guidance_tier: latestSignificantQuake.guidance_tier || ((latestSignificantQuake.distance_km ?? 0) > 40 ? 'advisory' : 'emergency'),
         guidance_title: latestSignificantQuake.guidance_title,
         guidance_action: latestSignificantQuake.guidance_action,
@@ -1984,6 +1986,8 @@ export default function EvacMap({ navigation, route }) {
           }
         }}
         activeEarthquakeHazard={activeEarthquakeEvent}
+        userLocation={userLocation}
+        userBarangay={user?.barangay}
       />
 
       {/* ─── PIN LOCATION DETAILS MODAL (YOU & HOME) ─── */}

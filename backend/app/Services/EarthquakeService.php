@@ -66,8 +66,9 @@ class EarthquakeService
                     );
 
                     $mag = (float) ($props['mag'] ?? 0);
+                    $tsunamiFlag = (int) ($props['tsunami'] ?? 0);
                     $estimatedIntensity = $this->calculateEstimatedIntensity($mag, $distKm, $depth);
-                    $guidance = $this->determineGuidance($mag, $distKm, $depth, $estimatedIntensity);
+                    $guidance = $this->determineGuidance($mag, $distKm, $depth, $estimatedIntensity, $tsunamiFlag, $lat, $lng);
 
                     return [
                         'id' => $feature['id'] ?? uniqid('eq_'),
@@ -77,7 +78,8 @@ class EarthquakeService
                         'time' => $props['time'] ?? null,
                         'time_formatted' => isset($props['time']) ? date('Y-m-d H:i:s', (int) ($props['time'] / 1000)) : null,
                         'url' => $props['url'] ?? null,
-                        'tsunami' => (int) ($props['tsunami'] ?? 0),
+                        'tsunami' => $tsunamiFlag,
+                        'tsunami_threat' => $guidance['tsunami_threat'] ?? false,
                         'latitude' => $lat,
                         'longitude' => $lng,
                         'depth_km' => $depth,
@@ -147,14 +149,14 @@ class EarthquakeService
     }
 
     /**
-     * Determines life-safety guidance tier based on estimated shaking intensity and distance.
+     * Determines life-safety guidance tier based on estimated shaking intensity, distance, and tsunami threat.
      *
      * Tiers:
-     * - emergency: Strong/critical shaking felt locally -> Duck, Cover & Hold
+     * - emergency: Strong/critical shaking felt locally (Duck, Cover & Hold) OR Offshore Tsunami threat (Evacuate Inland to High Ground)
      * - advisory: Distant epicenter -> Expect light tremors/swaying
      * - informational: Negligible shaking at user location -> Logged only
      */
-    public function determineGuidance(float $mag, float $distKm, float $depthKm, float $intensity): array
+    public function determineGuidance(float $mag, float $distKm, float $depthKm, float $intensity, int $tsunami = 0, float $lat = 0, float $lng = 0): array
     {
         $peisLabel = match (true) {
             $intensity >= 7.0 => 'PEIS VII-VIII: Destructive Shaking',
@@ -164,7 +166,21 @@ class EarthquakeService
             default => 'PEIS I: Scarcely Perceptible',
         };
 
-        // Emergency Tier: Intense shaking expected at resident location
+        // Offshore Tsunami Evaluation (Sulu Trench / Cotabato Trench or USGS Tsunami flag)
+        $isOffshoreTsunami = ($tsunami === 1) || ($mag >= 6.0 && $depthKm <= 60.0 && $distKm <= 250.0);
+
+        if ($isOffshoreTsunami) {
+            return [
+                'tier' => 'emergency',
+                'tsunami_threat' => true,
+                'title' => '🌊 TSUNAMI EVACUATION WARNING',
+                'action' => 'Evacuate Coastal Areas Inland',
+                'peis_label' => $peisLabel,
+                'directive' => 'Offshore seismic event detected in sea/trench. Coastal barangays (Campo Islam, Baliwasan, Mariki, Rio Hondo, Cawa-Cawa, Labuan, etc.) must immediately evacuate inland to higher ground (KCC Mall / Gov. Camins and above). Inland residents: stay in safe zone, keep roads clear.',
+            ];
+        }
+
+        // Emergency Tier: Intense shaking expected at resident location (Inland / Non-Tsunami)
         $isEmergency = ($intensity >= 4.5)
             || ($mag >= 5.0 && $distKm <= 35.0)
             || ($mag >= 6.5 && $distKm <= 90.0);
@@ -172,6 +188,7 @@ class EarthquakeService
         if ($isEmergency) {
             return [
                 'tier' => 'emergency',
+                'tsunami_threat' => false,
                 'title' => '🚨 STRONG EARTHQUAKE DETECTED',
                 'action' => 'Duck, Cover & Hold',
                 'peis_label' => $peisLabel,
@@ -188,6 +205,7 @@ class EarthquakeService
             $distRounded = round($distKm, 0);
             return [
                 'tier' => 'advisory',
+                'tsunami_threat' => false,
                 'title' => '🟡 SEISMIC ADVISORY: DISTANT QUAKE',
                 'action' => 'Expect Tremors',
                 'peis_label' => $peisLabel,
@@ -199,6 +217,7 @@ class EarthquakeService
         $distRounded = round($distKm, 0);
         return [
             'tier' => 'informational',
+            'tsunami_threat' => false,
             'title' => 'ℹ️ DISTANT SEISMIC EVENT',
             'action' => 'Monitor Only',
             'peis_label' => $peisLabel,
