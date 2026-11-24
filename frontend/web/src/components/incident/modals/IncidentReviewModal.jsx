@@ -21,6 +21,8 @@ export default function IncidentReviewModal({
 
   if (!reviewModal) return null;
 
+  const isApproveOrValidate = reviewModal.action === 'validate' || reviewModal.action === 'approve';
+
   return (
     <div 
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -28,12 +30,12 @@ export default function IncidentReviewModal({
     >
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-1 capitalize">
-          {reviewModal.action} Incident
+          {isApproveOrValidate ? '🛡️ Validate Incident Report' : '✕ Dismiss Incident Report'}
         </h2>
         <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
-          {reviewModal.action === 'approve'
-            ? 'This will promote the report to an official hazard on the live map.'
-            : 'Provide a reason for rejection.'}
+          {isApproveOrValidate
+            ? 'This confirms and stamps the citizen report as officially approved and validated by CDRRMO.'
+            : 'Provide a reason for dismissal (this deactivates the hazard from the live evacuation map).'}
         </p>
 
         {/* Incident Summary Card with Address/Barangay & Coordinates Permanently Visible */}
@@ -62,7 +64,7 @@ export default function IncidentReviewModal({
           </div>
         )}
 
-        {reviewModal.action === 'approve' && (
+        {isApproveOrValidate && (
           <div className="mb-4 bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
             {reviewModal.evaluation?.is_frequent_hotspot && (
               <div className="mb-3 p-2 bg-amber-100 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800/70 text-amber-900 dark:text-amber-300 rounded-lg text-xs font-medium">
@@ -132,9 +134,9 @@ export default function IncidentReviewModal({
             })}
             disabled={isPending}
             className={`flex-1 py-2 rounded-lg text-sm font-bold text-white transition cursor-pointer ${
-              reviewModal.action === 'approve'
-                ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-red-500 hover:bg-red-600'
+              isApproveOrValidate
+                ? 'bg-emerald-600 hover:bg-emerald-700'
+                : 'bg-rose-500 hover:bg-rose-600'
             } disabled:opacity-50`}
           >
             {isPending ? 'Processing...' : `Confirm ${reviewModal.action}`}

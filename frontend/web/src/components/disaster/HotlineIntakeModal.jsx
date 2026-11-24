@@ -85,6 +85,28 @@ export default function HotlineIntakeModal({ isOpen, onClose, rescueUnits = [], 
     }
   }, [barangay]);
 
+  const fillDemoPreset = () => {
+    setIntakeSource('hotline_911');
+    setInformantName('Brgy. Kagawad Santos');
+    setInformantContact('0917-111-2233');
+    setVictimName('Pheinz & Family');
+    setVictimPhone('0917-555-0199');
+    setBarangay('Tetuan');
+    setLatitude(6.9194);
+    setLongitude(122.0840);
+    setHeadcount(4);
+    setSpecialNeeds('Senior with mobility issue, 1 infant');
+    setTriageLevel('critical');
+    setSituationDescription('Rapid flash flood water rising above waist level near Tetuan River.');
+    const firstAvailable = rescueUnits.find(u => u.status === 'standby');
+    if (firstAvailable) {
+      setRescueUnitId(firstAvailable.id);
+    }
+    if (shelters.length > 0) {
+      setTargetShelterId(shelters[0].id);
+    }
+  };
+
   // Auto-select first available rescue unit and shelter
   useEffect(() => {
     const available = rescueUnits.filter((u) => u.status === 'standby');
@@ -166,12 +188,22 @@ export default function HotlineIntakeModal({ isOpen, onClose, rescueUnits = [], 
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={fillDemoPreset}
+              className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1 cursor-pointer"
+              title="Auto-fill demo emergency report for Pheinz in Tetuan"
+            >
+              ⚡ Demo Preset
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Intake Form */}

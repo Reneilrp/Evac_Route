@@ -26,6 +26,9 @@ import ConfirmationModal from '../../components/common/ConfirmationModal';
 import CreateIncidentModal from '../../components/incident/modals/CreateIncidentModal';
 import IncidentReportCard from '../../components/incident/IncidentReportCard';
 import EmergencySOSModal from '../../components/disaster/EmergencySOSModal';
+import { useActiveSos } from '../../context/ActiveSosContext';
+import ResidentRescueHud from '../../components/rescue/ResidentRescueHud';
+import QuickEmergency911Modal, { Quick911FloatingPill } from '../../components/common/QuickEmergency911Modal';
 import { useTheme, useThemedStyles } from '../../context/ThemeContext';
 import { getStyles } from '../../styles/ReportIncident.styles';
 import { clampToZamboanga, ZAMBOANGA_WMSU, getNearestBarangay } from '../../utils/zamboangaGeo';
@@ -77,7 +80,9 @@ export default function ReportIncident({ navigation, route }) {
   const styles = useThemedStyles(getStyles);
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [show911Modal, setShow911Modal] = useState(false);
   const [historyTab, setHistoryTab] = useState('active'); // 'active' | 'archived'
+  const { refetchActiveSos } = useActiveSos();
 
   const SEVERITY_COLORS = {
     low: colors.successLight,
@@ -104,6 +109,8 @@ export default function ReportIncident({ navigation, route }) {
   const [description, setDescription] = useState('');
   const [hazardType, setHazardType] = useState('flood');
   const [severityLevel, setSeverityLevel] = useState('medium');
+  const [geometryType, setGeometryType] = useState('circle'); // 'circle' | 'road_corridor'
+  const [radiusMeters, setRadiusMeters] = useState(50); // 25 | 50 | 100 | 200
   const [isRecurringDrainage, setIsRecurringDrainage] = useState(false);
   const [photos, setPhotos] = useState([]); // array of { uri, type, fileName }, max 4
   const [coords, setCoords] = useState(null); // { latitude, longitude }
@@ -352,6 +359,8 @@ export default function ReportIncident({ navigation, route }) {
     setDescription('');
     setHazardType('flood');
     setSeverityLevel('medium');
+    setGeometryType('circle');
+    setRadiusMeters(50);
     setIsRecurringDrainage(false);
     setPhotos([]);
     setCoords(null);
@@ -361,30 +370,13 @@ export default function ReportIncident({ navigation, route }) {
 
   // --- Submit report ---
   const handleSubmit = async () => {
-    if (!name.trim()) {
-      setConfirmModal({
-        visible: true,
-        title: 'Missing Incident Name',
-        message: 'Please provide a descriptive name for this incident before submitting.',
-        detail: 'Example: "Waist-deep flood near bridge" or "Fallen tree blocking lane"',
-        confirmText: 'Understood',
-        cancelText: '',
-        variant: 'warning',
-        icon: AlertTriangle,
-        loading: false,
-        onConfirm: closeConfirmModal,
-        onCancel: closeConfirmModal,
-      });
-      return;
-    }
-
     if (!coords || (coords.latitude === 0 && coords.longitude === 0)) {
       setConfirmModal({
         visible: true,
-        title: 'GPS Location Required',
-        message: 'Valid GPS coordinates are required before transmitting your emergency report so rescue units can locate the incident.',
-        detail: 'Please tap "Acquire Location" to fetch your current GPS position.',
-        confirmText: 'Acquire Location',
+        title: 'Location Pin Required',
+        message: 'Valid map coordinates are required before transmitting your hazard report so emergency responders and citizens can locate it.',
+        detail: 'Please tap "Use My GPS" or "Pin on Map" to set the incident location.',
+        confirmText: 'Acquire GPS',
         cancelText: 'Cancel',
         variant: 'warning',
         icon: MapPin,
@@ -402,7 +394,7 @@ export default function ReportIncident({ navigation, route }) {
       setConfirmModal({
         visible: true,
         title: 'Submit Without Photo?',
-        message: 'Providing photos of the incident helps the CDRRMO / LGU verify and approve it immediately. Would you like to add photos now?',
+        message: 'Providing photos of the incident helps CDRRMO verify and award official priority badges. Would you like to add photos now?',
         detail: 'Clear photos with depth indicators and landmarks expedite response times.',
         confirmText: 'Add Photo',
         cancelText: 'Submit Anyway',
@@ -430,11 +422,20 @@ export default function ReportIncident({ navigation, route }) {
     try {
       const formData = new FormData();
       const finalCoords = clampToZamboanga([coords.longitude, coords.latitude], ZAMBOANGA_WMSU);
-      formData.append('name', name.trim());
+
+      // Auto-generate name based on hazard and locality
+      const hazardObj = HAZARD_TYPES.find(h => h.value === hazardType);
+      const cleanHazard = (hazardObj?.label || hazardType).replace(/^[^\w\s]+\s*/, '');
+      const autoTitle = `${cleanHazard} Incident — ${barangayName.trim() || 'Zamboanga City'}`;
+      const finalName = name.trim() || autoTitle;
+
+      formData.append('name', finalName);
       formData.append('latitude', String(finalCoords[1]));
       formData.append('longitude', String(finalCoords[0]));
       formData.append('hazard_type', hazardType);
       formData.append('severity_level', severityLevel);
+      formData.append('geometry_type', geometryType);
+      formData.append('radius_meters', String(radiusMeters));
 
       let finalDescription = description.trim();
       const locationParts = [];
@@ -473,9 +474,9 @@ export default function ReportIncident({ navigation, route }) {
 
       setConfirmModal({
         visible: true,
-        title: 'Report Transmitted',
-        message: 'Your incident report has been securely sent to the CDRRMO / LGU for immediate review.',
-        detail: 'Thank you for helping keep your community safe.',
+        title: '⚡ Hazard Deployed to Live Map',
+        message: 'Your incident report is now active on the live evacuation map and routing system. CDRRMO is reviewing it for official validation badge.',
+        detail: 'Thank you for protecting your neighborhood.',
         confirmText: 'Understood',
         cancelText: '',
         variant: 'success',
@@ -546,17 +547,9 @@ export default function ReportIncident({ navigation, route }) {
           )}
         </View>
 
-        {/* Header Action Buttons: [+ File Report] & [Archive History] */}
+        {/* Header Action Buttons: [911 Pill] & [Archive History] */}
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            onPress={() => setShowCreateModal(true)}
-            style={styles.headerCreateBtn}
-            activeOpacity={0.8}
-            accessibilityLabel="File New Incident Report"
-          >
-            <Plus color={colors.white} size={15} strokeWidth={2.5} />
-            <Text style={styles.headerCreateBtnText}>File Report</Text>
-          </TouchableOpacity>
+          <Quick911FloatingPill onPress={() => setShow911Modal(true)} />
 
           {/* Archive History Icon Button */}
           <TouchableOpacity
@@ -606,36 +599,6 @@ export default function ReportIncident({ navigation, route }) {
         </View>
       </View>
 
-      {/* --- COMMUNITY HAZARD REPORT HERO BANNER --- */}
-      <View style={styles.heroBanner}>
-        <View style={styles.heroHeaderRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <AlertTriangle color={colors.warning} size={18} />
-            <Text style={styles.heroTitle}>Report Hazard / Disaster</Text>
-          </View>
-          <View style={{
-            backgroundColor: isDarkMode ? '#334155' : '#e2e8f0',
-            paddingHorizontal: 8,
-            paddingVertical: 2,
-            borderRadius: 10,
-          }}>
-            <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textSecondary }}>LGU FIELD DISPATCH</Text>
-          </View>
-        </View>
-
-        <Text style={styles.heroSubtitle}>
-          Spotted road flooding, landslides, or blocked evacuation paths? Alert CDRRMO with live GPS and up to 4 credibility photos for immediate review.
-        </Text>
-
-        <TouchableOpacity
-          onPress={() => setShowCreateModal(true)}
-          style={styles.heroActionBtn}
-          activeOpacity={0.85}
-        >
-          <Plus color={colors.white} size={16} strokeWidth={2.5} />
-          <Text style={styles.heroActionBtnText}>File Incident Report (4 Photos + GPS)</Text>
-        </TouchableOpacity>
-      </View>
 
       {/* --- EMERGENCY SOS QUICK ACTIONS (ORDERING SYSTEM LAUNCHER) --- */}
       <View style={{
@@ -872,6 +835,10 @@ export default function ReportIncident({ navigation, route }) {
         setHazardType={setHazardType}
         severity={severityLevel}
         setSeverity={setSeverityLevel}
+        geometryType={geometryType}
+        setGeometryType={setGeometryType}
+        radiusMeters={radiusMeters}
+        setRadiusMeters={setRadiusMeters}
         description={description}
         setDescription={setDescription}
         isRecurringDrainage={isRecurringDrainage}
@@ -881,6 +848,7 @@ export default function ReportIncident({ navigation, route }) {
         streetAddress={streetAddress}
         setStreetAddress={setStreetAddress}
         coords={coords}
+        setCoords={setCoords}
         gettingLocation={locating}
         handleGetLocation={handleGetLocation}
         photos={photos}
@@ -917,7 +885,19 @@ export default function ReportIncident({ navigation, route }) {
         visible={showSOSModal}
         onClose={() => setShowSOSModal(false)}
         initialCoords={coords}
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['my-incidents'] })}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['my-incidents'] });
+          refetchActiveSos();
+        }}
+      />
+
+      {/* Live Rescue Dispatch HUD */}
+      <ResidentRescueHud onOpen911Modal={() => setShow911Modal(true)} />
+
+      {/* 1-Tap Emergency Hotlines Modal */}
+      <QuickEmergency911Modal
+        visible={show911Modal}
+        onClose={() => setShow911Modal(false)}
       />
     </SafeAreaView>
   );

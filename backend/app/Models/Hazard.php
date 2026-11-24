@@ -5,13 +5,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['name', 'latitude', 'longitude', 'location', 'radius_meters', 'geometry_type', 'corridor_coordinates', 'estimated_duration_hours', 'is_active', 'reported_by', 'hazard_type', 'severity_level', 'is_fixed_flood_spot', 'disaster_category', 'barangay', 'origin_type', 'preset_key'])]
+#[Fillable([
+    'name', 'latitude', 'longitude', 'location', 'radius_meters',
+    'geometry_type', 'corridor_coordinates', 'estimated_duration_hours',
+    'is_active', 'reported_by', 'hazard_type', 'severity_level',
+    'is_fixed_flood_spot', 'disaster_category', 'barangay', 'origin_type', 'preset_key',
+    'pending_incident_id', 'validation_status', 'is_validated_by_cdrrmo', 'validated_by', 'validated_at'
+])]
 class Hazard extends Model
 {
     protected $hidden = ['location'];
 
     protected $casts = [
         'corridor_coordinates' => 'array',
+        'is_validated_by_cdrrmo' => 'boolean',
+        'validated_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -30,5 +38,15 @@ class Hazard extends Model
     public function reportedBy()
     {
         return $this->belongsTo(User::class, 'reported_by');
+    }
+
+    public function validator()
+    {
+        return $this->belongsTo(User::class, 'validated_by');
+    }
+
+    public function pendingIncident()
+    {
+        return $this->belongsTo(PendingIncident::class, 'pending_incident_id');
     }
 }

@@ -71,13 +71,11 @@ export default function RiskAlertsDrawer({ hazards = [], simulationMode, drawerO
                       <p className="text-[10px] text-slate-500 dark:text-white/50 mt-0.5 capitalize">
                         {typeLabel} · {alert.severity_level} severity · {alert.radius_meters}m radius
                       </p>
-                      {alert.estimated_duration_hours && (
-                        <MiniTimeline 
-                          createdAt={alert.created_at} 
-                          durationHours={alert.estimated_duration_hours} 
-                          hazardType={alert.hazard_type} 
-                        />
-                      )}
+                      {alert.is_validated_by_cdrrmo ? (
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">🛡️ Approved &amp; Validated by CDRRMO</p>
+                      ) : alert.origin_type === 'resident_report' ? (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold mt-1">⚠️ Community Reported (Active)</p>
+                      ) : null}
                     </div>
                   </div>
                 </div>

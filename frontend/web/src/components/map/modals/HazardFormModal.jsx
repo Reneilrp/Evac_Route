@@ -20,8 +20,6 @@ export default function HazardFormModal({
   const geometryType = initialGeometryType || 'circle';
   const [hazardType, setHazardType] = useState(initialHazardType || 'flood');
   const [severityLevel, setSeverityLevel] = useState(initialSeverityLevel || 'medium');
-  const [durationValue, setDurationValue] = useState('');
-  const [durationUnit, setDurationUnit] = useState('hours');
   const [isFixedFloodSpot, setIsFixedFloodSpot] = useState(Boolean(initialIsFixed));
 
   const handleHazardTypeChange = (e) => {
@@ -35,9 +33,6 @@ export default function HazardFormModal({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name) return;
-    let hours = durationValue ? parseInt(durationValue, 10) : null;
-    if (hours && durationUnit === 'days') hours = hours * 24;
-    if (hours && durationUnit === 'weeks') hours = hours * 168;
     onConfirm({ 
       name, 
       radius_meters: parseFloat(radius) || 50,
@@ -45,7 +40,7 @@ export default function HazardFormModal({
       corridor_coordinates: geometryType === 'road_corridor' ? initialCorridorCoords : null,
       hazard_type: hazardType,
       severity_level: severityLevel,
-      estimated_duration_hours: hours,
+      estimated_duration_hours: null,
       is_fixed_flood_spot: hazardType === 'flood' ? isFixedFloodSpot : false
     });
   };
@@ -212,32 +207,6 @@ export default function HazardFormModal({
               </div>
             </div>
           )}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">
-              {hazardType === 'flood' ? 'Estimated Drain Time' : 
-               hazardType === 'road_block' ? 'Estimated Clearance Time' : 
-               'Estimated Duration'}
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                min="1"
-                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-                placeholder="e.g. 4"
-                value={durationValue}
-                onChange={e => setDurationValue(e.target.value)}
-              />
-              <select
-                className="px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-                value={durationUnit}
-                onChange={e => setDurationUnit(e.target.value)}
-              >
-                <option value="hours">Hours</option>
-                <option value="days">Days</option>
-                <option value="weeks">Weeks</option>
-              </select>
-            </div>
-          </div>
           <div className="flex gap-3 pt-2">
             <button
               type="button"

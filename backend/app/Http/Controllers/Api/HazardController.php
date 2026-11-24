@@ -170,7 +170,7 @@ class HazardController extends Controller
         $radius = $validated['radius_meters'] ?? 800;
         $hazardType = $validated['hazard_type'] ?? 'flood';
         $severity = $validated['severity_level'] ?? 'high';
-        $duration = $validated['estimated_duration_hours'] ?? 6;
+        $duration = $validated['estimated_duration_hours'] ?? null;
         $hazardName = $validated['name'] ?? "CDRRMO Active Zone: Barangay {$barangay}";
 
         $hazard = Hazard::create([

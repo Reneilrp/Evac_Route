@@ -277,6 +277,16 @@ export default function IncidentReviewQueue() {
                         📸 {photos.length} Photos Attached
                       </span>
                     )}
+                    {/* Validation Trust Badge */}
+                    {incident.validation_status === 'cdrrmo_validated' || incident.status === 'approved' ? (
+                      <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 px-2 py-0.5 rounded-full font-extrabold flex items-center gap-1">
+                        🛡️ Approved &amp; Validated
+                      </span>
+                    ) : (
+                      <span className="text-[10px] bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        ⚠️ Community Reported
+                      </span>
+                    )}
                   </div>
 
                   {/* Special Needs Modifiers for SOS */}
@@ -290,8 +300,26 @@ export default function IncidentReviewQueue() {
                     </div>
                   )}
 
-                  {/* Hotspot / Frequency Evaluation Banner */}
-                  {evalData?.is_frequent_hotspot ? (
+                  {/* Context-Aware Hotspot & SOS Cluster Evaluation Banner */}
+                  {isSos && evalData?.is_sos_cluster ? (
+                    <div className="mb-3 p-2.5 rounded-lg bg-red-100 dark:bg-red-950/60 border border-red-300 dark:border-red-800 text-red-900 dark:text-red-200 text-xs">
+                      <div className="font-extrabold flex items-center gap-1 mb-0.5 text-red-800 dark:text-red-300">
+                        <span>🚨 MASS RESCUE CLUSTER ALERT</span>
+                      </div>
+                      <p className="text-[11px] leading-tight text-red-700 dark:text-red-300 font-medium">
+                        {evalData.evaluation_summary}
+                      </p>
+                    </div>
+                  ) : isSos && evalData?.is_frequent_hotspot ? (
+                    <div className="mb-3 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-300 text-xs">
+                      <div className="font-bold flex items-center gap-1 mb-0.5 text-blue-800 dark:text-blue-200">
+                        <span>ℹ️ TACTICAL TERRAIN CONTEXT</span>
+                      </div>
+                      <p className="text-[11px] leading-tight text-blue-700 dark:text-blue-400">
+                        {evalData.evaluation_summary}
+                      </p>
+                    </div>
+                  ) : evalData?.is_frequent_hotspot ? (
                     <div className="mb-3 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 text-amber-900 dark:text-amber-300 text-xs">
                       <div className="font-bold flex items-center gap-1 mb-0.5 text-amber-800 dark:text-amber-200">
                         <span>⚠️ FREQUENT INCIDENT HOTSPOT</span>
@@ -364,7 +392,7 @@ export default function IncidentReviewQueue() {
                         const shouldRecommendFixed = Boolean(evalData?.recommended_fixed_spot || isRecurring);
                         setReviewModal({
                           id: incident.id,
-                          action: 'approve',
+                          action: 'validate',
                           hazard_type: incident.hazard_type,
                           evaluation: evalData,
                           name: incident.name,
@@ -377,15 +405,15 @@ export default function IncidentReviewQueue() {
                         setIsFixedFloodSpot(shouldRecommendFixed);
                         setRadiusMeters(75);
                       }}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-xs"
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                     >
-                      ✓ Approve
+                      🛡️ Validate
                     </button>
                     <button
                       onClick={() => {
                         setReviewModal({
                           id: incident.id,
-                          action: 'reject',
+                          action: 'dismiss',
                           hazard_type: incident.hazard_type,
                           evaluation: evalData,
                           name: incident.name,
@@ -396,9 +424,9 @@ export default function IncidentReviewQueue() {
                         });
                         setNote('');
                       }}
-                      className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-xs"
+                      className="flex-1 bg-rose-500 hover:bg-rose-600 text-white text-xs py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                     >
-                      ✕ Reject
+                      ✕ Dismiss
                     </button>
                   </div>
                 )}

@@ -304,7 +304,7 @@ export default function ProactiveDisasterModal({ isOpen, onClose }) {
                               {preset.name}
                             </h4>
                             <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
-                              Radius: {preset.radius_meters}m • Duration: {preset.estimated_duration_hours}h
+                              Radius: {preset.radius_meters}m
                             </span>
                           </div>
                         </div>

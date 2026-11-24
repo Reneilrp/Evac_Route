@@ -19,12 +19,18 @@ class IncidentController extends Controller
     public function submit(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'nullable|string|max:255',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'hazard_type' => 'required|string|max:50',
             'severity_level' => 'required|in:low,medium,high',
             'description' => 'nullable|string|max:1000',
+            'barangay' => 'nullable|string|max:100',
+            'headcount' => 'nullable|integer|min:1|max:50',
+            'modifiers' => 'nullable|array',
+            'radius_meters' => 'nullable|numeric|min:1|max:5000',
+            'geometry_type' => 'nullable|in:circle,road_corridor',
+            'corridor_coordinates' => 'nullable|array',
             'photo' => 'nullable|file|mimes:jpg,jpeg,png,webp,heic|max:15360', // 15MB max for modern smartphone cameras
             'photos' => 'nullable|array|max:4',                         // Up to 4 photos for credibility
             'photos.*' => 'file|mimes:jpg,jpeg,png,webp,heic|max:15360',
@@ -45,28 +51,83 @@ class IncidentController extends Controller
 
         $userId = $request->user()?->id ?? auth('sanctum')->id() ?? auth()->id();
 
+        // Extract barangay if provided or try to detect from description
+        $barangay = $validated['barangay'] ?? null;
+        if (! $barangay && ! empty($validated['description']) && preg_match('/Barangay:\s*([^|\]\n]+)/i', $validated['description'], $matches)) {
+            $barangay = trim($matches[1]);
+        }
+
+        // Automatic naming if name not provided or empty
+        $hazardType = $validated['hazard_type'];
+        $cleanHazardLabel = ucwords(str_replace('_', ' ', $hazardType));
+        $incidentName = ! empty($validated['name'])
+            ? trim($validated['name'])
+            : ($cleanHazardLabel . ' Incident — ' . ($barangay ? 'Barangay ' . $barangay : 'Zamboanga City'));
+
+        $geometryType = $validated['geometry_type'] ?? 'circle';
+        $radiusMeters = (int) ($validated['radius_meters'] ?? 75);
+        $corridorCoordinates = $validated['corridor_coordinates'] ?? null;
+
         $incident = PendingIncident::create([
             'reported_by' => $userId,
-            'name' => $validated['name'],
+            'name' => $incidentName,
             'latitude' => $validated['latitude'],
             'longitude' => $validated['longitude'],
-            'hazard_type' => $hazardType = $validated['hazard_type'],
+            'hazard_type' => $hazardType,
             'severity_level' => $validated['severity_level'],
+            'headcount' => $validated['headcount'] ?? 1,
+            'modifiers' => $validated['modifiers'] ?? null,
             'description' => $validated['description'] ?? null,
             'photo_path' => $photoPaths[0] ?? null,
             'photos' => $photoPaths,
             'status' => 'pending',
+            'validation_status' => 'community_active',
+            'geometry_type' => $geometryType,
+            'radius_meters' => $radiusMeters,
+            'corridor_coordinates' => $corridorCoordinates,
         ]);
 
-        // Evaluate if this area has frequent reports
+        // IMMEDIATELY deploy as an active Hazard so evacuation routes avoid it right away
+        $hazard = Hazard::create([
+            'pending_incident_id' => $incident->id,
+            'name' => $incidentName,
+            'latitude' => $validated['latitude'],
+            'longitude' => $validated['longitude'],
+            'radius_meters' => $radiusMeters,
+            'geometry_type' => $geometryType,
+            'corridor_coordinates' => $corridorCoordinates,
+            'hazard_type' => $hazardType,
+            'severity_level' => $validated['severity_level'],
+            'reported_by' => $userId,
+            'is_fixed_flood_spot' => false,
+            'is_active' => true,
+            'origin_type' => 'resident_report',
+            'barangay' => $barangay,
+            'disaster_category' => in_array($hazardType, ['flood', 'landslide', 'earthquake', 'debris']) ? 'natural' : 'man_made',
+            'validation_status' => 'unverified',
+            'is_validated_by_cdrrmo' => false,
+        ]);
+
+        // Link hazard_id on incident
+        $incident->update(['hazard_id' => $hazard->id]);
+
+        // Evaluate if this area has frequent reports or SOS clusters
+        $isSos = str_starts_with($incidentName, 'EMERGENCY SOS:') || !empty($incident->modifiers) || strtolower($hazardType) === 'sos';
         $evaluation = $this->evaluateFrequency(
             (float) $validated['latitude'],
             (float) $validated['longitude'],
-            $validated['hazard_type'],
-            $incident->id
+            $hazardType,
+            $incident->id,
+            $isSos
         );
 
-        // Broadcast real-time incident submit to LGU dashboard
+        // Broadcast real-time hazard creation and incident submission to all maps & consoles
+        try {
+            broadcast(new HazardCreated($hazard));
+        } catch (\Throwable $e) {
+            \Log::warning('HazardCreated broadcast warning: ' . $e->getMessage());
+        }
+
         try {
             broadcast(new IncidentSubmitted($incident));
         } catch (\Throwable $e) {
@@ -75,14 +136,19 @@ class IncidentController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Incident report submitted. Pending LGU review.',
+            'message' => 'Hazard deployed immediately to live map. Awaiting CDRRMO validation.',
             'data' => [
                 'id' => $incident->id,
+                'hazard_id' => $hazard->id,
                 'name' => $incident->name,
                 'latitude' => (float) $incident->latitude,
                 'longitude' => (float) $incident->longitude,
                 'hazard_type' => $incident->hazard_type,
                 'severity_level' => $incident->severity_level,
+                'geometry_type' => $incident->geometry_type,
+                'radius_meters' => $incident->radius_meters,
+                'validation_status' => $incident->validation_status,
+                'is_validated_by_cdrrmo' => false,
                 'description' => $incident->description,
                 'photo_url' => $incident->photo_url,
                 'photo_urls' => $incident->photo_urls,
@@ -91,6 +157,8 @@ class IncidentController extends Controller
                 'is_read' => false,
                 'created_at' => $incident->created_at,
             ],
+            'hazard' => $hazard,
+            'frequency_evaluation' => $evaluation,
         ], 201);
     }
 
@@ -272,11 +340,13 @@ class IncidentController extends Controller
             $incident->photo_urls = $incident->photo_urls;
             $incident->photo_url = $incident->photo_url;
             $incident->is_read = true;
+            $isSos = str_starts_with($incident->name, 'EMERGENCY SOS:') || !empty($incident->modifiers) || strtolower($incident->hazard_type) === 'sos';
             $incident->frequency_evaluation = $this->evaluateFrequency(
                 (float) $incident->latitude,
                 (float) $incident->longitude,
                 $incident->hazard_type,
-                $incident->id
+                $incident->id,
+                $isSos
             );
 
             return $incident;
@@ -289,9 +359,10 @@ class IncidentController extends Controller
     }
 
     /**
-     * Evaluates whether an area has frequent incident reports (Hotspot Analysis).
+     * Evaluates whether an area has frequent incident reports (Hotspot Analysis)
+     * and separates Emergency SOS life-safety clusters from routine civil drainage hotspots.
      */
-    public function evaluateFrequency(float $lat, float $lon, string $hazardType, ?int $excludeId = null): array
+    public function evaluateFrequency(float $lat, float $lon, string $hazardType, ?int $excludeId = null, bool $isSos = false): array
     {
         $radiusMeters = 250; // 250m evaluation radius
 
@@ -305,6 +376,7 @@ class IncidentController extends Controller
 
         $nearbyCount = 0;
         $sameTypeCount = 0;
+        $nearbySosCount = 0;
 
         foreach ($allIncidents as $item) {
             $dist = $this->haversine($lat, $lon, (float) $item->latitude, (float) $item->longitude);
@@ -313,11 +385,14 @@ class IncidentController extends Controller
                 if (strtolower($item->hazard_type) === strtolower($hazardType)) {
                     $sameTypeCount++;
                 }
+                if (strtolower($item->hazard_type) === 'sos' || str_starts_with($item->name, 'EMERGENCY SOS:') || !empty($item->modifiers)) {
+                    $nearbySosCount++;
+                }
             }
         }
 
-        // Also check official active or fixed hazards nearby
-        $allHazards = Hazard::all();
+        // Also check official active hazards nearby
+        $allHazards = Hazard::where('is_active', true)->get();
         foreach ($allHazards as $h) {
             $dist = $this->haversine($lat, $lon, (float) $h->latitude, (float) $h->longitude);
             if ($dist <= $radiusMeters) {
@@ -329,31 +404,42 @@ class IncidentController extends Controller
         }
 
         $isFrequentHotspot = ($sameTypeCount >= 2 || $nearbyCount >= 3);
+        $isSosCluster = ($nearbySosCount >= 2);
 
-        $summary = $isFrequentHotspot
-            ? "⚠️ FREQUENT HOTSPOT: {$nearbyCount} report(s) in this 250m area ({$sameTypeCount} for {$hazardType}). High recurrence area."
-            : "NORMAL AREA: {$nearbyCount} report(s) found in 250m radius.";
+        if ($isSos || strtolower($hazardType) === 'sos') {
+            if ($isSosCluster) {
+                $summary = "🚨 MASS RESCUE CLUSTER: {$nearbySosCount} active SOS distress call(s) in this 250m zone. Multiple trapped households require immediate rescue dispatch.";
+            } elseif ($isFrequentHotspot) {
+                $summary = "ℹ️ TACTICAL TERRAIN CONTEXT: Severe recurrence area with {$nearbyCount} prior hazard reports. High-clearance vehicles or rescue boats advised.";
+            } else {
+                $summary = "EMERGENCY SOS: Isolated life-safety distress call in this area.";
+            }
+            $recommendedFixedSpot = false; // NEVER recommend civil drainage spots on active rescues!
+        } else {
+            $summary = $isFrequentHotspot
+                ? "⚠️ FREQUENT HOTSPOT: {$nearbyCount} report(s) in this 250m area ({$sameTypeCount} for {$hazardType}). High recurrence area."
+                : "NORMAL AREA: {$nearbyCount} report(s) found in 250m radius.";
+            $recommendedFixedSpot = $isFrequentHotspot && strtolower($hazardType) === 'flood';
+        }
 
         return [
             'is_frequent_hotspot' => $isFrequentHotspot,
+            'is_sos_cluster' => $isSosCluster,
             'nearby_count' => $nearbyCount,
+            'nearby_sos_count' => $nearbySosCount,
             'same_type_count' => $sameTypeCount,
             'evaluation_summary' => $summary,
-            'recommended_fixed_spot' => $isFrequentHotspot && strtolower($hazardType) === 'flood',
+            'recommended_fixed_spot' => $recommendedFixedSpot,
         ];
     }
 
     /**
-     * LGU approves an incident — converts it to a real Hazard.
-     * Route: POST /api/incidents/{id}/approve  (role:admin,lgu_staff)
+     * CDRRMO validates an incident report, confirming it as an authentic verified hazard.
+     * Route: POST /api/incidents/{id}/validate  (role:admin,lgu_staff)
      */
-    public function approve(Request $request, $id)
+    public function validateReport(Request $request, $id)
     {
         $incident = PendingIncident::findOrFail($id);
-
-        if ($incident->status !== 'pending') {
-            return response()->json(['message' => 'Incident already reviewed.'], 422);
-        }
 
         $validated = $request->validate([
             'note' => 'nullable|string',
@@ -363,52 +449,69 @@ class IncidentController extends Controller
             'geometry_type' => 'nullable|in:circle,road_corridor',
             'corridor_coordinates' => 'nullable|array',
             'hazard_type' => 'nullable|string|max:50',
-            'severity_level' => 'nullable|string|in:low,medium,high',
+            'severity_level' => 'nullable|string|in:low,medium,high,critical',
             'name' => 'nullable|string|max:255',
         ]);
 
+        $reviewerId = $request->user()?->id ?? auth('sanctum')->id() ?? auth()->id();
         $isFixed = (bool) ($validated['is_fixed_flood_spot'] ?? false);
-        // Fixed flood spots start inactive until rain triggers them; regular approved citizen reports start active
         $isActive = array_key_exists('is_active', $validated)
             ? (bool) $validated['is_active']
             : ! $isFixed;
-        $finalHazardType = $validated['hazard_type'] ?? $incident->hazard_type;
-        $finalSeverity = $validated['severity_level'] ?? $incident->severity_level;
-        $finalName = $validated['name'] ?? $incident->name;
 
-        // Extract barangay if present in description
-        $barangay = null;
-        if (! empty($incident->description) && preg_match('/Barangay:\s*([^|\]\n]+)/i', $incident->description, $matches)) {
-            $barangay = trim($matches[1]);
-        }
-
-        // Promote to official hazard
-        $hazard = Hazard::create([
-            'name' => $finalName,
-            'latitude' => $incident->latitude,
-            'longitude' => $incident->longitude,
-            'radius_meters' => $validated['radius_meters'] ?? 75,
-            'geometry_type' => $validated['geometry_type'] ?? 'circle',
-            'corridor_coordinates' => $validated['corridor_coordinates'] ?? null,
-            'hazard_type' => $finalHazardType,
-            'severity_level' => $finalSeverity,
-            'reported_by' => $incident->reported_by,
-            'is_fixed_flood_spot' => $isFixed,
-            'is_active' => $isActive,
-            'origin_type' => $isFixed ? 'chronic_drainage' : 'resident_report',
-            'barangay' => $barangay,
-            'disaster_category' => in_array($finalHazardType, ['flood', 'landslide', 'earthquake', 'debris']) ? 'natural' : 'man_made',
-        ]);
-
-        // Mark incident as approved
+        // Mark incident as validated
         $incident->update([
             'status' => 'approved',
-            'reviewed_by' => $request->user()?->id ?? auth('sanctum')->id() ?? auth()->id(),
+            'validation_status' => 'cdrrmo_validated',
+            'reviewed_by' => $reviewerId,
             'reviewed_at' => now(),
-            'review_note' => $validated['note'] ?? null,
+            'review_note' => $validated['note'] ?? $incident->review_note,
         ]);
 
-        // Broadcast real-time to all map listeners
+        // Find linked hazard or create if missing
+        $hazard = Hazard::where('pending_incident_id', $incident->id)
+            ->orWhere('id', $incident->hazard_id)
+            ->first();
+
+        if ($hazard) {
+            $hazard->update([
+                'name' => $validated['name'] ?? $hazard->name,
+                'hazard_type' => $validated['hazard_type'] ?? $hazard->hazard_type,
+                'severity_level' => $validated['severity_level'] ?? $hazard->severity_level,
+                'radius_meters' => $validated['radius_meters'] ?? $hazard->radius_meters,
+                'geometry_type' => $validated['geometry_type'] ?? $hazard->geometry_type,
+                'corridor_coordinates' => $validated['corridor_coordinates'] ?? $hazard->corridor_coordinates,
+                'is_fixed_flood_spot' => $isFixed,
+                'is_active' => $isActive,
+                'validation_status' => 'cdrrmo_validated',
+                'is_validated_by_cdrrmo' => true,
+                'validated_by' => $reviewerId,
+                'validated_at' => now(),
+            ]);
+        } else {
+            $hazard = Hazard::create([
+                'pending_incident_id' => $incident->id,
+                'name' => $validated['name'] ?? $incident->name,
+                'latitude' => $incident->latitude,
+                'longitude' => $incident->longitude,
+                'radius_meters' => $validated['radius_meters'] ?? 75,
+                'geometry_type' => $validated['geometry_type'] ?? 'circle',
+                'corridor_coordinates' => $validated['corridor_coordinates'] ?? null,
+                'hazard_type' => $validated['hazard_type'] ?? $incident->hazard_type,
+                'severity_level' => $validated['severity_level'] ?? $incident->severity_level,
+                'reported_by' => $incident->reported_by,
+                'is_fixed_flood_spot' => $isFixed,
+                'is_active' => $isActive,
+                'origin_type' => 'resident_report',
+                'validation_status' => 'cdrrmo_validated',
+                'is_validated_by_cdrrmo' => true,
+                'validated_by' => $reviewerId,
+                'validated_at' => now(),
+            ]);
+            $incident->update(['hazard_id' => $hazard->id]);
+        }
+
+        // Broadcast real-time hazard update
         try {
             broadcast(new HazardCreated($hazard));
         } catch (\Throwable $e) {
@@ -417,34 +520,58 @@ class IncidentController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Incident approved and promoted to hazard.',
+            'message' => 'Incident validated and confirmed by CDRRMO.',
+            'incident' => $incident,
             'hazard' => $hazard,
         ]);
     }
 
     /**
-     * LGU rejects an incident report.
-     * Route: POST /api/incidents/{id}/reject  (role:admin,lgu_staff)
+     * Backward-compatible alias for validateReport.
      */
-    public function reject(Request $request, $id)
+    public function approve(Request $request, $id)
+    {
+        return $this->validateReport($request, $id);
+    }
+
+    /**
+     * CDRRMO dismisses an incident report (false report or resolved) and deactivates linked hazard.
+     * Route: POST /api/incidents/{id}/dismiss  (role:admin,lgu_staff)
+     */
+    public function dismiss(Request $request, $id)
     {
         $incident = PendingIncident::findOrFail($id);
-
-        if ($incident->status !== 'pending') {
-            return response()->json(['message' => 'Incident already reviewed.'], 422);
-        }
+        $reviewerId = $request->user()?->id ?? auth('sanctum')->id() ?? auth()->id();
 
         $incident->update([
             'status' => 'rejected',
-            'reviewed_by' => $request->user()?->id ?? auth('sanctum')->id() ?? auth()->id(),
+            'validation_status' => 'dismissed',
+            'reviewed_by' => $reviewerId,
             'reviewed_at' => now(),
-            'review_note' => $request->input('note', 'Insufficient evidence.'),
+            'review_note' => $request->input('note', 'Dismissed as false report / resolved by CDRRMO.'),
         ]);
+
+        // Deactivate linked hazard so routing immediately ignores it
+        Hazard::where('pending_incident_id', $incident->id)
+            ->orWhere('id', $incident->hazard_id)
+            ->update([
+                'is_active' => false,
+                'validation_status' => 'dismissed',
+            ]);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Incident report rejected.',
+            'message' => 'Incident report dismissed and hazard deactivated from live map.',
+            'incident' => $incident,
         ]);
+    }
+
+    /**
+     * Backward-compatible alias for dismiss.
+     */
+    public function reject(Request $request, $id)
+    {
+        return $this->dismiss($request, $id);
     }
 
     /**

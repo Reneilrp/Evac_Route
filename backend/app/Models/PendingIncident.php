@@ -10,6 +10,7 @@ class PendingIncident extends Model
         'reported_by', 'name', 'latitude', 'longitude',
         'hazard_type', 'severity_level', 'headcount', 'modifiers', 'description',
         'photo_path', 'photos', 'status', 'read_at', 'archived_at', 'reviewed_by', 'reviewed_at', 'review_note',
+        'hazard_id', 'validation_status', 'geometry_type', 'radius_meters', 'corridor_coordinates',
     ];
 
     protected $casts = [
@@ -18,7 +19,9 @@ class PendingIncident extends Model
         'archived_at' => 'datetime',
         'photos' => 'array',
         'modifiers' => 'array',
+        'corridor_coordinates' => 'array',
         'headcount' => 'integer',
+        'radius_meters' => 'integer',
     ];
 
     protected $appends = ['is_read', 'is_archived'];
@@ -39,6 +42,11 @@ class PendingIncident extends Model
     public function reviewer()
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function hazard()
+    {
+        return $this->belongsTo(Hazard::class, 'hazard_id');
     }
 
     /**
