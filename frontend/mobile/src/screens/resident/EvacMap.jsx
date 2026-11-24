@@ -18,6 +18,9 @@ import DestinationProximityModal from '../../components/map/modals/DestinationPr
 import EarthquakeWarningModal from '../../components/map/modals/EarthquakeWarningModal';
 import PinLocationDetailsModal from '../../components/map/modals/PinLocationDetailsModal';
 import { useTheme, useThemedStyles } from '../../context/ThemeContext';
+import { useActiveSos } from '../../context/ActiveSosContext';
+import ResidentRescueHud from '../../components/rescue/ResidentRescueHud';
+import QuickEmergency911Modal from '../../components/common/QuickEmergency911Modal';
 import NavigationTurnBanner from '../../components/map/NavigationTurnBanner';
 import ActiveThreatBanner from '../../components/map/ActiveThreatBanner';
 import EvacMapHeaderBar from '../../components/map/EvacMapHeaderBar';
@@ -139,6 +142,8 @@ export default function EvacMap({ navigation, route }) {
   const [isDisasterFilterExpanded, setIsDisasterFilterExpanded] = useState(false);
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
   const [showSituationBrief, setShowSituationBrief] = useState(false);
+  const [show911Modal, setShow911Modal] = useState(false);
+  const { activeSos } = useActiveSos();
   
   // Navigation & Selection states
   const cameraRef = useRef(null);
@@ -765,7 +770,8 @@ export default function EvacMap({ navigation, route }) {
   const latestSignificantQuake = useMemo(() => {
     if (!recentQuakes || recentQuakes.length === 0) return null;
     return recentQuakes.find(q =>
-      q.magnitude >= 4.0 &&
+      // Suppress negligible/informational quakes from opening intrusive alert popup
+      (q.guidance_tier ? q.guidance_tier !== 'informational' : (q.magnitude >= 4.0 && (q.distance_km == null || q.distance_km <= 250))) &&
       !serverAcknowledgedIds.includes(q.id)
     ) || null;
   }, [recentQuakes, serverAcknowledgedIds]);
@@ -775,6 +781,10 @@ export default function EvacMap({ navigation, route }) {
     if (activeEarthquakeHazard) {
       return {
         ...activeEarthquakeHazard,
+        guidance_tier: activeEarthquakeHazard.guidance_tier || 'emergency',
+        guidance_title: activeEarthquakeHazard.guidance_title || '🚨 CRITICAL: EARTHQUAKE DETECTED',
+        guidance_action: activeEarthquakeHazard.guidance_action || 'Duck, Cover & Hold',
+        safety_directive: activeEarthquakeHazard.safety_directive || 'Duck, Cover & Hold under a sturdy desk or table.',
         source: 'CDRRMO Advisory Broadcast',
       };
     }
@@ -789,6 +799,11 @@ export default function EvacMap({ navigation, route }) {
         severity: latestSignificantQuake.severity,
         distance_km: latestSignificantQuake.distance_km ?? latestSignificantQuake.distance_from_zamboanga_km,
         time: latestSignificantQuake.time,
+        guidance_tier: latestSignificantQuake.guidance_tier || ((latestSignificantQuake.distance_km ?? 0) > 40 ? 'advisory' : 'emergency'),
+        guidance_title: latestSignificantQuake.guidance_title,
+        guidance_action: latestSignificantQuake.guidance_action,
+        safety_directive: latestSignificantQuake.safety_directive,
+        peis_label: latestSignificantQuake.peis_label,
         source: 'USGS Real-Time Seismic Network',
       };
     }
@@ -816,9 +831,13 @@ export default function EvacMap({ navigation, route }) {
 
   useEffect(() => {
     if (activeEarthquakeEvent && !hasDismissedEarthquakeModal) {
-      Vibration.vibrate([0, 400, 200, 400, 200, 400]);
+      if (activeEarthquakeEvent.guidance_tier === 'emergency') {
+        Vibration.vibrate([0, 400, 200, 400, 200, 400]);
+      } else {
+        Vibration.vibrate([0, 250, 150, 250]);
+      }
     }
-  }, [activeEarthquakeEvent?.id, hasDismissedEarthquakeModal]);
+  }, [activeEarthquakeEvent, hasDismissedEarthquakeModal]);
 
   const activeAlertKey = activeSiegeThreat?.id || activeDisasterNearUser?.id || null;
   const [dismissedAlertKey, setDismissedAlertKey] = useState(null);
@@ -925,18 +944,79 @@ export default function EvacMap({ navigation, route }) {
   const proceedWithNavigation = (dest) => {
     if (!dest) return;
 
-    if (dest.status === 'full' || dest.status === 'closed') {
+    if (dest.status === 'closed') {
       Alert.alert(
-        dest.status === 'full' ? '⛔ Shelter at Full Capacity' : '⛔ Shelter Closed',
-        dest.status === 'full'
-          ? `${dest.name || 'This shelter'} is currently at 100% capacity and cannot accept more evacuees. Please select another active open evacuation center.`
-          : `${dest.name || 'This shelter'} is currently closed. Please select an active open shelter.`,
+        '⛔ Shelter Closed',
+        `${dest.name || 'This shelter'} is currently closed. Please select an active open shelter.`,
         [{ text: 'Understood' }]
       );
       triggerCasualHaptic(40);
       return;
     }
 
+    const maxCap = Number(dest.max_capacity || dest.capacity || 0);
+    const currOcc = Number(dest.current_occupancy || dest.occupancy || 0);
+    const surgeLimit = maxCap > 0 ? Math.ceil(maxCap * 1.20) : Infinity;
+
+    // Pillar 2: If exceeded 120% surge capacity limit, redirect to adjacent facility
+    if (maxCap > 0 && currOcc >= surgeLimit) {
+      const adjacentShelter = safeShelters.find(
+        (s) => s.id !== dest.id && s.status !== 'closed' && (Number(s.current_occupancy || 0) < Number(s.max_capacity || 100) * 1.20)
+      );
+
+      Alert.alert(
+        '⛔ Maximum Surge Limit Exceeded (>120%)',
+        `${dest.name || 'This shelter'} has exceeded its authorized 120% emergency surge limit (${currOcc}/${maxCap} persons).\n\n` +
+          (adjacentShelter
+            ? `Redirecting you to adjacent facility: ${adjacentShelter.name}.`
+            : `Please select another evacuation center with available intake capacity.`),
+        [
+          adjacentShelter
+            ? {
+                text: `Redirect to ${adjacentShelter.name}`,
+                onPress: () => proceedWithNavigation(adjacentShelter),
+              }
+            : { text: 'Understood' },
+        ]
+      );
+      triggerCasualHaptic(40);
+      return;
+    }
+
+    // Pillar 2: If between 100% and 120%, notify about authorized emergency surge capacity
+    if (dest.status === 'full' || (maxCap > 0 && currOcc >= maxCap && currOcc < surgeLimit)) {
+      Alert.alert(
+        '⚠️ Authorized Emergency Surge Capacity Active',
+        `${dest.name || 'This shelter'} has reached standard capacity (${currOcc}/${maxCap}).\n\nNDRRMC emergency surge protocols (up to 120%) are authorized for incoming families. Proceed to this center or redirect to an adjacent facility?`,
+        [
+          {
+            text: 'Proceed to Shelter (Surge)',
+            onPress: () => startNavigationInternal(dest),
+          },
+          {
+            text: 'Find Adjacent Center',
+            onPress: () => {
+              const adjacent = safeShelters.find(
+                (s) => s.id !== dest.id && s.status !== 'closed' && (Number(s.current_occupancy || 0) < Number(s.max_capacity || 100))
+              );
+              if (adjacent) {
+                proceedWithNavigation(adjacent);
+              } else {
+                startNavigationInternal(dest);
+              }
+            },
+            style: 'cancel',
+          },
+        ]
+      );
+      triggerCasualHaptic(40);
+      return;
+    }
+
+    startNavigationInternal(dest);
+  };
+
+  const startNavigationInternal = (dest) => {
     setSelectedShelter(dest);
     setIsNavigating(true);
 
@@ -1636,6 +1716,54 @@ export default function EvacMap({ navigation, route }) {
             </TouchableOpacity>
           </Mapbox.PointAnnotation>
         )}
+
+        {/* Live Responding Rescue Unit Vehicle Marker */}
+        {activeSos?.rescue_unit && activeSos.rescue_unit.current_latitude && activeSos.rescue_unit.current_longitude && (
+          <Mapbox.PointAnnotation
+            key="active-rescue-unit-pin"
+            id="active-rescue-unit-pin"
+            coordinate={[
+              activeSos.rescue_unit.current_longitude,
+              activeSos.rescue_unit.current_latitude,
+            ]}
+          >
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{
+                backgroundColor: '#dc2626',
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 10,
+                marginBottom: 2,
+                borderWidth: 1.5,
+                borderColor: '#ffffff',
+                elevation: 8,
+              }}>
+                <Text style={{ color: '#ffffff', fontSize: 9.5, fontWeight: '900' }}>
+                  {activeSos.rescue_unit.call_sign}
+                </Text>
+              </View>
+              <View style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: '#dc2626',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 2.5,
+                borderColor: '#ffffff',
+                elevation: 10,
+                shadowColor: '#dc2626',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.6,
+                shadowRadius: 8,
+              }}>
+                <Text style={{ fontSize: 18 }}>
+                  {activeSos.rescue_unit.unit_type === 'water_rescue' ? '🚤' : activeSos.rescue_unit.unit_type === 'medical_ambulance' ? '🚑' : '🚛'}
+                </Text>
+              </View>
+            </View>
+          </Mapbox.PointAnnotation>
+        )}
       </Mapbox.MapView>
       )}
 
@@ -1748,6 +1876,7 @@ export default function EvacMap({ navigation, route }) {
         setSelectedCategoryFilter={setSelectedCategoryFilter}
         isOffline={isOffline}
         cacheSyncStatus={cacheSyncStatus}
+        onOpen911Modal={() => setShow911Modal(true)}
       />
 
       {/* ─── FLOATING ACTION CONTROLS, COMPASS & STYLE FAB ─── */}
@@ -1897,6 +2026,17 @@ export default function EvacMap({ navigation, route }) {
         visible={showSOSModal}
         onClose={() => setShowSOSModal(false)}
         initialCoords={activeUserLocation ? { latitude: activeUserLocation[1], longitude: activeUserLocation[0] } : null}
+      />
+
+      {/* Live Rescue Dispatch HUD */}
+      <ResidentRescueHud
+        onOpen911Modal={() => setShow911Modal(true)}
+      />
+
+      {/* 1-Tap Emergency Hotlines Modal */}
+      <QuickEmergency911Modal
+        visible={show911Modal}
+        onClose={() => setShow911Modal(false)}
       />
     </View>
   );

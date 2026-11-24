@@ -111,18 +111,32 @@ export const getStyles = (colors, isDarkMode) => StyleSheet.create({
     justifyContent: 'center',
   },
   quickChipRescue: {
-    borderColor: isDarkMode ? '#ef4444' : '#dc2626',
-    backgroundColor: isDarkMode ? '#7f1d1d' : '#fee2e2',
-  },
-  quickChipRescueText: {
-    color: isDarkMode ? '#fca5a5' : '#991b1b',
-  },
-  quickChipScanner: {
     borderColor: isDarkMode ? '#38bdf8' : '#0284c7',
     backgroundColor: isDarkMode ? 'rgba(56, 189, 248, 0.16)' : '#e0f2fe',
   },
+  quickChipRescueText: {
+    color: isDarkMode ? '#7dd3fc' : '#0369a1',
+  },
+  quickChipMedic: {
+    borderColor: isDarkMode ? '#ec4899' : '#db2777',
+    backgroundColor: isDarkMode ? 'rgba(236, 72, 153, 0.16)' : '#fce7f3',
+  },
+  quickChipMedicText: {
+    color: isDarkMode ? '#f472b6' : '#be185d',
+  },
+  quickChipDelta: {
+    borderColor: isDarkMode ? '#f59e0b' : '#d97706',
+    backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.16)' : '#fef3c7',
+  },
+  quickChipDeltaText: {
+    color: isDarkMode ? '#fbbf24' : '#b45309',
+  },
+  quickChipScanner: {
+    borderColor: isDarkMode ? '#a855f7' : '#7c3aed',
+    backgroundColor: isDarkMode ? 'rgba(168, 85, 247, 0.16)' : '#f3e8ff',
+  },
   quickChipScannerText: {
-    color: isDarkMode ? '#38bdf8' : '#0369a1',
+    color: isDarkMode ? '#c084fc' : '#6d28d9',
   },
   quickChipResident: {
     borderColor: isDarkMode ? '#22c55e' : '#16a34a',

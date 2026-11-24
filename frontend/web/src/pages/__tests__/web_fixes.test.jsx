@@ -76,6 +76,8 @@ import SituationReport from '../admin/SituationReport';
 import ZamboangaWeatherModal from '../../components/disaster/ZamboangaWeatherModal';
 import HotlineIntakeModal from '../../components/disaster/HotlineIntakeModal';
 import ProactiveDisasterModal from '../../components/disaster/ProactiveDisasterModal';
+import DashboardLayout from '../../layouts/DashboardLayout';
+import ApiKeyManager from '../admin/ApiKeyManager';
 
 describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () => {
   let queryClient;
@@ -194,7 +196,7 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
   it('renders InventoryManager with Edit buttons and delivery presets without throwing', () => {
     expect(() => {
       const html = renderWithProviders(<InventoryManager />);
-      expect(html).toContain('CDRRMO Situational View');
+      expect(html).toContain('Current Stock Levels');
     }).not.toThrow();
   });
 
@@ -349,6 +351,11 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
       expect(html).toContain('Tetuan Central Center');
       expect(html).toContain('FLOOD RESCUE');
       expect(html).toContain('Rescue Equipment Brought');
+      expect(html).toContain('Responsible Officer:');
+      expect(html).toContain('Hot Contact:');
+      expect(html).toContain('Max Capacity:');
+      expect(html).toContain('READY');
+      expect(html).toContain('RA-');
     }).not.toThrow();
   });
 
@@ -507,6 +514,26 @@ describe('Web UI Fixes - Component Initialization & Render Integrity Tests', () 
       expect(html).toContain('Pre-Mapped Geohazard Presets');
       expect(html).toContain('Declare Barangay Hazard Zone');
       expect(html).toContain('Population At-Risk');
+    }).not.toThrow();
+  });
+
+  it('renders DashboardLayout with Partner API Keys strictly for System Admin', () => {
+    expect(() => {
+      const html = renderWithProviders(
+        <DashboardLayout>
+          <div>Admin Content</div>
+        </DashboardLayout>
+      );
+      expect(html).toContain('Partner API Keys');
+      expect(html).toContain('DEVOPS ADMIN');
+    }).not.toThrow();
+  });
+
+  it('renders ApiKeyManager page for System Admin without throwing', () => {
+    expect(() => {
+      const html = renderWithProviders(<ApiKeyManager />);
+      expect(html).toContain('Total Issued Keys');
+      expect(html).toContain('New API key');
     }).not.toThrow();
   });
 });

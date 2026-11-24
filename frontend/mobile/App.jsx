@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { ThemeProvider } from './src/context/ThemeContext';
+import { ActiveSosProvider } from './src/context/ActiveSosContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { getEcho, disconnectEcho } from './src/services/echo';
 import { useResidentStore } from './src/context/useResidentStore';
@@ -207,10 +208,12 @@ function App() {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <AuthProvider>
-              <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
-                <NetworkStatusBar isOffline={isOffline} />
-                <AppNavigator />
-              </View>
+              <ActiveSosProvider>
+                <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+                  <NetworkStatusBar isOffline={isOffline} />
+                  <AppNavigator />
+                </View>
+              </ActiveSosProvider>
             </AuthProvider>
           </ThemeProvider>
         </QueryClientProvider>

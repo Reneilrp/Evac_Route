@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { 
   Key, Plus, Power, Trash2, Copy, Check, ShieldCheck, 
   Activity, Clock, Globe, RefreshCw, X, AlertCircle, CheckCircle2,
@@ -9,6 +10,9 @@ import {
 import { showSuccess, showError } from '../../utils/toast';
 
 export default function ApiKeyManager() {
+  const { user } = useAuth();
+  const isSystemAdmin = user?.role === 'admin' && (user?.operator_type === 'admin' || user?.email?.toLowerCase().startsWith('admin@') || !user?.operator_type) && !user?.email?.toLowerCase().includes('drrm');
+
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyDays, setNewKeyDays] = useState('');
@@ -30,6 +34,7 @@ export default function ApiKeyManager() {
       const res = await api.get('/admin/api-keys');
       return res.data;
     },
+    enabled: !!isSystemAdmin,
     refetchInterval: 10000,
   });
 
@@ -45,6 +50,7 @@ export default function ApiKeyManager() {
       const res = await api.get('/admin/api-keys/logs?limit=50');
       return res.data;
     },
+    enabled: !!isSystemAdmin,
     refetchInterval: 5000,
   });
 
@@ -102,6 +108,28 @@ export default function ApiKeyManager() {
     showSuccess("API Key copied to clipboard!");
     setTimeout(() => setCopiedId(null), 2500);
   };
+
+  if (!isSystemAdmin) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto">
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-xl p-6 text-center space-y-4">
+          <div className="w-12 h-12 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto text-red-600 dark:text-red-400">
+            <Key size={24} />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">System Administrator Privileges Required</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+            Partner API key management and developer credentials are strictly restricted to System Administrators. DRRMO and CSWDO operators do not have permissions to access this page.
+          </p>
+          <a
+            href="/admin/dashboard"
+            className="inline-block px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition"
+          >
+            Return to Dashboard
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   const keys = apiKeysData?.data || [];
   const summary = apiKeysData?.summary || { total_keys: 0, active_keys: 0, total_requests: 0 };

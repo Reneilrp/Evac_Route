@@ -167,11 +167,12 @@ export default function Login({ navigation }) {
             <Animated.View style={[styles.card, { opacity: fadeAnimRef.current }]}>
               {/* Quick Test Account Select */}
               <View style={styles.quickChipsHeader}>
-                <Text style={styles.quickChipsTitle}>Quick Select Test Account</Text>
+                <Text style={styles.quickChipsTitle}>Quick Select Fleet / Role</Text>
                 <Sparkles size={12} color={colors.textMuted} />
               </View>
 
-              <View style={styles.quickChipsRow}>
+              {/* Row 1: Rescue Fleet Units (Marine Boat, EMS Ambulance, 4x4 Truck) */}
+              <View style={[styles.quickChipsRow, { marginBottom: 6 }]}>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => handleQuickSelect('rescue1@lgu.gov.ph', 'password')}
@@ -183,10 +184,43 @@ export default function Login({ navigation }) {
                     adjustsFontSizeToFit
                     minimumFontScale={0.8}
                   >
-                    🚤 Rescue QRT
+                    🚤 Boat Lead
                   </Text>
                 </TouchableOpacity>
 
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => handleQuickSelect('medic1@lgu.gov.ph', 'password')}
+                  style={[styles.quickChip, styles.quickChipMedic]}
+                >
+                  <Text
+                    style={[styles.quickChipText, styles.quickChipMedicText]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
+                    🚑 Medic Lead
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => handleQuickSelect('delta3@lgu.gov.ph', 'password')}
+                  style={[styles.quickChip, styles.quickChipDelta]}
+                >
+                  <Text
+                    style={[styles.quickChipText, styles.quickChipDeltaText]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
+                    🛻 QRT Truck
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Row 2: Shelter Staff & Evacuee */}
+              <View style={styles.quickChipsRow}>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => handleQuickSelect('scanner1@lgu.gov.ph', 'password')}
@@ -199,6 +233,21 @@ export default function Login({ navigation }) {
                     minimumFontScale={0.8}
                   >
                     📋 Scanner
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => handleQuickSelect('logistics@lgu.gov.ph', 'password')}
+                  style={[styles.quickChip, styles.quickChipScanner]}
+                >
+                  <Text
+                    style={[styles.quickChipText, styles.quickChipScannerText]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
+                    📦 CSWDO
                   </Text>
                 </TouchableOpacity>
 

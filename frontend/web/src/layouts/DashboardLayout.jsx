@@ -75,7 +75,7 @@ function DashboardLayout({ children }) {
   const [isEmergencyActive, setIsEmergencyActive] = useState(true);
 
   // Agency operational segregation: System Admin, CDRRMO (DRRM Tactical Command), or CSWDO (Camp & Relief Hub)
-  const isSystemAdmin = (user?.email?.toLowerCase() === 'admin@lgu.gov.ph') || (user?.role === 'admin' && user?.operator_type === 'admin' && !user?.email?.toLowerCase().includes('drrm'));
+  const isSystemAdmin = (user?.email?.toLowerCase().startsWith('admin@')) || (user?.role === 'admin' && user?.operator_type === 'admin' && !user?.email?.toLowerCase().includes('drrm'));
   const isCswdoUser = !isSystemAdmin && (user?.operator_type === 'logistics' || user?.operator_type === 'scanner' || (user?.email?.toLowerCase().includes('logistics') || user?.email?.toLowerCase().includes('cswdo')));
   const activeAgency = isSystemAdmin ? 'admin' : (isCswdoUser ? 'cswdo' : 'cdrmo');
   const isCswdoRoute = ['/admin/shelters', '/admin/inventory', '/admin/reports'].includes(location.pathname);
@@ -628,18 +628,6 @@ function DashboardLayout({ children }) {
                   <NavLink to="/admin/audit-logs">Security &amp; Audit Logs</NavLink>
                 )}
               </RoleGuard>
-              <RoleGuard allowedRoles={['admin', 'lgu_staff']}>
-                {isMapRoute ? (
-                  <IconNavLink to="/admin/api-keys" icon={<Key size={20} />} label="Partner API Keys" />
-                ) : (
-                  <NavLink to="/admin/api-keys">
-                    <div className="flex items-center justify-between w-full">
-                      <span>Partner API Keys</span>
-                      <span className="text-[10px] font-mono bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 px-1.5 py-0.5 rounded font-bold">API</span>
-                    </div>
-                  </NavLink>
-                )}
-              </RoleGuard>
             </>
           ) : (
             /* === CDRRMO TACTICAL OPERATIONS (SHELTER CAPACITY & INVENTORY REMOVED) === */
@@ -720,18 +708,6 @@ function DashboardLayout({ children }) {
                   <IconNavLink to="/admin/audit-logs" icon={<ShieldAlert size={20} />} label="Security & Audit Logs" />
                 ) : (
                   <NavLink to="/admin/audit-logs">Security &amp; Audit Logs</NavLink>
-                )}
-              </RoleGuard>
-              <RoleGuard allowedRoles={['admin', 'lgu_staff']}>
-                {isMapRoute ? (
-                  <IconNavLink to="/admin/api-keys" icon={<Key size={20} />} label="Partner API Keys" />
-                ) : (
-                  <NavLink to="/admin/api-keys">
-                    <div className="flex items-center justify-between w-full">
-                      <span>Partner API Keys</span>
-                      <span className="text-[10px] font-mono bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 px-1.5 py-0.5 rounded font-bold">API</span>
-                    </div>
-                  </NavLink>
                 )}
               </RoleGuard>
             </>

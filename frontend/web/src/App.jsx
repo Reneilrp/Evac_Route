@@ -106,15 +106,15 @@ function App() {
               {/* Staff Operator Management (Accessible by both CDRRMO & CSWDO) */}
               <Route element={<ProtectedRoute allowedRoles={['admin', 'lgu_staff']} />}>
                 <Route path="/admin/staff" element={<DashboardLayout><StaffManagement /></DashboardLayout>} />
-                <Route path="/admin/api-keys" element={<DashboardLayout><ApiKeyManager /></DashboardLayout>} />
               </Route>
 
-              {/* Admin-Only Security, SitRep & Telemetry */}
+              {/* Admin-Only Security, SitRep, Telemetry & Partner API Keys */}
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                 <Route path="/admin/audit-logs" element={<DashboardLayout><AuditLogs /></DashboardLayout>} />
                 <Route path="/admin/sitrep" element={<DashboardLayout><SituationReport /></DashboardLayout>} />
                 <Route path="/admin/situation-report" element={<Navigate to="/admin/sitrep" replace />} />
                 <Route path="/admin/system-health" element={<DashboardLayout><SystemHealth /></DashboardLayout>} />
+                <Route path="/admin/api-keys" element={<DashboardLayout><ApiKeyManager /></DashboardLayout>} />
               </Route>
 
               {/* Dedicated 404 Out-of-Route Catch-All */}

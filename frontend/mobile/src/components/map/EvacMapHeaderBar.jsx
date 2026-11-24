@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Pressable } from 'react-native';
-import { ChevronDown, Info } from 'lucide-react-native';
+import { ChevronDown, Info, Phone } from 'lucide-react-native';
 
 export default function EvacMapHeaderBar({
   insets,
@@ -24,6 +24,7 @@ export default function EvacMapHeaderBar({
   setSelectedCategoryFilter,
   isOffline = false,
   cacheSyncStatus = {},
+  onOpen911Modal,
 }) {
   return (
     <>
@@ -97,8 +98,31 @@ export default function EvacMapHeaderBar({
           <Info size={12} color={colors.textMuted} />
         </TouchableOpacity>
 
-        {/* Right Side: Dual Dropdown Selector Pills (Disasters & Places) */}
+        {/* Right Side: Dual Dropdown Selector Pills (Disasters & Places) + 1-Tap 911 */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {onOpen911Modal && (
+            <TouchableOpacity
+              onPress={() => {
+                triggerCasualHaptic(50);
+                onOpen911Modal();
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#dc2626',
+                paddingHorizontal: 9,
+                paddingVertical: 8,
+                borderRadius: 20,
+                elevation: 6,
+                gap: 4,
+              }}
+              accessibilityLabel="Open Emergency 911 Hotlines"
+            >
+              <Phone size={13} color="#ffffff" />
+              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '900' }}>911</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Disaster Event Dropdown Pill */}
           <TouchableOpacity
             onPress={() => {

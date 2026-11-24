@@ -113,6 +113,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::patch('/user/incidents/{id}/unarchive', [IncidentController::class, 'unarchive']);
     Route::get('/incidents/{id}/photo', [IncidentController::class, 'photo']);
     Route::post('/rescue/sos', [RescueMissionController::class, 'submitSOS']);
+    Route::get('/user/active-sos', [RescueMissionController::class, 'getActiveSos']);
+    Route::patch('/user/active-sos/cancel', [RescueMissionController::class, 'cancelActiveSos']);
     Route::post('/shelters/{shelter_id}/geofence-checkin', [CheckInController::class, 'geofenceCheckIn']);
 
     // --- LGU & ADMIN ROUTES ---
@@ -130,12 +132,19 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::put('/shelters/{id}', [ShelterController::class, 'update'])->whereNumber('id');
         Route::delete('/shelters/{id}', [ShelterController::class, 'destroy'])->whereNumber('id');
         Route::get('/shelters/{id}/details', [ShelterController::class, 'getDetails'])->whereNumber('id');
+        Route::post('/shelters/{id}/toggle-activation', [ShelterController::class, 'toggleActivation'])->whereNumber('id');
+        Route::post('/shelters/{id}/mobilize-cswd', [ShelterController::class, 'mobilizeCswd'])->whereNumber('id');
+        Route::post('/shelters/{id}/donations', [ShelterController::class, 'logDonation'])->whereNumber('id');
+        Route::get('/shelters/{id}/donations', [ShelterController::class, 'getDonations'])->whereNumber('id');
+        Route::get('/shelters/{id}/vulnerability-summary', [CheckInController::class, 'vulnerabilitySummary'])->whereNumber('id');
 
         // 2. Check-in & Relief
         Route::post('/shelters/{shelter_id}/check-in', [CheckInController::class, 'processCheckIn']);
         Route::post('/shelters/{shelter_id}/rapid-check-in', [CheckInController::class, 'rapidCheckIn']);
         Route::post('/shelters/{shelter_id}/check-out', [CheckInController::class, 'processCheckOut']);
         Route::post('/evacuation-logs/{id}/check-out', [CheckInController::class, 'manualCheckOut']);
+        Route::post('/evacuation-logs/{id}/day-pass', [CheckInController::class, 'issueDayPass'])->whereNumber('id');
+        Route::post('/evacuation-logs/{id}/return-day-pass', [CheckInController::class, 'returnFromDayPass'])->whereNumber('id');
 
         // 3. Hazard Management, Proactive Zones & Disaster Simulation
         Route::post('/hazards', [HazardController::class, 'reportHazard']);
@@ -147,6 +156,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         // 4. Incident Review Queue (residents' field reports)
         Route::get('/incidents', [IncidentController::class, 'index']);
         Route::post('/incidents/{id}/approve', [IncidentController::class, 'approve']);
+        Route::post('/incidents/{id}/validate', [IncidentController::class, 'validateReport']);
+        Route::post('/incidents/{id}/dismiss', [IncidentController::class, 'dismiss']);
         Route::post('/incidents/{id}/reject', [IncidentController::class, 'reject']);
         Route::post('/incidents/{id}/archive', [IncidentController::class, 'adminArchive']);
         Route::post('/incidents/{id}/unarchive', [IncidentController::class, 'adminUnarchive']);
@@ -200,6 +211,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/rescue/missions', [RescueMissionController::class, 'store']);
         Route::post('/rescue/hotline-intake', [RescueMissionController::class, 'hotlineIntake']);
         Route::put('/rescue/missions/{id}/status', [RescueMissionController::class, 'updateStatus']);
+        Route::patch('/rescue/missions/{id}', [RescueMissionController::class, 'updateStatus']);
+        Route::patch('/rescue/missions/{id}/shelter', [RescueMissionController::class, 'updateStatus']);
         Route::post('/rescue/missions/{id}/archive', [RescueMissionController::class, 'archiveMission']);
         Route::post('/rescue/missions/{id}/unarchive', [RescueMissionController::class, 'unarchiveMission']);
         Route::post('/rescue/missions/archive-completed', [RescueMissionController::class, 'archiveCompletedMissions']);
@@ -215,22 +228,15 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         });
     });
 
-    // Staff CRUD & Partner API Keys (Accessible by Admin and LGU Agency Staff)
+    // Staff CRUD (Accessible by Admin and LGU Agency Staff)
     Route::middleware(['role:admin,lgu_staff'])->group(function () {
         Route::get('/staff', [AuthController::class, 'getStaff']);
         Route::post('/staff', [AuthController::class, 'storeStaff']);
         Route::put('/staff/{id}', [AuthController::class, 'updateStaff']);
         Route::delete('/staff/{id}', [AuthController::class, 'deleteStaff']);
-
-        // Partner API Key Management & Monitoring
-        Route::get('/admin/api-keys', [ApiKeyController::class, 'index']);
-        Route::get('/admin/api-keys/logs', [ApiKeyController::class, 'logs']);
-        Route::post('/admin/api-keys', [ApiKeyController::class, 'store']);
-        Route::patch('/admin/api-keys/{id}/toggle', [ApiKeyController::class, 'toggleStatus'])->whereNumber('id');
-        Route::delete('/admin/api-keys/{id}', [ApiKeyController::class, 'destroy'])->whereNumber('id');
     });
 
-    // Security, Audit, Telemetry & Official SitRep (Admin Only)
+    // Security, Audit, Telemetry, Partner API Keys & Official SitRep (System Admin Only)
     Route::middleware(['role:admin'])->group(function () {
         Route::get('/audit-logs', [AuditLogController::class, 'index']);
         Route::post('/audit-logs/archive-old', [AuditLogController::class, 'archiveOldLogs']);
@@ -238,5 +244,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/reports/sitrep', [SitRepController::class, 'index']);
         Route::get('/system-health', [SystemHealthController::class, 'index']);
         Route::post('/system-health/clear-cache', [SystemHealthController::class, 'clearCache']);
+
+        // Partner API Key Management & Monitoring (Admin Only)
+        Route::get('/admin/api-keys', [ApiKeyController::class, 'index']);
+        Route::get('/admin/api-keys/logs', [ApiKeyController::class, 'logs']);
+        Route::post('/admin/api-keys', [ApiKeyController::class, 'store']);
+        Route::patch('/admin/api-keys/{id}/toggle', [ApiKeyController::class, 'toggleStatus'])->whereNumber('id');
+        Route::delete('/admin/api-keys/{id}', [ApiKeyController::class, 'destroy'])->whereNumber('id');
     });
 });

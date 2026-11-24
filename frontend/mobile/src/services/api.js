@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 
 // Prioritize configured API Base URL (from process.env / Constants.expoConfig); fallback to live production URL
-const configuredBaseUrl = process.env.EXPO_PUBLIC_API_URL || Constants.expoConfig?.extra?.apiBaseUrl;
+const configuredBaseUrl = process.env.EXPO_PUBLIC_API_URL || process.env.API_BASE_URL || Constants.expoConfig?.extra?.apiBaseUrl;
 const BASE_URL = configuredBaseUrl || 'https://evacroute.app/api';
 
 console.log('[API] Target API Base URL:', BASE_URL);

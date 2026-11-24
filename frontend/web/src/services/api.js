@@ -8,6 +8,7 @@ const api = axios.create({
     'X-Requested-With': 'XMLHttpRequest',
   },
   withCredentials: true, // Crucial for Sanctum cookies
+  withXSRFToken: true, // Send X-XSRF-TOKEN header on cross-origin local requests
 });
 
 // Keep the browser token scoped to the current tab. Mobile uses SecureStore.

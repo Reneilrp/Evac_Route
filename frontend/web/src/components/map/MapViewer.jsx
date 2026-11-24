@@ -1032,13 +1032,11 @@ const MapViewer = React.memo(({
                 <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col w-max bg-gray-950/90 border border-white/10 rounded-xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-200">
                   <p className="font-black text-white text-xs">{hazard.name}</p>
                   <p className="text-[10px] text-white/50 mt-0.5 capitalize">{hazard.hazard_type} · {hazard.severity_level} severity</p>
-                  {hazard.estimated_duration_hours && (
-                    <MiniTimeline 
-                      createdAt={hazard.created_at} 
-                      durationHours={hazard.estimated_duration_hours} 
-                      hazardType={hazard.hazard_type} 
-                    />
-                  )}
+                  {hazard.is_validated_by_cdrrmo ? (
+                    <span className="text-[10px] text-emerald-400 font-bold mt-1">🛡️ CDRRMO Validated</span>
+                  ) : hazard.origin_type === 'resident_report' ? (
+                    <span className="text-[10px] text-amber-400 font-bold mt-1">⚠️ Community Reported</span>
+                  ) : null}
                   <p className="text-[9px] text-white/30 mt-1.5">Radius: {hazard.radius_meters}m · {isCSWDO ? 'Click to view details' : 'Click to resolve'}</p>
                 </div>
               </div>
