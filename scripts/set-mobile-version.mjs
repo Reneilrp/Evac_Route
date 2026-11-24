@@ -25,12 +25,17 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 const args = process.argv.slice(2);
-const newVersion = args[0]?.trim()?.replace(/^v/, '');
+let newVersion = args[0]?.trim()?.replace(/^v/, '');
 const newFileSize = args[1]?.trim();
 const newReleaseDate = args[2]?.trim();
 
+// Normalize "1.4" -> "1.4.0" if 2-digit version is supplied
+if (newVersion && /^\d+\.\d+$/.test(newVersion)) {
+  newVersion = `${newVersion}.0`;
+}
+
 if (!newVersion || !/^\d+\.\d+\.\d+$/.test(newVersion)) {
-  console.error('\x1b[31m%s\x1b[0m', '❌ Error: Please provide a valid semantic version (e.g. 1.2.1, 1.3.0).');
+  console.error('\x1b[31m%s\x1b[0m', '❌ Error: Please provide a valid semantic version (e.g. 1.2.1, 1.3.0, 1.4).');
   console.log('\nUsage:');
   console.log('  node scripts/set-mobile-version.mjs <version> [apk-size] [release-date]');
   console.log('Example:');

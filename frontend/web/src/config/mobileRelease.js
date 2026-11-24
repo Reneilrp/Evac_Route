@@ -6,9 +6,9 @@
  * Automatically synchronized via scripts/set-mobile-version.mjs
  */
 export const MOBILE_APP_CONFIG = {
-  version: '1.3.1',
-  versionTag: 'v1.3.1',
-  versionCode: 14,
+  version: '1.4.0',
+  versionTag: 'v1.4.0',
+  versionCode: 15,
   fileSize: '101 MB',
   apkFileName: 'EvacRoute.apk',
   downloadPath: '/downloads/EvacRoute.apk',

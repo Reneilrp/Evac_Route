@@ -4,11 +4,29 @@
  */
 export const PATCH_NOTES_HISTORY = [
   {
+    version: '1.4.0',
+    date: 'November 2026',
+    title: 'CDRRMO Overhaul, Anti-Duplication QR & Adaptive Seismic Routing',
+    badge: 'LATEST RELEASE',
+    badgeVariant: 'success',
+    highlights: [
+      '🛡️ Standardized IDP Terminology: Complete transition to official Internally Displaced Persons (IDP) humanitarian standards across resident profiles, check-in flows, and EOC dashboards.',
+      '🏟️ Hazard-Specific Safe Zone Routing: A* pathfinding strictly disqualifies covered courts and multi-story concrete buildings during earthquakes, directing IDPs exclusively to unroofed open fields.',
+      '🌊 Adaptive Coastal Tsunami Broadcast: Automated distinction alerting coastal barangays (Campo Islam, Baliwasan, Mariki, Rio Hondo, Cawa-Cawa, Labuan) to evacuate inland to KCC Mall & higher ground.',
+      '📱 Cryptographic TOTP QR Pass: Offline-first HMAC-SHA256 digital pass with anti-duplication pre-check protection preventing same-day cross-shelter relief claims.',
+      '🌧️ Tumaga River Early Warning: Tiered 15m (Low), 30m (Medium), and 45m (High) rainfall duration modeling activating flood hazards before downstream submersion.',
+    ],
+    fixes: [
+      'Optimized SQLite offline database synchronization with danger distance multipliers.',
+      'Updated mobile QR presentation and scanner with dynamic headcount adjustment.',
+    ],
+  },
+  {
     version: '1.3.1',
     date: 'November 2026',
     title: 'Disaster Hazard Semantic Color Mapping & Fleet Operations Polish',
-    badge: 'LATEST RELEASE',
-    badgeVariant: 'success',
+    badge: 'STABLE',
+    badgeVariant: 'secondary',
     highlights: [
       '🌊 Standardized Disaster Hazard Color Semantics: Flood hazards rendered in Blue (#0284c7), Fire in Red (#dc2626), and Landslides in Earth Brown (#8B4513) across resident evacuation and CDRRMO tactical rescue maps.',
       '🚑 Multi-Crew Fleet Details Modal: Full crew inspection displaying assigned Captain, lead medics, drivers, and rescue swimmers with real-time operational status.',
