@@ -66,6 +66,10 @@ Homestead.json
 Homestead.yaml
 _ide_helper.php
 
+# Root-level markdown documentation (except official repository README)
+/*.md
+!/README.md
+
 # Python Scripts, Virtualenv & Guidance Artifacts
 venv/
 guidelines/
@@ -73,15 +77,9 @@ guidelines/
 extract_shelters.py
 generate_shelter_excel.py
 geocode_shelters.py
-UI_UX_DESIGN_GUIDELINES.md
-PRODUCTION_HARDENING_ROADMAP.md
 scripts/*.py
 
 # Local Developer & Personal Setup Artifacts
-PRESENTATION_DEVICE_SETUP.md
-GEMINI.md
-RUN_SERVERS.md
-SYSTEM_TESTING_GUIDE.md
 generate_uat_docx.py
 update_alpha_doc.py
 deploy.sh
