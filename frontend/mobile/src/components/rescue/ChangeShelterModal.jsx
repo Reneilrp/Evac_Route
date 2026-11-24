@@ -184,7 +184,7 @@ export default function ChangeShelterModal({
             </Text>
 
             <Text style={{ fontSize: 12, color: isDarkMode ? '#cbd5e1' : '#475569', marginTop: 2 }}>
-              Barangay {currentShelter?.barangay || 'Zamboanga'} • Occupancy: {currentOcc}/{currentMax} ({currentRemaining} spots left for {victimHeadcount} evacuees)
+              Barangay {currentShelter?.barangay || 'Zamboanga'} • Occupancy: {currentOcc}/{currentMax} ({currentRemaining} spots left for {victimHeadcount} IDPs)
             </Text>
 
             {isCurrentFull && (

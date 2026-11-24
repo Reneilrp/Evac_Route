@@ -1018,7 +1018,7 @@ export default function RescueMap({ navigation, route }) {
           safeVibrate([0, 250, 100, 250, 100, 500]);
           setProximityAnnouncement({
             title: '🏁 ARRIVED AT SHELTER (≤ 20M)',
-            subtitle: 'Evacuees Delivered • Confirm CSWDO Intake Handover',
+            subtitle: 'IDPs Delivered • Confirm CSWDO Intake Handover',
             color: '#10b981',
           });
           setTimeout(() => setProximityAnnouncement(null), 4000);
@@ -1084,7 +1084,7 @@ export default function RescueMap({ navigation, route }) {
         Vibration.vibrate([0, 100, 100, 200]);
         Alert.alert(
           '🎉 MISSION COMPLETED',
-          'Evacuees handed over to CSWDO desk. Rescue unit is now set to Standby for next call.'
+          'IDPs handed over to CSWDO desk. Rescue unit is now set to Standby for next call.'
         );
       }
     },

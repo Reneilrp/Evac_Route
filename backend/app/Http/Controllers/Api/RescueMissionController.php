@@ -554,6 +554,8 @@ class RescueMissionController extends Controller
             'hazard_type' => 'nullable|string|max:50',
             'modifiers' => 'nullable|array',
             'modifiers.*' => 'string|max:50',
+            'vulnerable_flags' => 'nullable|array',
+            'vulnerable_flags.*' => 'string|max:50',
         ]);
 
         $user = $request->user();
@@ -561,7 +563,10 @@ class RescueMissionController extends Controller
         $contactNumber = $validated['contact_number'] ?? $user?->familyProfile?->contact_number ?? null;
         $hazardType = $validated['hazard_type'] ?? 'flood';
         $headcount = (int) $validated['headcount'];
-        $modifiers = $validated['modifiers'] ?? [];
+        
+        $rawModifiers = $validated['modifiers'] ?? [];
+        $vulnerableFlags = $validated['vulnerable_flags'] ?? [];
+        $modifiers = array_values(array_unique(array_merge($rawModifiers, $vulnerableFlags)));
 
         $situationDesc = $validated['situation'] ?? null;
         if (empty($situationDesc)) {

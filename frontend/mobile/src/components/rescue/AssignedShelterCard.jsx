@@ -51,7 +51,7 @@ export default function AssignedShelterCard({
           color: isFull ? '#f87171' : '#34d399',
         }}>
           {isFull
-            ? `⚠️ At Full Capacity: ${occ}/${maxCap} Occupied (${remaining} spots left for ${headcount} evacuees)`
+            ? `⚠️ At Full Capacity: ${occ}/${maxCap} Occupied (${remaining} spots left for ${headcount} IDPs)`
             : `Capacity: ${remaining} of ${maxCap} spots available`}
         </Text>
       </View>

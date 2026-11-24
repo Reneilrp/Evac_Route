@@ -169,7 +169,7 @@ export default function MissionStatusStepper({
               setConfirmModal({
                 visible: true,
                 title: 'Water-to-Land Staging Handover',
-                message: `Unload ${currentMission.headcount} evacuees at ${
+                message: `Unload ${currentMission.headcount} IDPs at ${
                   stagingPoint?.name || 'Shoreline Assembly Point'
                 } and transfer to ground crew? This will instantly free ${
                   assignedUnit?.name || 'Boat Alpha'

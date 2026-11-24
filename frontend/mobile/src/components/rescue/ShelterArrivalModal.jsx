@@ -38,7 +38,7 @@ export default function ShelterArrivalModal({
             <Text style={{ fontWeight: '700', color: colors.white || '#ffffff' }}>
               {targetShelterName || 'Baliwasan Gym'}
             </Text>
-            . CSWDO intake staff are ready to accept {activeMission?.headcount || 1} evacuees.
+            . CSWDO intake staff are ready to accept {activeMission?.headcount || 1} IDPs.
           </Text>
 
           <View style={[styles.arrivalDetailsBox, { backgroundColor: colors.surfaceElevated || '#0f172a' }]}>
@@ -47,7 +47,7 @@ export default function ShelterArrivalModal({
               • Automatically increments shelter occupancy (+{activeMission?.headcount || 1})
             </Text>
             <Text style={[styles.arrivalDetailsVal, { color: colors.textPrimary || '#ffffff' }]}>
-              • Registers {activeMission?.victim_name || 'Distress Evacuees'} in CSWDO intake ledger
+              • Registers {activeMission?.victim_name || 'Distress IDPs'} in CSWDO intake ledger
             </Text>
             <Text style={[styles.arrivalDetailsVal, { color: colors.textPrimary || '#ffffff' }]}>
               • Resets {assignedUnitName || 'Unit'} to STANDBY for next rescue

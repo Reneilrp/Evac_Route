@@ -201,6 +201,7 @@ export default function EmergencySOSModal({ visible, onClose, initialCoords, onS
       .map(m => m.label);
 
     const activeHazard = HAZARD_OPTIONS.find(h => h.id === hazardType);
+    const vulnerableFlags = selectedModifiers.filter(m => ['pwd', 'infant', 'elderly', 'pregnant', 'bedridden'].includes(m));
 
     try {
       await api.post('/rescue/sos', {
@@ -209,6 +210,7 @@ export default function EmergencySOSModal({ visible, onClose, initialCoords, onS
         headcount: headcount,
         hazard_type: hazardType,
         modifiers: selectedModifiers,
+        vulnerable_flags: vulnerableFlags,
         situation: `🚨 URGENT ${activeHazard?.title?.toUpperCase() || 'SOS'}: ${headcount} person(s) stranded at ${addressLabel}. Special Needs: ${selectedModLabels.join(', ') || 'None stated'}.`,
       });
 
@@ -235,6 +237,7 @@ export default function EmergencySOSModal({ visible, onClose, initialCoords, onS
             headcount,
             hazard_type: hazardType,
             modifiers: selectedModifiers,
+            vulnerable_flags: vulnerableFlags,
             situation: `🚨 URGENT ${activeHazard?.title?.toUpperCase() || 'SOS'}: ${headcount} person(s) stranded at ${addressLabel}. Special Needs: ${selectedModLabels.join(', ') || 'None stated'}.`,
           });
 
