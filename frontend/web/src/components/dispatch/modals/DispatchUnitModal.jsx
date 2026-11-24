@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { LifeBuoy, Phone, AlertTriangle, CheckCircle2, MapPin, X, Sparkles } from 'lucide-react';
+import { LifeBuoy, Phone, AlertTriangle, CheckCircle2, MapPin, X, Sparkles, Users, Shield } from 'lucide-react';
 import api from '../../../services/api';
 import { showError } from '../../../utils/toast';
 import { getHaversineDistance, resolveBarangayFromCoords, ZAMBOANGA_BARANGAYS } from '../../../utils/mapHelper';
@@ -11,7 +11,6 @@ const RESCUE_EQUIPMENT_PRESETS = [
   { id: 'spine_board', label: 'Spine Board & Cervical Collar', icon: '🩺' },
   { id: 'scba_gear', label: 'SCBA / Fire Protective Gear', icon: '🧯' },
   { id: 'extrication_tools', label: 'Hydraulic Extrication Cutters', icon: '🔧' },
-  { id: 'vhf_radios', label: 'VHF Handheld Radios', icon: '📻' },
   { id: 'floodlights', label: 'Tactical Searchlights', icon: '🔦' },
 ];
 
@@ -27,12 +26,14 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters = [], 
     || availableUnits[0];
 
   const defaultEquipments = useMemo(() => {
-    if (isFireHazard) return ['scba_gear', 'first_aid', 'vhf_radios', 'extrication_tools'];
-    if (isMedicalHazard) return ['first_aid', 'spine_board', 'vhf_radios'];
-    return ['rubber_boat', 'life_vests', 'first_aid', 'vhf_radios'];
+    if (isFireHazard) return ['scba_gear', 'first_aid', 'extrication_tools'];
+    if (isMedicalHazard) return ['first_aid', 'spine_board'];
+    return ['rubber_boat', 'life_vests', 'first_aid'];
   }, [isFireHazard, isMedicalHazard]);
 
-  const [unitId, setUnitId] = useState(initialData.rescue_unit_id || (defaultUnit?.id || ''));
+  // Support multiple responding units
+  const initialUnitId = initialData.rescue_unit_id || defaultUnit?.id;
+  const [selectedUnitIds, setSelectedUnitIds] = useState(initialUnitId ? [initialUnitId] : []);
   const [victimName, setVictimName] = useState(initialData.victim_name || '');
   const [victimPhone, setVictimPhone] = useState(initialData.victim_phone || '');
   const [lat, setLat] = useState(initialData.victim_latitude || 6.9200);
@@ -45,6 +46,16 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters = [], 
   const [isManualShelter, setIsManualShelter] = useState(false);
   const [selectedEquipments, setSelectedEquipments] = useState(defaultEquipments);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const toggleUnit = (id) => {
+    setSelectedUnitIds(prev => {
+      if (prev.includes(id)) {
+        // Keep at least one unit selected if possible
+        return prev.length > 1 ? prev.filter(uId => uId !== id) : prev;
+      }
+      return [...prev, id];
+    });
+  };
 
   const toggleEquipment = (id) => {
     setSelectedEquipments(prev =>
@@ -108,22 +119,37 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters = [], 
     }
   }, [recommendedShelter?.id, isManualShelter, targetShelterId]);
 
-  const selectedUnit = availableUnits.find(u => String(u.id) === String(unitId));
-  const responsibleOfficer = selectedUnit?.assigned_personnel?.name || selectedUnit?.crew_members?.[0]?.name || 'Officer On Duty';
-  const unitPhone = selectedUnit?.contact_number || 'N/A';
-  const isOverCapacity = selectedUnit?.capacity && parseInt(headcount, 10) > selectedUnit.capacity;
+  const selectedUnits = useMemo(() => {
+    return availableUnits.filter(u => selectedUnitIds.some(id => String(id) === String(u.id)));
+  }, [availableUnits, selectedUnitIds]);
+
+  const totalSelectedCapacity = useMemo(() => {
+    return selectedUnits.reduce((acc, u) => acc + (u.capacity || 4), 0);
+  }, [selectedUnits]);
+
+  const isOverCapacity = totalSelectedCapacity > 0 && parseInt(headcount, 10) > totalSelectedCapacity;
+
+  // Contextualized Affected Individuals Label
+  const affectedIndividualsLabel = isFireHazard
+    ? 'Fire-Affected Individuals'
+    : isMedicalHazard
+    ? 'Medical-Affected Individuals'
+    : hazardType === 'flood'
+    ? 'Flood-Affected Individuals'
+    : 'Affected Individuals';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!unitId) {
-      showError('Please select an available rescue unit.');
+    if (selectedUnitIds.length === 0) {
+      showError('Please select at least one available rescue unit.');
       return;
     }
     setIsSubmitting(true);
     const finalBarangay = barangay === 'Other' ? (customBarangay || 'Zamboanga City') : (barangay || 'Zamboanga City');
     try {
       await api.post('/rescue/missions', {
-        rescue_unit_id: parseInt(unitId, 10),
+        rescue_unit_id: parseInt(selectedUnitIds[0], 10),
+        rescue_unit_ids: selectedUnitIds.map(id => parseInt(id, 10)),
         pending_incident_id: initialData.pending_incident_id || null,
         victim_name: victimName.trim() || 'Unnamed Evacuees',
         victim_phone: victimPhone || null,
@@ -146,110 +172,59 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters = [], 
 
   return (
     <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-xs z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800">
-        <div className="bg-red-600 text-white p-5 flex justify-between items-center">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
+        <div className="bg-red-600 text-white p-5 flex justify-between items-center shrink-0 sticky top-0 z-20 shadow-xs">
           <div className="flex items-center gap-2.5">
             <LifeBuoy size={20} />
             <h3 className="font-bold text-base">Dispatch Search &amp; Rescue Mission</h3>
           </div>
-          <button onClick={onClose} className="text-white/80 hover:text-white cursor-pointer"><X size={20} /></button>
+          <button onClick={onClose} className="text-white/80 hover:text-white cursor-pointer" aria-label="Close Modal">
+            <X size={20} />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
-          {/* Emergency SOS Origin Banner */}
-          {initialData.hazard_type && (
-            <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl p-3.5 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {isFireHazard ? (
-                    <span className="bg-orange-600 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                      🔥 FIRE RESCUE
-                    </span>
-                  ) : isMedicalHazard ? (
-                    <span className="bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                      🚑 MEDICAL RESCUE
-                    </span>
-                  ) : (
-                    <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                      🌊 FLOOD RESCUE
-                    </span>
-                  )}
-                  <span className="font-bold text-gray-900 dark:text-slate-100">
-                    Distress Order: <strong className="text-red-600 dark:text-red-400">{`${headcount} Victims Stranded`}</strong>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs overflow-y-auto flex-1">
+          {/* ========================================================= */}
+          {/* TOP SECTION: VICTIM & INCIDENT INFORMATION                 */}
+          {/* ========================================================= */}
+
+          {/* Emergency Origin Banner with Contextualized "Affected Individuals" */}
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl p-3.5 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {isFireHazard ? (
+                  <span className="bg-orange-600 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                    🔥 FIRE RESCUE
                   </span>
-                </div>
-                <span className="text-[10px] font-bold text-gray-400 font-mono">
-                  CITIZEN SOS ORDER
+                ) : isMedicalHazard ? (
+                  <span className="bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                    🚑 MEDICAL RESCUE
+                  </span>
+                ) : (
+                  <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                    🌊 FLOOD RESCUE
+                  </span>
+                )}
+                <span className="font-bold text-gray-900 dark:text-slate-100">
+                  {affectedIndividualsLabel}: <strong className="text-red-600 dark:text-red-400">{`${headcount} Victims Stranded`}</strong>
                 </span>
               </div>
-
-              {Array.isArray(initialData.modifiers) && initialData.modifiers.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-red-100 dark:border-red-900/30">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase">Special Needs:</span>
-                  {initialData.modifiers.map(mod => (
-                    <span key={mod} className="bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                      {mod.replace(/_/g, ' ')}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Rescue Unit Selector */}
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="block font-bold text-gray-700 dark:text-slate-300">Select Responding Unit</label>
-              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
-                Recommended: {isFireHazard ? '🚒 Truck / Fire Unit' : (isMedicalHazard ? '🚑 Ambulance' : '🚤 Water Rescue Boat')}
+              <span className="text-[10px] font-bold text-gray-400 font-mono">
+                CITIZEN RESCUE CALL
               </span>
             </div>
-            <select
-              value={unitId}
-              onChange={e => setUnitId(e.target.value)}
-              className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg font-bold text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-red-500"
-              required
-            >
-              <option value="">Select an available unit...</option>
-              {availableUnits.map(u => {
-                const isMatch = u.unit_type === suggestedUnitType;
-                return (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.call_sign}) — Cap: {u.capacity ?? 4} pers — {u.status.toUpperCase()} {isMatch ? '★ RECOMMENDED' : ''}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
 
-          {/* Selected Unit Responsible Officer & Contact Person Card */}
-          {selectedUnit && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-xl flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
-                  {selectedUnit.call_sign ? selectedUnit.call_sign.substring(0, 3) : 'SRR'}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-gray-900 dark:text-slate-100 text-xs">
-                      Responsible Officer: {responsibleOfficer}
-                    </span>
-                    <span className="text-[10px] font-mono bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-1.5 py-0.2 rounded font-bold">
-                      {selectedUnit.call_sign}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-gray-600 dark:text-slate-400 flex items-center gap-1 mt-0.5">
-                    <Phone size={11} className="text-blue-500" /> Hot Contact: <strong className="font-mono text-gray-900 dark:text-slate-100">{unitPhone}</strong> • Max Capacity: {selectedUnit.capacity ?? 4} pers
-                  </p>
-                </div>
+            {Array.isArray(initialData.modifiers) && initialData.modifiers.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-red-100 dark:border-red-900/30">
+                <span className="text-[10px] font-bold text-gray-500 uppercase">Special Needs:</span>
+                {initialData.modifiers.map(mod => (
+                  <span key={mod} className="bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                    {mod.replace(/_/g, ' ')}
+                  </span>
+                ))}
               </div>
-              <div className="text-right">
-                <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
-                  READY
-                </span>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Victim / Family Name & Contact Phone */}
           <div className="grid grid-cols-2 gap-3">
@@ -280,30 +255,15 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters = [], 
           {/* Headcount & Smart Auto-Geocoded Barangay */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="font-bold text-gray-700 dark:text-slate-300">Headcount</label>
-                {selectedUnit && (
-                  <span className="text-[10px] text-gray-500 dark:text-slate-400 font-mono">
-                    Cap: <strong className={isOverCapacity ? 'text-red-500 font-black' : 'text-emerald-500'}>{selectedUnit.capacity ?? 4}</strong>
-                  </span>
-                )}
-              </div>
+              <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Headcount (Victims)</label>
               <input
                 type="number"
                 min="1"
                 value={headcount}
                 onChange={e => setHeadcount(e.target.value)}
-                className={`w-full p-2.5 bg-gray-50 dark:bg-slate-800 border rounded-lg text-gray-900 dark:text-slate-100 ${
-                  isOverCapacity ? 'border-amber-500 ring-1 ring-amber-500' : 'border-gray-300 dark:border-slate-700'
-                }`}
+                className="w-full p-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-900 dark:text-slate-100"
                 required
               />
-              {isOverCapacity && (
-                <div className="mt-1.5 p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-lg text-amber-800 dark:text-amber-300 text-[10px] flex items-center gap-1.5">
-                  <AlertTriangle size={12} className="shrink-0 text-amber-600" />
-                  <span><strong>⚠️ Exceeds Capacity:</strong> Unit holds {selectedUnit.capacity} pers (order has {headcount} victims).</span>
-                </div>
-              )}
             </div>
 
             <div>
@@ -394,41 +354,6 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters = [], 
             </div>
           </div>
 
-          {/* Rescue Equipment Brought Checklist */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="font-bold text-gray-700 dark:text-slate-300">
-                Rescue Equipment Brought / Deployed ({selectedEquipments.length} selected)
-              </label>
-              <span className="text-[10px] text-gray-400">Click to toggle items</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {RESCUE_EQUIPMENT_PRESETS.map(eq => {
-                const isSelected = selectedEquipments.includes(eq.id);
-                return (
-                  <button
-                    key={eq.id}
-                    type="button"
-                    onClick={() => toggleEquipment(eq.id)}
-                    className={`flex items-center gap-2 p-2 rounded-lg text-left transition border text-xs cursor-pointer ${
-                      isSelected
-                        ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-400 dark:border-blue-700 text-blue-900 dark:text-blue-200 font-bold'
-                        : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 font-medium hover:bg-gray-50'
-                    }`}
-                  >
-                    <span className="text-base">{eq.icon}</span>
-                    <span className="truncate flex-1">{eq.label}</span>
-                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${
-                      isSelected ? 'bg-blue-600 text-white' : 'border border-gray-300 dark:border-slate-600'
-                    }`}>
-                      {isSelected ? '✓' : ''}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Smart Proximity-Based Drop-off Shelter Destination */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
@@ -498,6 +423,155 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters = [], 
             </select>
           </div>
 
+          {/* ========================================================= */}
+          {/* BOTTOM SECTION: RESPONDING UNITS & TACTICAL EQUIPMENT      */}
+          {/* ========================================================= */}
+
+          <div className="pt-2 border-t border-gray-200 dark:border-slate-800">
+            {/* Multi-Unit Responding Fleet Selection */}
+            <div className="mb-3">
+              <div className="flex justify-between items-center mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Shield size={14} className="text-red-600" />
+                  <label className="font-bold text-gray-800 dark:text-slate-200 text-xs">
+                    Assign Responding Rescue Fleet ({selectedUnits.length} selected)
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono text-gray-500 dark:text-slate-400">
+                    Fleet Cap: <strong className={isOverCapacity ? 'text-red-500 font-black' : 'text-emerald-500'}>{totalSelectedCapacity} pers</strong>
+                  </span>
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                    Recommended: {isFireHazard ? '🚒 Fire Truck' : (isMedicalHazard ? '🚑 Ambulance' : '🚤 Water Boat')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Selectable Fleet Cards (Full-Width Row per Unit) */}
+              <div className="flex flex-col gap-2.5 max-h-60 overflow-y-auto pr-1">
+                {availableUnits.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-slate-500 bg-slate-50 dark:bg-slate-950/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                    No rescue units currently on standby in the active fleet roster.
+                  </div>
+                ) : (
+                  availableUnits.map(u => {
+                    const isSelected = selectedUnitIds.some(id => String(id) === String(u.id));
+                    const isMatch = u.unit_type === suggestedUnitType;
+                    const officerName = u.assigned_personnel?.name || u.crew_members?.[0]?.name || 'Officer On Duty';
+                    const badgeText = (u.call_sign || u.name || 'FLT').substring(0, 3).toUpperCase();
+
+                    return (
+                      <div
+                        key={u.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={isSelected}
+                        onClick={() => toggleUnit(u.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleUnit(u.id);
+                          }
+                        }}
+                        className={`w-full p-3 rounded-2xl border transition-all cursor-pointer text-left flex items-center justify-between gap-3.5 ${
+                          isSelected
+                            ? 'bg-blue-50/80 dark:bg-blue-950/50 border-blue-500 dark:border-blue-600 ring-2 ring-blue-500/80 shadow-xs'
+                            : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 hover:border-blue-300 dark:hover:border-slate-600'
+                        }`}
+                      >
+                        {/* Call Sign Square Badge (e.g. BOA) */}
+                        <div className="w-11 h-11 rounded-xl bg-blue-600 text-white font-black text-xs flex items-center justify-center shrink-0 uppercase tracking-wider shadow-xs">
+                          {badgeText}
+                        </div>
+
+                        {/* Officer & Contact Details (1 full row for main detail, 1 full row below for contact & capacity) */}
+                        <div className="min-w-0 flex-1 flex flex-col justify-center">
+                          {/* Top Row: Responsible Officer & Call Sign */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-xs text-slate-900 dark:text-slate-100">
+                              Responsible Officer: <span className="font-bold text-slate-900 dark:text-white">{officerName}</span>
+                            </span>
+                            <span className="text-[10px] font-mono font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
+                              {u.call_sign}
+                            </span>
+                            {isMatch && (
+                              <span className="text-[9px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded font-bold">
+                                ★ RECOMMENDED
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Bottom Row: Hot Contact & Max Capacity */}
+                          <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
+                            <span className="text-blue-500 shrink-0 text-xs">📞</span>
+                            <span>Hot Contact: <strong className="font-bold text-slate-800 dark:text-slate-200">{u.contact_number || 'N/A'}</strong></span>
+                            <span className="text-slate-300 dark:text-slate-600">•</span>
+                            <span>Max Capacity: <strong className="font-bold text-slate-800 dark:text-slate-200">{u.capacity ?? 4} pers</strong></span>
+                          </div>
+                        </div>
+
+                        {/* Status Pill on the Right (e.g. READY) */}
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide border shrink-0 flex items-center gap-1 ${
+                          isSelected
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-400 dark:border-emerald-600 shadow-xs'
+                            : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/80'
+                        }`}>
+                          {isSelected && <span className="font-black text-xs text-blue-600 dark:text-blue-400">✓</span>}
+                          READY
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Over-Capacity Warning Banner */}
+              {isOverCapacity && (
+                <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-lg text-amber-800 dark:text-amber-300 text-[10px] flex items-center gap-1.5">
+                  <AlertTriangle size={13} className="shrink-0 text-amber-600" />
+                  <span>
+                    <strong>⚠️ Exceeds Capacity:</strong> Selected fleet holds {totalSelectedCapacity} persons, but incident reports {headcount} victims. Consider selecting additional responding units.
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Rescue Equipment Brought Checklist (Scoped Inside Responding Units Section) */}
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="font-bold text-gray-700 dark:text-slate-300">
+                  Rescue Equipment Brought / Deployed ({selectedEquipments.length} selected)
+                </label>
+                <span className="text-[10px] text-gray-400">Click to toggle items</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {RESCUE_EQUIPMENT_PRESETS.map(eq => {
+                  const isSelected = selectedEquipments.includes(eq.id);
+                  return (
+                    <button
+                      key={eq.id}
+                      type="button"
+                      onClick={() => toggleEquipment(eq.id)}
+                      className={`flex items-center gap-2 p-2 rounded-lg text-left transition border text-xs cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-400 dark:border-blue-700 text-blue-900 dark:text-blue-200 font-bold'
+                          : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 font-medium hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="text-base">{eq.icon}</span>
+                      <span className="truncate flex-1">{eq.label}</span>
+                      <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${
+                        isSelected ? 'bg-blue-600 text-white' : 'border border-gray-300 dark:border-slate-600'
+                      }`}>
+                        {isSelected ? '✓' : ''}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
           {/* Action Buttons */}
           <div className="flex gap-3 pt-3">
             <button
@@ -509,10 +583,10 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters = [], 
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || selectedUnitIds.length === 0}
               className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition shadow flex items-center justify-center gap-1.5 disabled:opacity-60 cursor-pointer"
             >
-              {isSubmitting ? 'Deploying...' : 'Confirm & Deploy Unit'}
+              {isSubmitting ? 'Deploying...' : `Confirm & Deploy Unit${selectedUnitIds.length > 1 ? `s (${selectedUnitIds.length})` : ''}`}
             </button>
           </div>
         </form>
@@ -520,8 +594,5 @@ export function DispatchUnitModal({ initialData, availableUnits, shelters = [], 
     </div>
   );
 }
-
-// --- Staging Handover Modal Component ---
-
 
 export default DispatchUnitModal;

@@ -319,3 +319,70 @@ test('individual rescuers can be registered with specific crew roles and assigne
     expect($userProfileRes->json('assigned_rescue_unit.call_sign'))->toBe('BOAT-CHARLIE');
     expect($userProfileRes->json('rescue_role'))->toBe('boat_pilot');
 });
+
+test('resident can fetch active SOS telemetry and cancel active SOS', function () {
+    $resident = User::factory()->create(['role' => 'resident']);
+    $unit = RescueUnit::create([
+        'name' => 'Boat Alpha',
+        'call_sign' => 'BOAT-ALPHA',
+        'unit_type' => 'water_rescue',
+        'status' => 'standby',
+        'current_latitude' => 6.9155,
+        'current_longitude' => 122.0790,
+    ]);
+
+    // 1. Initially no active SOS
+    $resInitial = $this->actingAs($resident)->getJson('/api/user/active-sos');
+    $resInitial->assertStatus(200)
+        ->assertJsonPath('status', 'idle')
+        ->assertJsonPath('data', null);
+
+    // 2. Resident submits SOS
+    $sosRes = $this->actingAs($resident)->postJson('/api/rescue/sos', [
+        'latitude' => 6.9200,
+        'longitude' => 122.0800,
+        'headcount' => 4,
+        'hazard_type' => 'flood',
+        'situation' => 'Trapped on second floor',
+    ]);
+    $sosRes->assertStatus(201);
+    $incidentId = $sosRes->json('data.incident_id');
+
+    // 3. User now sees pending_dispatch state
+    $resPending = $this->actingAs($resident)->getJson('/api/user/active-sos');
+    $resPending->assertStatus(200)
+        ->assertJsonPath('status', 'active')
+        ->assertJsonPath('data.tracking_state', 'pending_dispatch')
+        ->assertJsonPath('data.headcount', 4);
+
+    // 4. Admin dispatches Boat Alpha
+    $admin = User::factory()->create(['role' => 'admin']);
+    $dispatchRes = $this->actingAs($admin)->postJson('/api/rescue/missions', [
+        'rescue_unit_id' => $unit->id,
+        'pending_incident_id' => $incidentId,
+        'victim_name' => $resident->name,
+        'victim_latitude' => 6.9200,
+        'victim_longitude' => 122.0800,
+        'headcount' => 4,
+        'status' => 'en_route',
+    ]);
+    $dispatchRes->assertStatus(201);
+
+    // 5. User now sees en_route state with assigned vehicle telemetry
+    $resDispatched = $this->actingAs($resident)->getJson('/api/user/active-sos');
+    $resDispatched->assertStatus(200)
+        ->assertJsonPath('status', 'active')
+        ->assertJsonPath('data.tracking_state', 'en_route')
+        ->assertJsonPath('data.rescue_unit.call_sign', 'BOAT-ALPHA');
+
+    // 6. Resident cancels active SOS
+    $cancelRes = $this->actingAs($resident)->patchJson('/api/user/active-sos/cancel');
+    $cancelRes->assertStatus(200)
+        ->assertJsonPath('status', 'success');
+
+    // 7. Unit is released back to standby and user has no active mission
+    expect($unit->fresh()->status)->toBe('standby');
+    $resAfterCancel = $this->actingAs($resident)->getJson('/api/user/active-sos');
+    $resAfterCancel->assertStatus(200)
+        ->assertJsonPath('status', 'idle');
+});

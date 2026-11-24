@@ -303,41 +303,51 @@ function getHazardCostMultiplier(geometryCoords, hazardsWithBounds, transportati
             
             // Phase 4: Susceptibility Zones vs Active Hazards Matrix
             if (h.hazard_type === 'flood') {
+              const mode = (transportationMode || 'pedestrian').toLowerCase();
+              const isBoat = mode === 'water_rescue' || mode === 'boat';
+              const isHighClearance = mode === 'high_clearance_truck' || mode === '4_wheel' || mode === 'truck' || mode === '4x4';
+              const isStandardCar = mode === 'car' || mode === 'medical_ambulance';
+              const isTwoWheel = mode === '2_wheel' || mode === 'motorcycle' || mode === 'bike';
+              const isPedestrian = mode === 'pedestrian' || mode === 'foot';
               
               // Passive Flood Susceptibility / Prone Areas (Not an active emergency)
               if (h.is_fixed_flood_spot && !h.is_active) {
-                if (transportationMode === 'high_clearance_truck' || transportationMode === 'water_rescue') {
-                  return 1; // Heavy trucks/boats ignore passive prone areas entirely
+                if (isHighClearance || isBoat) {
+                  return 1; // Heavy trucks/4-wheel/boats ignore passive prone areas
                 }
-                // Standard ambulances and civilians get a slight 20% penalty to naturally avoid it if possible
+                // Civilians and standard vehicles get a slight 20% penalty to naturally avoid it if possible
                 maxMultiplier = Math.max(maxMultiplier, 1.2);
                 continue;
               }
 
               // Active Emergency Flood Hazards
               if (h.severity_level === 'high') {
-                if (transportationMode === 'water_rescue') {
+                if (isBoat) {
                   return 1; // Boats can travel smoothly on high floods!
                 }
-                return 99999; // Standard ambulances and 4x4 trucks are completely blocked
+                return 99999; // Standard ambulances and overland vehicles are completely blocked
               }
 
               if (h.severity_level === 'medium') {
-                if (transportationMode === 'water_rescue') return 99999; // Water too shallow for boats
-                if (transportationMode === 'high_clearance_truck') {
-                  maxMultiplier = Math.max(maxMultiplier, 1.5); // 4x4s wade through slowly
+                if (isBoat) return 99999; // Water too shallow for boats
+                if (isHighClearance) {
+                  maxMultiplier = Math.max(maxMultiplier, 1.5); // 4-wheel & high-clearance wade through slowly
                   continue;
                 }
-                return 99999; // Civilians, pedestrians, medical ambulances blocked
+                return 99999; // Pedestrians and 2-wheel vehicles blocked
               }
 
               if (h.severity_level === 'low') {
-                if (transportationMode === 'water_rescue') return 99999; // Water too shallow for boats
-                if (transportationMode === 'high_clearance_truck') return 1; // 4x4 ignores low floods completely
-                if (transportationMode === 'medical_ambulance' || transportationMode === 'car') {
-                  return 99999; // Standard ambulances/cars blocked
+                if (isBoat) return 99999; // Water too shallow for boats
+                if (isHighClearance) return 1; // 4-wheel ignores low floods completely
+                if (isStandardCar || isTwoWheel) {
+                  maxMultiplier = Math.max(maxMultiplier, 1.4);
+                  continue;
                 }
-                if (transportationMode === 'pedestrian') return 99999;
+                if (isPedestrian) {
+                  maxMultiplier = Math.max(maxMultiplier, 2.0); // Pedestrians wade with significant penalty
+                  continue;
+                }
                 maxMultiplier = Math.max(maxMultiplier, 1.5);
               }
             }
@@ -412,9 +422,18 @@ export function determineTargetFacility(userLat, userLng, facilities, activeHaza
     }
   }
 
-  // Fallback to closest open evacuation center / shelter
-  const openFacilities = facilities.filter(f => f.status === 'open' || !f.status);
-  const pool = openFacilities.length > 0 ? openFacilities : facilities;
+  // Pillar 2: Fallback to closest open evacuation center / shelter within authorized surge capacity limit (120%)
+  const availableSurgeFacilities = facilities.filter(f => {
+    if (f.status === 'closed') return false;
+    const max = Number(f.max_capacity || f.capacity || 0);
+    const curr = Number(f.current_occupancy || f.occupancy || 0);
+    if (max > 0 && curr >= Math.ceil(max * 1.20)) {
+      return false; // Exceeded 120% maximum surge capacity limit
+    }
+    return true;
+  });
+
+  const pool = availableSurgeFacilities.length > 0 ? availableSurgeFacilities : facilities;
   return findClosestFacility(userLat, userLng, pool, null);
 }
 

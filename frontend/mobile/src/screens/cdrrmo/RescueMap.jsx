@@ -40,6 +40,7 @@ import {
   MapPin,
 } from 'lucide-react-native';
 import api from '../../services/api';
+import { getEcho } from '../../services/echo';
 import { spacing, radii } from '../../styles/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, useThemedStyles } from '../../context/ThemeContext';
@@ -55,6 +56,7 @@ import NavigationPuck from '../../components/rescue/NavigationPuck';
 import VictimArrivalModal from '../../components/rescue/VictimArrivalModal';
 import ShelterArrivalModal from '../../components/rescue/ShelterArrivalModal';
 import StartSimModal from '../../components/rescue/StartSimModal';
+import ChangeShelterModal from '../../components/rescue/ChangeShelterModal';
 import {
   MAPBOX_PUBLIC_TOKEN,
   clampToZamboanga,
@@ -234,6 +236,93 @@ export default function RescueMap({ navigation, route }) {
   const consumeFastForward = useRescueSimulationStore((state) => state.consumeFastForward);
   const confirmVictimSecured = useRescueSimulationStore((state) => state.confirmVictimSecured);
   const confirmHandoverAndStandby = useRescueSimulationStore((state) => state.confirmHandoverAndStandby);
+  const resetToStandby = useRescueSimulationStore((state) => state.resetToStandby);
+  const updateTargetShelter = useRescueSimulationStore((state) => state.updateTargetShelter);
+
+  // Real-time synchronization for mission abort from CDRRMO EOC
+  const currentMissionRef = useRef(currentMission);
+  currentMissionRef.current = currentMission;
+  const assignedUnitRef = useRef(assignedUnit);
+  assignedUnitRef.current = assignedUnit;
+  const userRef = useRef(user);
+  userRef.current = user;
+
+  useEffect(() => {
+    const echo = getEcho();
+    if (!echo || !echo.channel) return;
+
+    const channel = echo.channel('rescue-alerts');
+
+    channel.listen('.rescue.mission.status_updated', (data) => {
+      queryClient.invalidateQueries({ queryKey: ['rescue-missions-active'] });
+      queryClient.invalidateQueries({ queryKey: ['rescue-units-duty'] });
+
+      const active = currentMissionRef.current;
+      const myUnit = assignedUnitRef.current;
+      const currentUser = userRef.current;
+
+      const isCurrentTargetMission =
+        active && (active.id === data?.id || String(active.id) === String(data?.id));
+      const isAssignedToMe =
+        myUnit && data?.rescue_unit_id === myUnit.id;
+      const isAdminOverseeing = currentUser?.role === 'admin';
+
+      if ((isCurrentTargetMission || isAssignedToMe || isAdminOverseeing) && data?.status === 'aborted') {
+        // 1. Immediately stop simulation & reset navigation state
+        stopSimulation();
+        if (typeof resetToStandby === 'function') {
+          resetToStandby();
+        }
+
+        // 2. Alert Rescuer with urgent DRRM prompt & return to Duty Hub
+        Alert.alert(
+          '🚨 MISSION ABORTED BY COMMAND',
+          `CDRRMO Command Center has aborted rescue mission ${data?.control_no || ''}.\n\nStand down and return to base.`,
+          [
+            {
+              text: 'Return to Duty Hub',
+              onPress: () => navigation.navigate('Rescue'),
+            },
+          ],
+          { cancelable: false }
+        );
+      }
+    });
+
+    return () => {
+      if (channel.stopListening) {
+        channel.stopListening('.rescue.mission.status_updated');
+      }
+      if (echo.leaveChannel) {
+        echo.leaveChannel('rescue-alerts');
+      }
+    };
+  }, [queryClient, navigation, stopSimulation, resetToStandby]);
+
+  // Polling fallback: if active real mission disappeared from server while navigating on map
+  const activeMissionIdRef = useRef(null);
+  useEffect(() => {
+    if (currentMission?.id && !String(currentMission.id).startsWith('demo-')) {
+      activeMissionIdRef.current = currentMission.id;
+    }
+  }, [currentMission?.id]);
+
+  useEffect(() => {
+    if (missionsData && activeMissionIdRef.current) {
+      const stillActive = missionsData.some((m) => m.id === activeMissionIdRef.current);
+      if (!stillActive && isSimulationActive) {
+        stopSimulation();
+        if (typeof resetToStandby === 'function') resetToStandby();
+        activeMissionIdRef.current = null;
+        Alert.alert(
+          '🚨 MISSION STAND DOWN',
+          'This rescue mission is no longer active on the CDRRMO dispatch board. Returning to Duty Hub.',
+          [{ text: 'Return to Duty Hub', onPress: () => navigation.navigate('Rescue') }],
+          { cancelable: false }
+        );
+      }
+    }
+  }, [missionsData, isSimulationActive, stopSimulation, resetToStandby, navigation]);
 
   // Auto-start simulation if navigated from Duty Hub with simulation flag
   useEffect(() => {
@@ -374,6 +463,69 @@ export default function RescueMap({ navigation, route }) {
   const activeTargetName = isTransportPhase && !isSuppressionMission
     ? effectiveMission?.target_shelter?.name || shelters[0]?.name || 'Baliwasan Gym Evacuation Center'
     : (isSuppressionMission ? 'Hazard Epicenter' : (effectiveMission?.victim_name || 'Distress Victim'));
+
+  // Target Shelter Capacity Tracking & Dynamic Shelter Re-Routing
+  const [showChangeShelterModal, setShowChangeShelterModal] = useState(false);
+  const [hasAcknowledgedOverflow, setHasAcknowledgedOverflow] = useState(false);
+
+  const currentTargetShelter = activeMission?.target_shelter || shelters.find((s) => s.id === activeMission?.target_shelter_id) || shelters[0];
+  const targetShelterCap = Number(currentTargetShelter?.max_capacity || currentTargetShelter?.capacity || 0);
+  const targetShelterOcc = Number(currentTargetShelter?.current_occupancy || 0);
+  const targetShelterRemaining = currentTargetShelter?.available_capacity !== undefined
+    ? Number(currentTargetShelter.available_capacity)
+    : Math.max(0, targetShelterCap - targetShelterOcc);
+  const victimHeadcount = Number(activeMission?.headcount || activeMission?.victim?.headcount || 1);
+  const isShelterFull = targetShelterCap > 0 && (targetShelterRemaining <= 0 || targetShelterRemaining < victimHeadcount);
+  const shelterOccupancyText = targetShelterCap > 0
+    ? `(${targetShelterOcc}/${targetShelterCap} • ${targetShelterRemaining} spots left)`
+    : '';
+
+  const changeShelterMutation = useMutation({
+    mutationFn: ({ missionId, shelterId }) =>
+      api.patch(`/rescue/missions/${missionId}`, {
+        target_shelter_id: shelterId,
+      }),
+    onSuccess: (res, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['rescue-missions-active'] });
+      queryClient.invalidateQueries({ queryKey: ['shelters-list-rescue'] });
+      const newShelter = shelters.find((s) => s.id === vars.shelterId);
+      if (isSimulationActive) {
+        updateTargetShelter(newShelter);
+      }
+      if (newShelter) {
+        const newCoords = [Number(newShelter.longitude), Number(newShelter.latitude)];
+        computeRoute(activeRescuerLocation, newCoords);
+      }
+      setShowChangeShelterModal(false);
+      safeVibrate([0, 100, 50, 100]);
+      Alert.alert(
+        '🔁 Destination Diverted',
+        `Turn-by-turn navigation re-routed directly to ${newShelter?.name || 'New Evacuation Center'}.`
+      );
+    },
+    onError: (err) => {
+      Alert.alert('Re-routing Failed', err?.response?.data?.message || 'Failed to update destination shelter.');
+    },
+  });
+
+  const handleSelectNewShelter = (selectedShelter) => {
+    if (activeMission?.id) {
+      changeShelterMutation.mutate({
+        missionId: activeMission.id,
+        shelterId: selectedShelter.id,
+      });
+    } else if (isSimulationActive) {
+      updateTargetShelter(selectedShelter);
+      const newCoords = [Number(selectedShelter.longitude), Number(selectedShelter.latitude)];
+      computeRoute(activeRescuerLocation, newCoords);
+      setShowChangeShelterModal(false);
+      safeVibrate([0, 100, 50, 100]);
+      Alert.alert(
+        '🔁 Destination Diverted',
+        `Turn-by-turn navigation re-routed directly to ${selectedShelter?.name || 'New Evacuation Center'}.`
+      );
+    }
+  };
 
   // Route calculation state
   const [routeData, setRouteData] = useState(null);
@@ -1313,11 +1465,11 @@ export default function RescueMap({ navigation, route }) {
         >
           <Mapbox.Camera
             ref={cameraRef}
-            centerCoordinate={activeRescuerLocation}
-            zoomLevel={16.5}
-            pitch={35}
-            animationMode="flyTo"
-            animationDuration={1000}
+            defaultSettings={{
+              centerCoordinate: activeRescuerLocation || ZAMBOANGA_RESCUER_BASE,
+              zoomLevel: 16.5,
+              pitch: 35,
+            }}
           />
 
         {/* Tactical Route Polyline */}
@@ -1488,28 +1640,36 @@ export default function RescueMap({ navigation, route }) {
           </Mapbox.PointAnnotation>
         )}
 
-        {/* 3. Rescuer Live Vehicle Pin (Google Maps Style 3D Tactical Navigation Puck) */}
+        {/* 3. Rescuer Live Location Pin (Tactical Callsign Pill) */}
         {activeRescuerLocation && (
           <Mapbox.PointAnnotation
             key="rescuer-vehicle-marker"
             id="rescuer-vehicle-marker"
             coordinate={activeRescuerLocation}
           >
-            <View style={styles.rescuerMarkerWrap}>
-              <NavigationPuck
-                heading={isSimulationActive ? (simHeading || 0) : (deviceHeading || 0)}
-                theme="rescue"
-                size={44}
-                showBeam={isSimulationActive || isNavigating}
-                isNavigating={isSimulationActive || isNavigating}
+            <View
+              style={[
+                styles.rescuerCallout,
+                {
+                  borderColor: rescuerProfile?.isWaterCraft ? '#38bdf8' : '#10b981',
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.rescuerStatusDot,
+                  { backgroundColor: rescuerProfile?.isWaterCraft ? '#38bdf8' : '#22c55e' },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.rescuerCalloutText,
+                  { color: rescuerProfile?.isWaterCraft ? '#38bdf8' : '#34d399' },
+                ]}
+                numberOfLines={1}
               >
-                <View style={[styles.rescuerCallout, { marginTop: 4 }]}>
-                  <View style={styles.rescuerStatusDot} />
-                  <Text style={styles.rescuerCalloutText} numberOfLines={1}>
-                    {assignedUnit?.call_sign || 'QRT DELTA-3'}
-                  </Text>
-                </View>
-              </NavigationPuck>
+                {assignedUnit?.call_sign || (rescuerProfile?.isWaterCraft ? 'RUBBER BOAT-1' : 'QRT DELTA-3')}
+              </Text>
             </View>
           </Mapbox.PointAnnotation>
         )}
@@ -1616,6 +1776,9 @@ export default function RescueMap({ navigation, route }) {
         handleFitOverview={handleFitOverview}
         activeTargetLngLat={activeTargetLngLat}
         proximityAnnouncement={proximityAnnouncement}
+        isShelterFull={isShelterFull && !hasAcknowledgedOverflow}
+        shelterOccupancyText={shelterOccupancyText}
+        onOpenChangeShelter={() => setShowChangeShelterModal(true)}
         styles={styles}
       />
 
@@ -1744,6 +1907,22 @@ export default function RescueMap({ navigation, route }) {
           setShowShelterArrivalModal(false);
           handleStep5_HandoverAndStandby();
         }}
+      />
+
+      {/* ─── MODAL: DYNAMIC SHELTER SELECTION & OVERFLOW OVERRIDE ─── */}
+      <ChangeShelterModal
+        visible={showChangeShelterModal}
+        onClose={() => setShowChangeShelterModal(false)}
+        currentShelter={currentTargetShelter}
+        shelters={shelters}
+        rescuerLocation={activeRescuerLocation}
+        victimHeadcount={victimHeadcount}
+        onSelectShelter={handleSelectNewShelter}
+        onProceedAnyway={() => {
+          setHasAcknowledgedOverflow(true);
+          setShowChangeShelterModal(false);
+        }}
+        isDarkMode={isDarkMode}
       />
 
       {/* ─── MODAL: RESCUE SIMULATION CONFIRMATION (STEPS 1-5) ─── */}

@@ -112,7 +112,9 @@ class RescueMissionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'rescue_unit_id' => 'required|exists:rescue_units,id',
+            'rescue_unit_id' => 'required_without:rescue_unit_ids|nullable|exists:rescue_units,id',
+            'rescue_unit_ids' => 'nullable|array|min:1',
+            'rescue_unit_ids.*' => 'integer|exists:rescue_units,id',
             'victim_name' => 'required|string|max:255',
             'victim_phone' => 'nullable|string|max:50',
             'victim_latitude' => 'required|numeric|between:-90,90',
@@ -131,13 +133,25 @@ class RescueMissionController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $unit = RescueUnit::findOrFail($validated['rescue_unit_id']);
+        $unitIds = !empty($validated['rescue_unit_ids'])
+            ? array_values(array_unique(array_map('intval', $validated['rescue_unit_ids'])))
+            : [intval($validated['rescue_unit_id'])];
 
-        if (in_array($unit->status, ['en_route', 'on_scene', 'transporting'])) {
+        $units = RescueUnit::whereIn('id', $unitIds)->get();
+        if ($units->isEmpty()) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Rescue unit {$unit->name} is currently engaged in an active mission.",
+                'message' => 'No valid rescue units found for dispatch.',
             ], 422);
+        }
+
+        foreach ($units as $unit) {
+            if (in_array($unit->status, ['en_route', 'on_scene', 'transporting'])) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Rescue unit {$unit->name} ({$unit->call_sign}) is currently engaged in an active mission.",
+                ], 422);
+            }
         }
 
         $initialStatus = $validated['status'] ?? 'dispatched';
@@ -148,73 +162,89 @@ class RescueMissionController extends Controller
             $notes = !empty($notes) ? "{$notes} | {$equipStr}" : $equipStr;
         }
 
-        $mission = DB::transaction(function () use ($validated, $unit, $request, $initialStatus, $notes) {
+        $missions = DB::transaction(function () use ($validated, $units, $request, $initialStatus, $notes) {
+            $createdMissions = [];
+            $unitNames = [];
             $year = date('Y');
-            $count = RescueMission::whereYear('created_at', $year)->count() + 1;
-            $controlNo = 'RES-'.$year.'-'.str_pad($count, 4, '0', STR_PAD_LEFT);
 
-            $mission = RescueMission::create([
-                'control_no' => $controlNo,
-                'pending_incident_id' => $validated['pending_incident_id'] ?? null,
-                'rescue_unit_id' => $unit->id,
-                'dispatched_by' => $request->user()->id,
-                'status' => $initialStatus,
-                'triage_level' => $validated['triage_level'] ?? 'urgent',
-                'victim_name' => $validated['victim_name'],
-                'victim_phone' => $validated['victim_phone'] ?? null,
-                'victim_latitude' => $validated['victim_latitude'],
-                'victim_longitude' => $validated['victim_longitude'],
-                'barangay' => $validated['barangay'] ?? null,
-                'headcount' => $validated['headcount'],
-                'special_needs' => $validated['special_needs'] ?? null,
-                'situation_description' => $validated['situation_description'] ?? null,
-                'target_shelter_id' => $validated['target_shelter_id'] ?? null,
-                'staging_point_id' => $validated['staging_point_id'] ?? null,
-                'dispatched_at' => now(),
-                'notes' => !empty($notes) ? $notes : null,
-            ]);
+            foreach ($units as $idx => $unit) {
+                $count = RescueMission::whereYear('created_at', $year)->count() + 1 + $idx;
+                $controlNo = 'RES-'.$year.'-'.str_pad($count, 4, '0', STR_PAD_LEFT);
 
-            $unit->update(['status' => $initialStatus]);
+                $mission = RescueMission::create([
+                    'control_no' => $controlNo,
+                    'pending_incident_id' => $validated['pending_incident_id'] ?? null,
+                    'rescue_unit_id' => $unit->id,
+                    'dispatched_by' => $request->user()->id,
+                    'status' => $initialStatus,
+                    'triage_level' => $validated['triage_level'] ?? 'urgent',
+                    'victim_name' => $validated['victim_name'],
+                    'victim_phone' => $validated['victim_phone'] ?? null,
+                    'victim_latitude' => $validated['victim_latitude'],
+                    'victim_longitude' => $validated['victim_longitude'],
+                    'barangay' => $validated['barangay'] ?? null,
+                    'headcount' => $validated['headcount'],
+                    'special_needs' => $validated['special_needs'] ?? null,
+                    'situation_description' => $validated['situation_description'] ?? null,
+                    'target_shelter_id' => $validated['target_shelter_id'] ?? null,
+                    'staging_point_id' => $validated['staging_point_id'] ?? null,
+                    'dispatched_at' => now(),
+                    'notes' => !empty($notes) ? $notes : null,
+                ]);
+
+                $unit->update(['status' => $initialStatus]);
+                $createdMissions[] = $mission->load(['rescueUnit', 'targetShelter', 'stagingPoint']);
+                $unitNames[] = $unit->name;
+            }
 
             if (!empty($validated['pending_incident_id'])) {
                 PendingIncident::where('id', $validated['pending_incident_id'])
                     ->update([
                         'status' => 'approved',
+                        'validation_status' => 'cdrrmo_validated',
                         'reviewed_by' => $request->user()->id,
                         'reviewed_at' => now(),
-                        'review_note' => 'Dispatched to rescue unit: ' . $unit->name,
+                        'review_note' => 'Dispatched to rescue units: ' . implode(', ', $unitNames),
                     ]);
             }
 
-            return $mission->load(['rescueUnit', 'targetShelter', 'stagingPoint']);
+            return $createdMissions;
         });
 
-        // Broadcast real-time dispatch notification
-        try {
-            event(new RescueMissionDispatched($mission));
-        } catch (\Throwable $e) {
-            \Log::warning('RescueMissionDispatched broadcast warning: ' . $e->getMessage());
+        $primaryMission = $missions[0];
+
+        // Broadcast real-time dispatch notification for each mission
+        foreach ($missions as $m) {
+            try {
+                event(new RescueMissionDispatched($m));
+            } catch (\Throwable $e) {
+                \Log::warning('RescueMissionDispatched broadcast warning: ' . $e->getMessage());
+            }
+
+            AuditLog::create([
+                'user_id' => $request->user()->id,
+                'action' => 'rescue_mission_dispatched',
+                'ip_address' => $request->ip(),
+                'old_values' => null,
+                'new_values' => [
+                    'mission_id' => $m->id,
+                    'control_no' => $m->control_no,
+                    'unit_id' => $m->rescue_unit_id,
+                    'unit_name' => $m->rescueUnit?->name,
+                    'triage_level' => $m->triage_level,
+                    'headcount' => $m->headcount,
+                ],
+            ]);
         }
 
-        AuditLog::create([
-            'user_id' => $request->user()->id,
-            'action' => 'rescue_mission_dispatched',
-            'ip_address' => $request->ip(),
-            'old_values' => null,
-            'new_values' => [
-                'mission_id' => $mission->id,
-                'control_no' => $mission->control_no,
-                'unit_id' => $unit->id,
-                'unit_name' => $unit->name,
-                'triage_level' => $mission->triage_level,
-                'headcount' => $mission->headcount,
-            ],
-        ]);
-
+        $namesStr = implode(', ', $units->pluck('name')->toArray());
         return response()->json([
             'status' => 'success',
-            'message' => "Rescue unit {$unit->name} successfully dispatched.",
-            'data' => $mission,
+            'message' => count($missions) > 1
+                ? "Rescue units {$namesStr} successfully dispatched."
+                : "Rescue unit {$primaryMission->rescueUnit?->name} successfully dispatched.",
+            'data' => $primaryMission,
+            'missions' => $missions,
         ], 201);
     }
 
@@ -341,7 +371,7 @@ class RescueMissionController extends Controller
     public function updateStatus(Request $request, int $id)
     {
         $validated = $request->validate([
-            'status' => 'required|in:en_route,on_scene,transporting,staged_at_assembly,completed,aborted',
+            'status' => 'nullable|in:en_route,on_scene,transporting,staged_at_assembly,completed,aborted',
             'target_shelter_id' => 'nullable|exists:shelters,id',
             'staging_point_id' => 'nullable|exists:shelters,id',
             'notes' => 'nullable|string|max:1000',
@@ -351,7 +381,7 @@ class RescueMissionController extends Controller
 
         $mission = RescueMission::with(['rescueUnit', 'targetShelter', 'stagingPoint'])->findOrFail($id);
         $oldStatus = $mission->status;
-        $newStatus = $validated['status'];
+        $newStatus = $validated['status'] ?? $oldStatus;
 
         DB::transaction(function () use ($mission, $newStatus, $validated, $request) {
             $updates = ['status' => $newStatus];
@@ -784,6 +814,169 @@ class RescueMissionController extends Controller
             'status' => 'success',
             'message' => "Archived {$count} completed rescue missions.",
             'data' => ['archived_count' => $count],
+        ]);
+    }
+
+    /**
+     * Get active SOS distress and assigned rescue unit tracking telemetry for the authenticated resident.
+     * Route: GET /api/user/active-sos
+     */
+    public function getActiveSos(Request $request)
+    {
+        $userId = $request->user()?->id ?? auth('sanctum')->id();
+        if (!$userId) {
+            return response()->json(['status' => 'idle', 'data' => null]);
+        }
+
+        $userPhone = $request->user()?->familyProfile?->contact_number;
+
+        $mission = RescueMission::where(function ($q) use ($userId, $userPhone) {
+            $q->whereHas('incident', function ($sub) use ($userId) {
+                $sub->where('reported_by', $userId);
+            });
+            if ($userPhone) {
+                $q->orWhere('victim_phone', $userPhone);
+            }
+        })
+        ->whereIn('status', ['dispatched', 'en_route', 'on_scene', 'transporting', 'staged_at_assembly'])
+        ->with([
+            'rescueUnit.assignedPersonnel.familyProfile',
+            'targetShelter:id,name,latitude,longitude,current_occupancy,capacity',
+            'stagingPoint:id,name,latitude,longitude',
+            'incident',
+        ])
+        ->latest('updated_at')
+        ->first();
+
+        if ($mission) {
+            $unit = $mission->rescueUnit;
+            $rescuerPhone = $unit?->contact_number
+                ?? $unit?->assignedPersonnel?->familyProfile?->contact_number
+                ?? '0917-555-0101';
+
+            return response()->json([
+                'status' => 'active',
+                'data' => [
+                    'tracking_state' => $mission->status,
+                    'mission_id' => $mission->id,
+                    'control_no' => $mission->control_no,
+                    'triage_level' => $mission->triage_level,
+                    'hazard_type' => $mission->incident?->hazard_type ?? 'flood',
+                    'headcount' => $mission->headcount,
+                    'special_needs' => $mission->special_needs,
+                    'situation_description' => $mission->situation_description,
+                    'victim_latitude' => (float) $mission->victim_latitude,
+                    'victim_longitude' => (float) $mission->victim_longitude,
+                    'barangay' => $mission->barangay,
+                    'dispatched_at' => $mission->dispatched_at?->toIso8601String(),
+                    'rescue_unit' => $unit ? [
+                        'id' => $unit->id,
+                        'name' => $unit->name,
+                        'call_sign' => $unit->call_sign,
+                        'unit_type' => $unit->unit_type,
+                        'status' => $unit->status,
+                        'current_latitude' => (float) ($unit->current_latitude ?? 6.9155),
+                        'current_longitude' => (float) ($unit->current_longitude ?? 122.0790),
+                        'contact_number' => $rescuerPhone,
+                        'operator_name' => $unit->assignedPersonnel?->name ?? 'QRT Unit Lead',
+                    ] : null,
+                    'target_shelter' => $mission->targetShelter ? [
+                        'id' => $mission->targetShelter->id,
+                        'name' => $mission->targetShelter->name,
+                        'latitude' => (float) $mission->targetShelter->latitude,
+                        'longitude' => (float) $mission->targetShelter->longitude,
+                        'available_spots' => max(0, $mission->targetShelter->capacity - $mission->targetShelter->current_occupancy),
+                    ] : null,
+                ],
+            ]);
+        }
+
+        $pendingSos = PendingIncident::where('reported_by', $userId)
+            ->where('status', 'pending')
+            ->whereNull('archived_at')
+            ->where(function ($q) {
+                $q->where('hazard_type', 'sos')
+                  ->orWhere('name', 'LIKE', 'EMERGENCY SOS%')
+                  ->orWhereNotNull('modifiers');
+            })
+            ->where('created_at', '>=', now()->subHours(24))
+            ->latest()
+            ->first();
+
+        if ($pendingSos) {
+            return response()->json([
+                'status' => 'active',
+                'data' => [
+                    'tracking_state' => 'pending_dispatch',
+                    'incident_id' => $pendingSos->id,
+                    'hazard_type' => $pendingSos->hazard_type,
+                    'headcount' => $pendingSos->headcount ?? 1,
+                    'modifiers' => $pendingSos->modifiers,
+                    'situation_description' => $pendingSos->description,
+                    'victim_latitude' => (float) $pendingSos->latitude,
+                    'victim_longitude' => (float) $pendingSos->longitude,
+                    'reported_at' => $pendingSos->created_at->toIso8601String(),
+                    'rescue_unit' => null,
+                    'target_shelter' => null,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'idle',
+            'data' => null,
+        ]);
+    }
+
+    /**
+     * Cancel an active SOS distress beacon (or report false alarm).
+     * Route: PATCH /api/user/active-sos/cancel
+     */
+    public function cancelActiveSos(Request $request)
+    {
+        $userId = $request->user()?->id ?? auth('sanctum')->id();
+        if (!$userId) {
+            return response()->json(['message' => 'Unauthorized.'], 401);
+        }
+
+        $mission = RescueMission::whereHas('incident', function ($sub) use ($userId) {
+            $sub->where('reported_by', $userId);
+        })
+        ->whereIn('status', ['dispatched', 'en_route'])
+        ->latest('updated_at')
+        ->first();
+
+        if ($mission) {
+            $mission->update([
+                'status' => 'aborted',
+                'notes' => ($mission->notes ? $mission->notes . " | " : "") . "Cancelled by citizen at " . now()->format('H:i'),
+            ]);
+
+            if ($mission->rescueUnit) {
+                $mission->rescueUnit->update(['status' => 'standby']);
+            }
+
+            try {
+                event(new RescueMissionStatusUpdated($mission));
+            } catch (\Throwable $e) {}
+        }
+
+        PendingIncident::where('reported_by', $userId)
+            ->where('status', 'pending')
+            ->where(function ($q) {
+                $q->where('hazard_type', 'sos')
+                  ->orWhere('name', 'LIKE', 'EMERGENCY SOS%')
+                  ->orWhereNotNull('modifiers');
+            })
+            ->update([
+                'status' => 'dismissed',
+                'archived_at' => now(),
+                'review_note' => 'Cancelled by resident.',
+            ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Emergency SOS distress beacon cancelled.',
         ]);
     }
 }

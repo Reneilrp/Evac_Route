@@ -8,6 +8,8 @@ import {
   Crosshair,
   MapPin,
   Navigation,
+  Building,
+  AlertTriangle,
 } from 'lucide-react-native';
 import { spacing } from '../../styles/theme';
 
@@ -35,6 +37,9 @@ export default function RescueTopHud({
   handleFitOverview,
   activeTargetLngLat,
   proximityAnnouncement,
+  isShelterFull = false,
+  shelterOccupancyText = '',
+  onOpenChangeShelter,
   styles,
 }) {
   return (
@@ -108,6 +113,60 @@ export default function RescueTopHud({
               </Text>
               {isLoadingRoute && <ActivityIndicator size="small" color="#38bdf8" />}
             </View>
+
+            {/* Target Shelter Capacity & Switch Banner */}
+            {isTransportPhase && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: isShelterFull ? '#450a0a' : '#064e3b',
+                  borderWidth: 1,
+                  borderColor: isShelterFull ? '#ef4444' : '#10b981',
+                  borderRadius: 8,
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  marginTop: 4,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, marginRight: 6 }}>
+                  {isShelterFull ? (
+                    <AlertTriangle size={13} color="#f87171" />
+                  ) : (
+                    <Building size={13} color="#34d399" />
+                  )}
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: '800',
+                      color: isShelterFull ? '#fca5a5' : '#a7f3d0',
+                    }}
+                    numberOfLines={1}
+                  >
+                    {isShelterFull
+                      ? `⚠️ Shelter At Capacity ${shelterOccupancyText}`
+                      : `Shelter Open ${shelterOccupancyText}`}
+                  </Text>
+                </View>
+
+                {typeof onOpenChangeShelter === 'function' && (
+                  <TouchableOpacity
+                    onPress={onOpenChangeShelter}
+                    style={{
+                      backgroundColor: isShelterFull ? '#ef4444' : '#047857',
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#ffffff' }}>
+                      CHANGE
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
 
             {/* Tactical Engine Status Chip */}
             {routeData?.tacticalTelemetry && (

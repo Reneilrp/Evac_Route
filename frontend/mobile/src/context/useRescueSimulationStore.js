@@ -118,6 +118,16 @@ export const useRescueSimulationStore = create((set, get) => ({
   skipToGeofence: () => set({ shouldFastForwardGeofence: true }),
   consumeFastForward: () => set({ shouldFastForwardGeofence: false }),
 
+  updateTargetShelter: (shelter) => {
+    set((state) => ({
+      simMission: {
+        ...state.simMission,
+        target_shelter_id: shelter?.id ?? state.simMission?.target_shelter_id,
+        target_shelter: shelter || state.simMission?.target_shelter,
+      },
+    }));
+  },
+
   confirmVictimSecured: (targetShelter = null) => {
     set((state) => ({
       simPhase: 'transporting',

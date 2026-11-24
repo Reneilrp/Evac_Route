@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
+import { useActiveSos } from '../../context/ActiveSosContext';
 import { clampToZamboanga, ZAMBOANGA_WMSU, getNearestBarangay } from '../../utils/zamboangaGeo';
 import { enqueueOfflineSos } from '../../services/offlineSosQueue';
 
@@ -73,6 +74,7 @@ const MODIFIER_OPTIONS = [
 
 export default function EmergencySOSModal({ visible, onClose, initialCoords, onSuccess }) {
   const { isDarkMode } = useTheme();
+  const { refetchActiveSos } = useActiveSos();
 
   const [hazardType, setHazardType] = useState('flood');
   const [headcount, setHeadcount] = useState(1);
@@ -210,11 +212,16 @@ export default function EmergencySOSModal({ visible, onClose, initialCoords, onS
         situation: `🚨 URGENT ${activeHazard?.title?.toUpperCase() || 'SOS'}: ${headcount} person(s) stranded at ${addressLabel}. Special Needs: ${selectedModLabels.join(', ') || 'None stated'}.`,
       });
 
+      try {
+        refetchActiveSos();
+      } catch (_e) {}
+
       Alert.alert(
         '🚨 RESCUE SOS DISPATCHED',
         `Your emergency signal for ${headcount} person(s) (${activeHazard?.title}) has been transmitted to CDRRMO Command Center.\n\nResponding rescue units are being dispatched to your coordinates. Stay where you are and keep your phone charged.`,
         [{ text: 'OK', onPress: () => {
           onClose();
+          refetchActiveSos();
           if (onSuccess) onSuccess();
         }}]
       );

@@ -187,21 +187,56 @@ export default function RescueDuty({ navigation }) {
     setConfirmModal((prev) => ({ ...prev, visible: false }));
   };
 
-  // Real-time notification for newly assigned mission
+  // Real-time notification for newly assigned or updated/aborted missions
+  const assignedUnitRef = useRef(assignedUnit);
+  assignedUnitRef.current = assignedUnit;
+  const userRef = useRef(user);
+  userRef.current = user;
+
   useEffect(() => {
     const echo = getEcho();
     if (!echo || !echo.channel) return;
 
     const channel = echo.channel('rescue-alerts');
+
     channel.listen('.rescue.mission.dispatched', () => {
       queryClient.invalidateQueries({ queryKey: ['rescue-missions-active'] });
+      queryClient.invalidateQueries({ queryKey: ['rescue-units-duty'] });
       Alert.alert(
         '🚨 NEW RESCUE MISSION!',
         'A search and rescue mission has been assigned to your unit by CDRRMO EOC.'
       );
     });
 
+    channel.listen('.rescue.mission.status_updated', (data) => {
+      queryClient.invalidateQueries({ queryKey: ['rescue-missions-active'] });
+      queryClient.invalidateQueries({ queryKey: ['rescue-units-duty'] });
+
+      const myUnit = assignedUnitRef.current;
+      const currentUser = userRef.current;
+      const isForMyUnit =
+        !myUnit ||
+        data?.rescue_unit_id === myUnit?.id ||
+        currentUser?.role === 'admin';
+
+      if (isForMyUnit && data?.status === 'aborted') {
+        const simStore = useRescueSimulationStore.getState();
+        if (simStore.isSimulationActive) {
+          simStore.stopSimulation();
+          simStore.resetToStandby();
+        }
+        Alert.alert(
+          '🚨 MISSION ABORTED BY COMMAND',
+          `CDRRMO EOC has aborted rescue mission ${data?.control_no || ''}.\n\nStand down immediately and remain on standby.`
+        );
+      }
+    });
+
     return () => {
+      if (channel.stopListening) {
+        channel.stopListening('.rescue.mission.dispatched');
+        channel.stopListening('.rescue.mission.status_updated');
+      }
       if (echo.leaveChannel) {
         echo.leaveChannel('rescue-alerts');
       }
