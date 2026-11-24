@@ -272,7 +272,7 @@ function ShelterDetailsModal({
             <span className="block text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">High-Risk Vulnerable</span>
             <div className="mt-1 flex items-baseline gap-1.5">
               <span className="text-xl font-black text-rose-600 dark:text-rose-400">{vulnData?.total_vulnerable || 0}</span>
-              <span className="text-xs text-gray-400">evacuees</span>
+              <span className="text-xs text-gray-400">IDPs</span>
             </div>
           </div>
         </div>
@@ -287,7 +287,7 @@ function ShelterDetailsModal({
                 : 'border-transparent text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
-            <Users size={14} /> Evacuee Registry ({activeLogs.length})
+            <Users size={14} /> IDP Registry ({activeLogs.length})
           </button>
           <button
             onClick={() => setModalTab('triage')}
@@ -330,7 +330,7 @@ function ShelterDetailsModal({
                   {activeLogs.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="py-12 text-center text-gray-400 dark:text-slate-500 font-medium">
-                        No evacuees currently checked in to this shelter.
+                        No IDPs currently checked in to this shelter.
                       </td>
                     </tr>
                   ) : (
@@ -467,7 +467,7 @@ function ShelterDetailsModal({
                         City Health Office (CHO) Medical Alert
                       </h4>
                       <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">
-                        High-risk evacuees detected requiring immediate on-site medical checkup and pediatric nutrition.
+                        High-risk IDPs detected requiring immediate on-site medical checkup and pediatric nutrition.
                       </p>
                     </div>
                   </div>

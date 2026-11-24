@@ -55,7 +55,7 @@ const CustomTooltip = ({ active, payload, label, isDark }) => {
 
 export default function DashboardOverview() {
   const { user } = useAuth();
-  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const [isDark, setIsDark] = useState(() => typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false);
 
   // Agency operational segregation: CDRRMO (DRRM Tactical Command) or CSWDO (Camp & Relief Hub)
   const isCswdoUser = user?.operator_type === 'logistics' || user?.operator_type === 'scanner' || (user?.email?.toLowerCase().includes('logistics') || user?.email?.toLowerCase().includes('cswdo'));
@@ -167,7 +167,7 @@ export default function DashboardOverview() {
       csv += `==================================================\n\n`;
 
       csv += `CAMP SUMMARY METRICS\n`;
-      csv += `Active Evacuees (Pax),${totalOccupancy}\n`;
+      csv += `Active IDPs (Pax),${totalOccupancy}\n`;
       csv += `Open Shelters,${openShelters}\n`;
       csv += `Shelters at Full Capacity,${fullShelters}\n`;
       csv += `Stock Items Monitored,${inventory.length}\n\n`;
@@ -274,7 +274,7 @@ export default function DashboardOverview() {
               <Users size={24} className="text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-slate-400 font-bold uppercase tracking-wider mb-1">Active Evacuees</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 font-bold uppercase tracking-wider mb-1">Active IDPs</p>
               <p className="text-3xl font-black text-gray-900 dark:text-white">{totalOccupancy}</p>
               <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-0.5">Total registered occupants</p>
             </div>

@@ -135,7 +135,7 @@ export default function ResidentRegistry() {
                 <span className="relative inline-flex rounded-full h-6 w-6 bg-blue-500"></span>
               </span>
               <p className="text-gray-500 dark:text-slate-400 font-medium">
-                Loading evacuee records...
+                Loading IDP records...
               </p>
             </div>
           ) : (

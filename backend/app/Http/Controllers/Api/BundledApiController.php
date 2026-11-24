@@ -98,10 +98,14 @@ class BundledApiController extends Controller
             ->orWhere('is_fixed_flood_spot', true)
             ->get();
 
-        // 3. Active evacuee demographics by barangay (for GIS Heatmap)
+        // 3. Active IDP demographics by barangay (for GIS Heatmap - CDRRMO Terminology)
         $demographics = EvacuationLog::whereNull('checked_out_at')
             ->join('family_profiles', 'evacuation_logs.family_profile_id', '=', 'family_profiles.id')
-            ->select('family_profiles.barangay', \DB::raw('SUM(evacuation_logs.recorded_headcount) as total_evacuees'))
+            ->select(
+                'family_profiles.barangay', 
+                \DB::raw('SUM(evacuation_logs.recorded_headcount) as total_idps'),
+                \DB::raw('SUM(evacuation_logs.recorded_headcount) as total_evacuees')
+            )
             ->groupBy('family_profiles.barangay')
             ->get();
 

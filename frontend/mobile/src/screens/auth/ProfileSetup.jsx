@@ -111,7 +111,7 @@ export default function ProfileSetup({ navigation }) {
     >
       <CustomHeader
         title="Family Registration"
-        subtitle="Evacuee intake credentials"
+        subtitle="IDP intake credentials"
         onBack={() => navigation?.goBack?.()}
       />
       <ScrollView

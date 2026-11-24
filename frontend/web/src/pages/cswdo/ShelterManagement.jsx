@@ -115,7 +115,7 @@ export default function ShelterManagement() {
     setDispatchModalConfig({
       initialShelterId: shelter.id,
       initialManifest,
-      initialNotes: `${modeLabel || 'Replenishment'} for ${shelter.name} (${targetPax} target evacuees) based on "${activeTemplate.name}".`,
+      initialNotes: `${modeLabel || 'Replenishment'} for ${shelter.name} (${targetPax} target IDPs) based on "${activeTemplate.name}".`,
     });
   };
 
@@ -449,7 +449,7 @@ export default function ShelterManagement() {
                   <h4 className="text-xs font-bold uppercase tracking-wider text-gray-800 dark:text-slate-200 flex items-center gap-2">
                     <span>Relief Buffer Strategy:</span>
                     <span className="text-blue-600 dark:text-blue-400 font-extrabold">
-                      {planningMode === 'surge' ? 'Active Evacuee Surge (+20% Contingency)' : 'Pre-Landfall Staging (100% Shelter Capacity)'}
+                      {planningMode === 'surge' ? 'Active IDP Surge (+20% Contingency)' : 'Pre-Landfall Staging (100% Shelter Capacity)'}
                     </span>
                   </h4>
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
@@ -503,7 +503,7 @@ export default function ShelterManagement() {
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Active Evacuee Demand (Current)</span>
+                  <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Active IDP Demand (Current)</span>
                   <div className="text-2xl font-black text-gray-900 dark:text-slate-100 mt-1">
                     {shelters.reduce((acc, s) => acc + s.current_occupancy, 0)} <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Pax currently checked in</span>
                   </div>
@@ -678,7 +678,7 @@ export default function ShelterManagement() {
                                         </span>
                                       </div>
                                       <div className="mt-2 text-[11px] text-blue-700 dark:text-blue-300 font-semibold">
-                                        Target for <strong>{targetSurge} Pax</strong> ({occ} evacuees + {surgeBuffer} surge):
+                                        Target for <strong>{targetSurge} Pax</strong> ({occ} IDPs + {surgeBuffer} surge):
                                       </div>
                                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                                         {activeTemplate.items.map(i => {

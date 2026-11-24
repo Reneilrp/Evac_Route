@@ -18,7 +18,7 @@ export default function ShelterViewModal({ shelter, onCancel, onNavigateShelter 
           </div>
           <div className="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
             <div>
-              <span className="block text-xs text-gray-500 dark:text-slate-400">Current Occupancy</span>
+              <span className="block text-xs text-gray-500 dark:text-slate-400">Current IDP Occupancy</span>
               <p className="text-lg font-bold text-gray-900 dark:text-white">{shelter.current_occupancy ?? 0}</p>
             </div>
             <div>
@@ -26,15 +26,48 @@ export default function ShelterViewModal({ shelter, onCancel, onNavigateShelter 
               <p className="text-lg font-bold text-gray-900 dark:text-white">{shelter.max_capacity ?? 0}</p>
             </div>
           </div>
+          {/* Capacity Progress Meter */}
           <div>
-            <span className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Status</span>
-            <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
-              shelter.status === 'open' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' :
-              shelter.status === 'full' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400' :
-              'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400'
-            }`}>
-              {shelter.status}
-            </span>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-slate-500 dark:text-slate-400 font-semibold">Capacity Utilization</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {shelter.max_capacity > 0 ? Math.round(((shelter.current_occupancy || 0) / shelter.max_capacity) * 100) : 0}%
+              </span>
+            </div>
+            <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${
+                  ((shelter.current_occupancy || 0) / (shelter.max_capacity || 1)) >= 1
+                    ? 'bg-rose-500'
+                    : ((shelter.current_occupancy || 0) / (shelter.max_capacity || 1)) >= 0.8
+                    ? 'bg-amber-500'
+                    : 'bg-emerald-500'
+                }`}
+                style={{
+                  width: `${Math.min(100, Math.round(((shelter.current_occupancy || 0) / (shelter.max_capacity || 1)) * 100))}%`
+                }}
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Status</span>
+              <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
+                shelter.status === 'open' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' :
+                shelter.status === 'full' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400' :
+                'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400'
+              }`}>
+                {shelter.status}
+              </span>
+            </div>
+            {shelter.facility_type && (
+              <div className="text-right">
+                <span className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Facility Type</span>
+                <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800 capitalize">
+                  {shelter.facility_type.replace(/_/g, ' ')}
+                </span>
+              </div>
+            )}
           </div>
           <div className="pt-2 flex gap-2">
             <button

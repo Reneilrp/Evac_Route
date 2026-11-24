@@ -58,7 +58,7 @@ export default function ShelterEditModal({ shelter, onUpdate, onDelete, onCancel
               onChange={e => setStatus(e.target.value)}
               className="w-full border dark:border-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-950 text-gray-900 dark:text-white cursor-pointer"
             >
-              <option value="open">Open (Accepting Evacuees)</option>
+              <option value="open">Open (Accepting IDPs)</option>
               <option value="full">Full (At Capacity)</option>
               <option value="closed">Closed</option>
             </select>

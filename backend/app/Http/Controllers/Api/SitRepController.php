@@ -66,11 +66,12 @@ class SitRepController extends Controller
         $barangayBreakdown = Shelter::select(
             'barangay',
             DB::raw('COUNT(id) as total_shelters'),
+            DB::raw('SUM(current_occupancy) as idps_inside'),
             DB::raw('SUM(current_occupancy) as evacuees_inside'),
             DB::raw('SUM(max_capacity) as capacity')
         )
             ->groupBy('barangay')
-            ->orderBy('evacuees_inside', 'desc')
+            ->orderBy('idps_inside', 'desc')
             ->get();
 
         // 5. Search, Rescue, and Retrieval (SRR) Operations

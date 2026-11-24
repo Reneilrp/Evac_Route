@@ -490,14 +490,23 @@ const MapViewer = React.memo(({
     features: demographics.map(d => {
       const coords = BARANGAY_COORDS[d.barangay];
       if (!coords) return null;
-      return { type: 'Feature', geometry: { type: 'Point', coordinates: coords }, properties: { total_evacuees: parseInt(d.total_evacuees, 10) || 0 } };
+      const count = parseInt(d.total_idps || d.total_evacuees, 10) || 0;
+      return { 
+        type: 'Feature', 
+        geometry: { type: 'Point', coordinates: coords }, 
+        properties: { 
+          total_idps: count,
+          total_evacuees: count,
+          barangay: d.barangay
+        } 
+      };
     }).filter(Boolean)
   }), [demographics]);
 
   const simulationRoadsGeoJSON = useMemo(() => buildSimulationRoadGeoJSON(hazards, simulationMode), [hazards, simulationMode]);
 
   const heatmapLayerPaint = {
-    'heatmap-weight': ['interpolate', ['linear'], ['get', 'total_evacuees'], 0, 0, 10, 0.4, 50, 0.7, 150, 1.0],
+    'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'total_idps'], ['get', 'total_evacuees'], 0], 0, 0, 10, 0.4, 50, 0.7, 150, 1.0],
     'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 11, 1, 15, 3],
     'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'],
       0, 'rgba(0,230,240,0)', 0.2, 'rgba(0,128,255,0.3)', 0.4, 'rgba(0,255,128,0.5)',

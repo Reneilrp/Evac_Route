@@ -44,19 +44,21 @@ export default function ShelterFormModal({ location, onConfirm, onCancel, isLoad
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Facility Type (REV-03)</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-1">Facility Type (Hazard Categorization)</label>
             <select
               className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               value={facilityType}
               onChange={e => setFacilityType(e.target.value)}
             >
-              <option value="evacuation_center">🏫 Indoor Evacuation Center</option>
-              <option value="safe_zone">🛡️ Open-Air High-Ground Safe Zone</option>
-              <option value="assembly_point">🚩 Bus Pick-up Assembly Point</option>
-              <option value="police_station">👮 Police Station Precinct</option>
-              <option value="military_base">🪖 Military Command Outpost</option>
+              <option value="open_field">🛡️ Open Field (Earthquake &amp; Flood Safe Zone)</option>
+              <option value="covered_court">🏀 Covered Court (Flood &amp; Typhoon Shelter)</option>
+              <option value="permanent_shelter">🏫 Permanent Shelter / Multi-Purpose Hall</option>
+              <option value="multi_story_building">🏢 Multi-Story Building (High Ground)</option>
+              <option value="safe_zone">🚩 Open-Air High-Ground Safe Zone</option>
+              <option value="assembly_point">🚌 Bus Pick-up Assembly Point</option>
               <option value="hospital">🏥 Hospital / Decontamination Center</option>
-              <option value="fire_station">🚒 Fire & Rescue Station</option>
+              <option value="police_station">👮 Police Station Precinct</option>
+              <option value="fire_station">🚒 Fire &amp; Rescue Station</option>
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">

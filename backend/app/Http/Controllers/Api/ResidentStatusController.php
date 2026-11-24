@@ -51,10 +51,20 @@ class ResidentStatusController extends Controller
                 foreach ($activeRation->items as $item) {
                     $inventory = $item->inventoryItem;
                     if ($inventory) {
+                        if ($item->allocation_type === 'per_family') {
+                            $multiplier = 1;
+                        } elseif ($item->allocation_type === 'per_female') {
+                            $femaleCount = (int) ($family->female_count ?? ceil((int) $family->headcount / 2));
+                            $multiplier = max(1, $femaleCount);
+                        } else {
+                            $multiplier = max(1, (int) $family->headcount);
+                        }
+
                         $allocation[] = [
                             'name' => $inventory->item_name,
-                            'quantity' => $item->quantity_per_head * $family->headcount,
+                            'quantity' => $item->quantity_per_head * $multiplier,
                             'unit' => $inventory->unit_type,
+                            'allocation_type' => $item->allocation_type,
                         ];
                     }
                 }
@@ -64,13 +74,21 @@ class ResidentStatusController extends Controller
                     'name' => 'Relief Goods',
                     'quantity' => 1 * $family->headcount,
                     'unit' => 'packs',
+                    'allocation_type' => 'per_family',
                 ];
             }
 
             return response()->json([
                 'status' => 'safe',
+                'relief_status' => $log->ration_claimed ? 'claimed' : 'pending',
+                'ration_claimed' => (bool) $log->ration_claimed,
+                'has_claimed' => (bool) $log->ration_claimed,
                 'shelter_name' => $log->shelter?->name ?? 'Assigned Shelter', // null-safe: shelter may be deleted
                 'allocation' => $allocation,
+                'claimed_ration_items' => $log->claimed_ration_items ?? $allocation,
+                'nfi_items_claimed' => $log->nfi_items_claimed ?? [],
+                'checked_in_at' => $log->checked_in_at?->toIso8601String(),
+                'recorded_headcount' => $log->actual_headcount ?? $log->recorded_headcount ?? $family->headcount,
                 'template_name' => $activeRation ? $activeRation->name : 'Emergency Kit',
                 'active_alerts' => $activeAlerts,
             ]);

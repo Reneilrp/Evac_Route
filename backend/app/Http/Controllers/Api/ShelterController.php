@@ -90,6 +90,31 @@ class ShelterController extends Controller
             });
         }
 
+        // 6. CDRRMO Hazard-Specific Safe Zone filter (e.g. ?hazard=earthquake or ?hazard=flood)
+        $hazard = strtolower(trim($request->query('hazard', $request->query('hazard_type', ''))));
+        if ($hazard === 'earthquake') {
+            $query->where(function ($q) {
+                $q->where('facility_type', 'open_field')
+                  ->orWhere('facility_type', 'safe_zone')
+                  ->orWhereJsonContains('allowed_hazards', 'earthquake');
+            })->whereNotIn('facility_type', ['covered_court', 'multi_story_building', 'enclosed_building', 'gymnasium', 'building']);
+        } elseif ($hazard === 'flood') {
+            $query->where(function ($q) {
+                $q->where('facility_type', 'permanent_shelter')
+                  ->orWhere('facility_type', 'like', '%evacuation%')
+                  ->orWhere('elevation_meters', '>=', 15)
+                  ->orWhereJsonContains('allowed_hazards', 'flood');
+            });
+        }
+
+        // 7. Dynamic CDRRMO Pinned filter (e.g. ?pinned=1 or ?is_pinned=1)
+        if ($request->boolean('pinned') || $request->boolean('is_pinned') || $request->query('pinned') === '1') {
+            $query->where(function ($q) {
+                $q->whereNotNull('pinned_by')
+                  ->orWhere('facility_type', 'safe_zone');
+            });
+        }
+
         return $query;
     }
 
@@ -197,6 +222,8 @@ class ShelterController extends Controller
             'floor_area' => 'nullable|numeric|min:0',
             'type' => 'nullable|in:primary,secondary',
             'facility_type' => 'nullable|string|max:255',
+            'allowed_hazards' => 'nullable|array',
+            'allowed_hazards.*' => 'string',
             'status' => 'nullable|in:open,full,closed',
             'is_secured_facility' => 'nullable|boolean',
             'emergency_contact' => 'nullable|string|max:255',
@@ -217,6 +244,7 @@ class ShelterController extends Controller
             'floor_area' => $validated['floor_area'] ?? null,
             'type' => $validated['type'] ?? 'secondary',
             'facility_type' => $validated['facility_type'] ?? 'Covered Court',
+            'allowed_hazards' => $validated['allowed_hazards'] ?? null,
             'is_secured_facility' => $validated['is_secured_facility'] ?? false,
             'emergency_contact' => $validated['emergency_contact'] ?? null,
             'elevation_meters' => $validated['elevation_meters'] ?? 10,
@@ -260,6 +288,8 @@ class ShelterController extends Controller
             'floor_area' => 'nullable|numeric|min:0',
             'type' => 'nullable|in:primary,secondary',
             'facility_type' => 'nullable|string|max:255',
+            'allowed_hazards' => 'nullable|array',
+            'allowed_hazards.*' => 'string',
             'is_secured_facility' => 'nullable|boolean',
             'emergency_contact' => 'nullable|string|max:255',
             'elevation_meters' => 'nullable|integer',

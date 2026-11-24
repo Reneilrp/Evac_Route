@@ -132,7 +132,7 @@ export default function EvacuationLogs() {
   };
 
   const handleExport = () => {
-    const headers = ['ID', 'Family Name', 'QR Hash', 'Shelter', 'Headcount', 'Ration Claimed', 'Check-In Time', 'Check-Out Time'];
+    const headers = ['ID', 'IDP Family Head', 'QR Hash', 'Shelter', 'IDP Headcount', 'Relief Claimed', 'Check-In Time', 'Check-Out Time'];
     const csvContent = [
       headers.join(','),
       ...filteredLogs.map(l =>
@@ -339,11 +339,11 @@ export default function EvacuationLogs() {
               <thead>
                 <tr className="bg-gray-50 dark:bg-slate-950 text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wider">
                   <th className="py-3 px-6 font-semibold">Time</th>
-                  <th className="py-3 px-6 font-semibold">Family Profile</th>
+                  <th className="py-3 px-6 font-semibold">IDP Family Profile</th>
                   <th className="py-3 px-6 font-semibold">QR Hash</th>
                   <th className="py-3 px-6 font-semibold">Shelter</th>
-                  <th className="py-3 px-6 font-semibold">Headcount</th>
-                  <th className="py-3 px-6 font-semibold">Ration</th>
+                  <th className="py-3 px-6 font-semibold">IDP Headcount</th>
+                  <th className="py-3 px-6 font-semibold">Relief Status</th>
                   <th className="py-3 px-6 font-semibold">Status / Action</th>
                 </tr>
               </thead>

@@ -102,7 +102,7 @@ export default function SituationReport() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-slate-50 dark:bg-slate-950/60 print:bg-gray-50 p-4 rounded-lg border border-slate-200 dark:border-slate-800 print:border-gray-300">
             <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 print:text-gray-600 text-xs font-bold uppercase mb-2">
-              <span>Evacuees Inside EC</span>
+              <span>IDPs Inside EC</span>
               <Users size={16} className="text-blue-500 dark:text-blue-400" />
             </div>
             <div className="text-2xl font-black text-slate-900 dark:text-white print:text-gray-900">
@@ -165,7 +165,7 @@ export default function SituationReport() {
                 <tr>
                   <th className="p-3">Barangay</th>
                   <th className="p-3 text-center">Shelters</th>
-                  <th className="p-3 text-center">Evacuees Inside</th>
+                  <th className="p-3 text-center">IDPs Inside</th>
                   <th className="p-3 text-center">Capacity</th>
                   <th className="p-3 text-right">Status</th>
                 </tr>
@@ -173,12 +173,13 @@ export default function SituationReport() {
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800 print:divide-gray-200">
                 {cccm.barangay_breakdown && cccm.barangay_breakdown.length > 0 ? (
                   cccm.barangay_breakdown.map((b, idx) => {
-                    const pct = b.capacity > 0 ? Math.round((b.evacuees_inside / b.capacity) * 100) : 0;
+                    const idpsInside = b.idps_inside !== undefined ? b.idps_inside : (b.evacuees_inside || 0);
+                    const pct = b.capacity > 0 ? Math.round((idpsInside / b.capacity) * 100) : 0;
                     return (
                       <tr key={idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 print:hover:bg-transparent transition">
                         <td className="p-3 font-semibold text-slate-900 dark:text-white print:text-gray-900">{b.barangay}</td>
                         <td className="p-3 text-center text-slate-700 dark:text-slate-300 print:text-gray-800">{b.total_shelters}</td>
-                        <td className="p-3 text-center font-bold text-blue-600 dark:text-blue-400 print:text-blue-700">{b.evacuees_inside}</td>
+                        <td className="p-3 text-center font-bold text-blue-600 dark:text-blue-400 print:text-blue-700">{idpsInside}</td>
                         <td className="p-3 text-center text-slate-500 dark:text-slate-400 print:text-gray-600">{b.capacity}</td>
                         <td className="p-3 text-right">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${

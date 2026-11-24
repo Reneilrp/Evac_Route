@@ -219,7 +219,7 @@ export default function Login({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-              {/* Row 2: Shelter Staff & Evacuee */}
+              {/* Row 2: Shelter Staff & IDP */}
               <View style={styles.quickChipsRow}>
                 <TouchableOpacity
                   activeOpacity={0.7}
@@ -379,14 +379,14 @@ export default function Login({ navigation }) {
                   <Text style={styles.offlineAccessText}>OPEN OFFLINE EMERGENCY MAP</Text>
                 </TouchableOpacity>
 
-                {/* Need to evacuate? Register as Evacuee */}
+                {/* Need to evacuate? Register as IDP */}
                 <View style={styles.registerPrompt}>
                   <Text style={styles.registerPromptText}>Need to evacuate household?</Text>
                   <TouchableOpacity
                     onPress={() => navigation.navigate('SetupProfile')}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.registerLinkText}>Register as Evacuee</Text>
+                    <Text style={styles.registerLinkText}>Register as IDP</Text>
                   </TouchableOpacity>
                 </View>
               </View>
