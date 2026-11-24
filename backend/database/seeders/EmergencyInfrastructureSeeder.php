@@ -312,12 +312,70 @@ class EmergencyInfrastructureSeeder extends Seeder
                 'current_occupancy' => 0,
                 'is_secured_facility' => 1,
             ],
+
+            // ─── E. DESIGNATED EARTHQUAKE OPEN-FIELD SAFE ZONES (CDRRMO Standard) ──
+            [
+                'name' => 'Joaquin Enriquez Memorial Sports Complex (Open Field)',
+                'barangay' => 'Baliwasan',
+                'latitude' => 6.912600,
+                'longitude' => 122.057300,
+                'max_capacity' => 5000,
+                'type' => 'primary',
+                'status' => 'open',
+                'facility_type' => 'open_field',
+                'elevation_meters' => 6,
+                'current_occupancy' => 0,
+                'is_secured_facility' => 1,
+                'allowed_hazards' => ['earthquake', 'flood'],
+            ],
+            [
+                'name' => 'WMSU Grandstand Open Athletic Oval',
+                'barangay' => 'Baliwasan',
+                'latitude' => 6.913500,
+                'longitude' => 122.060000,
+                'max_capacity' => 3000,
+                'type' => 'primary',
+                'status' => 'open',
+                'facility_type' => 'open_field',
+                'elevation_meters' => 10,
+                'current_occupancy' => 0,
+                'is_secured_facility' => 1,
+                'allowed_hazards' => ['earthquake', 'flood'],
+            ],
+            [
+                'name' => 'Pasonanca Park Open Assembly Grounds',
+                'barangay' => 'Pasonanca',
+                'latitude' => 6.953000,
+                'longitude' => 122.072000,
+                'max_capacity' => 2500,
+                'type' => 'primary',
+                'status' => 'open',
+                'facility_type' => 'open_field',
+                'elevation_meters' => 65,
+                'current_occupancy' => 0,
+                'is_secured_facility' => 1,
+                'allowed_hazards' => ['earthquake', 'flood'],
+            ],
         ];
 
         $created = 0;
         $updated = 0;
 
         foreach ($facilities as $data) {
+            if (!isset($data['allowed_hazards'])) {
+                if ($data['facility_type'] === 'military_base') {
+                    $data['allowed_hazards'] = ['siege', 'war', 'active_shooter', 'general'];
+                } elseif ($data['facility_type'] === 'fire_station') {
+                    $data['allowed_hazards'] = ['fire', 'general'];
+                } elseif ($data['facility_type'] === 'hospital') {
+                    $data['allowed_hazards'] = ['chemical_spill', 'medical', 'gas_leak', 'general'];
+                } elseif ($data['facility_type'] === 'open_field') {
+                    $data['allowed_hazards'] = ['earthquake', 'flood'];
+                } else {
+                    $data['allowed_hazards'] = ['general'];
+                }
+            }
+
             $shelter = Shelter::where('name', $data['name'])->first();
 
             if (!$shelter) {

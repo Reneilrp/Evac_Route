@@ -29,6 +29,14 @@ class OfficialSheltersSeeder extends Seeder
             
             $shelter = Shelter::where('name', $data['name'])->first();
             
+            $facilityType = $data['type'] === 'primary' ? 'permanent_shelter' : 'covered_court';
+            $allowedHazards = $data['type'] === 'primary' 
+                ? ['flood', 'typhoon', 'fire', 'general'] 
+                : ['flood', 'fire', 'general']; // Covered courts excluded from earthquakes (CDRRMO standard)
+            $elevationMeters = isset($data['elevation_meters']) && $data['elevation_meters'] !== '' 
+                ? (int) $data['elevation_meters'] 
+                : ($data['type'] === 'primary' ? 28 : 6);
+
             if (!$shelter) {
                 Shelter::create([
                     'name' => $data['name'],
@@ -40,7 +48,9 @@ class OfficialSheltersSeeder extends Seeder
                     'max_capacity' => $data['max_capacity'],
                     'type' => $data['type'],
                     'status' => $data['type'] === 'primary' ? 'open' : 'closed', // Primary open by default
-                    'facility_type' => $data['type'] === 'primary' ? 'Evacuation Center' : 'Covered Court',
+                    'facility_type' => $facilityType,
+                    'elevation_meters' => $elevationMeters,
+                    'allowed_hazards' => $allowedHazards,
                     'current_occupancy' => 0,
                     'is_secured_facility' => $data['type'] === 'primary' ? 1 : 0,
                 ]);
@@ -54,6 +64,9 @@ class OfficialSheltersSeeder extends Seeder
                     'longitude' => $data['longitude'],
                     'max_capacity' => $data['max_capacity'],
                     'type' => $data['type'],
+                    'facility_type' => $facilityType,
+                    'elevation_meters' => $elevationMeters,
+                    'allowed_hazards' => $allowedHazards,
                 ]);
                 $updated++;
             }

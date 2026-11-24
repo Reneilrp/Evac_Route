@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
     'status',
     'pinned_by',
     'facility_type',
+    'allowed_hazards',
     'is_secured_facility',
     'emergency_contact',
     'elevation_meters',
@@ -47,6 +48,7 @@ class Shelter extends Model
         'cswd_mobilized' => 'boolean',
         'activated_at' => 'datetime',
         'cswd_mobilized_at' => 'datetime',
+        'allowed_hazards' => 'array',
     ];
 
     /**
@@ -55,6 +57,7 @@ class Shelter extends Model
     protected $appends = [
         'capacity',
         'available_capacity',
+        'current_idps',
         'coordinates',
         'location',
         'floor_area_sqm',
@@ -93,6 +96,48 @@ class Shelter extends Model
         return Attribute::make(
             get: fn () => max(0, (int) $this->max_capacity - (int) $this->current_occupancy),
         );
+    }
+
+    /**
+     * IDP Count alias for current_occupancy (CDRRMO Standard Terminology)
+     */
+    protected function currentIdps(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => (int) $this->current_occupancy,
+        );
+    }
+
+    /**
+     * Check if shelter is authorized and structurally safe for a given hazard
+     */
+    public function isSafeForHazard(?string $hazardType): bool
+    {
+        if (!$hazardType) {
+            return true;
+        }
+
+        $hazard = strtolower(trim($hazardType));
+
+        // Earthquake: strictly exclude covered courts and enclosed/multi-story buildings
+        if ($hazard === 'earthquake') {
+            if (in_array($this->facility_type, ['covered_court', 'multi_story_building', 'enclosed_building'])) {
+                return false;
+            }
+            if ($this->facility_type === 'open_field') {
+                return true;
+            }
+            if (is_array($this->allowed_hazards) && in_array('earthquake', $this->allowed_hazards)) {
+                return true;
+            }
+            return false;
+        }
+
+        if (is_array($this->allowed_hazards) && !empty($this->allowed_hazards)) {
+            return in_array($hazard, $this->allowed_hazards) || in_array('all', $this->allowed_hazards) || in_array('general', $this->allowed_hazards);
+        }
+
+        return true;
     }
 
     /**
@@ -151,9 +196,11 @@ class Shelter extends Model
                 'capacity' => (int) $this->max_capacity,
                 'max_capacity' => (int) $this->max_capacity,
                 'current_occupancy' => (int) $this->current_occupancy,
+                'current_idps' => (int) $this->current_occupancy,
                 'available_capacity' => max(0, (int) $this->max_capacity - (int) $this->current_occupancy),
                 'type' => $this->type,
                 'facility_type' => $this->facility_type,
+                'allowed_hazards' => $this->allowed_hazards,
                 'status' => $this->status,
                 'activation_status' => $this->activation_status ?? 'open',
                 'activation_trigger' => $this->activation_trigger,

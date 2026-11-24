@@ -34,7 +34,13 @@ class FamilyProfile extends Model
     {
         $payload = trim((string) $payload);
         $parts = explode(':', $payload);
-        if (count($parts) !== 3) {
+        $qrHeadcount = null;
+
+        if (count($parts) === 4) {
+            [$familyId, $timestamp, $hmac, $qrHeadcount] = $parts;
+        } elseif (count($parts) === 3) {
+            [$familyId, $timestamp, $hmac] = $parts;
+        } else {
             // Fallback for static QR codes or manual hash entry
             $query = self::where('qr_code_hash', $payload);
             if ($lock) {
@@ -43,8 +49,6 @@ class FamilyProfile extends Model
 
             return $query->firstOrFail();
         }
-
-        [$familyId, $timestamp, $hmac] = $parts;
 
         $candidates = [];
 
@@ -82,9 +86,13 @@ class FamilyProfile extends Model
             ]);
 
             foreach ($validSecrets as $secret) {
-                $expectedHmac = hash('sha256', $familyId.':'.$timestamp.$secret);
-                if (hash_equals($expectedHmac, $hmac)) {
+                $expectedHmac4 = hash('sha256', $familyId.':'.$timestamp.':'.$qrHeadcount.$secret);
+                $expectedHmac3 = hash('sha256', $familyId.':'.$timestamp.$secret);
+                if (hash_equals($expectedHmac4, $hmac) || hash_equals($expectedHmac3, $hmac)) {
                     $matchedFamily = $candidate;
+                    if ($qrHeadcount !== null) {
+                        $matchedFamily->scanned_headcount = max(1, (int) $qrHeadcount);
+                    }
                     break 2;
                 }
             }

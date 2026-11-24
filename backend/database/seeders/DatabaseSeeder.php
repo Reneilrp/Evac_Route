@@ -213,7 +213,7 @@ class DatabaseSeeder extends Seeder
             
         $shelter3 = Shelter::where('type', 'primary')->first(); // Fetch a primary cluster
 
-        // Explicit Safe Zones (REV-03)
+        // Explicit Safe Zones (REV-03 & CDRRMO Hazard-Specific Categorization)
         $safeZone1 = Shelter::firstOrCreate(['name' => 'Pasonanca Park High-Ground Safe Zone'], [
             'latitude' => 6.9450,
             'longitude' => 122.0700,
@@ -223,7 +223,8 @@ class DatabaseSeeder extends Seeder
             'max_capacity' => 1000,
             'current_occupancy' => 0,
             'status' => 'open',
-            'facility_type' => 'safe_zone',
+            'facility_type' => 'open_field',
+            'allowed_hazards' => ['earthquake', 'flood'],
             'is_secured_facility' => false,
             'pinned_by' => $admin->id,
         ]);
@@ -237,7 +238,38 @@ class DatabaseSeeder extends Seeder
             'max_capacity' => 400,
             'current_occupancy' => 0,
             'status' => 'open',
-            'facility_type' => 'safe_zone',
+            'facility_type' => 'open_field',
+            'allowed_hazards' => ['earthquake', 'flood'],
+            'is_secured_facility' => false,
+            'pinned_by' => $admin->id,
+        ]);
+
+        $safeZone3 = Shelter::firstOrCreate(['name' => 'WMSU Grandstand & Open Athletic Field'], [
+            'latitude' => 6.9135,
+            'longitude' => 122.0600,
+            'elevation_meters' => 12,
+            'amenities' => 'Wide Open Field, Unobstructed Sky, Zero Structure Hazard for Earthquakes',
+            'barangay' => 'Baliwasan',
+            'max_capacity' => 2500,
+            'current_occupancy' => 0,
+            'status' => 'open',
+            'facility_type' => 'open_field',
+            'allowed_hazards' => ['earthquake', 'flood'],
+            'is_secured_facility' => false,
+            'pinned_by' => $admin->id,
+        ]);
+
+        $safeZone4 = Shelter::firstOrCreate(['name' => 'Joaquin Enriquez Memorial Sports Complex (Grandstand Field)'], [
+            'latitude' => 6.9168,
+            'longitude' => 122.0625,
+            'elevation_meters' => 10,
+            'amenities' => 'Regional Sports Field, Open Space Away from Buildings',
+            'barangay' => 'Baliwasan',
+            'max_capacity' => 5000,
+            'current_occupancy' => 0,
+            'status' => 'open',
+            'facility_type' => 'open_field',
+            'allowed_hazards' => ['earthquake', 'flood'],
             'is_secured_facility' => false,
             'pinned_by' => $admin->id,
         ]);
@@ -470,6 +502,58 @@ class DatabaseSeeder extends Seeder
                 'estimated_duration_hours' => 6,
                 'reported_by' => $admin->id,
             ],
+            // Tumaga River Corridor Tiered Risk Spots (CDRRMO Protocol)
+            [
+                'name' => 'Tumaga River Tier 1: Tugbungan Downstream Catch-Basin',
+                'barangay' => 'Tugbungan',
+                'corridor_name' => 'Tumaga River',
+                'rainfall_trigger_minutes' => 15,
+                'latitude' => 6.9080,
+                'longitude' => 122.0850,
+                'radius_meters' => 250,
+                'hazard_type' => 'flood',
+                'severity_level' => 'low',
+                'is_fixed_flood_spot' => true,
+                'is_active' => false,
+                'origin_type' => 'chronic_drainage',
+                'disaster_category' => 'natural',
+                'estimated_duration_hours' => 4,
+                'reported_by' => $admin->id,
+            ],
+            [
+                'name' => 'Tumaga River Tier 2: Tumaga-Tetuan Mid-Corridor Overflow',
+                'barangay' => 'Tumaga',
+                'corridor_name' => 'Tumaga River',
+                'rainfall_trigger_minutes' => 30,
+                'latitude' => 6.9320,
+                'longitude' => 122.0790,
+                'radius_meters' => 350,
+                'hazard_type' => 'flood',
+                'severity_level' => 'medium',
+                'is_fixed_flood_spot' => true,
+                'is_active' => false,
+                'origin_type' => 'chronic_drainage',
+                'disaster_category' => 'natural',
+                'estimated_duration_hours' => 6,
+                'reported_by' => $admin->id,
+            ],
+            [
+                'name' => 'Tumaga River Tier 3: Pasonanca Riverhead Catchment Gorge',
+                'barangay' => 'Pasonanca',
+                'corridor_name' => 'Tumaga River',
+                'rainfall_trigger_minutes' => 45,
+                'latitude' => 6.9510,
+                'longitude' => 122.0720,
+                'radius_meters' => 450,
+                'hazard_type' => 'flood',
+                'severity_level' => 'high',
+                'is_fixed_flood_spot' => true,
+                'is_active' => false,
+                'origin_type' => 'chronic_drainage',
+                'disaster_category' => 'natural',
+                'estimated_duration_hours' => 8,
+                'reported_by' => $admin->id,
+            ],
         ];
 
         foreach ($chronicDrainageSpots as $spot) {
@@ -543,9 +627,33 @@ class DatabaseSeeder extends Seeder
             'unit_type' => 'pcs',
         ]);
 
-        // 4. Create Ration Template
+        $mats = InventoryItem::create([
+            'item_name' => 'Sleeping Mats (Banig)',
+            'total_stock' => 1000,
+            'unit_type' => 'pcs',
+        ]);
+
+        $medicines = InventoryItem::create([
+            'item_name' => 'First Aid & Essential Medicines Kit',
+            'total_stock' => 600,
+            'unit_type' => 'kits',
+        ]);
+
+        $hygiene = InventoryItem::create([
+            'item_name' => 'CSWDO Family Hygiene Kit',
+            'total_stock' => 1200,
+            'unit_type' => 'kits',
+        ]);
+
+        $dignity = InventoryItem::create([
+            'item_name' => 'CSWDO Dignity Kit (Women & Girls)',
+            'total_stock' => 900,
+            'unit_type' => 'kits',
+        ]);
+
+        // 4. Create Ration Template (CSWDO Comprehensive Food & NFI Standards)
         $template = RationTemplate::create([
-            'name' => 'Standard Disaster Relief Pack',
+            'name' => 'Standard Disaster Relief & NFI Pack',
             'is_active' => true,
         ]);
 
@@ -553,18 +661,49 @@ class DatabaseSeeder extends Seeder
             'ration_template_id' => $template->id,
             'inventory_item_id' => $rice->id,
             'quantity_per_head' => 1,
+            'allocation_type' => 'per_family',
         ]);
 
         RationTemplateItem::create([
             'ration_template_id' => $template->id,
             'inventory_item_id' => $water->id,
             'quantity_per_head' => 2,
+            'allocation_type' => 'per_head',
         ]);
 
         RationTemplateItem::create([
             'ration_template_id' => $template->id,
             'inventory_item_id' => $blanket->id,
             'quantity_per_head' => 1,
+            'allocation_type' => 'per_family',
+        ]);
+
+        RationTemplateItem::create([
+            'ration_template_id' => $template->id,
+            'inventory_item_id' => $mats->id,
+            'quantity_per_head' => 1,
+            'allocation_type' => 'per_family',
+        ]);
+
+        RationTemplateItem::create([
+            'ration_template_id' => $template->id,
+            'inventory_item_id' => $medicines->id,
+            'quantity_per_head' => 1,
+            'allocation_type' => 'per_family',
+        ]);
+
+        RationTemplateItem::create([
+            'ration_template_id' => $template->id,
+            'inventory_item_id' => $hygiene->id,
+            'quantity_per_head' => 1,
+            'allocation_type' => 'per_family',
+        ]);
+
+        RationTemplateItem::create([
+            'ration_template_id' => $template->id,
+            'inventory_item_id' => $dignity->id,
+            'quantity_per_head' => 1,
+            'allocation_type' => 'per_female',
         ]);
 
         // 5. Create 10 Family Resident Profiles per Barangay (50 Total Residents - REV-07)
@@ -649,34 +788,34 @@ class DatabaseSeeder extends Seeder
             'ration_claimed' => true,
         ]);
 
-        // 7. Seed Road Nodes
+        // 7. Seed Road Nodes (with pre-baked topographical elevations based on NASA SRTM / Project NOAH baselines)
         $nodes = [
-            ['id' => 1, 'lat' => 6.9150, 'lng' => 122.0850, 'label' => 'User Home 1 (Tetuan residential)'],
-            ['id' => 2, 'lat' => 6.9170, 'lng' => 122.0850, 'label' => 'Intersection A (Tetuan Main Rd)'],
-            ['id' => 3, 'lat' => 6.9185, 'lng' => 122.0882, 'label' => 'Shelter 1 (Tetuan Covered Court)'],
-            ['id' => 4, 'lat' => 6.9250, 'lng' => 122.0900, 'label' => 'Intersection C (Tugbungan Road)'],
-            ['id' => 5, 'lat' => 6.9312, 'lng' => 122.0954, 'label' => 'Shelter 3 (Tugbungan Elementary School)'],
-            ['id' => 6, 'lat' => 6.9120, 'lng' => 122.0650, 'label' => 'Intersection D (Baliwasan crossroads)'],
-            ['id' => 7, 'lat' => 6.9126, 'lng' => 122.0573, 'label' => 'Shelter 2 (Baliwasan Gym)'],
-            ['id' => 8, 'lat' => 6.9170, 'lng' => 122.0870, 'label' => 'Intermediary road node near hazard'],
-            ['id' => 9, 'lat' => 6.9160, 'lng' => 122.0890, 'label' => 'Alternative bypass route node'],
+            ['id' => 1, 'lat' => 6.9150, 'lng' => 122.0850, 'elevation_meters' => 5.00, 'label' => 'User Home 1 (Tetuan residential)'],
+            ['id' => 2, 'lat' => 6.9170, 'lng' => 122.0850, 'elevation_meters' => 5.50, 'label' => 'Intersection A (Tetuan Main Rd)'],
+            ['id' => 3, 'lat' => 6.9185, 'lng' => 122.0882, 'elevation_meters' => 6.00, 'label' => 'Shelter 1 (Tetuan Covered Court)'],
+            ['id' => 4, 'lat' => 6.9250, 'lng' => 122.0900, 'elevation_meters' => 4.20, 'label' => 'Intersection C (Tugbungan Road)'],
+            ['id' => 5, 'lat' => 6.9312, 'lng' => 122.0954, 'elevation_meters' => 4.00, 'label' => 'Shelter 3 (Tugbungan Elementary School)'],
+            ['id' => 6, 'lat' => 6.9120, 'lng' => 122.0650, 'elevation_meters' => 8.00, 'label' => 'Intersection D (Baliwasan crossroads)'],
+            ['id' => 7, 'lat' => 6.9126, 'lng' => 122.0573, 'elevation_meters' => 7.50, 'label' => 'Shelter 2 (Baliwasan Gym)'],
+            ['id' => 8, 'lat' => 6.9170, 'lng' => 122.0870, 'elevation_meters' => 4.80, 'label' => 'Intermediary road node near hazard'],
+            ['id' => 9, 'lat' => 6.9160, 'lng' => 122.0890, 'elevation_meters' => 7.20, 'label' => 'Alternative bypass route node'],
         ];
 
         foreach ($nodes as $node) {
             RoadNode::create($node);
         }
 
-        // 8. Seed Road Edges (bi-directional as per offline mobile graph logic)
+        // 8. Seed Road Edges (bi-directional as per offline mobile graph logic with pre-baked slopes & flood susceptibility)
         $edges = [
-            ['source_node_id' => 1, 'target_node_id' => 2, 'distance_meters' => 220.00, 'geometry' => [[122.0850, 6.9150], [122.0850, 6.9170]]],
-            ['source_node_id' => 2, 'target_node_id' => 8, 'distance_meters' => 220.00, 'geometry' => [[122.0850, 6.9170], [122.0870, 6.9170]]],
-            ['source_node_id' => 8, 'target_node_id' => 3, 'distance_meters' => 200.00, 'geometry' => [[122.0870, 6.9170], [122.0882, 6.9185]]],
-            ['source_node_id' => 1, 'target_node_id' => 9, 'distance_meters' => 450.00, 'geometry' => [[122.0850, 6.9150], [122.0870, 6.9155], [122.0890, 6.9160]]],
-            ['source_node_id' => 9, 'target_node_id' => 3, 'distance_meters' => 280.00, 'geometry' => [[122.0890, 6.9160], [122.0882, 6.9185]]],
-            ['source_node_id' => 2, 'target_node_id' => 4, 'distance_meters' => 1000.00, 'geometry' => [[122.0850, 6.9170], [122.0880, 6.9210], [122.0900, 6.9250]]],
-            ['source_node_id' => 4, 'target_node_id' => 5, 'distance_meters' => 900.00, 'geometry' => [[122.0900, 6.9250], [122.0920, 6.9280], [122.0954, 6.9312]]],
-            ['source_node_id' => 1, 'target_node_id' => 6, 'distance_meters' => 2200.00, 'geometry' => [[122.0850, 6.9150], [122.0750, 6.9130], [122.0650, 6.9120]]],
-            ['source_node_id' => 6, 'target_node_id' => 7, 'distance_meters' => 800.00, 'geometry' => [[122.0650, 6.9120], [122.0600, 6.9123], [122.0573, 6.9126]]],
+            ['source_node_id' => 1, 'target_node_id' => 2, 'distance_meters' => 220.00, 'slope_degrees' => 0.13, 'min_elevation_meters' => 5.00, 'flood_susceptibility' => 'medium', 'geometry' => [[122.0850, 6.9150], [122.0850, 6.9170]]],
+            ['source_node_id' => 2, 'target_node_id' => 8, 'distance_meters' => 220.00, 'slope_degrees' => 0.18, 'min_elevation_meters' => 4.80, 'flood_susceptibility' => 'medium', 'geometry' => [[122.0850, 6.9170], [122.0870, 6.9170]]],
+            ['source_node_id' => 8, 'target_node_id' => 3, 'distance_meters' => 200.00, 'slope_degrees' => 0.34, 'min_elevation_meters' => 4.80, 'flood_susceptibility' => 'medium', 'geometry' => [[122.0870, 6.9170], [122.0882, 6.9185]]],
+            ['source_node_id' => 1, 'target_node_id' => 9, 'distance_meters' => 450.00, 'slope_degrees' => 0.28, 'min_elevation_meters' => 5.00, 'flood_susceptibility' => 'low', 'geometry' => [[122.0850, 6.9150], [122.0870, 6.9155], [122.0890, 6.9160]]],
+            ['source_node_id' => 9, 'target_node_id' => 3, 'distance_meters' => 280.00, 'slope_degrees' => 0.25, 'min_elevation_meters' => 6.00, 'flood_susceptibility' => 'low', 'geometry' => [[122.0890, 6.9160], [122.0882, 6.9185]]],
+            ['source_node_id' => 2, 'target_node_id' => 4, 'distance_meters' => 1000.00, 'slope_degrees' => 0.07, 'min_elevation_meters' => 4.20, 'flood_susceptibility' => 'high', 'geometry' => [[122.0850, 6.9170], [122.0880, 6.9210], [122.0900, 6.9250]]],
+            ['source_node_id' => 4, 'target_node_id' => 5, 'distance_meters' => 900.00, 'slope_degrees' => 0.01, 'min_elevation_meters' => 4.00, 'flood_susceptibility' => 'high', 'geometry' => [[122.0900, 6.9250], [122.0920, 6.9280], [122.0954, 6.9312]]],
+            ['source_node_id' => 1, 'target_node_id' => 6, 'distance_meters' => 2200.00, 'slope_degrees' => 0.08, 'min_elevation_meters' => 5.00, 'flood_susceptibility' => 'medium', 'geometry' => [[122.0850, 6.9150], [122.0750, 6.9130], [122.0650, 6.9120]]],
+            ['source_node_id' => 6, 'target_node_id' => 7, 'distance_meters' => 800.00, 'slope_degrees' => 0.04, 'min_elevation_meters' => 7.50, 'flood_susceptibility' => 'low', 'geometry' => [[122.0650, 6.9120], [122.0600, 6.9123], [122.0573, 6.9126]]],
         ];
 
         foreach ($edges as $edge) {
@@ -685,6 +824,9 @@ class DatabaseSeeder extends Seeder
                 'source_node_id' => $edge['source_node_id'],
                 'target_node_id' => $edge['target_node_id'],
                 'distance_meters' => $edge['distance_meters'],
+                'slope_degrees' => $edge['slope_degrees'] ?? 0.00,
+                'min_elevation_meters' => $edge['min_elevation_meters'] ?? 0.00,
+                'flood_susceptibility' => $edge['flood_susceptibility'] ?? 'none',
                 'geometry' => $edge['geometry'],
                 'status' => 'open',
             ]);
@@ -693,6 +835,9 @@ class DatabaseSeeder extends Seeder
                 'source_node_id' => $edge['target_node_id'],
                 'target_node_id' => $edge['source_node_id'],
                 'distance_meters' => $edge['distance_meters'],
+                'slope_degrees' => $edge['slope_degrees'] ?? 0.00,
+                'min_elevation_meters' => $edge['min_elevation_meters'] ?? 0.00,
+                'flood_susceptibility' => $edge['flood_susceptibility'] ?? 'none',
                 'geometry' => array_reverse($edge['geometry']),
                 'status' => 'open',
             ]);
