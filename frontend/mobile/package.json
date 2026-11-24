@@ -47,7 +47,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "node src/utils/tacticalRescueRouter.test.mjs && node src/utils/zamboangaGeo.test.mjs",
+    "test": "node src/utils/astarRouter.test.js && node src/utils/astarRouter.facility.test.mjs && node src/utils/tacticalRescueRouter.test.mjs && node src/utils/zamboangaGeo.test.mjs && node src/utils/totpQr.test.mjs && node --experimental-sqlite --import ./src/test/registerLoader.js src/services/offlineDb.test.mjs",
     "postinstall": "node scripts/patch-expo-camera.mjs",
     "eas-build-post-install": "node scripts/patch-expo-camera.mjs"
   },

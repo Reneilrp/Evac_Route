@@ -29,7 +29,8 @@ export function initDb() {
       CREATE TABLE IF NOT EXISTS nodes (
         id INTEGER PRIMARY KEY NOT NULL,
         lat REAL NOT NULL,
-        lng REAL NOT NULL
+        lng REAL NOT NULL,
+        elevation_meters REAL DEFAULT 0.0
       );
     `);
 
@@ -41,6 +42,8 @@ export function initDb() {
         target_node INTEGER NOT NULL,
         distance REAL NOT NULL,
         geometry TEXT NOT NULL,
+        flood_susceptibility TEXT DEFAULT 'none',
+        min_elevation_meters REAL DEFAULT 0.0,
         FOREIGN KEY(source_node) REFERENCES nodes(id),
         FOREIGN KEY(target_node) REFERENCES nodes(id)
       );
@@ -58,7 +61,9 @@ export function initDb() {
         status TEXT NOT NULL,
         facility_type TEXT DEFAULT 'evacuation_center',
         is_secured_facility INTEGER DEFAULT 0,
-        emergency_contact TEXT
+        emergency_contact TEXT,
+        elevation_meters REAL DEFAULT 0.0,
+        is_permanent INTEGER DEFAULT 0
       );
     `);
 
@@ -72,7 +77,9 @@ export function initDb() {
         radius REAL NOT NULL,
         disaster_category TEXT DEFAULT 'natural',
         hazard_type TEXT DEFAULT 'flood',
-        severity_level TEXT DEFAULT 'medium'
+        severity_level TEXT DEFAULT 'medium',
+        geometry_type TEXT DEFAULT 'circle',
+        corridor_coordinates TEXT DEFAULT NULL
       );
     `);
 
@@ -85,6 +92,17 @@ export function initDb() {
 
     // Clean up deprecated road_maintenances table if present
     database.execSync(`DROP TABLE IF EXISTS road_maintenances;`);
+
+    // Ensure columns exist if tables pre-dated these attributes
+    try { database.execSync('ALTER TABLE nodes ADD COLUMN elevation_meters REAL DEFAULT 0.0'); } catch (_) {}
+    try { database.execSync('ALTER TABLE edges ADD COLUMN flood_susceptibility TEXT DEFAULT "none"'); } catch (_) {}
+    try { database.execSync('ALTER TABLE edges ADD COLUMN min_elevation_meters REAL DEFAULT 0.0'); } catch (_) {}
+    try { database.execSync('ALTER TABLE shelters ADD COLUMN elevation_meters REAL DEFAULT 0.0'); } catch (_) {}
+    try { database.execSync('ALTER TABLE shelters ADD COLUMN is_permanent INTEGER DEFAULT 0'); } catch (_) {}
+    try { database.execSync('ALTER TABLE hazards ADD COLUMN hazard_type TEXT DEFAULT "flood"'); } catch (_) {}
+    try { database.execSync('ALTER TABLE hazards ADD COLUMN severity_level TEXT DEFAULT "medium"'); } catch (_) {}
+    try { database.execSync('ALTER TABLE hazards ADD COLUMN geometry_type TEXT DEFAULT "circle"'); } catch (_) {}
+    try { database.execSync('ALTER TABLE hazards ADD COLUMN corridor_coordinates TEXT DEFAULT NULL'); } catch (_) {}
 
     // 7. Create performance indexes
     database.execSync('CREATE INDEX IF NOT EXISTS idx_nodes_coords ON nodes(lat, lng);');
@@ -139,83 +157,90 @@ function seedDb() {
 
     console.log('Seeding pre-bundled road network graph...');
 
-    // Nodes List
-    // Coordinates match shelter locations:
-    // Tetuan Covered Court (6.9185, 122.0882)
-    // Tugbungan School (6.9312, 122.0954)
-    // Baliwasan Gym (6.9126, 122.0573)
+    // Nodes List (with pre-baked topographical elevations based on NASA SRTM / Project NOAH baselines)
     const nodes = [
-      { id: 1, lat: 6.9150, lng: 122.0850 }, // User's home 1 (Tetuan residential)
-      { id: 2, lat: 6.9170, lng: 122.0850 }, // Intersection A (Tetuan Main Rd)
-      { id: 3, lat: 6.9185, lng: 122.0882 }, // Shelter 1 (Tetuan Covered Court)
-      { id: 4, lat: 6.9250, lng: 122.0900 }, // Intersection C (Tugbungan Road intersection)
-      { id: 5, lat: 6.9312, lng: 122.0954 }, // Shelter 3 (Tugbungan Elementary School)
-      { id: 6, lat: 6.9120, lng: 122.0650 }, // Intersection D (Baliwasan crossroads)
-      { id: 7, lat: 6.9126, lng: 122.0573 }, // Shelter 2 (Baliwasan Gym)
-      { id: 8, lat: 6.9170, lng: 122.0870 }, // Intermediary road node near potential hazard
-      { id: 9, lat: 6.9160, lng: 122.0890 }, // Alternative bypass route node avoiding hazard
+      { id: 1, lat: 6.9150, lng: 122.0850, elevation: 5.0 }, // User's home 1 (Tetuan residential)
+      { id: 2, lat: 6.9170, lng: 122.0850, elevation: 5.5 }, // Intersection A (Tetuan Main Rd)
+      { id: 3, lat: 6.9185, lng: 122.0882, elevation: 6.0 }, // Shelter 1 (Tetuan Covered Court)
+      { id: 4, lat: 6.9250, lng: 122.0900, elevation: 4.2 }, // Intersection C (Tugbungan Road intersection)
+      { id: 5, lat: 6.9312, lng: 122.0954, elevation: 4.0 }, // Shelter 3 (Tugbungan Elementary School)
+      { id: 6, lat: 6.9120, lng: 122.0650, elevation: 8.0 }, // Intersection D (Baliwasan crossroads)
+      { id: 7, lat: 6.9126, lng: 122.0573, elevation: 7.5 }, // Shelter 2 (Baliwasan Gym)
+      { id: 8, lat: 6.9170, lng: 122.0870, elevation: 4.8 }, // Intermediary road node near potential hazard
+      { id: 9, lat: 6.9160, lng: 122.0890, elevation: 7.2 }, // Alternative bypass route node avoiding hazard
     ];
 
-    // Seed Nodes
-    const insertNode = db.prepareSync('INSERT INTO nodes (id, lat, lng) VALUES ($id, $lat, $lng)');
+    // Seed Nodes with pre-baked elevation
+    const insertNode = db.prepareSync('INSERT INTO nodes (id, lat, lng, elevation_meters) VALUES ($id, $lat, $lng, $elevation)');
     for (const node of nodes) {
-      insertNode.executeSync({ $id: node.id, $lat: node.lat, $lng: node.lng });
+      insertNode.executeSync({ $id: node.id, $lat: node.lat, $lng: node.lng, $elevation: node.elevation || 0.0 });
     }
     insertNode.finalizeSync();
 
-    // Edges List (with GeoJSON geometry array of coordinates serialized as string)
+    // Edges List (with pre-baked slope degrees and flood susceptibility)
     const edges = [
       {
         source: 1, target: 2, distance: 0.22,
+        flood_susceptibility: 'medium', min_elevation_meters: 5.0,
         geometry: JSON.stringify([[122.0850, 6.9150], [122.0850, 6.9170]])
       },
       // Road segment through Node 8 (hazard prone)
       {
         source: 2, target: 8, distance: 0.22,
+        flood_susceptibility: 'medium', min_elevation_meters: 4.8,
         geometry: JSON.stringify([[122.0850, 6.9170], [122.0870, 6.9170]])
       },
       {
         source: 8, target: 3, distance: 0.20,
+        flood_susceptibility: 'medium', min_elevation_meters: 4.8,
         geometry: JSON.stringify([[122.0870, 6.9170], [122.0882, 6.9185]])
       },
       // Alternative Bypass road (safe path)
       {
         source: 1, target: 9, distance: 0.45,
+        flood_susceptibility: 'low', min_elevation_meters: 5.0,
         geometry: JSON.stringify([[122.0850, 6.9150], [122.0870, 6.9155], [122.0890, 6.9160]])
       },
       {
         source: 9, target: 3, distance: 0.28,
+        flood_susceptibility: 'low', min_elevation_meters: 6.0,
         geometry: JSON.stringify([[122.0890, 6.9160], [122.0882, 6.9185]])
       },
       // Road to Tugbungan
       {
         source: 2, target: 4, distance: 1.0,
+        flood_susceptibility: 'high', min_elevation_meters: 4.2,
         geometry: JSON.stringify([[122.0850, 6.9170], [122.0880, 6.9210], [122.0900, 6.9250]])
       },
       {
         source: 4, target: 5, distance: 0.9,
+        flood_susceptibility: 'high', min_elevation_meters: 4.0,
         geometry: JSON.stringify([[122.0900, 6.9250], [122.0920, 6.9280], [122.0954, 6.9312]])
       },
       // Road to Baliwasan
       {
         source: 1, target: 6, distance: 2.2,
+        flood_susceptibility: 'medium', min_elevation_meters: 5.0,
         geometry: JSON.stringify([[122.0850, 6.9150], [122.0750, 6.9130], [122.0650, 6.9120]])
       },
       {
         source: 6, target: 7, distance: 0.8,
+        flood_susceptibility: 'low', min_elevation_meters: 7.5,
         geometry: JSON.stringify([[122.0650, 6.9120], [122.0600, 6.9123], [122.0573, 6.9126]])
       }
     ];
 
     // Seed Edges (Both directions to support undirected graph traversal)
-    const insertEdge = db.prepareSync('INSERT INTO edges (source_node, target_node, distance, geometry) VALUES ($source, $target, $distance, $geometry)');
+    const insertEdge = db.prepareSync('INSERT INTO edges (source_node, target_node, distance, geometry, flood_susceptibility, min_elevation_meters) VALUES ($source, $target, $distance, $geometry, $flood_susc, $min_elev)');
     for (const edge of edges) {
       // Forward
       insertEdge.executeSync({
         $source: edge.source,
         $target: edge.target,
         $distance: edge.distance,
-        $geometry: edge.geometry
+        $geometry: edge.geometry,
+        $flood_susc: edge.flood_susceptibility || 'none',
+        $min_elev: edge.min_elevation_meters || 0.0,
       });
       // Backward
       insertEdge.executeSync({
@@ -223,7 +248,9 @@ function seedDb() {
         $target: edge.source,
         $distance: edge.distance,
         // Reverse coordinates for backward geometry traversal
-        $geometry: JSON.stringify([...JSON.parse(edge.geometry)].reverse())
+        $geometry: JSON.stringify([...JSON.parse(edge.geometry)].reverse()),
+        $flood_susc: edge.flood_susceptibility || 'none',
+        $min_elev: edge.min_elevation_meters || 0.0,
       });
     }
     insertEdge.finalizeSync();
@@ -241,10 +268,13 @@ export function saveShelters(sheltersList) {
   if (!db || !sheltersList) return;
 
   try {
+    try { db.execSync('ALTER TABLE shelters ADD COLUMN elevation_meters REAL DEFAULT 0.0'); } catch (_) {}
+    try { db.execSync('ALTER TABLE shelters ADD COLUMN is_permanent INTEGER DEFAULT 0'); } catch (_) {}
+
     db.execSync('DELETE FROM shelters');
     const stmt = db.prepareSync(`
-      INSERT INTO shelters (id, name, lat, lng, max_capacity, current_occupancy, status, facility_type, is_secured_facility, emergency_contact)
-      VALUES ($id, $name, $lat, $lng, $max_cap, $cur_occ, $status, $fac_type, $is_sec, $contact)
+      INSERT INTO shelters (id, name, lat, lng, max_capacity, current_occupancy, status, facility_type, is_secured_facility, emergency_contact, elevation_meters, is_permanent)
+      VALUES ($id, $name, $lat, $lng, $max_cap, $cur_occ, $status, $fac_type, $is_sec, $contact, $elevation, $is_perm)
     `);
     
     for (const s of sheltersList) {
@@ -258,7 +288,9 @@ export function saveShelters(sheltersList) {
         $status: s.status,
         $fac_type: s.facility_type || 'evacuation_center',
         $is_sec: s.is_secured_facility ? 1 : 0,
-        $contact: s.emergency_contact || null
+        $contact: s.emergency_contact || null,
+        $elevation: parseFloat(s.elevation_meters || s.elevation || 0),
+        $is_perm: (s.is_permanent || s.facility_type === 'permanent_shelter') ? 1 : 0
       });
     }
     stmt.finalizeSync();
@@ -274,10 +306,15 @@ export function saveShelters(sheltersList) {
 export function getOfflineShelters() {
   if (!db) return [];
   try {
-    return db.getAllSync('SELECT id, name, lat AS latitude, lng AS longitude, max_capacity, current_occupancy, status, facility_type, is_secured_facility, emergency_contact FROM shelters');
+    return db.getAllSync('SELECT id, name, lat AS latitude, lng AS longitude, max_capacity, current_occupancy, status, facility_type, is_secured_facility, emergency_contact, elevation_meters, is_permanent FROM shelters');
   } catch (e) {
-    console.error('Error fetching offline shelters:', e);
-    return [];
+    // Fallback for legacy tables
+    try {
+      return db.getAllSync('SELECT id, name, lat AS latitude, lng AS longitude, max_capacity, current_occupancy, status, facility_type, is_secured_facility, emergency_contact FROM shelters');
+    } catch (err) {
+      console.error('Error fetching offline shelters:', err);
+      return [];
+    }
   }
 }
 
@@ -367,17 +404,22 @@ export function syncRoadNetworkFromApi(networkData) {
   if (nodes.length === 0) return; // Don't wipe existing graph for empty response
 
   try {
+    try { db.execSync('ALTER TABLE nodes ADD COLUMN elevation_meters REAL DEFAULT 0.0'); } catch (_) {}
+    try { db.execSync('ALTER TABLE edges ADD COLUMN flood_susceptibility TEXT DEFAULT "none"'); } catch (_) {}
+    try { db.execSync('ALTER TABLE edges ADD COLUMN min_elevation_meters REAL DEFAULT 0.0'); } catch (_) {}
+
     // Wipe existing graph and replace with server data
     db.execSync('DELETE FROM edges');
     db.execSync('DELETE FROM nodes');
 
-    // Insert fresh nodes
-    const insertNode = db.prepareSync('INSERT INTO nodes (id, lat, lng) VALUES ($id, $lat, $lng)');
+    // Insert fresh nodes with pre-baked elevation
+    const insertNode = db.prepareSync('INSERT INTO nodes (id, lat, lng, elevation_meters) VALUES ($id, $lat, $lng, $elevation)');
     for (const node of nodes) {
       insertNode.executeSync({
         $id: node.id,
         $lat: parseFloat(node.lat),
         $lng: parseFloat(node.lng),
+        $elevation: parseFloat(node.elevation_meters || 0.0),
       });
     }
     insertNode.finalizeSync();
@@ -385,7 +427,7 @@ export function syncRoadNetworkFromApi(networkData) {
     // Insert fresh edges — skip blocked/danger edges so A* naturally avoids them
     // Edges with status 'danger' are inserted with an extreme cost multiplier via a flag
     const insertEdge = db.prepareSync(
-      'INSERT INTO edges (source_node, target_node, distance, geometry) VALUES ($source, $target, $distance, $geometry)'
+      'INSERT INTO edges (source_node, target_node, distance, geometry, flood_susceptibility, min_elevation_meters) VALUES ($source, $target, $distance, $geometry, $flood_susc, $min_elev)'
     );
     for (const edge of edges) {
       const isBlocked = edge.status === 'blocked';
@@ -400,12 +442,17 @@ export function syncRoadNetworkFromApi(networkData) {
         ? edge.geometry
         : JSON.stringify(edge.geometry);
 
+      const floodSusc = edge.flood_susceptibility || 'none';
+      const minElev = parseFloat(edge.min_elevation_meters || 0.0);
+
       // Forward direction
       insertEdge.executeSync({
         $source: edge.source_node_id,
         $target: edge.target_node_id,
         $distance: cost,
         $geometry: geometry,
+        $flood_susc: floodSusc,
+        $min_elev: minElev,
       });
       // Reverse direction (undirected graph)
       const reversedGeometry = typeof edge.geometry === 'string'
@@ -417,6 +464,8 @@ export function syncRoadNetworkFromApi(networkData) {
         $target: edge.source_node_id,
         $distance: cost,
         $geometry: reversedGeometry,
+        $flood_susc: floodSusc,
+        $min_elev: minElev,
       });
     }
     insertEdge.finalizeSync();

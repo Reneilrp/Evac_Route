@@ -1,14 +1,30 @@
-import * as SQLite from 'expo-sqlite';
-import { getDistanceMeters } from '../services/offlineDb';
+// Robust Haversine distance calculator in meters
+export function getDistanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const phi1 = (lat1 * Math.PI) / 180;
+  const phi2 = (lat2 * Math.PI) / 180;
+  const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+  const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+    Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 let db = null;
 
 function getDb() {
   if (!db) {
     try {
-      db = SQLite.openDatabaseSync('evac_route.db');
+      // Lazy load expo-sqlite only in React Native runtime
+      // eslint-disable-next-line no-undef
+      const SQLite = require('expo-sqlite');
+      if (SQLite?.openDatabaseSync) {
+        db = SQLite.openDatabaseSync('evac_route.db');
+      }
     } catch (e) {
-      console.error('Failed to open SQLite database for router:', e);
+      // Database uninitialized or running in Node environment
     }
   }
   return db;
@@ -368,6 +384,106 @@ function getHazardCostMultiplier(geometryCoords, hazardsWithBounds, transportati
 export function determineTargetFacility(userLat, userLng, facilities, activeHazards, requestedCategory = 'all') {
   if (!facilities || facilities.length === 0) return null;
 
+  // 1. CDRRMO Validation Directive: Check for Earthquake Hazards (Highest Life-Safety Priority)
+  const earthquakeThreat = (activeHazards || []).find(h => 
+    h.hazard_type === 'earthquake' || 
+    h.disaster_category === 'earthquake' ||
+    (h.name && h.name.toLowerCase().includes('earthquake'))
+  );
+
+  if (earthquakeThreat) {
+    // During earthquakes: strictly filter out covered courts, multi-story buildings, and enclosed structures.
+    // Route IDPs exclusively to designated open fields away from trees and buildings.
+    const openFields = facilities.filter(f => {
+      const fType = (f.facility_type || f.type || '').toLowerCase();
+      const fName = (f.name || '').toLowerCase();
+
+      // Absolute exclusion of roofed/walled structures during seismic shaking
+      if (['covered_court', 'multi_story_building', 'enclosed_building', 'gymnasium', 'building'].includes(fType)) {
+        return false;
+      }
+      if (fName.includes('covered court') || fName.includes('gymnasium') || fName.includes('building')) {
+        return false;
+      }
+
+      // Permitted open field safe zones
+      if (fType === 'open_field' || fType === 'safe_zone') {
+        return true;
+      }
+      let allowed = f.allowed_hazards;
+      if (typeof allowed === 'string') {
+        try { allowed = JSON.parse(allowed); } catch { allowed = null; }
+      }
+      if (Array.isArray(allowed) && allowed.includes('earthquake')) {
+        return true;
+      }
+      return false;
+    });
+
+    if (openFields.length > 0) {
+      return findClosestFacility(
+        userLat,
+        userLng,
+        openFields,
+        '⚠️ EARTHQUAKE ACTIVE (CDRRMO Standard): Enclosed buildings & covered courts strictly excluded. Routing to verified Open Field Safe Zone.'
+      );
+    }
+  }
+
+  // 2. Flood Hazard Prioritization (CDRRMO Standard: High-Ground & Permanent Evacuation Centers)
+  const floodThreat = (activeHazards || []).find(h =>
+    h.hazard_type === 'flood' ||
+    h.disaster_category === 'flood' ||
+    (h.name && h.name.toLowerCase().includes('flood'))
+  );
+
+  if (floodThreat) {
+    const highGroundOrPermanent = facilities.filter(f => {
+      if (f.status === 'closed') return false;
+      const fType = (f.facility_type || f.type || '').toLowerCase();
+      const elev = Number(f.elevation_meters || f.elevation || 0);
+      const isPermanent = fType === 'permanent_shelter' || fType === 'evacuation_center' || f.is_permanent || f.type === 'primary';
+      return isPermanent || elev >= 15;
+    });
+
+    if (highGroundOrPermanent.length > 0) {
+      // Prioritize permanent evacuation centers first, then high elevation
+      const permanentCenters = highGroundOrPermanent.filter(f => {
+        const fType = (f.facility_type || f.type || '').toLowerCase();
+        return fType === 'permanent_shelter' || fType === 'evacuation_center' || f.is_permanent || f.type === 'primary';
+      });
+
+      const selectedPool = permanentCenters.length > 0 ? permanentCenters : highGroundOrPermanent;
+
+      return findClosestFacility(
+        userLat,
+        userLng,
+        selectedPool,
+        '🌊 FLOOD HAZARD ACTIVE (CDRRMO Standard): Prioritizing high-elevation permanent evacuation centers on safe high ground.'
+      );
+    }
+  }
+
+  // 3. Dynamic CDRRMO Custom-Pinned Safe Zone Override (Overrides default nearest shelter)
+  const customPinnedSafeZones = facilities.filter(f => {
+    if (f.status === 'closed') return false;
+    return (
+      f.is_pinned === true ||
+      f.is_custom_pinned === true ||
+      f.is_cdrmo_pinned === true ||
+      (f.pinned_by && f.facility_type === 'safe_zone')
+    );
+  });
+
+  if (customPinnedSafeZones.length > 0) {
+    return findClosestFacility(
+      userLat,
+      userLng,
+      customPinnedSafeZones,
+      '🚩 CDRRMO TACTICAL DIRECTIVE: Custom-pinned safe zone takes command priority over nearest default shelter.'
+    );
+  }
+
   // Direct category preference (REV-03: Resident choice of Safe Zone vs Assembly Point vs Shelter)
   if (requestedCategory && requestedCategory !== 'all') {
     let filtered = [];
@@ -566,10 +682,18 @@ export function calculateOfflineRoute(userLocation, shelterLocation, preloadedDa
         edges = edgesBySource[currentId] || [];
       } else {
         const database = getDb();
-        edges = database ? database.getAllSync(
-          'SELECT target_node, distance, geometry FROM edges WHERE source_node = ?',
-          [currentId]
-        ) : [];
+        try {
+          edges = database ? database.getAllSync(
+            'SELECT target_node, distance, geometry, flood_susceptibility, min_elevation_meters FROM edges WHERE source_node = ?',
+            [currentId]
+          ) : [];
+        } catch (_) {
+          // Fallback if legacy table without susceptibility columns
+          edges = database ? database.getAllSync(
+            'SELECT target_node, distance, geometry FROM edges WHERE source_node = ?',
+            [currentId]
+          ) : [];
+        }
       }
 
       for (const edge of edges) {
@@ -579,9 +703,20 @@ export function calculateOfflineRoute(userLocation, shelterLocation, preloadedDa
         // DYNAMIC HAZARD AVOIDANCE
         // Calculate penalty based on intersecting hazards and transportation mode
         const hazardMultiplier = getHazardCostMultiplier(edgeGeometry, hazardsWithBounds, transportationMode);
-        
+
+        // Pre-baked terrain flood susceptibility avoidance:
+        // If an active flood threat exists, flat catch-basin streets (flood_susceptibility === 'high' or min_elevation < 4m)
+        // receive a mild avoidance penalty (1.3x) to naturally guide civilian traffic uphill away from river basins
+        let terrainMultiplier = 1.0;
+        if (edge.flood_susceptibility === 'high' || (edge.min_elevation_meters && edge.min_elevation_meters < 4.0)) {
+          const hasFloodThreat = hazardsWithBounds.some(h => h.hazard_type === 'flood');
+          if (hasFloodThreat) {
+            terrainMultiplier = 1.3;
+          }
+        }
+
         // Remove Infinity check to allow "least dangerous" escape paths through 99999 penalty
-        const tentativeGScore = gScore[currentId] + (edge.distance * hazardMultiplier);
+        const tentativeGScore = gScore[currentId] + (edge.distance * hazardMultiplier * terrainMultiplier);
 
         if (tentativeGScore < (gScore[neighborId] ?? Infinity)) {
           // Record path step
