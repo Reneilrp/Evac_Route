@@ -64,10 +64,18 @@ EOF
 echo ""
 echo "📤 [3/4] Rsyncing fresh dist/ bundle to VM..."
 ssh "$VM_HOST" "mkdir -p $REMOTE_PATH/frontend/web"
-rsync -avz --delete "$PROJECT_ROOT/frontend/web/dist/" "$VM_HOST:$REMOTE_PATH/frontend/web/dist/"
+rsync -avz --delete --exclude='downloads/' "$PROJECT_ROOT/frontend/web/dist/" "$VM_HOST:$REMOTE_PATH/frontend/web/dist/"
 # Maintain backwards-compatible symlink so remote Nginx serves properly regardless of web or Evac_RouteWeb root
 ssh "$VM_HOST" "ln -sfn $REMOTE_PATH/frontend/web $REMOTE_PATH/frontend/Evac_RouteWeb 2>/dev/null || true"
 echo "✅ Frontend dist synced."
+
+# Sync APK downloads directly to backend/public/downloads (served by Nginx /downloads alias)
+if [ -d "$PROJECT_ROOT/backend/public/downloads" ]; then
+    echo "📱 Syncing APK downloads to VM..."
+    ssh "$VM_HOST" "mkdir -p $REMOTE_PATH/backend/public/downloads"
+    rsync -avzu --chmod=F644,D755 "$PROJECT_ROOT/backend/public/downloads/" "$VM_HOST:$REMOTE_PATH/backend/public/downloads/"
+    echo "✅ APK downloads synced."
+fi
 
 # 4. Restart Supervisor Workers & PHP-FPM
 echo ""
