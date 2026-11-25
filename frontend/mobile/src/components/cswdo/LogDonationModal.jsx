@@ -89,14 +89,20 @@ export default function LogDonationModal({
     }
 
     try {
+      const description = itemName.trim() || category;
+      const servings = estimatedServings || quantity;
       await onSubmit({
         donor_name: donorName.trim(),
         donor_type: donorType,
+        item_category: category,
+        item_description: description,
+        quantity_servings: servings,
+        distribution_mode: 'immediate_community_serving',
         category,
-        item_name: itemName.trim() || category,
+        item_name: description,
         quantity,
         unit,
-        estimated_servings: estimatedServings || quantity,
+        estimated_servings: servings,
         distribution_phase: 'phase_1_influx',
         notes: notes.trim() || undefined,
       });

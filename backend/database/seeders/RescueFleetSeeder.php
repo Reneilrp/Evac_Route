@@ -11,7 +11,7 @@ class RescueFleetSeeder extends Seeder
     public function run(): void
     {
         // ─── 1. Marine Water Search & Rescue (WASAR) ───
-        $boatLead = User::updateOrCreate(['email' => 'rescue1@lgu.gov.ph'], [
+        $boatLead = User::firstOrCreate(['email' => 'rescue1@lgu.gov.ph'], [
             'name' => 'Capt. Arnaldo Ramos (WASAR Boat Lead)',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
@@ -19,7 +19,7 @@ class RescueFleetSeeder extends Seeder
             'rescue_role' => 'boat_pilot',
             'status' => 'active',
         ]);
-        User::updateOrCreate(['email' => 'boat1@lgu.gov.ph'], [
+        $boatLeadAlt = User::firstOrCreate(['email' => 'boat1@lgu.gov.ph'], [
             'name' => 'Capt. Arnaldo Ramos (WASAR Boat Lead)',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
@@ -28,7 +28,7 @@ class RescueFleetSeeder extends Seeder
             'status' => 'active',
         ]);
 
-        $unitBoat = RescueUnit::updateOrCreate(['call_sign' => 'BOAT-ALPHA'], [
+        $unitBoat = RescueUnit::firstOrCreate(['call_sign' => 'BOAT-ALPHA'], [
             'name' => 'Zamboanga Rescue Boat Alpha',
             'call_sign' => 'BOAT-ALPHA',
             'unit_type' => 'water_rescue',
@@ -39,10 +39,10 @@ class RescueFleetSeeder extends Seeder
             'contact_number' => '0917-BOAT-911',
             'capacity_persons' => 8,
         ]);
-        $boatLead->update(['assigned_rescue_unit_id' => $unitBoat->id, 'rescue_role' => 'boat_pilot']);
-        User::where('email', 'boat1@lgu.gov.ph')->update(['assigned_rescue_unit_id' => $unitBoat->id, 'rescue_role' => 'boat_pilot']);
+        $this->ensureUnitAssignment($boatLead, $unitBoat, 'boat_pilot');
+        $this->ensureUnitAssignment($boatLeadAlt, $unitBoat, 'boat_pilot');
 
-        User::updateOrCreate(['email' => 'mateo.cruz@cdrrmo.zamboanga.gov.ph'], [
+        User::firstOrCreate(['email' => 'mateo.cruz@cdrrmo.zamboanga.gov.ph'], [
             'name' => 'Sgt. Mateo Cruz',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
@@ -52,7 +52,7 @@ class RescueFleetSeeder extends Seeder
             'status' => 'active',
         ]);
 
-        User::updateOrCreate(['email' => 'liza.santos@cdrrmo.zamboanga.gov.ph'], [
+        User::firstOrCreate(['email' => 'liza.santos@cdrrmo.zamboanga.gov.ph'], [
             'name' => 'Officer Liza Santos',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
@@ -63,7 +63,7 @@ class RescueFleetSeeder extends Seeder
         ]);
 
         // ─── 2. Emergency Medical Services (EMS Ambulance) ───
-        $medicLead = User::updateOrCreate(['email' => 'medic1@lgu.gov.ph'], [
+        $medicLead = User::firstOrCreate(['email' => 'medic1@lgu.gov.ph'], [
             'name' => 'Dr. Maria Elena Torres (Lead Paramedic)',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
@@ -71,7 +71,7 @@ class RescueFleetSeeder extends Seeder
             'rescue_role' => 'lead_medic',
             'status' => 'active',
         ]);
-        User::updateOrCreate(['email' => 'medic1.lead@cdrrmo.zamboanga.gov.ph'], [
+        $medicLeadAlt = User::firstOrCreate(['email' => 'medic1.lead@cdrrmo.zamboanga.gov.ph'], [
             'name' => 'Dr. Maria Elena Torres (Lead Paramedic)',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
@@ -80,7 +80,7 @@ class RescueFleetSeeder extends Seeder
             'status' => 'active',
         ]);
 
-        $unitMedic = RescueUnit::updateOrCreate(['call_sign' => 'MEDIC-1'], [
+        $unitMedic = RescueUnit::firstOrCreate(['call_sign' => 'MEDIC-1'], [
             'name' => 'Zamboanga Medic Ambulance 01',
             'call_sign' => 'MEDIC-1',
             'unit_type' => 'medical_ambulance',
@@ -91,10 +91,10 @@ class RescueFleetSeeder extends Seeder
             'contact_number' => '0917-MEDIC-911',
             'capacity_persons' => 4,
         ]);
-        $medicLead->update(['assigned_rescue_unit_id' => $unitMedic->id, 'rescue_role' => 'lead_medic']);
-        User::where('email', 'medic1.lead@cdrrmo.zamboanga.gov.ph')->update(['assigned_rescue_unit_id' => $unitMedic->id, 'rescue_role' => 'lead_medic']);
+        $this->ensureUnitAssignment($medicLead, $unitMedic, 'lead_medic');
+        $this->ensureUnitAssignment($medicLeadAlt, $unitMedic, 'lead_medic');
 
-        User::updateOrCreate(['email' => 'noel.bautista@cdrrmo.zamboanga.gov.ph'], [
+        User::firstOrCreate(['email' => 'noel.bautista@cdrrmo.zamboanga.gov.ph'], [
             'name' => 'EMT Noel Bautista',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
@@ -105,7 +105,7 @@ class RescueFleetSeeder extends Seeder
         ]);
 
         // ─── 3. Quick Response Team (QRT 4x4 Heavy Rescue Truck) ───
-        $deltaLead = User::updateOrCreate(['email' => 'delta3@lgu.gov.ph'], [
+        $deltaLead = User::firstOrCreate(['email' => 'delta3@lgu.gov.ph'], [
             'name' => 'Officer Ronald Macapagal (Heavy Driver)',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
@@ -113,7 +113,7 @@ class RescueFleetSeeder extends Seeder
             'rescue_role' => 'heavy_driver',
             'status' => 'active',
         ]);
-        User::updateOrCreate(['email' => 'delta3.lead@cdrrmo.zamboanga.gov.ph'], [
+        $deltaLeadAlt = User::firstOrCreate(['email' => 'delta3.lead@cdrrmo.zamboanga.gov.ph'], [
             'name' => 'Officer Ronald Macapagal (Heavy Driver)',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
@@ -122,7 +122,7 @@ class RescueFleetSeeder extends Seeder
             'status' => 'active',
         ]);
 
-        $unitDelta = RescueUnit::updateOrCreate(['call_sign' => 'DELTA-3'], [
+        $unitDelta = RescueUnit::firstOrCreate(['call_sign' => 'DELTA-3'], [
             'name' => 'QRT 4x4 Heavy Rescue Truck 03',
             'call_sign' => 'DELTA-3',
             'unit_type' => 'high_clearance_truck',
@@ -133,10 +133,10 @@ class RescueFleetSeeder extends Seeder
             'contact_number' => '0917-QRT-DELTA',
             'capacity_persons' => 15,
         ]);
-        $deltaLead->update(['assigned_rescue_unit_id' => $unitDelta->id, 'rescue_role' => 'heavy_driver']);
-        User::where('email', 'delta3.lead@cdrrmo.zamboanga.gov.ph')->update(['assigned_rescue_unit_id' => $unitDelta->id, 'rescue_role' => 'heavy_driver']);
+        $this->ensureUnitAssignment($deltaLead, $unitDelta, 'heavy_driver');
+        $this->ensureUnitAssignment($deltaLeadAlt, $unitDelta, 'heavy_driver');
 
-        User::updateOrCreate(['email' => 'bryan.gomez@cdrrmo.zamboanga.gov.ph'], [
+        User::firstOrCreate(['email' => 'bryan.gomez@cdrrmo.zamboanga.gov.ph'], [
             'name' => 'Rescue Tech Bryan Gomez',
             'password' => bcrypt('password'),
             'role' => 'lgu_staff',
@@ -145,5 +145,22 @@ class RescueFleetSeeder extends Seeder
             'assigned_rescue_unit_id' => $unitDelta->id,
             'status' => 'active',
         ]);
+    }
+
+    /**
+     * Backfill fleet assignment fields only when unset so existing live records are preserved.
+     */
+    private function ensureUnitAssignment(User $user, RescueUnit $unit, string $rescueRole): void
+    {
+        $updates = [];
+        if ($user->assigned_rescue_unit_id === null) {
+            $updates['assigned_rescue_unit_id'] = $unit->id;
+        }
+        if (empty($user->rescue_role)) {
+            $updates['rescue_role'] = $rescueRole;
+        }
+        if ($updates !== []) {
+            $user->update($updates);
+        }
     }
 }

@@ -40,9 +40,6 @@ echo "$PULL_OUTPUT"
 cd backend
 if [[ "$PULL_OUTPUT" == *"Already up to date."* ]]; then
     echo "⚡ Backend code is already up-to-date. Checking for pending migrations..."
-    php artisan migrate --force
-    sudo chown -R www-data:www-data /var/www/evac_route/backend/storage /var/www/evac_route/backend/bootstrap/cache || true
-    sudo chmod -R 775 /var/www/evac_route/backend/storage /var/www/evac_route/backend/bootstrap/cache || true
 else
     # Check if composer.lock was modified in the new commits
     if git diff --name-only HEAD@{1} HEAD | grep -q "composer.lock"; then
@@ -55,10 +52,12 @@ else
     php artisan config:cache
     php artisan route:cache
     php artisan view:cache
-    php artisan migrate --force
-    sudo chown -R www-data:www-data /var/www/evac_route/backend/storage /var/www/evac_route/backend/bootstrap/cache || true
-    sudo chmod -R 775 /var/www/evac_route/backend/storage /var/www/evac_route/backend/bootstrap/cache || true
 fi
+
+php artisan migrate --force
+php artisan db:seed --class=RescueFleetSeeder --force
+sudo chown -R www-data:www-data /var/www/evac_route/backend/storage /var/www/evac_route/backend/bootstrap/cache || true
+sudo chmod -R 775 /var/www/evac_route/backend/storage /var/www/evac_route/backend/bootstrap/cache || true
 EOF
 
 # 3. Rsync Dist Folder to VM (compressed, fast, and deletes old unused chunks)

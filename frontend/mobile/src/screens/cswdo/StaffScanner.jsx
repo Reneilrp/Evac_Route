@@ -442,9 +442,10 @@ export default function StaffScanner() {
 
     try {
       const response = await api.post(`/shelters/${targetShelterId}/check-in`, checkinPayload);
+      const responseData = response.data?.data ?? response.data;
 
       Vibration.vibrate([0, 200, 100, 200]);
-      const admittedShelter = response.data?.shelter?.name || user?.assigned_shelter?.name || 'Assigned Shelter';
+      const admittedShelter = responseData?.shelter?.name || user?.assigned_shelter?.name || 'Assigned Shelter';
       setCheckInSuccess({
         shelterName: admittedShelter,
         message: `Resident admitted to ${admittedShelter} (${actualHeadcount || scanResult.headcount} Pax).`,
@@ -456,7 +457,7 @@ export default function StaffScanner() {
         shelter: admittedShelter,
         shelterId: targetShelterId,
         actualHeadcount: actualHeadcount || scanResult.headcount,
-        logId: response.data?.log?.id || prev.logId,
+        logId: responseData?.log?.id || prev.logId,
       }));
     } catch (err) {
       // If network dropped during submission, save to offline queue as fallback
@@ -533,8 +534,9 @@ export default function StaffScanner() {
       if (!shelterId) throw new Error('No shelter assigned.');
 
       const res = await api.post(`/shelters/${shelterId}/rapid-check-in`, formData);
+      const responseData = res.data?.data ?? res.data;
       Vibration.vibrate([0, 200, 100, 200]);
-      return { voucher: res.data?.voucher };
+      return { voucher: responseData?.voucher };
     } catch (err) {
       Vibration.vibrate([0, 100, 100, 100]);
       Alert.alert('Intake Error', err.response?.data?.message || 'Failed to process rapid walk-in.');

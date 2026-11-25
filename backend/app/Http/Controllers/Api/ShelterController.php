@@ -468,9 +468,34 @@ class ShelterController extends Controller
     {
         $shelter = Shelter::findOrFail($id);
 
+        // Normalize mobile/legacy payload keys alongside canonical backend fields
+        $itemCategory = $request->input('item_category') ?? $request->input('category');
+        $itemDescription = $request->input('item_description') ?? $request->input('item_name');
+        $quantityServings = $request->input('quantity_servings')
+            ?? $request->input('estimated_servings')
+            ?? $request->input('quantity');
+        $distributionMode = $request->input('distribution_mode')
+            ?? match ($request->input('distribution_phase')) {
+                'phase_1_influx' => 'immediate_community_serving',
+                'warehouse_staged' => 'warehouse_staged',
+                'per_family_distribution' => 'per_family_distribution',
+                default => null,
+            };
+
+        $normalized = array_filter([
+            'item_category' => $itemCategory,
+            'item_description' => $itemDescription,
+            'quantity_servings' => $quantityServings,
+            'distribution_mode' => $distributionMode,
+        ], static fn ($value) => $value !== null && $value !== '');
+
+        if (! empty($normalized)) {
+            $request->merge($normalized);
+        }
+
         $validated = $request->validate([
             'donor_name' => 'required|string|max:255',
-            'item_category' => 'required|string|in:hot_meals,bottled_water,bread_pastry,hygiene_kits,clothing,other',
+            'item_category' => 'required|string|in:hot_meals,bottled_water,bread_pastry,canned_goods,hygiene_kits,clothing,other',
             'item_description' => 'nullable|string|max:500',
             'quantity_servings' => 'required|integer|min:1',
             'distribution_mode' => 'nullable|string|in:immediate_community_serving,warehouse_staged,per_family_distribution',

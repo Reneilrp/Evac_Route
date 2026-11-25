@@ -399,6 +399,14 @@ class CheckInController extends Controller
      */
     public function rapidCheckIn(Request $request, $shelter_id)
     {
+        // Support both 'name' and 'family_name' seamlessly across Mobile and Web clients
+        if (! $request->has('name') && $request->has('family_name')) {
+            $request->merge(['name' => $request->family_name]);
+        }
+        if (! $request->has('family_name') && $request->has('name')) {
+            $request->merge(['family_name' => $request->name]);
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'headcount' => 'required|integer|min:1',
@@ -848,23 +856,74 @@ class CheckInController extends Controller
     }
 
     /**
+     * Resolve an active EvacuationLog for day-pass endpoints using log ID or shelter + identifier.
+     */
+    private function resolveActiveDayPassLog(Request $request, ?int $logId = null, ?int $shelterId = null): EvacuationLog
+    {
+        $query = EvacuationLog::whereNull('checked_out_at');
+        if ($shelterId !== null) {
+            $query->where('shelter_id', $shelterId);
+        }
+
+        if ($logId !== null) {
+            return $query->findOrFail($logId);
+        }
+
+        $validated = $request->validate([
+            'evacuation_log_id' => 'required_without:log_id',
+            'log_id' => 'required_without:evacuation_log_id',
+        ]);
+
+        $identifier = $validated['evacuation_log_id'] ?? $validated['log_id'];
+        if (is_numeric($identifier)) {
+            return $query->findOrFail((int) $identifier);
+        }
+
+        $family = FamilyProfile::verifyTotpPayload((string) $identifier, false);
+
+        return $query->where('family_profile_id', $family->id)->firstOrFail();
+    }
+
+    /**
+     * Persist temporary day-pass state change and build a consistent API response.
+     */
+    private function updateDayPassState(EvacuationLog $log, bool $isTemporaryOffsite)
+    {
+        $log->update([
+            'is_temporary_offsite' => $isTemporaryOffsite,
+            'temporary_offsite_at' => $isTemporaryOffsite ? now() : null,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $isTemporaryOffsite
+                ? 'Temporary day pass issued. Slot and family rations preserved.'
+                : 'Resident returned to shelter. Active presence restored.',
+            'data' => $log,
+        ]);
+    }
+
+    /**
      * Issue temporary day pass for evacuees checking flooded homes or clearing mud.
      * Preserves shelter slot and family relief ration allocation.
      * Route: POST /api/evacuation-logs/{id}/day-pass
      */
     public function issueDayPass(Request $request, $id)
     {
-        $log = EvacuationLog::whereNull('checked_out_at')->findOrFail($id);
-        $log->update([
-            'is_temporary_offsite' => true,
-            'temporary_offsite_at' => now(),
-        ]);
+        $log = $this->resolveActiveDayPassLog($request, (int) $id);
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Temporary day pass issued. Slot and family rations preserved.',
-            'data' => $log,
-        ]);
+        return $this->updateDayPassState($log, true);
+    }
+
+    /**
+     * Shelter-scoped alias for issuing a temporary day pass (used by Mobile Scanner & Web Modal).
+     * Route: POST /api/shelters/{shelter_id}/day-pass
+     */
+    public function issueDayPassForShelter(Request $request, $shelter_id)
+    {
+        $log = $this->resolveActiveDayPassLog($request, null, (int) $shelter_id);
+
+        return $this->updateDayPassState($log, true);
     }
 
     /**
@@ -873,17 +932,20 @@ class CheckInController extends Controller
      */
     public function returnFromDayPass(Request $request, $id)
     {
-        $log = EvacuationLog::whereNull('checked_out_at')->findOrFail($id);
-        $log->update([
-            'is_temporary_offsite' => false,
-            'temporary_offsite_at' => null,
-        ]);
+        $log = $this->resolveActiveDayPassLog($request, (int) $id);
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Resident returned to shelter. Active presence restored.',
-            'data' => $log,
-        ]);
+        return $this->updateDayPassState($log, false);
+    }
+
+    /**
+     * Shelter-scoped alias for returning from a temporary day pass (used by Mobile Scanner & Web Modal).
+     * Route: POST /api/shelters/{shelter_id}/return-day-pass
+     */
+    public function returnFromDayPassForShelter(Request $request, $shelter_id)
+    {
+        $log = $this->resolveActiveDayPassLog($request, null, (int) $shelter_id);
+
+        return $this->updateDayPassState($log, false);
     }
 
     /**

@@ -231,8 +231,8 @@ export default function StaffManagement() {
     const role = editingStaff?.role === 'admin' ? 'admin' : 'lgu_staff';
 
     const payload = {
-      name,
-      email,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
       role,
       operator_type: operatorType,
       status,

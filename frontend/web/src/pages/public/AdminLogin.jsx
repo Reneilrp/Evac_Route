@@ -53,13 +53,13 @@ export default function AdminLogin() {
       showError("Please enter your official email and password.");
       return;
     }
-    await performLogin(email, password);
+    await performLogin(email.trim().toLowerCase(), password);
   };
 
   const handleQuickRole = async (roleEmail) => {
     setEmail(roleEmail);
     setPassword('password');
-    await performLogin(roleEmail, 'password');
+    await performLogin(roleEmail.trim().toLowerCase(), 'password');
   };
 
   return (

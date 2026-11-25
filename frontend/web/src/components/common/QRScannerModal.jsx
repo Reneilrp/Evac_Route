@@ -160,10 +160,11 @@ export default function QRScannerModal({ isOpen, onClose, selectedShelterId }) {
 
     try {
       const res = await api.post(`/shelters/${selectedShelterId}/rapid-check-in`, {
-        name: walkinName,
+        name: walkinName.trim(),
+        family_name: walkinName.trim(),
         headcount: parseInt(walkinHeadcount, 10),
-        barangay: walkinBarangay,
-        contact_number: walkinContact || 'N/A'
+        barangay: walkinBarangay.trim(),
+        contact_number: walkinContact?.trim() || 'N/A'
       });
       setScanResult(res.data);
     } catch (err) {

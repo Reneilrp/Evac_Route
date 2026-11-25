@@ -143,6 +143,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/shelters/{shelter_id}/check-in', [CheckInController::class, 'processCheckIn']);
         Route::post('/shelters/{shelter_id}/rapid-check-in', [CheckInController::class, 'rapidCheckIn']);
         Route::post('/shelters/{shelter_id}/check-out', [CheckInController::class, 'processCheckOut']);
+        Route::post('/shelters/{shelter_id}/day-pass', [CheckInController::class, 'issueDayPassForShelter'])->whereNumber('shelter_id');
+        Route::post('/shelters/{shelter_id}/return-day-pass', [CheckInController::class, 'returnFromDayPassForShelter'])->whereNumber('shelter_id');
         Route::post('/evacuation-logs/{id}/check-out', [CheckInController::class, 'manualCheckOut']);
         Route::post('/evacuation-logs/{id}/day-pass', [CheckInController::class, 'issueDayPass'])->whereNumber('id');
         Route::post('/evacuation-logs/{id}/return-day-pass', [CheckInController::class, 'returnFromDayPass'])->whereNumber('id');

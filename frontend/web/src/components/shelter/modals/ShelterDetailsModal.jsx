@@ -508,11 +508,11 @@ function ShelterDetailsModal({
                         <tr key={d.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                           <td className="py-3 px-4 font-semibold text-gray-800 dark:text-slate-200">
                             <div>{d.donor_name}</div>
-                            <span className="text-[10px] text-gray-400 uppercase font-normal">{d.category?.replace(/_/g, ' ')}</span>
+                            <span className="text-[10px] text-gray-400 uppercase font-normal">{(d.category || d.item_category || '').replace(/_/g, ' ')}</span>
                           </td>
-                          <td className="py-3 px-4 font-bold text-gray-900 dark:text-slate-100">{d.item_name}</td>
+                          <td className="py-3 px-4 font-bold text-gray-900 dark:text-slate-100">{d.item_name || d.item_description || '—'}</td>
                           <td className="py-3 px-4 font-extrabold text-blue-600 dark:text-blue-400">
-                            {d.quantity} {d.unit} ({d.estimated_servings} servings)
+                            {d.quantity ?? d.quantity_servings} {d.unit || 'servings'} ({d.estimated_servings ?? d.quantity_servings} servings)
                           </td>
                           <td className="py-3 px-4 text-gray-500">
                             {new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

@@ -71,6 +71,7 @@ export default function RapidWalkInModal({
 
     try {
       const result = await onSubmit({
+        name: familyName.trim(),
         family_name: familyName.trim(),
         headcount,
         barangay: barangay.trim() || 'Tetuan',

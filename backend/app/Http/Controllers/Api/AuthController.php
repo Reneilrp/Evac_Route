@@ -17,11 +17,27 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
+            'email' => 'required|string',
+            'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $loginInput = trim((string) $request->email);
+        $loginInputLower = strtolower($loginInput);
+
+        // 1. Primary lookup by case-insensitive, whitespace-trimmed email
+        $user = User::whereRaw('LOWER(TRIM(email)) = ?', [$loginInputLower])->first();
+
+        // 2. Fallback lookup by staff / resident full name or username identifier
+        if (! $user) {
+            $user = User::whereRaw('LOWER(TRIM(name)) = ?', [$loginInputLower])->first();
+        }
+
+        // 3. Fallback lookup by household contact number
+        if (! $user) {
+            $user = User::whereHas('familyProfile', function ($q) use ($loginInput) {
+                $q->where('contact_number', $loginInput);
+            })->first();
+        }
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Invalid credentials'], 401);
@@ -123,6 +139,14 @@ class AuthController extends Controller
 
     public function storeStaff(Request $request)
     {
+        // Normalize email and name before validation
+        if ($request->has('email')) {
+            $request->merge(['email' => strtolower(trim((string) $request->email))]);
+        }
+        if ($request->has('name')) {
+            $request->merge(['name' => trim((string) $request->name)]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
@@ -155,9 +179,9 @@ class AuthController extends Controller
         $rescueRole = $validated['rescue_role'] ?? ($operatorType === 'rescue' ? 'crew' : null);
 
         $staff = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'name' => trim($validated['name']),
+            'email' => strtolower(trim($validated['email'])),
+            'password' => $validated['password'], // User model automatically casts password => 'hashed'
             'role' => $validated['role'],
             'operator_type' => $operatorType,
             'assigned_rescue_unit_id' => $assignedRescueUnitId,
@@ -236,6 +260,14 @@ class AuthController extends Controller
             'status' => $user->status,
         ];
 
+        // Normalize email and name before validation
+        if ($request->has('email')) {
+            $request->merge(['email' => strtolower(trim((string) $request->email))]);
+        }
+        if ($request->has('name')) {
+            $request->merge(['name' => trim((string) $request->name)]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,'.$user->id,
@@ -267,8 +299,8 @@ class AuthController extends Controller
             : $user->rescue_role;
 
         $updateData = [
-            'name' => $validated['name'],
-            'email' => $validated['email'],
+            'name' => trim($validated['name']),
+            'email' => strtolower(trim($validated['email'])),
             'role' => $validated['role'],
             'operator_type' => $operatorType,
             'assigned_rescue_unit_id' => $assignedRescueUnitId,
@@ -278,7 +310,7 @@ class AuthController extends Controller
         ];
 
         if (! empty($validated['password'])) {
-            $updateData['password'] = Hash::make($validated['password']);
+            $updateData['password'] = $validated['password'];
         }
 
         $user->update($updateData);
